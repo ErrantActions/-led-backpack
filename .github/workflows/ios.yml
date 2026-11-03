@@ -1,0 +1,56 @@
+name: LED Backpack iOS
+on:
+  workflow_dispatch:
+    inputs:
+      require_duo_sdk:
+        description: Require iOS 27.1 or later SDK for native iPhone Duo qualification
+        type: boolean
+        default: false
+  push:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        env:
+          REQUIRE_DUO_SDK: ${{ inputs.require_duo_sdk || 'false' }}
+        run: |
+          xcodebuild -version
+          swift --version
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "Selected iOS SDK: $SDK"
+          python3 -c 'import os,sys; v=tuple(map(int,sys.argv[1].split(".")[:2])); required=os.environ["REQUIRE_DUO_SDK"]=="true"; assert not required or v >= (27,1), "Duo qualification requires iOS SDK 27.1+. Select an appropriate hosted Xcode image."; print("Duo SDK qualified" if v >= (27,1) else "Compatibility build only; not a native Duo qualification.")' "$SDK"
+      - name: Test portable packet codec
+        run: swift test --package-path Packages/BackpackProtocol
+      - name: Generate Xcode project
+        run: brew install xcodegen && xcodegen generate
+      - name: Select available iPhone simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+      - name: Build and test app
+        run: |
+          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Package simulator app
+        run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/LEDBackpack.app LEDBackpack-simulator.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LEDBackpack-iOS-build
+          path: |
+            ios/LEDBackpack-simulator.zip
+            ios/build/TestResults.xcresult
+          if-no-files-found: warn

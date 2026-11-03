@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key><string>LED Backpack</string>
+    <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+    <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>LSRequiresIPhoneOS</key><true/>
+    <key>UILaunchScreen</key><dict/>
+    <key>NSBluetoothAlwaysUsageDescription</key><string>Connect to your LED backpack to read its status and control its display.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Use your location for GPS speed and local weather when you start those features.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>Continue your explicitly started GPS display while the app is in the background.</string>
+    <key>NSMotionUsageDescription</key><string>Show optional phone motion measurements during your live display session.</string>
+    <key>NSAppleMusicUsageDescription</key><string>Read supported system Music metadata for your explicitly started now-playing display.</string>
+    <key>UIBackgroundModes</key><array><string>bluetooth-central</string><string>location</string></array>
+    <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+    <key>UIApplicationSupportsIndirectInputEvents</key><true/>
+</dict>
+</plist>
