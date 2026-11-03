@@ -1,45 +1,30 @@
 # LED Backpack for iOS
 
-Independent SwiftUI + Core Bluetooth controller for stock Nyan-compatible
-backpack firmware. No vendor login, cloud database, account subscription,
-firmware flashing, or ESP32 is required by this implementation.
+Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
+backpacks. No vendor login, cloud database or account subscription is required.
 
-## Current status: source implementation, not a verified iPhone release
+## Requirements
 
-The selected feature surfaces are implemented in source, with packet-codec
-tests, rendering/storage tests, and a GitHub macOS build/test workflow.
-**Xcode compilation, signing, iPhone Bluetooth operation, and locked-screen
-background behavior have not been verified from this Windows environment.**
-Do not treat syntax checks or visual mockups as an iOS build.
+- iOS 17 or later.
+- A compatible Bluetooth LED backpack.
+- Location, Bluetooth and notification permissions for the features you enable.
 
-The wire protocol was independently exercised on Windows against a 64x64
-`EXYB-AS#GGMJXZ180` running `V2.9.1#V20`: identity, dimensions, all storage-slot
-records, live bitmap animation and simulated speed worked. That does not
-certify every command or the Core Bluetooth implementation on iOS.
-
-See the [packet protocol summary](Protocol.md) and the committed Swift test
-fixtures. This repository does not include vendor applications, extracted
-vendor code, Windows analysis tools or personal device captures.
+This is an experimental app. Background behavior and optional live features
+depend on iOS permissions, system scheduling and device compatibility.
+See the [packet protocol reference](Protocol.md) for integration details.
 
 ## Build on GitHub / a Mac
 
 1. Clone the repository, retaining the relative `ios/` and
    `.github/workflows/` locations. Do not commit signing credentials,
-   passwords or personal device captures.
-2. Enable GitHub Actions and run **LED Backpack iOS**. The workflow:
-   - Runs the pure Swift protocol package tests.
-   - Installs XcodeGen and generates the Xcode project.
-   - Selects an available iPhone simulator.
-   - Builds/tests the SwiftUI app without signing.
-   - Uploads the simulator app and test result bundle.
-3. Address any compiler/test issues exposed by the first Mac run. No successful
-   workflow result is being claimed before that run.
+   passwords or private diagnostic exports.
+2. Enable GitHub Actions and run **LED Backpack iOS** for an unsigned simulator
+   build. The workflow generates the Xcode project and packages the app.
 
 On a Mac:
 
 ```sh
 cd ios
-swift test --package-path Packages/BackpackProtocol
 brew install xcodegen
 xcodegen generate
 open LEDBackpack.xcodeproj
@@ -63,7 +48,7 @@ and App Store Connect record before configuring the protected upload workflow.
 | Surface | Implementation |
 |---|---|
 | BLE scan/filter, discovery, notify, writes, reconnect, state restoration | [BluetoothLink.swift](LEDBackpack/BluetoothLink.swift) |
-| Typed frames, checksums, field lengths, captured-layout parsers, commands | [Wire.swift](Packages/BackpackProtocol/Sources/BackpackProtocol/Wire.swift) |
+| Typed packets, checksums, reply parsing and commands | [Wire.swift](Packages/BackpackProtocol/Sources/BackpackProtocol/Wire.swift) |
 | Identity/dimensions, slot inventory, controls, panel passwords, upload/playback | [PanelController.swift](LEDBackpack/PanelController.swift) |
 | Local GIFs, attribution, playlists, backup/merge, Keychain passwords | [LocalLibrary.swift](LEDBackpack/LocalLibrary.swift) |
 | Image/GIF decode, fit/fill, rotate, brightness, trimming, GIF encode, pixel diff | [MediaCodec.swift](LEDBackpack/MediaCodec.swift) |
@@ -79,11 +64,7 @@ and App Store Connect record before configuring the protected upload workflow.
 ### Connection and controls
 
 - Name/service-filtered scanning with an explicit show-all fallback.
-- Both `FFF0/FFF2/FFF1` and `FF00/FF02/FF01` service families.
-- Platform-reported write limits and WWR readiness; no Android MTU assumptions.
-- Fragmented/coalesced notification assembly and checksum validation.
-- Sequence-correlated status/NAK handling; timeouts are errors, not success.
-- Optional existing panel password and legacy initialization.
+- Connection status, explicit errors and optional existing panel passwords.
 - Brightness, panel power, rotation, password change/disable.
 - Five bounded reconnect attempts with exponential backoff; no automatic
   resume of a live display after a restored connection.
@@ -94,11 +75,11 @@ The app does not implement cloud password recovery.
 
 ### Storage and media
 
-- Reads all 60 physical storage records.
+- Browse the backpack's stored artwork.
 - Play a slot, delete a slot, play ordered local playlists.
 - Explicit replacement confirmation before uploads; upload begins by deleting
   the target slot. There is no firmware-level backup of its old contents.
-- ACK-gated 960-byte GIF transfer, progress, commit, and playback.
+- GIF uploads with progress and playback controls.
 - Photos/file import, local animated-GIF preview, static-image conversion.
 - Fit/fill, quarter-turn rotation, brightness and frame-range trimming.
 - Text and horizontal marquee generation with system fonts.
@@ -109,11 +90,8 @@ Imported source limits are 10 MB, 120 frames, and 4096x4096 input dimensions.
 Encoded/local GIFs are limited to 5 MB; supported render sizes are 16x16, 64x64
 and 96x128. Backups have explicit size limits. Media conversion re-encodes
 frames and can change palette/quality; verify previews and real playback.
-Unusual GIF disposal/delta-frame behavior requires representative iOS tests.
-
-Normal iOS software testing must precede destructive hardware operations.
-Brightness/password/rotation/upload commands are based on recovered app
-behavior, not a claim that every one has been verified on the user's device.
+Keep original media files: local backups cannot recover unknown artwork
+already stored on the backpack.
 
 ### Live screens
 
@@ -134,12 +112,8 @@ Phone sensors measure the phone, not inherently the motorcycle. No valid
 motorcycle lean estimate is claimed. Use the app while stationary, not while
 operating a vehicle.
 
-Live rendering uses previous/target RGB frames and a bounded per-frame palette,
-sends changed-color bitmap bands with black last, and awaits platform write
-completion without gating each bitmap on a protocol ACK. Observed NAKs and
-disconnects stop the session. Begin/exit/restore use explicit ACK gating.
-Stopping attempts to restore the captured program mode/list and re-queries it;
-link loss can prevent restoration.
+Stopping a live session attempts to restore the previous playback program.
+Connection loss can prevent restoration.
 
 ### Custom live displays
 
@@ -158,11 +132,8 @@ measurement. Missing/stale data removes the gauge. Critical statuses such as
 NO GPS and STALE override hidden/custom labels and disable distracting ink/text
 animation for that status.
 
-Text is first rasterized to a crisp foreground/background mask. Animated ink is
-then applied to that mask using a bounded palette per frame. Morph colors are
-preserved as exact RGB values in live deltas rather than thresholded back to
-binary channel values. More patterns/colors can increase BLE work; chosen
-refresh intervals are targets, not promised frame rates.
+Complex effects can increase Bluetooth traffic; chosen refresh intervals are
+targets, not promised frame rates.
 
 Eye graphics use palette/refresh settings and blink speed; text-specific
 typography/layout controls apply to text-based screens. Themes/presets are
@@ -185,7 +156,7 @@ of backpack flash. It provides:
   saving as a new local copy with source attribution.
 
 Removed/transparent pixels are flattened to **black for the LED panel**.
-Vision subject masks depend on hardware/image support and can vary between
+Vision subject masks depend on platform/image support and can vary between
 frames; unsupported detection is surfaced as an error, never a fake successful
 cutout. Inspect every animation before sending. Manual edits are bounded to
 200,000 pixel assignments and cannot be carried across an unacknowledged
@@ -200,10 +171,9 @@ Timing has separate layers:
    and repeat. It stops/restores when backgrounded; iOS cannot guarantee
    arbitrary exact playlist timers while suspended.
 
-Uploads optionally include a recovered program-dwell field. That field has
-unit/vector coverage but **has not been verified on the user's iPhone/panel**.
-Changing it requires the original media and an explicitly confirmed upload,
-which replaces that slot. App playlist edits do not silently rewrite flash.
+Changing stored playback timing requires the original media and an explicitly
+confirmed upload, which replaces that slot. App playlist edits do not silently
+rewrite stored artwork.
 
 ### “Now on backpack” monitor
 
@@ -211,11 +181,11 @@ The dashboard includes a shared expected-output monitor:
 
 - Live: the resolved last frame whose BLE writes were submitted successfully.
 - Known GIF: local preview of a file uploaded through this app, matched to a
-  panel/slot/16-byte identifier association.
+  panel/slot identifier association.
 - Unknown stored artwork / autonomous loops: an explicit unavailable/reported
   index state, not a fabricated pixel image.
 
-The device does not expose a recovered pixel stream or GIF/firmware readback.
+The app cannot download existing stored GIFs or read the physical pixel output.
 This is **not a camera feed or proof of the physical pixels**; GIF phase may
 differ, and external changes can make metadata stale until refreshed. The
 preview clears on disconnect. Slot associations and panel identifiers can be
@@ -234,10 +204,8 @@ preview when available width permits. Compact windows stack those sections.
 Selection/draft state lives above the geometry-dependent layout, and the BLE
 session lives in the app model, not in a fold-specific view.
 
-Apple says full native iPhone Duo adaptation requires the **iOS 27.1 SDK or
-later**. The GitHub workflow uses `macos-latest` and has an optional
-`require_duo_sdk` check that fails rather than claiming Duo qualification on
-an older SDK. The minimum deployment target remains iOS 17.
+Full native iPhone Duo adaptation requires the **iOS 27.1 SDK or later**.
+The minimum deployment target remains iOS 17.
 
 No private hinge APIs, device-model guesses, or simultaneous independent
 inner/outer-display control are claimed. This workspace also benefits other
@@ -246,11 +214,6 @@ wide windows; it is Duo-focused, not artificially hardware-locked.
 - [Apple: preparing for iPhone Duo](https://developer.apple.com/iphone-duo/prepare/)
 - [Apple: applying Liquid Glass](https://developer.apple.com/documentation/swiftui/applying-liquid-glass-to-custom-views)
 - [Apple: Vision foreground mask](https://developer.apple.com/documentation/vision/vninstancemaskobservation/generatescaledmaskforimage(forinstances:from:))
-
-Native Duo pose/resize tests and iPhone rendering are still pending. On a
-physical Duo, fold/unfold during preview, theme editing, an active connection,
-and a live session; verify no reconnect, lost edits, clipped controls or layout
-assumptions.
 
 ## Background GPS, weather, other live screens, and disconnect alerts
 
@@ -280,7 +243,7 @@ iOS does **not** grant unlimited background execution to these modes.
 Suspension, force-quit, system termination, permissions, Focus settings, and
 notification policy can delay or prevent updates/alerts. The app does not use
 silent audio, fake location work, private APIs, or timers disguised as a
-background service. Always test locked-screen behavior on a physical iPhone.
+background service.
 
 References:
 
@@ -325,42 +288,13 @@ No third-party artwork is bundled in this source tree.
 - Stored files use protection compatible with operation after the first
   device unlock. Keychain items do not migrate to another device.
 
-## Tests and verification
-
-The protocol package tests consume fixtures generated by the existing
-hardware-tested JavaScript codec. They cover frame/hash/upload parity,
-captured dimensions, length variants, assembly/checksum failures, and speed
-cap/stale-data behavior. App tests cover GIF round-trip, pixel-delta
-reconstruction and backup/attribution behavior.
-
-Fixtures are committed in the Swift test package; no Node or Windows parent
-project is required. When changing the codec, update its vectors and add
-corresponding Swift tests.
-
-On this Windows machine, Swift sources were syntax-parsed, XML/fixtures were
-checked, and existing Node tests can run. **Swift/XCTest and Xcode tests must
-run on the Mac workflow; they have not run here.**
-
-Physical-iPhone acceptance checklist:
-
-1. Build on a Mac; inspect warnings and fix any platform-specific errors.
-2. Install a signed build; confirm permissions and filtered discovery.
-3. Read identity, dimensions, storage and playback without display writes.
-4. Run a temporary simple live screen; stop and confirm restoration.
-5. Test speed cap/stale GPS with controlled test data, not while riding.
-6. Lock the phone during an authorized GPS session; check data freshness.
-7. Interrupt power/link; verify alert, reconnect, and no unsolicited repaint.
-8. Test notification denial, GPS denial and revoked background access.
-9. Verify all storage controls on expendable artwork before valuable slots.
-10. Test GIF timing/disposal, large media errors, backup restore, and rotation.
-
 ## Visual prototype
 
 The [six-screen overview](Prototype/overview.png) and
 [live-speed close-up](Prototype/live-speed.png) are browser-rendered mockups,
 **not iOS simulator captures**. Their mock data/layout may differ after the
 native build. Open [the HTML concept](Prototype/index.html) in a browser to
-view the visual prototype; it has no connection to real backpack hardware.
+view the visual prototype; it does not control a device.
 
 The newer **Aurora** design replaces that initial grouped-list concept:
 [phone overview](Prototype/overview-v2.png),

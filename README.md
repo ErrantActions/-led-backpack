@@ -16,28 +16,24 @@ built with SwiftUI and Core Bluetooth.
 - Custom live themes, animated ink, gauges and saved presets.
 - A local expected-output monitor, not device pixel readback.
 - Supported background GPS/BLE behavior and disconnect notifications.
-- Local backups, Keychain passwords, diagnostics and Swift tests.
+- Local backups, Keychain passwords and diagnostics.
 
-Only the iOS app, its tests/design assets, and the Mac build workflow are
-published here. No vendor APK, extracted vendor code, Windows tools or personal
-device captures are included.
+This repository contains the native iOS app, design assets and build workflows.
 
-## Build and test
+## Build
 
-See the [iOS guide](ios/README.md) for setup, source layout, limitations and the
-physical-device acceptance checklist.
+See the [iOS guide](ios/README.md) for setup, features and limitations.
 
 On a Mac:
 
 ```sh
 cd ios
-swift test --package-path Packages/BackpackProtocol
 brew install xcodegen
 xcodegen generate
 open LEDBackpack.xcodeproj
 ```
 
-The [GitHub Actions workflow](.github/workflows/ios.yml) builds/tests on macOS
+The [GitHub Actions workflow](.github/workflows/ios.yml) builds on macOS
 and uploads an unsigned simulator app. Installing on an iPhone requires your
 own Apple signing setup; a simulator ZIP cannot be installed on a phone.
 
@@ -47,16 +43,15 @@ confirmation; it never submits an App Store release automatically.
 
 ## Status and important limits
 
-This is an experimental source implementation, **not a verified iPhone
-release**. Source syntax and protocol fixtures were checked on Windows;
-consult GitHub Actions for actual Mac build/test results.
+This is an experimental app. Installing a signed beta requires Apple signing
+and a processed TestFlight build.
 
 - Continuous arbitrary background timers are not guaranteed by iOS.
 - Phone motion is not a validated motorcycle lean measurement.
 - The output monitor shows expected/cached content, not physical pixel feedback.
 - Uploading replaces the chosen backpack slot; unknown stored artwork cannot
   be backed up through a recovered readback command.
-- Native iPhone Duo adaptation requires an appropriate iOS 27.1+ SDK and testing.
+- Native iPhone Duo adaptation requires an appropriate iOS 27.1+ SDK.
 
 Use the controls while stationary. Experimental live screens are supplemental,
 not replacements for required lights or vehicle instruments.
