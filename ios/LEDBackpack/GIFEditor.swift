@@ -94,8 +94,9 @@ struct MediaEditor: View {
                 }
                 .task {
                     do {
-                        animation = try MediaCodec.decode(data)
-                        end = (animation?.images.count ?? 1) - 1
+                        let decoded = try MediaCodec.decode(data)
+                        animation = decoded
+                        end = decoded.images.count - 1
                         if let size = panel.size, let index = sizes.firstIndex(of: size) { sizeIndex = index }
                         process { try await updatePreview() }
                     } catch { panel.report(error) }
