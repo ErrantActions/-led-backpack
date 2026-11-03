@@ -47,62 +47,89 @@ struct MediaEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                canvas
-                framing
-                cleanup
-                timing
-                manual
-                Section {
-                    Button("Update frame preview") { process { try await updatePreview() } }
-                    Button("Preview edited animation") {
-                        process { previewAnimation = try await output() }
-                    }
-                    Button("Save new GIF to library") {
-                        process {
-                            let bytes = try await output()
-                            try Task.checkCancellation()
-                            try library.add(name: name, data: bytes, attribution: attribution)
-                            dismiss()
-                        }
-                    }.buttonStyle(.borderedProminent)
-                    if busy { ProgressView("Processing selected frames...", value: progress) }
-                    Text("Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }.disabled(animation == nil || busy)
-            }.modernScene().navigationTitle("GIF Studio")
-                .onChange(of: sizeIndex) { _, _ in invalidate() }
-                .onChange(of: fit) { _, _ in invalidate() }
-                .onChange(of: turns) { _, _ in invalidate() }
-                .onChange(of: brightness) { _, _ in invalidate() }
-                .onChange(of: frameIndex) { _, _ in invalidate() }
-                .onChange(of: removal) { _, _ in invalidate() }
-                .onChange(of: keyColor) { _, _ in invalidate() }
-                .onChange(of: tolerance) { _, _ in invalidate() }
-                .onChange(of: halos) { _, _ in invalidate() }
-                .onChange(of: haloThreshold) { _, _ in invalidate() }
-                .onChange(of: isolated) { _, _ in invalidate() }
-                .onChange(of: subject) { _, _ in invalidate() }
-                .toolbar { Button("Cancel") { processing?.cancel(); dismiss() } }
+            observedEditor
+                .toolbar { Button("Cancel", action: cancelEditing) }
                 .sheet(isPresented: Binding(get: { previewAnimation != nil }, set: { if !$0 { previewAnimation = nil } })) {
-                    NavigationStack {
-                        if let bytes = previewAnimation {
-                            AnimatedPreview(data: bytes).navigationTitle("Edited preview")
-                                .toolbar { Button("Done") { previewAnimation = nil } }
-                        }
-                    }
+                    animationPreview
                 }
-                .task {
-                    do {
-                        let decoded = try MediaCodec.decode(data)
-                        animation = decoded
-                        end = decoded.images.count - 1
-                        if let size = panel.size, let index = sizes.firstIndex(of: size) { sizeIndex = index }
-                        process { try await updatePreview() }
-                    } catch { panel.report(error) }
-                }
+                .task { loadAnimation() }
                 .onDisappear { processing?.cancel() }
         }
+    }
+
+    private var editorForm: some View {
+        Form {
+            canvas
+            framing
+            cleanup
+            timing
+            manual
+            outputActions
+        }.modernScene().navigationTitle("GIF Studio")
+    }
+
+    private var geometryObservedEditor: some View {
+        editorForm
+            .onChange(of: sizeIndex) { _, _ in invalidate() }
+            .onChange(of: fit) { _, _ in invalidate() }
+            .onChange(of: turns) { _, _ in invalidate() }
+            .onChange(of: brightness) { _, _ in invalidate() }
+            .onChange(of: frameIndex) { _, _ in invalidate() }
+    }
+
+    private var observedEditor: some View {
+        geometryObservedEditor
+            .onChange(of: removal) { _, _ in invalidate() }
+            .onChange(of: keyColor) { _, _ in invalidate() }
+            .onChange(of: tolerance) { _, _ in invalidate() }
+            .onChange(of: halos) { _, _ in invalidate() }
+            .onChange(of: haloThreshold) { _, _ in invalidate() }
+            .onChange(of: isolated) { _, _ in invalidate() }
+            .onChange(of: subject) { _, _ in invalidate() }
+    }
+
+    private var outputActions: some View {
+        Section {
+            Button("Update frame preview") { process { try await updatePreview() } }
+            Button("Preview edited animation") {
+                process { previewAnimation = try await output() }
+            }
+            Button("Save new GIF to library") {
+                process {
+                    let bytes = try await output()
+                    try Task.checkCancellation()
+                    try library.add(name: name, data: bytes, attribution: attribution)
+                    dismiss()
+                }
+            }.buttonStyle(.borderedProminent)
+            if busy { ProgressView("Processing selected frames...", value: progress) }
+            Text("Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.")
+                .font(.caption).foregroundStyle(.secondary)
+        }.disabled(animation == nil || busy)
+    }
+
+    private var animationPreview: some View {
+        NavigationStack {
+            if let bytes = previewAnimation {
+                AnimatedPreview(data: bytes).navigationTitle("Edited preview")
+                    .toolbar { Button("Done") { previewAnimation = nil } }
+            }
+        }
+    }
+
+    private func loadAnimation() {
+        do {
+            let decoded = try MediaCodec.decode(data)
+            animation = decoded
+            end = decoded.images.count - 1
+            if let size = panel.size, let index = sizes.firstIndex(of: size) { sizeIndex = index }
+            process { try await updatePreview() }
+        } catch { panel.report(error) }
+    }
+
+    private func cancelEditing() {
+        processing?.cancel()
+        dismiss()
     }
 
     private var canvas: some View {
