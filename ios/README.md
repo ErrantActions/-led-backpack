@@ -46,13 +46,17 @@ open LEDBackpack.xcodeproj
 ```
 
 In Xcode, choose your own unique bundle identifier and development team.
-The generated project defaults to `com.example.ledbackpack`. Add an original
-app icon before distribution. A simulator ZIP **cannot** be installed on an
+The generated project uses `com.errantactions.ledbackpack` and includes an original
+LED-wave app icon. A simulator ZIP **cannot** be installed on an
 iPhone: real-device development signing or a separately configured
 Apple Developer/TestFlight distribution workflow is required.
 
 The workflow does not contain signing keys, Apple account credentials, or
 automatic App Store submission.
+
+For signed internal beta distribution, follow [TestFlight setup](TESTFLIGHT.md).
+The configured bundle ID is `com.errantactions.ledbackpack`; create that App ID
+and App Store Connect record before configuring the protected upload workflow.
 
 ## Features and where they live
 

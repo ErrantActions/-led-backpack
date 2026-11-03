@@ -77,7 +77,9 @@ struct ThemeEditor: View {
                 Text("Fields use existing phone data. NO GPS, stale weather and other critical statuses cannot be hidden or relabeled.").font(.caption)
             }
             Section("Motion") {
-                Picker("Style", selection: $draft.animation) { ForEach(LiveAnimation.allCases) { Text($0.rawValue).tag($0) } }
+                Picker("Style", selection: Binding(get: { draft.animation }, set: { draft.animation = $0 })) {
+                    ForEach(LiveAnimation.allCases) { Text($0.rawValue).tag($0) }
+                }
                 Slider(value: $draft.animationSpeed, in: 0.5...3, step: 0.1) { Text("Animation speed") }
                 Text("Animation \(draft.animationSpeed, specifier: "%.1f")x").font(.caption)
                 Slider(value: $draft.refreshInterval, in: 0.2...2, step: 0.1) { Text("Refresh interval") }

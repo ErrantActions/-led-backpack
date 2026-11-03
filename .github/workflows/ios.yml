@@ -32,6 +32,8 @@ jobs:
           python3 -c 'import os,sys; v=tuple(map(int,sys.argv[1].split(".")[:2])); required=os.environ["REQUIRE_DUO_SDK"]=="true"; assert not required or v >= (27,1), "Duo qualification requires iOS SDK 27.1+. Select an appropriate hosted Xcode image."; print("Duo SDK qualified" if v >= (27,1) else "Compatibility build only; not a native Duo qualification.")' "$SDK"
       - name: Test portable packet codec
         run: swift test --package-path Packages/BackpackProtocol
+      - name: Check TestFlight helper syntax
+        run: ruby -c fastlane/Fastfile && ruby -c fastlane/signing.rb
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
       - name: Select available iPhone simulator

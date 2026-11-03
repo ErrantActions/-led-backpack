@@ -1,0 +1,71 @@
+require "shellwords"
+require "fileutils"
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Archive a manually signed build and upload only; internal groups are assigned in App Store Connect."
+  lane :internal_upload do
+    bundle_id = "com.errantactions.ledbackpack"
+    root = File.expand_path(ENV.fetch("IOS_PROJECT_ROOT"))
+    build = ENV.fetch("BUILD_NUMBER")
+    UI.user_error!("Use a numeric Apple build number, e.g. 1 or 1.1.") unless build.match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/)
+    team = ENV.fetch("APPLE_TEAM_ID")
+    uuid = ENV.fetch("PROFILE_UUID")
+    certificate = ENV.fetch("SIGNING_CERT_SHA1")
+    keychain = ENV.fetch("SIGNING_KEYCHAIN")
+    encryption = ENV.fetch("NON_EXEMPT_ENCRYPTION")
+    UI.user_error!("Review export compliance and set NON_EXEMPT_ENCRYPTION to true or false.") unless %w[true false].include?(encryption)
+    export_info = File.join(ENV.fetch("RUNNER_TEMP"), "led-backpack-signing", "ExportInfo.plist")
+    FileUtils.cp(File.join(root, "Info.plist"), export_info)
+    sh("/usr/libexec/PlistBuddy", "-c", "Add :ITSAppUsesNonExemptEncryption bool #{encryption}", export_info)
+
+    settings = {
+      "PRODUCT_BUNDLE_IDENTIFIER" => bundle_id,
+      "DEVELOPMENT_TEAM" => team,
+      "CODE_SIGN_STYLE" => "Manual",
+      "CODE_SIGN_IDENTITY" => certificate,
+      "PROVISIONING_PROFILE_SPECIFIER" => uuid,
+      "CURRENT_PROJECT_VERSION" => build,
+      "INFOPLIST_FILE" => export_info,
+      "OTHER_CODE_SIGN_FLAGS" => "--keychain #{Shellwords.escape(keychain)}"
+    }
+    arguments = settings.map { |key, value| "#{key}=#{Shellwords.escape(value)}" }.join(" ")
+    build_app(
+      project: File.join(root, "LEDBackpack.xcodeproj"),
+      scheme: "LEDBackpack",
+      clean: true,
+      export_method: "app-store",
+      export_team_id: team,
+      skip_profile_detection: true,
+      codesigning_identity: certificate,
+      xcargs: arguments,
+      output_directory: File.join(root, "distribution"),
+      output_name: "LEDBackpack.ipa",
+      archive_path: File.join(root, "distribution", "LEDBackpack.xcarchive"),
+      export_options: {
+        method: "app-store-connect",
+        signingStyle: "manual",
+        teamID: team,
+        signingCertificate: certificate,
+        provisioningProfiles: { bundle_id => uuid }
+      }
+    )
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_PRIVATE_KEY_BASE64"),
+      is_key_content_base64: true,
+      duration: 1200,
+      in_house: false
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: bundle_id,
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      skip_submission: true,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+  end
+end

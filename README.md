@@ -41,6 +41,10 @@ The [GitHub Actions workflow](.github/workflows/ios.yml) builds/tests on macOS
 and uploads an unsigned simulator app. Installing on an iPhone requires your
 own Apple signing setup; a simulator ZIP cannot be installed on a phone.
 
+For signed internal testing, see the [TestFlight setup guide](ios/TESTFLIGHT.md).
+Its manual upload workflow requires protected environment secrets and explicit
+confirmation; it never submits an App Store release automatically.
+
 ## Status and important limits
 
 This is an experimental source implementation, **not a verified iPhone

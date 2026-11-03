@@ -7,6 +7,7 @@
 !/.github/workflows/
 /.github/workflows/*
 !/.github/workflows/ios.yml
+!/.github/workflows/testflight.yml
 /ios/Tools/
 *.xapk
 *.apk
@@ -18,4 +19,16 @@ ios/*.xcodeproj/
 ios/*.xcworkspace/
 *.p12
 *.mobileprovision
+*.p8
+*.pem
+*.key
+*.csr
+*.cer
+*.ipa
+*.xcarchive/
+ios/vendor/
+ios/.bundle/
+ios/fastlane/report.xml
+ios/fastlane/README.md
+ios/distribution/
 .DS_Store

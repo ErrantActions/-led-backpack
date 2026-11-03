@@ -1,0 +1,79 @@
+name: LED Backpack TestFlight
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unused Apple build number for version 0.1.0; increment on each upload
+        type: string
+        required: true
+        default: "1"
+      confirm_upload:
+        description: Upload a signed build to App Store Connect (no external distribution or App Store submission)
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: led-backpack-testflight
+  cancel-in-progress: false
+jobs:
+  internal-upload:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_upload
+    environment: testflight
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      NON_EXEMPT_ENCRYPTION: ${{ vars.IOS_NON_EXEMPT_ENCRYPTION }}
+      FASTLANE_SKIP_UPDATE_CHECK: "1"
+      FASTLANE_HIDE_CHANGELOG: "1"
+      FASTLANE_DISABLE_COLORS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release inputs
+        run: |
+          ruby -e 'abort("Invalid Apple build number") unless ENV.fetch("BUILD_NUMBER").match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/); abort("Review export compliance and configure IOS_NON_EXEMPT_ENCRYPTION as true or false") unless %w[true false].include?(ENV.fetch("NON_EXEMPT_ENCRYPTION"))'
+          xcodebuild -version
+      - name: Test portable codec
+        run: swift test --package-path Packages/BackpackProtocol
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+      - name: Select simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+      - name: Build and test before installing credentials
+        run: |
+          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: ios
+      - name: Install temporary signing assets
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_APPSTORE_PROFILE_BASE64: ${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: ruby fastlane/signing.rb
+      - name: Archive and upload only
+        env:
+          IOS_PROJECT_ROOT: ${{ github.workspace }}/ios
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: bundle exec fastlane ios internal_upload
+      - name: Remove signing assets
+        if: always()
+        run: ruby fastlane/signing.rb cleanup
