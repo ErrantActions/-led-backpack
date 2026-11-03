@@ -11,10 +11,22 @@ final class RenderingTests: XCTestCase {
         XCTAssertEqual(frame.rgb.count, 12288)
         XCTAssertTrue(frame.rgb.contains { $0 != 0 })
         let data = try MediaCodec.encode([frame, .black(size)], delays: [0.2, 0.3])
-        XCTAssertEqual(String(data: data.prefix(6), encoding: .ascii), "GIF89a")
+        let signature = try XCTUnwrap(String(data: data.prefix(6), encoding: .ascii))
+        XCTAssertTrue(["GIF87a", "GIF89a"].contains(signature), "Unexpected GIF signature: \(signature)")
         let decoded = try MediaCodec.decode(data)
         XCTAssertEqual(decoded.images.count, 2)
-        XCTAssertEqual(decoded.delays[0], 0.2, accuracy: 0.02)
+        XCTAssertEqual(decoded.delays.count, 2)
+        for (actual, expected) in zip(decoded.delays, [0.2, 0.3]) {
+            XCTAssertEqual(actual, expected, accuracy: 0.02)
+        }
+        for image in decoded.images {
+            XCTAssertEqual(image.size.width, CGFloat(size.width))
+            XCTAssertEqual(image.size.height, CGFloat(size.height))
+        }
+        let first = try MediaCodec.transform(XCTUnwrap(decoded.images.first), size: size, fit: .fit, turns: 0, brightness: 1)
+        let last = try MediaCodec.transform(XCTUnwrap(decoded.images.last), size: size, fit: .fit, turns: 0, brightness: 1)
+        XCTAssertTrue(first.rgb.contains { $0 != 0 })
+        XCTAssertEqual(last, .black(size))
     }
 
     func testDirtyMasksReconstructQuantizedTarget() throws {
