@@ -14,6 +14,7 @@ built with SwiftUI and Core Bluetooth.
 - Text/drawing tools and license-aware Wikimedia Commons GIF search.
 - Live GPS, weather, supported system Music metadata and optional fun screens.
 - Custom live themes, animated ink, gauges and saved presets.
+- One-tap scenes combining live displays or stored playlists with brightness.
 - A local expected-output monitor, not device pixel readback.
 - Supported background GPS/BLE behavior and disconnect notifications.
 - Local backups, Keychain passwords and diagnostics.

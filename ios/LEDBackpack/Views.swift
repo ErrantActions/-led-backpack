@@ -46,6 +46,7 @@ struct AnimatedPreview: UIViewRepresentable {
 
 @MainActor
 struct RootView: View {
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var panel: PanelController
     var body: some View {
         TabView {
@@ -55,6 +56,7 @@ struct RootView: View {
             LiveView().tabItem { Label("Live", systemImage: "waveform.path") }
             SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }
         }
+        .disabled(app.applyingSceneID != nil)
         .alert("LED Backpack", isPresented: Binding(get: { panel.errorMessage != nil },
             set: { if !$0 { panel.errorMessage = nil } })) {
             Button("OK") { panel.errorMessage = nil }
@@ -88,6 +90,7 @@ struct DeviceView: View {
                 Section {
                     BackpackMonitor().listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 }
+                QuickScenes()
                 Section {
                     Label(link.state, systemImage: link.connected ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
                         .foregroundStyle(link.connected ? .green : .secondary)

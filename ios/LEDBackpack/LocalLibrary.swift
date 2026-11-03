@@ -51,6 +51,7 @@ struct LibraryState: Codable {
     var liveThemes: [String: LiveTheme]?
     var livePresets: [LivePreset]?
     var slotPreviews: [SlotPreviewLink]?
+    var scenes: [SavedScene]?
 }
 
 struct LibraryBackup: Codable {
@@ -72,6 +73,11 @@ final class LocalLibrary: ObservableObject {
             state = try JSONDecoder().decode(LibraryState.self,
                 from: Data(contentsOf: self.folder.appendingPathComponent("library.json")))
             guard state.version == 1 else { throw BackpackError.invalid("Unsupported library version.") }
+            let scenes = state.scenes ?? []
+            guard scenes.count <= 50, Set(scenes.map(\.id)).count == scenes.count else {
+                throw BackpackError.invalid("Stored scenes have duplicate IDs or exceed the 50-scene limit.")
+            }
+            for scene in scenes { try scene.validate() }
         } else { state = LibraryState() }
     }
 
@@ -191,6 +197,26 @@ final class LocalLibrary: ObservableObject {
         var value = state; value.livePresets?.removeAll { $0.id == id }; try commit(value)
     }
 
+    func saveScene(_ scene: SavedScene) throws {
+        try scene.validate()
+        var value = state
+        var scenes = value.scenes ?? []
+        if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
+            scenes[index] = scene
+        } else {
+            guard scenes.count < 50 else { throw BackpackError.invalid("The library allows at most 50 scenes.") }
+            scenes.append(scene)
+        }
+        value.scenes = scenes
+        try commit(value)
+    }
+
+    func deleteScene(_ id: UUID) throws {
+        var value = state
+        value.scenes?.removeAll { $0.id == id }
+        try commit(value)
+    }
+
     func backup() throws -> Data {
         var files: [String: Data] = [:]
         var total = 0
@@ -209,6 +235,12 @@ final class LocalLibrary: ObservableObject {
         guard backup.state.version == 1, backup.state.media.count + state.media.count <= 100 else {
             throw BackpackError.invalid("Unsupported or oversized backup.")
         }
+        let scenes = backup.state.scenes ?? []
+        guard scenes.count + (state.scenes?.count ?? 0) <= 50,
+              Set(scenes.map(\.id)).count == scenes.count else {
+            throw BackpackError.invalid("Backup scenes have duplicate IDs or would exceed the 50-scene limit.")
+        }
+        for scene in scenes { try scene.validate() }
         for list in backup.state.playlists {
             guard list.slots.count <= 60, list.slots.allSatisfy({ (0..<60).contains($0) }) else {
                 throw BackpackError.invalid("Backup has invalid playlist slot IDs.")
@@ -273,6 +305,11 @@ final class LocalLibrary: ObservableObject {
                 links.append(SlotPreviewLink(panel: link.panel, slot: link.slot, identifier: link.identifier, mediaID: id))
             }
             value.slotPreviews = links
+            value.scenes = (value.scenes ?? []) + scenes.map {
+                var imported = $0
+                imported.id = UUID()
+                return imported
+            }
             try commit(value)
         } catch {
             let original = error

@@ -14,12 +14,35 @@ on:
         default: false
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: led-backpack-testflight
   cancel-in-progress: false
 jobs:
-  internal-upload:
+  verified-ci:
     if: github.ref == 'refs/heads/main' && inputs.confirm_upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reuse passing native validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PASSED_SHA=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ios.yml/runs?branch=main&status=success&per_page=20" --jq '.workflow_runs | map(select(.event == "push" or .event == "workflow_dispatch")) | .[0].head_sha // empty')
+          if [[ ! "$PASSED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::No successful native CI run on main. Run LED Backpack iOS first."
+            exit 1
+          fi
+          git fetch --no-tags --depth=1 origin "$PASSED_SHA"
+          if ! git diff --quiet "$PASSED_SHA" "$GITHUB_SHA" -- \
+            ios/LEDBackpack ios/LEDBackpackTests ios/Packages ios/project.yml ios/Info.plist .github/workflows/ios.yml; then
+            echo "::error::App source or native validation inputs changed. Wait for LED Backpack iOS to pass before uploading."
+            exit 1
+          fi
+          echo "Reusing successful native validation from $PASSED_SHA. No simulator tests repeated." >> "$GITHUB_STEP_SUMMARY"
+  internal-upload:
+    needs: verified-ci
     environment: testflight
     runs-on: macos-latest
     timeout-minutes: 60
@@ -40,19 +63,8 @@ jobs:
           ruby -c fastlane/signing.rb
           ruby -e 'abort("Invalid Apple build number") unless ENV.fetch("BUILD_NUMBER").match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/); abort("Review export compliance and configure IOS_NON_EXEMPT_ENCRYPTION as true or false") unless %w[true false].include?(ENV.fetch("NON_EXEMPT_ENCRYPTION"))'
           xcodebuild -version
-      - name: Test portable codec
-        run: swift test --package-path Packages/BackpackProtocol
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
-      - name: Select simulator
-        run: |
-          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
-          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
-      - name: Build and test before installing credentials
-        run: |
-          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
-            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"

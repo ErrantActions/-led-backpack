@@ -9,6 +9,14 @@ an explicit upload confirmation. It does not submit an App Store release or
 request external beta distribution. First get a passing regular
 **LED Backpack iOS** workflow.
 
+Native validation runs once per app revision. A lightweight Linux gate reuses
+a successful main-branch push/manual CI run only when the app, tests, protocol
+package, project, Info.plist and native CI workflow are unchanged. Documentation
+and signing-only changes do not rebuild the simulator app. TestFlight still
+creates the required signed device archive, but never repeats simulator tests.
+Keep the native workflow's path filters and the release gate's protected paths
+in sync when adding build inputs.
+
 ## 1. Register the app with Apple
 
 In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list):
@@ -165,7 +173,7 @@ not into committed source.
 
 The workflow:
 
-- Runs protocol and app simulator tests before installing signing credentials.
+- Verifies a passing native CI result before allocating a macOS release runner.
 - Creates a temporary keychain, installs the supplied signing identity/profile.
 - Archives and exports a signed IPA for the configured team and bundle ID.
 - Uploads to App Store Connect using Fastlane/API-key authentication.

@@ -5,6 +5,25 @@ import BackpackProtocol
 
 @MainActor
 final class RenderingTests: XCTestCase {
+    func testCanvasKeepsAsymmetricMarkersInTopDownPixelOrder() throws {
+        let size = PanelSize(width: 16, height: 16)
+        let frame = try MediaCodec.canvas(size) { context in
+            context.setFillColor(UIColor.red.cgColor)
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+            context.setFillColor(UIColor.blue.cgColor)
+            context.fill(CGRect(x: 12, y: 12, width: 4, height: 4))
+        }
+        XCTAssertEqual(Array(frame.rgb.prefix(3)), [255, 0, 0])
+        XCTAssertEqual(Array(frame.rgb.suffix(3)), [0, 0, 255])
+        XCTAssertEqual(Array(frame.rgb[(15 * 3)..<(16 * 3)]), [0, 0, 0])
+        let roundTrip = try MediaCodec.transform(frame.image(), size: size, fit: .fit, turns: 0, brightness: 1)
+        XCTAssertEqual(roundTrip, frame)
+        let gif = try MediaCodec.encode([frame], delays: [0.2])
+        let decoded = try MediaCodec.decode(gif)
+        let image = try XCTUnwrap(decoded.images.first)
+        XCTAssertEqual(try MediaCodec.transform(image, size: size, fit: .fit, turns: 0, brightness: 1), frame)
+    }
+
     func testTextGIFRoundTrip() throws {
         let size = PanelSize(width: 64, height: 64)
         let frame = try MediaCodec.text("42", subtitle: "SIM", size: size)

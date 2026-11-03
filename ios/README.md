@@ -60,6 +60,23 @@ and App Store Connect record before configuring the protected upload workflow.
 | Theme editor and saved presets | [ThemeEditor.swift](LEDBackpack/ThemeEditor.swift) |
 | Background removal, touch-up, frame direction/timing, Vision cutout | [GIFStudio.swift](LEDBackpack/GIFStudio.swift), [GIFEditor.swift](LEDBackpack/GIFEditor.swift) |
 | Foreground timed playlists and shared expected-output monitor | [PlaylistRunner.swift](LEDBackpack/PlaylistRunner.swift), [PlaybackViews.swift](LEDBackpack/PlaybackViews.swift) |
+| One-tap scenes, theme snapshots and playlist presets | [Scenes.swift](LEDBackpack/Scenes.swift) |
+
+### One-tap scenes
+
+Open **Backpack > Manage scenes** to save up to 50 named scenes. Each combines
+brightness with either a live screen and its own saved theme/message, a stored
+playlist loop, or a foreground timed sequence. The first three scenes appear
+on the Backpack screen for quick access.
+
+Scenes keep snapshots: editing a live theme or deleting a source playlist does
+not silently change an existing scene. Playlist scenes bind to the backpack
+used when saving them and require every referenced slot to remain occupied.
+They do not upload, delete or overwrite artwork.
+
+Applying a scene stops the previous live/timed session first. Permissions still
+apply; a failed operation may leave brightness changed. Scene data is included
+in local backups, with fresh scene IDs on import.
 
 ### Connection and controls
 

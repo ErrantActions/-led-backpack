@@ -120,7 +120,7 @@ final class LiveSensors: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 }
 
-enum LiveMode: String, CaseIterable, Identifiable {
+enum LiveMode: String, Codable, Hashable, CaseIterable, Identifiable {
     case speed = "GPS speed", weather = "Weather", music = "System Music"
     case motion = "Phone motion", clock = "Clock", compass = "Phone heading"
     case battery = "Phone battery", eyes = "Pixel eyes", message = "Scrolling message", loading = "Loading rider"
@@ -137,6 +137,8 @@ final class LiveEngine: ObservableObject {
     @Published var message = "HELLO FROM MY BACKPACK"
     var preferences = Preferences()
     var themes: [String: LiveTheme] = [:]
+    private var sceneTheme: LiveTheme?
+    private var sceneMessage: String?
     private var task: Task<Void, Never>?
     private var rendering = false
     private var wakeTask: Task<Void, Never>?
@@ -160,9 +162,9 @@ final class LiveEngine: ObservableObject {
         }
     }
 
-    func start(_ selected: LiveMode) async throws {
+    func start(_ selected: LiveMode, theme: LiveTheme? = nil, message: String? = nil) async throws {
         guard task == nil, mode == nil else { throw BackpackError.invalid("Stop the current live screen first.") }
-        try (themes[selected.rawValue] ?? .standard(for: selected)).validate()
+        try (theme ?? themes[selected.rawValue] ?? .standard(for: selected)).validate()
         if selected == .speed || selected == .weather {
             try sensors.startLocation(background: preferences.backgroundLocation, precise: selected == .speed)
         }
@@ -177,6 +179,7 @@ final class LiveEngine: ObservableObject {
             }
             try await panel.beginLive()
         } catch { sensors.stop(); throw error }
+        sceneTheme = theme; sceneMessage = message
         mode = selected; status = "Starting"; lastRender = .distantPast
         speedHistory = []; alertUntil = .distantPast
         task = Task { [weak self] in
@@ -187,7 +190,7 @@ final class LiveEngine: ObservableObject {
                     && sensors.authorization == .authorizedAlways) {
                     await render()
                 }
-                let interval = (themes[selected.rawValue] ?? .standard(for: selected)).refreshInterval
+                let interval = activeTheme(for: selected).refreshInterval
                 do { try await Task.sleep(for: .seconds(max(0.1, interval - Date().timeIntervalSince(tickStarted)))) }
                 catch { break }
             }
@@ -199,6 +202,7 @@ final class LiveEngine: ObservableObject {
             await wakeTask?.value
             sensors.stop()
             do { try await panel.endLive() } catch { panel.report(error) }
+            sceneTheme = nil; sceneMessage = nil
             mode = nil; task = nil; status = "Stopped"
         }
     }
@@ -302,14 +306,14 @@ final class LiveEngine: ObservableObject {
                 gaugeValue: level >= 0 ? Double(level * 100) : nil)
         case .message:
             status = "Custom message"
-            return try themed(String(message.prefix(80)), size: size)
+            return try themed(String((sceneMessage ?? message).prefix(80)), size: size)
         case .loading:
             status = "Just for fun"
             let count = Int(now.timeIntervalSince1970) % 4
             return try themed(String(repeating: ".", count: count + 1), subtitle: "LOADING RIDER", size: size)
         case .eyes:
             status = "Pixel eyes"
-            let theme = themes[mode.rawValue] ?? .standard(for: mode)
+            let theme = activeTheme(for: mode)
             try theme.validate()
             let blink = Int(now.timeIntervalSince1970 * 3 * theme.animationSpeed) % 17 == 0
             return try MediaCodec.canvas(size) { context in
@@ -326,7 +330,7 @@ final class LiveEngine: ObservableObject {
 
     private func themed(_ text: String, subtitle: String = "", size: PanelSize, requiredStatus: Bool = false, gaugeValue: Double? = nil) throws -> PixelFrame {
         guard let mode else { throw BackpackError.invalid("No active live screen.") }
-        var theme = themes[mode.rawValue] ?? .standard(for: mode)
+        var theme = activeTheme(for: mode)
         if requiredStatus { theme.topLabel = "" }
         let phase = Date().timeIntervalSince1970 * theme.animationSpeed / 8
         let field: String?
@@ -342,6 +346,10 @@ final class LiveEngine: ObservableObject {
         }
         return try MediaCodec.styled(text, subtitle: subtitle, size: size, theme: theme,
             phase: phase, field: field, requiredStatus: requiredStatus, gaugeValue: gaugeValue)
+    }
+
+    private func activeTheme(for mode: LiveMode) -> LiveTheme {
+        sceneTheme ?? themes[mode.rawValue] ?? .standard(for: mode)
     }
 
     private func scheduleWeather() {
