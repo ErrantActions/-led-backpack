@@ -11,8 +11,21 @@ STATE = File.join(ROOT, "cleanup.json")
 BUNDLE = "com.errantactions.ledbackpack"
 
 def command(label, *args)
-  output, _error, status = Open3.capture3(*args)
-  abort "#{label} failed (exit #{status.exitstatus}). Check the configured signing assets." unless status.success?
+  output, error, status = Open3.capture3(*args)
+  unless status.success?
+    detail = case error
+    when /MAC verification failed|invalid password|incorrect password/i
+      "macOS could not decrypt the PKCS12 identity; check its export password and encoding."
+    when /unknown format|unsupported format|unsupported algorithm/i
+      "macOS rejected the signing asset format."
+    when /user interaction.*not allowed|interaction is not allowed/i
+      "macOS denied noninteractive keychain access."
+    else
+      code = error[/\bOSStatus\s*[:=]?\s*(-?\d+)/i, 1]
+      code ? "macOS reported OSStatus #{code}." : "Check the configured signing assets."
+    end
+    abort "#{label} failed (exit #{status.exitstatus}). #{detail}"
+  end
   output.strip
 end
 
@@ -109,7 +122,8 @@ save_state(state)
 command("Configure signing keychain", "security", "set-keychain-settings", "-lut", "3600", keychain)
 command("Unlock signing keychain", "security", "unlock-keychain", "-p", password, keychain)
 command("Import Apple Distribution identity", "security", "import", p12, "-k", keychain,
-  "-P", ENV.fetch("IOS_DISTRIBUTION_P12_PASSWORD"), "-T", "/usr/bin/codesign", "-T", "/usr/bin/security")
+  "-P", ENV.fetch("IOS_DISTRIBUTION_P12_PASSWORD"), "-t", "cert", "-f", "pkcs12",
+  "-T", "/usr/bin/codesign", "-T", "/usr/bin/security")
 command("Authorize codesign", "security", "set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-s", "-k", password, keychain)
 command("Set signing keychain search list", "security", "list-keychains", "-d", "user", "-s", keychain, *search)
 identities = command("Find signing identity", "security", "find-identity", "-v", "-p", "codesigning", keychain)

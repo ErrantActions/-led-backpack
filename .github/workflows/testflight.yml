@@ -36,6 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate release inputs
         run: |
+          ruby -c fastlane/Fastfile
+          ruby -c fastlane/signing.rb
           ruby -e 'abort("Invalid Apple build number") unless ENV.fetch("BUILD_NUMBER").match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/); abort("Review export compliance and configure IOS_NON_EXEMPT_ENCRYPTION as true or false") unless %w[true false].include?(ENV.fetch("NON_EXEMPT_ENCRYPTION"))'
           xcodebuild -version
       - name: Test portable codec
