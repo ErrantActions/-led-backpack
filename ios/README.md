@@ -109,6 +109,8 @@ and 96x128. Backups have explicit size limits. Media conversion re-encodes
 frames and can change palette/quality; verify previews and real playback.
 Keep original media files: local backups cannot recover unknown artwork
 already stored on the backpack.
+App updates do not rewrite existing artwork. If an older saved GIF already
+contains inverted text, re-create it instead of reusing the inverted export.
 
 ### Live screens
 

@@ -98,8 +98,7 @@ enum MediaCodec {
             guard let context = CGContext(data: buffer.baseAddress, width: size.width, height: size.height,
                 bitsPerComponent: 8, bytesPerRow: size.width * 4, space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-            context.translateBy(x: 0, y: CGFloat(size.height))
-            context.scaleBy(x: 1, y: -1)
+            // PixelFrame rows already follow the rendered CGImage's top-down order.
             context.draw(cg, in: CGRect(x: 0, y: 0, width: CGFloat(size.width), height: CGFloat(size.height)))
             return true
         }
