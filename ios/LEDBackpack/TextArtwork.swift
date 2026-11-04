@@ -150,7 +150,7 @@ enum TextArtwork {
             for row in 0..<7 {
                 for column in 0..<5 where rows[row] & (1 << (4 - column)) != 0 {
                     context.fill(CGRect(x: x + CGFloat((index * 6 + column) * selected),
-                        y: y + CGFloat(row * selected), width: selected, height: selected))
+                        y: y + CGFloat(row * selected), width: CGFloat(selected), height: CGFloat(selected)))
                 }
             }
         }

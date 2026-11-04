@@ -139,7 +139,7 @@ final class AlphabetAuditTests: XCTestCase {
                         for row in 0..<7 {
                             for column in 0..<5 where rows[row] & (1 << (4 - column)) != 0 {
                                 result.fill(CGRect(x: rect.minX + CGFloat(column * scale), y: rect.minY + CGFloat(row * scale),
-                                    width: scale, height: scale))
+                                    width: CGFloat(scale), height: CGFloat(scale)))
                             }
                         }
                     }
