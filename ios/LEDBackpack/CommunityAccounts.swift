@@ -11,12 +11,12 @@ struct CommunitySettingsView: View {
     var body: some View {
         Form {
             Section("Optional community catalog") {
-                TextField("https://gifs.example.com", text: $address)
+                TextField(Preferences.defaultCommunityURL, text: $address)
                     .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button("Save catalog URL") {
                     do {
                         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let value: String? = trimmed.isEmpty ? nil : try CommunityOrigin.parse(trimmed).url.absoluteString
+                        let value = trimmed.isEmpty ? "" : try CommunityOrigin.parse(trimmed).url.absoluteString
                         var preferences = library.state.preferences
                         preferences.communityURL = value
                         try library.savePreferences(preferences)
@@ -24,7 +24,7 @@ struct CommunitySettingsView: View {
                         failure = nil
                     } catch { failure = error.localizedDescription }
                 }
-                Text("Use the deployed server's root HTTPS URL with a trusted certificate. localhost on an iPhone means that iPhone, not your Docker host. No API secret is needed.")
+                Text("The official catalog is preconfigured. You can use another trusted HTTPS catalog or clear the address to disable the service. No API secret is needed.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let failure { Text(failure).foregroundStyle(.orange) }
@@ -34,7 +34,7 @@ struct CommunitySettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .modernScene().navigationTitle("Community catalog")
-        .task { address = library.state.preferences.communityURL ?? "" }
+        .task { address = library.state.preferences.communityURL ?? Preferences.defaultCommunityURL }
     }
 }
 

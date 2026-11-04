@@ -55,6 +55,16 @@ final class CommunityTests: XCTestCase {
     private let root = "https://catalog.example"
     private let token = "test-only-opaque-bearer-not-a-real-credential"
     private let receiptID = "9bdc44d9-a300-46aa-8062-c120d6d87ddd"
+    func testDefaultCatalogPreservesOverridesAndExplicitDisable() throws {
+        var preferences = Preferences()
+        XCTAssertEqual(preferences.effectiveCommunityURL, "https://led.errantactions.com")
+        preferences.communityURL = "https://custom.example"
+        XCTAssertEqual(preferences.effectiveCommunityURL, "https://custom.example")
+        preferences.communityURL = ""
+        XCTAssertNil(preferences.effectiveCommunityURL)
+        let restored = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(preferences))
+        XCTAssertNil(restored.effectiveCommunityURL)
+    }
     private func response(_ value: String, status: Int = 200) -> CommunityResponse {
         CommunityResponse(status: status, data: Data(value.utf8))
     }

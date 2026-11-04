@@ -40,7 +40,12 @@ struct SlotPreviewLink: Codable {
 }
 
 struct Preferences: Codable {
+    static let defaultCommunityURL = "https://led.errantactions.com"
     var communityURL: String?
+    var effectiveCommunityURL: String? {
+        guard let communityURL else { return Self.defaultCommunityURL }
+        return communityURL.isEmpty ? nil : communityURL
+    }
     var mph = true
     var fahrenheit = true
     var reconnect = true

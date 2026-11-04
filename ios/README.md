@@ -68,11 +68,13 @@ and App Store Connect record before configuring the protected upload workflow.
 
 ### Optional community catalog and accounts
 
-Set **Settings > Community > Catalog server and account** to the deployed
-catalog's root HTTPS URL. Use a valid trusted TLS certificate; insecure HTTP,
+The default catalog is **https://led.errantactions.com**. Override it under
+**Settings > Community > Catalog server and account**, or clear the address to
+disable the optional service. Existing custom URLs are preserved.
+Use a valid trusted TLS certificate; insecure HTTP,
 embedded credentials, cross-origin media and redirects are not accepted.
 An address on your local network may require iOS local-network permission.
-There is no embedded backend address or API secret.
+There is no embedded API secret.
 
 **Library > Browse community catalog** supports guest browsing, category/name
 search, previews, local imports and signed-in likes/reports/uploader blocking.

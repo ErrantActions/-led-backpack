@@ -62,7 +62,7 @@ final class AppModel: ObservableObject {
         live.themes = library?.state.liveThemes ?? [:]
         link.autoReconnect = value.reconnect
         link.systemDisconnectAlerts = value.disconnectAlerts
-        community.configure(value.communityURL)
+        community.configure(value.effectiveCommunityURL)
     }
 
     func run(_ operation: @escaping @MainActor () async throws -> Void) {
