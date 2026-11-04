@@ -28,13 +28,14 @@ struct CommunityGallery: View {
         let server: URL?
         let user: UUID?
         let signedIn: Bool
+        let revision: UUID
         let query: String
         let category: String
         let reload: UUID
     }
     private var filter: Filter {
         Filter(server: community.origin?.url, user: community.user?.id, signedIn: community.signedIn,
-            query: appliedQuery, category: category, reload: reload)
+            revision: community.accountRevision, query: appliedQuery, category: category, reload: reload)
     }
     var body: some View {
         NavigationStack {
@@ -195,39 +196,44 @@ private struct CommunityDetail: View {
                 }.padding(20)
             }.modernScene().navigationTitle("Community GIF")
                 .toolbar { Button("Back") { dismiss() } }
-                .task(id: retry) {
-                    bytes = nil; loadedURL = nil; loadedOrigin = nil; failure = nil; saved = false
-                    do {
-                        guard let origin = community.origin else { throw BackpackError.invalid("No catalog is configured.") }
-                        let target = panel.size ?? PanelSize(width: 64, height: 64)
-                        let variant = item.variants.first { $0.width == target.width && $0.height == target.height }
-                        let assetURL = variant?.url ?? item.gifUrl
-                        let data = try await community.download(assetURL)
-                        try Task.checkCancellation()
-                        try GIFPreviewDecoder.validateOriginal(data)
-                        loadedURL = assetURL; loadedOrigin = origin; bytes = data
-                    } catch {
-                        guard !Task.isCancelled else { return }
-                        failure = error.localizedDescription
-                    }
-                    .sheet(isPresented: $reporting) {
-                        NavigationStack {
-                            Form {
-                                TextField("Describe the concern", text: $reason, axis: .vertical)
-                                Button("Send report") {
-                                    perform {
-                                        try await community.report(item.id, reason: reason)
-                                        message = "Report sent to admins."; reporting = false; reason = ""
-                                    }
-                                }.disabled(busy || reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
-                                if let failure { Text(failure).foregroundStyle(.orange) }
-                            }.modernScene().navigationTitle("Report GIF")
-                                .toolbar { Button("Cancel") { reporting = false }.disabled(busy) }
-                        }
-                    }
-                }
+                .task(id: retry) { await loadPreview() }
+                .onChange(of: community.accountRevision) { _, _ in retry += 1 }
+                .sheet(isPresented: $reporting) { reportComposer }
         }
     }
+    private func loadPreview() async {
+        bytes = nil; loadedURL = nil; loadedOrigin = nil; failure = nil; saved = false
+        do {
+            guard let origin = community.origin else { throw BackpackError.invalid("No catalog is configured.") }
+            let target = panel.size ?? PanelSize(width: 64, height: 64)
+            let variant = item.variants.first { $0.width == target.width && $0.height == target.height }
+            let assetURL = variant?.url ?? item.gifUrl
+            let data = try await community.download(assetURL)
+            try Task.checkCancellation()
+            try GIFPreviewDecoder.validateOriginal(data)
+            loadedURL = assetURL; loadedOrigin = origin; bytes = data
+        } catch {
+            guard !Task.isCancelled else { return }
+            failure = error.localizedDescription
+        }
+    }
+
+    private var reportComposer: some View {
+        NavigationStack {
+            Form {
+                TextField("Describe the concern", text: $reason, axis: .vertical)
+                Button("Send report") {
+                    perform {
+                    try await community.report(item.id, reason: reason)
+                    message = "Report sent to admins."; reporting = false; reason = ""
+                    }
+                }.disabled(busy || reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
+                if let failure { Text(failure).foregroundStyle(.orange) }
+            }.modernScene().navigationTitle("Report GIF")
+                .toolbar { Button("Cancel") { reporting = false }.disabled(busy) }
+        }
+    }
+
     private var moderation: some View {
         VStack(alignment: .leading, spacing: 10) {
             if community.signedIn {
