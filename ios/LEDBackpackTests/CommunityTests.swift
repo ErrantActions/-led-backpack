@@ -368,7 +368,7 @@ final class CommunityTests: XCTestCase {
             let size = PanelSize(width: 16, height: 16)
             let gif = try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
             let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
-                attribution: "Test creator", license: .original, ownershipAttested: true)
+                attribution: "Test creator", license: .original)
             let uploaded = try await service.uploadGIF(gif, metadata: metadata)
             XCTAssertEqual(uploaded.status, "pending")
             let uploads = try await service.myUploads()
@@ -395,7 +395,7 @@ final class CommunityTests: XCTestCase {
                 response(#"{"error":{"code":"duplicate","message":"Already uploaded"}}"#, status: 409)])
             let service = client(stub, vault: CommunityMemoryVault())
             let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
-                attribution: "Test creator", license: .original, ownershipAttested: true)
+                attribution: "Test creator", license: .original)
             do { _ = try await service.uploadGIF(Data(), metadata: metadata); XCTFail("Guest upload must fail") }
             catch { XCTAssertTrue(error.localizedDescription.contains("Sign in")) }
             try await service.signIn(email: "test@example.org", password: "example test password")

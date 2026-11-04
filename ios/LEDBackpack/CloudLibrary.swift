@@ -188,10 +188,7 @@ struct CloudArtworkDetail: View {
                     }.buttonStyle(.borderedProminent).disabled(bytes == nil || saved)
                     Text("Local and cloud copies are independent. Removing a local copy does not delete the cloud GIF. Saving preserves credits and does not publish private artwork.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if cloud.item.license == "unreviewed" {
-                        Label("Rights need admin review before sharing.", systemImage: "exclamationmark.shield")
-                            .font(.caption).foregroundStyle(.orange)
-                    } else if cloud.visibility == "private" && !shared {
+                    if cloud.visibility == "private" && !shared {
                         Button("Share with the community") { sharing = true }.disabled(busy)
                     }
                     if shared { Label("Submitted for community review", systemImage: "checkmark.circle").font(.caption) }

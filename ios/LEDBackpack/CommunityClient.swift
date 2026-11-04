@@ -80,7 +80,7 @@ struct CommunityItem: Decodable, Identifiable {
     }
     var credit: Attribution {
         Attribution(source: (sourceUrl ?? pageUrl).absoluteString, author: displayAttribution,
-            license: license == "original" ? "Original work / catalog download permission" : license,
+            license: license,
             licenseURL: (licenseUrl ?? pageUrl).absoluteString)
     }
 }

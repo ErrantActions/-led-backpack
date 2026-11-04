@@ -46,16 +46,21 @@ Signed-in users see private cloud artwork in the same grid. A known local/cloud
 pair appears once in All and is labeled **On iPhone + Cloud**. Cloud-only GIFs
 can be opened and kept offline; local artwork can save a private cloud copy
 through its Actions menu. Sign-in resumes the requested cloud-save action.
-Cloud uploads still require credits/license/storage permission and never
-automatically publish.
+Cloud upload forms request only title, category and tags; existing credits
+are preserved automatically, with no creator/license/ownership chooser.
+Uploads never automatically publish.
 
 Cloud refresh is on demand/pull-to-refresh, not a background two-way deletion
 service. Removing a local copy does not delete the cloud record, and signing
 out does not erase independent offline copies. Account/server-scoped cloud
 associations are device-local and omitted from backups; they are not derived
 from raw-file hashes because server GIFs are re-encoded. The cloud list loads up to 100 records per page, with explicit **Load more**
-for larger libraries. Unreviewed private imports remain usable privately but
-cannot be submitted for sharing before admin rights review.
+for larger libraries. Private ZIP imports can be explicitly submitted for
+sharing without a rights-review form; the server changes their `unreviewed`
+marker to `unspecified`. `unspecified` means no license was supplied, not
+original authorship, public domain or redistribution permission. Explicit
+sharing consent, server moderation and optional AI screening remain separate
+from private storage.
 
 ## Build on GitHub / a Mac
 

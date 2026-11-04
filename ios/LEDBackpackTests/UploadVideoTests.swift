@@ -6,7 +6,7 @@ import BackpackProtocol
 final class UploadVideoTests: XCTestCase {
     private func metadata() -> CommunityUploadMetadata {
         CommunityUploadMetadata(title: "My loop", category: "memes", tags: ["pixel"],
-            attribution: "Creator", license: .original, ownershipAttested: true)
+            attribution: "Creator", license: .original)
     }
 
     func testOrderedMultipartPreservesBytesAndCredits() throws {
@@ -24,7 +24,7 @@ final class UploadVideoTests: XCTestCase {
         XCTAssertLessThan(start.lowerBound, file.lowerBound)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body.subdata(in: start.upperBound..<separator.lowerBound)) as? [String: Any])
         XCTAssertEqual(object["attribution"] as? String, "Creator & collaborator")
-        XCTAssertEqual(object["ownershipAttested"] as? Bool, true)
+        XCTAssertNil(object["ownershipAttested"])
         XCTAssertEqual(object["license"] as? String, "original")
         XCTAssertNil(object["status"])
         XCTAssertEqual(body.subdata(in: file.upperBound..<(file.upperBound + gif.count)), gif)
@@ -33,21 +33,55 @@ final class UploadVideoTests: XCTestCase {
         XCTAssertThrowsError(try CommunityUpload.multipart(Data(boundary.utf8), metadata: value, boundary: boundary))
     }
 
-    func testUploadMetadataRequiresPermissionAndValidBudgets() throws {
+    func testUploadMetadataRequiresOnlyClassificationAndValidBudgets() throws {
         var value = metadata()
         XCTAssertNoThrow(try value.validate())
-        value.ownershipAttested = false
-        XCTAssertThrowsError(try value.validate())
+        value.attribution = nil; value.license = nil
+        XCTAssertNoThrow(try value.validate())
+        let minimal = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? [String: Any])
+        XCTAssertEqual(Set(minimal.keys), Set(["title", "category", "tags"]))
         value = metadata(); value.title = String(repeating: "A", count: 121)
         XCTAssertThrowsError(try value.validate())
         value = metadata(); value.tags = Array(repeating: "tag", count: 13)
         XCTAssertThrowsError(try value.validate())
-        value = metadata(); value.attribution = " "
+        value = metadata(); value.attribution = String(repeating: "A", count: 501)
         XCTAssertThrowsError(try value.validate())
         value = metadata(); value.sourceUrl = "https://user:password@example.org"
         XCTAssertThrowsError(try value.validate())
         value = metadata(); value.category = "unmoderated"
         XCTAssertThrowsError(try value.validate())
+    }
+
+    func testUploadPreservesExistingCreditsWithoutChoosingNewRights() throws {
+        let credit = Attribution(source: "https://example.org/source", author: "Creator",
+            license: "CC-BY-4.0", licenseURL: "https://creativecommons.org/licenses/by/4.0/")
+        let value = CommunityUploadMetadata.preserving(credit, title: "Test", category: "memes", tags: [])
+        XCTAssertNoThrow(try value.validate())
+        XCTAssertEqual(value.attribution, credit.author)
+        XCTAssertEqual(value.license, .by)
+        XCTAssertEqual(value.sourceUrl, credit.source)
+        let plain = CommunityUploadMetadata.preserving(nil, title: "Test", category: "memes", tags: [])
+        XCTAssertNil(plain.attribution)
+        XCTAssertNil(plain.license)
+        XCTAssertNil(plain.sourceUrl)
+    }
+
+    func testUnspecifiedAndUnsupportedLicensesDoNotBecomeOriginalOrPublicDomain() throws {
+        for raw in ["unspecified", "unreviewed", "CC BY-SA 2.5"] {
+            let credit = Attribution(source: "https://example.org/source", author: "",
+                license: raw, licenseURL: "https://example.org/license")
+            let value = CommunityUploadMetadata.preserving(credit, title: "Test", category: "memes", tags: [])
+            XCTAssertNoThrow(try value.validate())
+            XCTAssertNotEqual(value.license, .original)
+            XCTAssertNotEqual(value.license, .cc0)
+            if raw == "unspecified" { XCTAssertEqual(value.license, .unspecified) }
+            if raw == "unreviewed" { XCTAssertNil(value.license); XCTAssertEqual(value.attribution, "") }
+            if raw == "CC BY-SA 2.5" {
+                XCTAssertNil(value.license)
+                XCTAssertTrue(value.attribution?.contains(raw) == true)
+                XCTAssertTrue(value.attribution?.contains(credit.licenseURL) == true)
+            }
+        }
     }
 
     func testOnlyActualAnimatedGIFsCanBeShared() throws {

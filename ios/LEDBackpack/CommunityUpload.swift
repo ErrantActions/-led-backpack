@@ -2,28 +2,40 @@ import SwiftUI
 import ImageIO
 import BackpackProtocol
 
-enum CommunityLicense: String, CaseIterable, Identifiable, Codable {
-    case original, cc0 = "CC0-1.0", by = "CC-BY-4.0", shareAlike = "CC-BY-SA-4.0", noncommercial = "CC-BY-NC-4.0"
-    var id: String { rawValue }
-    var label: String { self == .original ? "My original work" : rawValue }
+enum CommunityLicense: String, Codable {
+    case original, unspecified, cc0 = "CC0-1.0", by = "CC-BY-4.0", shareAlike = "CC-BY-SA-4.0", noncommercial = "CC-BY-NC-4.0"
 }
 
 struct CommunityUploadMetadata: Encodable {
     var title: String
     var category: String
     var tags: [String]
-    var attribution: String
-    var license: CommunityLicense
-    var sourceUrl: String?
-    var ownershipAttested: Bool
+    var attribution: String? = nil
+    var license: CommunityLicense? = nil
+    var sourceUrl: String? = nil
+
+    static func preserving(_ credit: Attribution?, title: String, category: String, tags: [String]) -> Self {
+        var metadata = Self(title: title, category: category, tags: tags)
+        guard let credit else { return metadata }
+        metadata.attribution = credit.author
+        metadata.sourceUrl = credit.source.isEmpty ? nil : credit.source
+        metadata.license = CommunityLicense(rawValue: credit.license)
+        if credit.license == "Original work / catalog download permission" { metadata.license = .original }
+        if metadata.license == nil && !credit.license.isEmpty && credit.license != "unreviewed" {
+            // Preserve unsupported source-license text without asserting a different grant.
+            metadata.attribution = [credit.author, "Source license: \(credit.license)", credit.licenseURL]
+                .filter { !$0.isEmpty }.joined(separator: "\n")
+        }
+        return metadata
+    }
 
     func validate() throws {
         guard (1...120).contains(title.utf16.count), title == title.trimmingCharacters(in: .whitespacesAndNewlines),
               CommunityCategory(rawValue: category) != nil,
-              (1...500).contains(attribution.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count),
+              (attribution?.utf16.count ?? 0) <= 500,
               tags.count <= 12, tags.allSatisfy({ (1...32).contains($0.utf16.count) &&
-                  $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }), ownershipAttested else {
-            throw BackpackError.invalid("Provide a title, category, credits, up to 12 tags and permission confirmation.")
+                  $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }) else {
+            throw BackpackError.invalid("Provide a title, category and up to 12 tags. Existing credits must fit within 500 characters.")
         }
         if let sourceUrl {
             guard sourceUrl.utf16.count <= 2000, let url = URL(string: sourceUrl),
@@ -98,10 +110,6 @@ struct CommunityUploadView: View {
     @State private var title: String
     @State private var category = "memes"
     @State private var tags = ""
-    @State private var credit: String
-    @State private var license: CommunityLicense?
-    @State private var source: String
-    @State private var permission = false
     @State private var busy = false
     @State private var failure: String?
     @State private var submitted: CommunitySubmission?
@@ -110,9 +118,6 @@ struct CommunityUploadView: View {
     init(item: SavedMedia) {
         self.item = item
         _title = State(initialValue: item.name)
-        _credit = State(initialValue: item.attribution?.author ?? "")
-        _source = State(initialValue: item.attribution?.source ?? "")
-        _license = State(initialValue: item.attribution.flatMap { CommunityLicense(rawValue: $0.license) })
     }
     var body: some View {
         NavigationStack {
@@ -129,12 +134,9 @@ struct CommunityUploadView: View {
                     }
                     metadata
                     Section {
-                        Toggle("I own this work or have permission to store it on this server with the selected credits/license", isOn: $permission)
-                        Text("Permission to download is not permission to rehost. Preserve original credits and license terms. Do not select 'My original work' for someone else's art.")
-                            .font(.caption).foregroundStyle(.secondary)
                         Button("Upload to private library") { upload() }
                             .buttonStyle(.borderedProminent)
-                            .disabled(!community.signedIn || busy || !permission || license == nil)
+                            .disabled(!community.signedIn || busy)
                     }.disabled(busy)
                 }
                 if busy { ProgressView("Uploading...") }
@@ -146,19 +148,12 @@ struct CommunityUploadView: View {
         }
     }
     private var metadata: some View {
-        Section("Credits and classification") {
+        Section("About this GIF") {
             TextField("Title", text: $title)
             Picker("Category", selection: $category) {
                 ForEach(CommunityCategory.allCases) { Text($0.label).tag($0.rawValue) }
             }
             TextField("Tags, comma separated", text: $tags)
-            TextField("Creator / attribution", text: $credit, axis: .vertical)
-            Picker("License / permission", selection: $license) {
-                Text("Choose explicitly").tag(Optional<CommunityLicense>.none)
-                ForEach(CommunityLicense.allCases) { Text($0.label).tag(Optional($0)) }
-            }
-            TextField("Source URL (optional)", text: $source).keyboardType(.URL)
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
             if let original = item.attribution {
                 Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
                     .font(.caption).foregroundStyle(.secondary)
@@ -168,12 +163,10 @@ struct CommunityUploadView: View {
         }.disabled(busy)
     }
     private func upload() {
-        guard !busy, let license else { return }
-        let source = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        let metadata = CommunityUploadMetadata(title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: category, tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) },
-            attribution: credit.trimmingCharacters(in: .whitespacesAndNewlines), license: license,
-            sourceUrl: source.isEmpty ? nil : source, ownershipAttested: permission)
+        guard !busy else { return }
+        let metadata = CommunityUploadMetadata.preserving(item.attribution,
+            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: category, tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
         busy = true; failure = nil
         Task {
             defer { busy = false }

@@ -57,6 +57,37 @@ final class CloudLibraryTests: XCTestCase {
         return try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
     }
 
+    func testUnspecifiedCatalogLicenseRemainsUnspecifiedInLocalCredits() throws {
+        let json = itemJSON.replacingOccurrences(of: "\"license\":\"CC0-1.0\"", with: "\"license\":\"unspecified\"")
+            .replacingOccurrences(of: "\"displayAttribution\":\"Example creator\"", with: "\"displayAttribution\":\"\"")
+        let item = try JSONDecoder().decode(CommunityItem.self, from: Data(json.utf8))
+        XCTAssertEqual(item.license, "unspecified")
+        XCTAssertEqual(item.credit.license, "unspecified")
+        XCTAssertEqual(item.credit.author, "")
+        try library { library in
+            let saved = try library.saveCatalogGIF(gif(), item: item, origin: CommunityOrigin.parse(root),
+                accountID: nil, assetURL: item.gifUrl)
+            XCTAssertEqual(saved.attribution?.license, "unspecified")
+            XCTAssertEqual(saved.attribution?.author, "")
+        }
+    }
+
+    func testSharingRequiresOnlyExplicitConsentWithoutReviewMetadata() async throws {
+        let shared = itemJSON.replacingOccurrences(of: "\"visibility\":\"private\"", with: "\"visibility\":\"shared\"")
+            .replacingOccurrences(of: "\"license\":\"CC0-1.0\"", with: "\"license\":\"unspecified\"")
+        let transport = CloudTransport([login, response("{\"item\":\(shared)}")])
+        let service = CommunityController(vault: CloudVault(), factory: { _ in transport })
+        service.configure(root)
+        try await service.signIn(email: "example@example.org", password: "example test password")
+        let result = try await service.submitUpload(itemID, sharingAttested: true)
+        XCTAssertEqual(result.visibility, "shared")
+        let requests = await transport.history()
+        let request = try XCTUnwrap(requests.last)
+        XCTAssertEqual(request.url?.path, "/api/v1/items/\(itemID.uuidString.lowercased())/submit")
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Bool])
+        XCTAssertEqual(body, ["sharingAttested": true])
+    }
+
     func testGuestCanBrowseDownloadAndSaveWithoutAnAuthRequest() async throws {
         let bytes = try gif()
         let transport = CloudTransport([response("{\"items\":[\(itemJSON)],\"page\":1,\"limit\":24,\"total\":1}"),
