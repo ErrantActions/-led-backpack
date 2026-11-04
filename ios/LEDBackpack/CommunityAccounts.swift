@@ -11,6 +11,8 @@ struct CommunitySettingsView: View {
     var body: some View {
         Form {
             Section("Optional community catalog") {
+                LabeledContent("Server", value: community.origin?.url.host ?? "Not configured")
+                DisclosureGroup("Advanced server settings") {
                 TextField(Preferences.defaultCommunityURL, text: $address)
                     .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button("Save catalog URL") {
@@ -26,11 +28,12 @@ struct CommunitySettingsView: View {
                 }
                 Text("The official catalog is preconfigured. You can use another trusted HTTPS catalog or clear the address to disable the service. No API secret is needed.")
                     .font(.caption).foregroundStyle(.secondary)
+                }
             }
             if let failure { Text(failure).foregroundStyle(.orange) }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
             if community.origin != nil { NavigationLink("Account and deletion") { CommunityAccountView() } }
-            Text("Accounts are optional. Bluetooth, local artwork, scenes and Wikimedia Commons work without this service. Passwords and sessions are not included in library backups.")
+            Text("Browse and save locally without signing in. Accounts add your private cloud library and community actions. Passwords and sessions are never included in backups.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .modernScene().navigationTitle("Community catalog")
@@ -41,6 +44,7 @@ struct CommunitySettingsView: View {
 @MainActor
 struct CommunityAccountView: View {
     @EnvironmentObject private var community: CommunityController
+    @State private var linkingApple = false
     @State private var email = ""
     @State private var password = ""
     @State private var displayName = ""
@@ -68,6 +72,7 @@ struct CommunityAccountView: View {
             if !value { email = ""; displayName = ""; password = ""; message = nil }
         }
         .onDisappear { password = "" }
+        .sheet(isPresented: $linkingApple) { AppleLinkAccountView() }
     }
 
     private var signedInControls: some View {
@@ -84,6 +89,10 @@ struct CommunityAccountView: View {
                 Text("Refresh your account before managing deletion.").font(.caption)
             }
             Button("Refresh account") { perform { try await community.refreshUser(); return nil } }
+            if community.config?.appleSignInEnabled == true, community.user?.authMethods?.password == true,
+               community.user?.authMethods?.apple != true {
+                Button("Link Sign in with Apple") { linkingApple = true }
+            }
             NavigationLink("My uploads") { CommunityUploadsView() }
             Button("Sign in again") {
                 do { try community.forgetLocalSession() }
@@ -94,7 +103,22 @@ struct CommunityAccountView: View {
     }
 
     private var signInControls: some View {
-        Section(creating ? "Create account" : "Sign in") {
+        Section("Your cloud library") {
+            Text("Save across devices and join the community. Browsing and keeping GIFs on this iPhone never require an account.")
+                .font(.subheadline).foregroundStyle(.secondary)
+            if community.config?.appleSignInEnabled == true, community.config?.allowsNativeSignup == true {
+                AppleSignInControl(purpose: .login, busyChanged: { busy = $0 }, completed: {
+                    password = ""; message = "Signed in with Apple."
+                })
+            }
+            DisclosureGroup(creating ? "Create an email account" : "Continue with email") {
+                emailControls
+            }
+        }.disabled(busy)
+    }
+
+    private var emailControls: some View {
+        Group {
             Toggle("Create a new account", isOn: $creating).disabled(community.config?.allowsNativeSignup != true)
             if community.config?.allowsNativeSignup != true {
                 Text("Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.")
@@ -104,22 +128,14 @@ struct CommunityAccountView: View {
             TextField("Email", text: $email).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
             SecureField(creating ? "Password (12-128 characters)" : "Password", text: $password)
+                .submitLabel(.go).onSubmit { submitEmail() }
             if let config = community.config {
                 Text(config.requireEmailVerification
                     ? "New accounts must confirm email using the server's verification link before signing in."
                     : "This server currently allows signup without email confirmation. That does not verify ownership of an email address.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Button(creating ? "Create account" : "Sign in") {
-                let enteredEmail = email, enteredPassword = password, enteredName = displayName
-                perform {
-                    if creating {
-                        return try await community.signUp(email: enteredEmail, password: enteredPassword, displayName: enteredName)
-                    }
-                    try await community.signIn(email: enteredEmail, password: enteredPassword)
-                    return "Signed in."
-                }
-            }.buttonStyle(.borderedProminent)
+            Button(creating ? "Create account" : "Sign in", action: submitEmail).buttonStyle(.borderedProminent)
                 .disabled(email.isEmpty || password.isEmpty || (creating && (community.config?.allowsNativeSignup != true ||
                     displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                     !(12...128).contains(password.utf16.count))))
@@ -137,6 +153,21 @@ struct CommunityAccountView: View {
                 }
             }
         }.disabled(busy)
+    }
+
+    private func submitEmail() {
+        guard !busy else { return }
+        guard !email.isEmpty, !password.isEmpty else {
+            failure = "Enter your email and password."; return
+        }
+        let enteredEmail = email, enteredPassword = password, enteredName = displayName, signup = creating
+        perform {
+            if signup {
+                return try await community.signUp(email: enteredEmail, password: enteredPassword, displayName: enteredName)
+            }
+            try await community.signIn(email: enteredEmail, password: enteredPassword)
+            return "Signed in."
+        }
     }
 
     private func refresh() async {
@@ -206,6 +237,7 @@ private struct CommunityDeleteAccountView: View {
     @State private var confirmation = ""
     @State private var busy = false
     @State private var failure: String?
+    @State private var verifyWithApple = false
     var body: some View {
         Form {
             if community.signedIn {
@@ -217,9 +249,26 @@ private struct CommunityDeleteAccountView: View {
                         .foregroundStyle(.orange)
                     Text("Your iPhone's local artwork and backpack storage are not erased.")
                         .font(.caption).foregroundStyle(.secondary)
-                    SecureField("Current password", text: $password)
+                    if community.user?.authMethods?.apple == true, community.user?.authMethods?.password == true {
+                        Toggle("Verify with Apple instead of password", isOn: $verifyWithApple)
+                    }
+                    if !verifyWithApple && community.user?.authMethods?.appleOnly != true {
+                        SecureField("Current password", text: $password)
+                    }
                     TextField("Type DELETE", text: $confirmation).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                    Button("Delete account permanently", role: .destructive) {
+                    if verifyWithApple || community.user?.authMethods?.appleOnly == true {
+                        if community.config?.appleSignInEnabled == true {
+                            Text("Continue with Apple to freshly verify this deletion. The server revokes Apple access before accepting erasure.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            AppleSignInControl(purpose: .delete, confirmation: confirmation,
+                                enabled: confirmation == "DELETE", busyChanged: { busy = $0 },
+                                completed: { password = ""; confirmation = "" })
+                        } else {
+                            Text("Apple reauthentication is currently unavailable. Reload the server policy or try again later; no deletion has been accepted.")
+                                .foregroundStyle(.orange)
+                        }
+                    } else {
+                        Button("Delete account permanently", role: .destructive) {
                         guard !busy else { return }
                         let enteredPassword = password, enteredConfirmation = confirmation
                         busy = true; failure = nil
@@ -229,6 +278,7 @@ private struct CommunityDeleteAccountView: View {
                             catch { failure = error.localizedDescription }
                         }
                     }.disabled(busy || password.isEmpty || confirmation != "DELETE" || community.config?.accountDeletionRetainsSharedGifs == nil)
+                    }
                     if community.config?.accountDeletionRetainsSharedGifs == nil {
                         Text("Load the server's deletion policy before confirming.").font(.caption).foregroundStyle(.orange)
                         Button("Load policy") {

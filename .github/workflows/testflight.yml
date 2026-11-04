@@ -2,11 +2,6 @@ name: LED Backpack TestFlight
 on:
   workflow_dispatch:
     inputs:
-      runner:
-        description: Hosted runner pool; use the validated pool when ARM capacity is unavailable
-        type: choice
-        options: [macos-latest, macos-15-intel]
-        default: macos-latest
       build_number:
         description: Unused Apple build number for version 0.1.0; increment on each upload
         type: string
@@ -41,7 +36,7 @@ jobs:
           fi
           git fetch --no-tags --depth=1 origin "$PASSED_SHA"
           if ! git diff --quiet "$PASSED_SHA" "$GITHUB_SHA" -- \
-            ios/LEDBackpack ios/LEDBackpackTests ios/Packages ios/project.yml ios/Info.plist .github/workflows/ios.yml; then
+            ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements .github/workflows/ios.yml; then
             echo "::error::App source or native validation inputs changed. Wait for LED Backpack iOS to pass before uploading."
             exit 1
           fi
@@ -49,7 +44,7 @@ jobs:
   internal-upload:
     needs: verified-ci
     environment: testflight
-    runs-on: ${{ inputs.runner || 'macos-latest' }}
+    runs-on: xcode-27
     timeout-minutes: 60
     defaults:
       run:
@@ -67,12 +62,17 @@ jobs:
           ruby -c fastlane/Fastfile
           ruby -c fastlane/signing.rb
           ruby -e 'abort("Invalid Apple build number") unless ENV.fetch("BUILD_NUMBER").match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/); abort("Review export compliance and configure IOS_NON_EXEMPT_ENCRYPTION as true or false") unless %w[true false].include?(ENV.fetch("NON_EXEMPT_ENCRYPTION"))'
-      - name: Select newest installed stable Xcode
+      - name: Select required Xcode 27.1
         run: |
-          XCODE=$(python3 -c 'import pathlib,re; apps=[(tuple(map(int,m.group(1).split("."))),str(p)) for p in pathlib.Path("/Applications").glob("Xcode_*.app") if (m:=re.fullmatch(r"Xcode_(\d+(?:\.\d+){1,2})\.app",p.name))]; assert apps, "No stable Xcode installation found"; print(max(apps)[1]+"/Contents/Developer")')
+          XCODE=/Applications/Xcode_27.1.app/Contents/Developer
+          test -d "$XCODE" || { echo "::error::This release requires preinstalled Xcode 27.1; no older-toolchain fallback."; exit 1; }
+          DEVELOPER_DIR="$XCODE" xcodebuild -version | grep -Fx "Xcode 27.1"
           echo "DEVELOPER_DIR=$XCODE" >> "$GITHUB_ENV"
       - name: Show release toolchain
-        run: xcodebuild -version
+        run: |
+          xcodebuild -version
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          python3 -c 'import sys; assert tuple(map(int,sys.argv[1].split(".")[:2])) == (27,1), "This release requires the iOS 27.1 SDK"' "$SDK"
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
       - uses: ruby/setup-ruby@v1

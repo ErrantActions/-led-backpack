@@ -18,9 +18,7 @@ struct StudioView: View {
     private var size: PanelSize { panel.size ?? PanelSize(width: 64, height: 64) }
 
     var body: some View {
-        NavigationStack {
             Form {
-                TextArtworkStudio()
                 Section("Pixel drawing") {
                     Text("Canvas: \(pixels.size.width) x \(pixels.size.height). Selected panel: \(size.width) x \(size.height).")
                         .font(.caption)
@@ -65,9 +63,8 @@ struct StudioView: View {
                         app.run { try library.add(name: "Drawing", data: MediaCodec.encode([pixels], delays: [1])) }
                     }
                 }
-            }.modernScene().navigationTitle("Studio")
+            }.modernScene().navigationTitle("Pixel drawing")
             .task { updateDrawing() }
-        }
     }
 
     private func updateDrawing() {
@@ -261,6 +258,7 @@ struct LiveView: View {
 
 @MainActor
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var panel: PanelController
@@ -343,6 +341,7 @@ struct SettingsView: View {
                         .font(.caption)
                 }
             }.modernScene().navigationTitle("Settings")
+            .toolbar { Button("Done") { dismiss() } }
             .task { preferences = library.state.preferences }
             .fileExporter(isPresented: $exporter, document: document, contentType: .json, defaultFilename: exportName) { result in
                 if case .failure(let error) = result { panel.report(error) }

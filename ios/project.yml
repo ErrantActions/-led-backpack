@@ -23,6 +23,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.ledbackpack
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: LEDBackpack.entitlements
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -36,11 +37,23 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.ledbackpack.tests
+  LEDBackpackUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [LEDBackpackUITests]
+    dependencies:
+      - target: LEDBackpack
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.ledbackpack.uitests
+        TEST_TARGET_NAME: LEDBackpack
 schemes:
   LEDBackpack:
     build:
       targets:
         LEDBackpack: all
         LEDBackpackTests: [test]
+        LEDBackpackUITests: [test]
     test:
-      targets: [LEDBackpackTests]
+      targets: [LEDBackpackTests, LEDBackpackUITests]

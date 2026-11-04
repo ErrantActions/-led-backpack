@@ -1,15 +1,19 @@
 import SwiftUI
+import AuthenticationServices
 import BackpackProtocol
+
+enum AppTab: Hashable { case backpack, library, create, live }
 
 @MainActor
 final class AppModel: ObservableObject {
+    @Published var selectedTab = AppTab.library
     let link: BluetoothLink
     let panel: PanelController
     let sensors: LiveSensors
     let live: LiveEngine
     let playlist: PlaylistRunner
     let alerts = DisconnectAlerts()
-    let community = CommunityController()
+    let community: CommunityController
     @Published var library: LocalLibrary?
     @Published var startupError: String?
     @Published private(set) var applyingSceneID: UUID?
@@ -24,6 +28,12 @@ final class AppModel: ObservableObject {
         self.link = link; self.panel = panel; self.sensors = sensors
         live = LiveEngine(panel: panel, sensors: sensors)
         playlist = PlaylistRunner(panel: panel)
+        #if DEBUG
+        community = ProcessInfo.processInfo.arguments.contains("--library-ui-fixture")
+            ? LibraryPreviewFixture.community() : CommunityController()
+        #else
+        community = CommunityController()
+        #endif
         loadLibrary()
         link.onReady = { [weak self] in
             guard let self else { return }
@@ -51,7 +61,13 @@ final class AppModel: ObservableObject {
 
     func loadLibrary() {
         do {
-            let value = try LocalLibrary()
+            let value: LocalLibrary
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--library-ui-fixture") { value = try LibraryPreviewFixture.make() }
+            else { value = try LocalLibrary() }
+            #else
+            value = try LocalLibrary()
+            #endif
             library = value; startupError = nil
             apply(value.state.preferences)
         } catch { startupError = error.localizedDescription }
@@ -179,6 +195,11 @@ struct LEDBackpackApp: App {
             .tint(.cyan)
             .onChange(of: scenePhase) { _, value in
                 app.setBackground(value == .background)
+                if value == .active { Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } } }
+            }
+            .task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
+            .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in
+                Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
             }
         }
     }

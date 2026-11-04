@@ -101,6 +101,7 @@ read = ->(key) { command("Read profile #{key}", "/usr/libexec/PlistBuddy", "-c",
 prefix = read.call("ApplicationIdentifierPrefix:0")
 abort "Provisioning profile belongs to a different team or bundle ID." unless read.call("TeamIdentifier:0") == team &&
   read.call("Entitlements:application-identifier") == "#{prefix}.#{BUNDLE}"
+abort "Regenerate this app's profile with Sign in with Apple enabled." unless read.call("Entitlements:com.apple.developer.applesignin:0") == "Default"
 abort "Provisioning profile is expired." unless Time.parse(read.call("ExpirationDate")) > Time.now
 abort "Use an App Store distribution profile, not a development profile." unless read.call("Entitlements:get-task-allow") == "false"
 _, _, devices_status = Open3.capture3("/usr/libexec/PlistBuddy", "-c", "Print :ProvisionedDevices", plist)

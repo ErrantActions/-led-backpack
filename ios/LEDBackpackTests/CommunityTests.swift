@@ -35,6 +35,7 @@ private actor DeferredCommunityStub: CommunityTransport {
         response?.resume(returning: value)
         response = nil
     }
+    func enqueue(_ value: CommunityResponse) { initial.append(value) }
 }
 
 @MainActor
@@ -262,6 +263,28 @@ final class CommunityTests: XCTestCase {
         XCTAssertTrue(service.signedIn)
         XCTAssertNotNil(vault.values["session|https://other.example"])
         XCTAssertNil(vault.values["session|\(root)"])
+        XCTAssertNotNil(vault.values["deletion|\(root)"])
+    }
+
+    func testOldDeletionDoesNotEraseANewAccountSessionOnTheSameServer() async throws {
+        let vault = CommunityMemoryVault()
+        let stub = DeferredCommunityStub([login()])
+        let service = client(stub, vault: vault)
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        let deleting = Task { try await service.deleteAccount(password: "example test password", confirmation: "DELETE") }
+        await stub.waitForRequest()
+        await stub.enqueue(response("""
+        {"user":{"id":"a23c09c9-cc77-4818-8951-0c55acdaab4e","email":"new@example.org","displayName":"New account","role":"user","verified":true},
+        "token":"test-only-different-account-session","expiresAt":"2099-01-01T00:00:00.000Z"}
+        """))
+        try await service.signIn(email: "new@example.org", password: "another test password")
+        await stub.finish(receipt())
+        try await deleting.value
+        XCTAssertTrue(service.signedIn)
+        XCTAssertEqual(service.user?.email, "new@example.org")
+        XCTAssertNil(service.deletion)
+        let saved = try XCTUnwrap(vault.values["session|\(root)"])
+        XCTAssertEqual(try JSONDecoder().decode(CommunitySession.self, from: saved).token, "test-only-different-account-session")
         XCTAssertNotNil(vault.values["deletion|\(root)"])
     }
 

@@ -9,6 +9,13 @@ struct CommunityUser: Codable, Equatable {
     let displayName: String
     let role: String
     let verified: Bool
+    let authMethods: CommunityAuthMethods?
+}
+
+struct CommunityAuthMethods: Codable, Equatable {
+    let apple: Bool
+    let password: Bool
+    let appleOnly: Bool
 }
 
 struct CommunityConfig: Decodable {
@@ -16,11 +23,13 @@ struct CommunityConfig: Decodable {
     let passwordRecoveryAvailable: Bool?
     let privateLibraryEnabled: Bool?
     let accountDeletionRetainsSharedGifs: Bool?
+    let appleSignInEnabled: Bool?
     var allowsNativeSignup: Bool { accountDeletionRetainsSharedGifs == false }
 }
 struct CommunitySession: Codable {
     let token: String
     let expiresAt: String
+    let appleUser: String?
 }
 struct CommunityLogin: Decodable {
     let user: CommunityUser
@@ -227,6 +236,7 @@ final class CommunityController: ObservableObject {
     @Published private(set) var config: CommunityConfig?
     @Published private(set) var deletion: CommunityDeletion?
     @Published private(set) var setupError: String?
+    @Published private(set) var accountRevision = UUID()
     private var session: CommunitySession?
     private var transport: (any CommunityTransport)?
     private let vault: any CommunityVault
@@ -247,6 +257,7 @@ final class CommunityController: ObservableObject {
                 if next == nil { setupError = nil }
                 return
             }
+            accountRevision = UUID()
             origin = next; session = nil; user = nil; config = nil; deletion = nil; setupError = nil
             transport = next.map(factory)
             guard next != nil else { return }
@@ -268,6 +279,7 @@ final class CommunityController: ObservableObject {
                 }
             } catch { setupError = [setupError, error.localizedDescription].compactMap { $0 }.joined(separator: " ") }
         } catch {
+            accountRevision = UUID()
             origin = nil; transport = nil; session = nil; user = nil; config = nil; deletion = nil
             setupError = error.localizedDescription
         }
@@ -327,10 +339,14 @@ final class CommunityController: ObservableObject {
         struct Body: Encodable { let email: String; let password: String; let transport = "bearer" }
         let body = try JSONEncoder().encode(Body(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password))
         let result = try JSONDecoder().decode(CommunityLogin.self, from: await request("auth/login", method: "POST", body: body, authenticated: false).data)
+        try establishSession(result)
+    }
+    func establishSession(_ result: CommunityLogin, appleUser: String? = nil) throws {
         guard let token = result.token else { throw BackpackError.invalid("The server did not return a native bearer session.") }
-        let saved = CommunitySession(token: token, expiresAt: result.expiresAt)
+        let saved = CommunitySession(token: token, expiresAt: result.expiresAt, appleUser: appleUser)
         try validateSession(saved)
         try vault.save(JSONEncoder().encode(saved), key: sessionKey)
+        accountRevision = UUID()
         session = saved; user = result.user; setupError = nil
     }
     func signUp(email: String, password: String, displayName: String) async throws -> String {
@@ -361,6 +377,7 @@ final class CommunityController: ObservableObject {
             from: await request("auth/forgot-password", method: "POST", body: body, authenticated: false).data).message
     }
     private func clearCredentials() throws {
+        accountRevision = UUID()
         session = nil; user = nil
         try vault.remove(sessionKey)
     }
@@ -368,26 +385,45 @@ final class CommunityController: ObservableObject {
         try clearCredentials()
         setupError = nil
     }
-    private func clearCredentials(for server: CommunityOrigin) throws {
-        if origin == server { session = nil; user = nil }
-        try vault.remove("session|\(server.url.absoluteString)")
+    private func clearCredentials(for server: CommunityOrigin, matching token: String) throws {
+        let key = "session|\(server.url.absoluteString)"
+        if origin == server, session?.token == token {
+            accountRevision = UUID(); session = nil; user = nil
+            try vault.remove(key)
+        } else if let bytes = try vault.read(key) {
+            let saved = try JSONDecoder().decode(CommunitySession.self, from: bytes)
+            if saved.token == token { try vault.remove(key) }
+        }
     }
     func signOut() async throws {
         guard let server = origin else { throw BackpackError.invalid("No catalog is configured.") }
+        guard let token = session?.token else { throw BackpackError.invalid("No active catalog session to sign out.") }
         var failure: Error?
         do { _ = try await request("auth/logout", method: "POST", body: Data("{}".utf8), allowServerChange: true) }
         catch { failure = error }
-        try clearCredentials(for: server)
+        try clearCredentials(for: server, matching: token)
         if let failure {
             throw BackpackError.invalid("Signed out on this iPhone, but server logout could not be confirmed. \(failure.localizedDescription)")
         }
     }
     func deleteAccount(password: String, confirmation: String) async throws {
         guard signedIn else { throw BackpackError.invalid("Sign in before deleting your account.") }
-        guard let server = origin else { throw BackpackError.invalid("No catalog is configured.") }
         guard confirmation == "DELETE", !password.isEmpty else { throw BackpackError.invalid("Enter your password and type DELETE to confirm.") }
         struct Body: Encodable { let password: String; let confirmation: String }
         let body = try JSONEncoder().encode(Body(password: password, confirmation: confirmation))
+        try await eraseAccount(body)
+    }
+    func deleteAccount(appleDeletionToken: String, confirmation: String) async throws {
+        guard signedIn, confirmation == "DELETE", !appleDeletionToken.isEmpty else {
+            throw BackpackError.invalid("Fresh Apple reauthentication and DELETE confirmation are required.")
+        }
+        struct Body: Encodable { let appleDeletionToken: String; let confirmation: String }
+        try await eraseAccount(JSONEncoder().encode(Body(appleDeletionToken: appleDeletionToken, confirmation: confirmation)))
+    }
+    private func eraseAccount(_ body: Data) async throws {
+        guard let server = origin else { throw BackpackError.invalid("No catalog is configured.") }
+        guard let token = session?.token else { throw BackpackError.invalid("Sign in before deleting your account.") }
+        let revision = accountRevision
         let accepted = try await request("auth/me", method: "DELETE", body: body, allowServerChange: true)
         guard accepted.status == 200 || accepted.status == 202 else { throw BackpackError.invalid("Unexpected account deletion response.") }
         do {
@@ -397,15 +433,19 @@ final class CommunityController: ObservableObject {
                   (accepted.status == 202 && receipt.status == .pending) else {
                 throw BackpackError.invalid("The deletion status and HTTP receipt disagree.")
             }
-            if origin == server { deletion = receipt }
+
+            if origin == server, accountRevision == revision { deletion = receipt }
             try vault.save(JSONEncoder().encode(receipt), key: "deletion|\(server.url.absoluteString)")
         } catch {
             let failure = error
-            try clearCredentials(for: server)
-            throw BackpackError.invalid("Deletion was accepted and you are signed out, but its receipt could not be saved. \(failure.localizedDescription)")
+            try clearCredentials(for: server, matching: token)
+            throw BackpackError.invalid("Deletion was accepted and that session's credentials were cleared, but its receipt could not be saved. \(failure.localizedDescription)")
         }
-        try clearCredentials(for: server)
+        try clearCredentials(for: server, matching: token)
     }
+    func updateAppleLinkedUser(_ value: CommunityUser) { user = value }
+    var appleUserForCredentialCheck: String? { session?.appleUser }
+
     func refreshDeletion() async throws {
         guard let deletion else { throw BackpackError.invalid("No deletion receipt is stored on this iPhone.") }
         try origin?.checkReceipt(deletion)
@@ -498,6 +538,23 @@ final class CommunityController: ObservableObject {
         guard signedIn else { throw BackpackError.invalid("Sign in to view your uploads.") }
         struct Result: Decodable { let items: [CommunitySubmission] }
         return try JSONDecoder().decode(Result.self, from: await request("me/items").data).items
+    }
+
+    func cloudItems() async throws -> [CommunityCloudItem] {
+        try await cloudPage(page: 1).items
+    }
+
+    func cloudPage(page: Int) async throws -> CommunityCloudPage {
+        guard signedIn else { throw BackpackError.invalid("Sign in to open your private cloud library.") }
+        guard (1...10000).contains(page) else { throw BackpackError.invalid("Invalid cloud library page.") }
+        let query = [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "limit", value: "100")]
+        let result = try JSONDecoder().decode(CommunityCloudPage.self, from: await request("me/items", query: query).data)
+        guard result.items.count <= 100, result.page == nil || result.page == page,
+              result.limit == nil || (1...100).contains(result.limit ?? 0),
+              result.total == nil || (result.total ?? -1) >= result.items.count else {
+            throw BackpackError.invalid("Invalid cloud library pagination returned by the server.")
+        }
+        return result
     }
 
     func deleteUpload(_ id: UUID) async throws {

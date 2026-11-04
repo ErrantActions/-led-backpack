@@ -1,0 +1,250 @@
+import SwiftUI
+import BackpackProtocol
+
+struct CommunityCloudItem: Decodable, Identifiable {
+    let item: CommunityItem
+    let visibility: String
+    let status: String
+    let moderationReason: String
+    let aiState: String
+    let aiError: String?
+    var id: UUID { item.id }
+    init(from decoder: Decoder) throws {
+        item = try CommunityItem(from: decoder)
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        visibility = try values.decode(String.self, forKey: .visibility)
+        status = try values.decode(String.self, forKey: .status)
+        moderationReason = try values.decode(String.self, forKey: .moderationReason)
+        aiState = try values.decode(String.self, forKey: .aiState)
+        aiError = try values.decodeIfPresent(String.self, forKey: .aiError)
+    }
+    private enum CodingKeys: String, CodingKey { case visibility, status, moderationReason, aiState, aiError }
+}
+
+enum LibraryScope: String, CaseIterable, Identifiable {
+    case all = "All", device = "On iPhone", cloud = "Cloud"
+    var id: String { rawValue }
+}
+
+struct CommunityCloudPage: Decodable {
+    let items: [CommunityCloudItem]
+    let page: Int?
+    let limit: Int?
+    let total: Int?
+    var nextPage: Int? {
+        guard let page, let limit, let total, (1..<10000).contains(page), (1...100).contains(limit),
+              total >= 0, page * limit < total else { return nil }
+        return page + 1
+    }
+}
+
+@MainActor
+final class CloudLibraryStore: ObservableObject {
+    @Published private(set) var items: [CommunityCloudItem] = []
+    @Published private(set) var loading = false
+    @Published private(set) var failure: String?
+    @Published private(set) var nextPage: Int?
+    private var revision: UUID?
+    private var ownerID: UUID?
+    private var server: CommunityOrigin?
+
+    func clear() {
+        items = []; failure = nil; loading = false; revision = nil; ownerID = nil; server = nil; nextPage = nil
+    }
+
+    func refresh(_ community: CommunityController) async {
+        let current = community.accountRevision
+        if revision != current { items = []; failure = nil; revision = current; ownerID = nil; server = nil; nextPage = nil }
+        guard community.signedIn else { clear(); return }
+        loading = true; failure = nil
+        defer {
+            if revision == current {
+                if community.accountRevision != current { clear() }
+                else { loading = false }
+            }
+        }
+        do {
+            if community.user == nil { try await community.refreshUser() }
+            let result = try await community.cloudPage(page: 1)
+            try Task.checkCancellation()
+            guard community.accountRevision == current, revision == current, community.signedIn else { return }
+            items = result.items.filter { $0.status != "deleted" }
+            nextPage = result.nextPage
+            ownerID = community.user?.id; server = community.origin
+        } catch {
+            guard !Task.isCancelled, community.accountRevision == current, revision == current else { return }
+            failure = error.localizedDescription
+        }
+    }
+
+    func loadMore(_ community: CommunityController) async {
+        guard !loading, let page = nextPage, revision == community.accountRevision, community.signedIn else { return }
+        let current = community.accountRevision
+        loading = true; failure = nil
+        defer {
+            if revision == current {
+                if community.accountRevision != current { clear() }
+                else { loading = false }
+            }
+        }
+        do {
+            let result = try await community.cloudPage(page: page)
+            try Task.checkCancellation()
+            guard revision == current, community.accountRevision == current else { return }
+            var ids = Set(items.map(\.id))
+            let added = result.items.filter { $0.status != "deleted" && ids.insert($0.id).inserted }
+            guard result.nextPage == nil || !added.isEmpty else { throw BackpackError.invalid("Cloud pagination repeated the same items. Refresh the library.") }
+            items += added
+            nextPage = result.nextPage
+        } catch {
+            guard !Task.isCancelled, revision == current, community.accountRevision == current else { return }
+            failure = error.localizedDescription
+        }
+    }
+
+    func cloudOnly(local: [SavedMedia], origin: CommunityOrigin?, owner: UUID?) -> [CommunityCloudItem] {
+        guard let origin, let owner, origin == server, owner == ownerID else { return [] }
+        let linked = Set(local.compactMap { media -> UUID? in
+            guard let source = media.cloudSource, source.server == origin.url.absoluteString,
+                  source.accountID == owner else { return nil }
+            return source.itemID
+        })
+        return items.filter { !linked.contains($0.id) }
+    }
+
+    func connectedItem(_ media: SavedMedia, origin: CommunityOrigin?, owner: UUID?) -> CommunityCloudItem? {
+        guard let origin, let owner, origin == server, owner == ownerID, let source = media.cloudSource,
+              source.server == origin.url.absoluteString, source.accountID == owner else { return nil }
+        return items.first { $0.id == source.itemID }
+    }
+}
+
+@MainActor
+struct CloudArtworkRow: View {
+    @EnvironmentObject private var community: CommunityController
+    let cloud: CommunityCloudItem
+    let open: () -> Void
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 14) {
+                GIFThumbnail(key: cloud.item.previewUrl.absoluteString, cache: false) {
+                    try await community.download(cloud.item.previewUrl)
+                }.frame(width: 84, height: 84).clipShape(RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(cloud.item.title).font(.headline).foregroundStyle(.primary)
+                    Label("Cloud only", systemImage: "icloud").font(.caption).foregroundStyle(.cyan)
+                    Text(cloud.visibility == "private" ? "Private library" : "Shared / \(cloud.status)")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+        }.buttonStyle(.plain)
+    }
+}
+
+@MainActor
+struct CloudArtworkDetail: View {
+    @EnvironmentObject private var community: CommunityController
+    @EnvironmentObject private var library: LocalLibrary
+    @Environment(\.dismiss) private var dismiss
+    let cloud: CommunityCloudItem
+    @State private var bytes: Data?
+    @State private var loadedOrigin: CommunityOrigin?
+    @State private var loadedOwner: UUID?
+    @State private var failure: String?
+    @State private var saved = false
+    @State private var retry = 0
+    @State private var sharing = false
+    @State private var deleting = false
+    @State private var busy = false
+    @State private var shared = false
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if let bytes { AnimatedPreview(data: bytes).frame(height: 280).clipShape(RoundedRectangle(cornerRadius: 22)) }
+                    else if failure == nil { ProgressView("Opening cloud GIF...").frame(maxWidth: .infinity, minHeight: 180) }
+                    Text(cloud.item.title).font(.title2.bold())
+                    Label(cloud.visibility == "private" ? "Private cloud library" : "Community / \(cloud.status)",
+                        systemImage: cloud.visibility == "private" ? "lock.icloud" : "person.2")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text(cloud.item.displayAttribution).font(.caption).foregroundStyle(.secondary)
+                    Button(saved ? "Available offline" : "Keep on this iPhone") {
+                        do {
+                            guard let bytes, let loadedOrigin, let loadedOwner,
+                                  community.origin == loadedOrigin, community.user?.id == loadedOwner else {
+                                throw BackpackError.invalid("Your cloud account changed. Reopen this GIF before saving.")
+                            }
+                            try library.saveCatalogGIF(bytes, item: cloud.item, origin: loadedOrigin,
+                                accountID: loadedOwner, assetURL: cloud.item.gifUrl)
+                            saved = true
+                        } catch { failure = error.localizedDescription }
+                    }.buttonStyle(.borderedProminent).disabled(bytes == nil || saved)
+                    Text("Local and cloud copies are independent. Removing a local copy does not delete the cloud GIF. Saving preserves credits and does not publish private artwork.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if cloud.item.license == "unreviewed" {
+                        Label("Rights need admin review before sharing.", systemImage: "exclamationmark.shield")
+                            .font(.caption).foregroundStyle(.orange)
+                    } else if cloud.visibility == "private" && !shared {
+                        Button("Share with the community") { sharing = true }.disabled(busy)
+                    }
+                    if shared { Label("Submitted for community review", systemImage: "checkmark.circle").font(.caption) }
+                    if community.user?.role == "admin" {
+                        Button("Delete cloud copy", role: .destructive) { deleting = true }.disabled(busy)
+                    }
+                    if busy { ProgressView() }
+                    if !cloud.moderationReason.isEmpty { Text(cloud.moderationReason).font(.caption) }
+                    if let failure {
+                        Text(failure).foregroundStyle(.orange)
+                        Button("Try again") { retry += 1 }
+                    }
+                }.padding(24)
+            }
+            .modernScene().navigationTitle("Cloud artwork")
+            .toolbar { Button("Done") { dismiss() } }
+            .task(id: retry) {
+                bytes = nil; loadedOrigin = nil; loadedOwner = nil; failure = nil
+                do {
+                    let revision = community.accountRevision
+                    if community.user == nil { try await community.refreshUser() }
+                    guard let owner = community.user?.id, let origin = community.origin else {
+                        throw BackpackError.invalid("Sign in to open your private cloud library.")
+                    }
+                    let data = try await community.download(cloud.item.gifUrl)
+                    try Task.checkCancellation()
+                    guard community.accountRevision == revision else { throw BackpackError.invalid("The cloud account changed.") }
+                    try GIFPreviewDecoder.validateOriginal(data)
+                    loadedOrigin = origin; loadedOwner = owner; bytes = data
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    failure = error.localizedDescription
+                }
+            }
+            .onChange(of: community.accountRevision) { _, _ in bytes = nil; dismiss() }
+            .onDisappear { bytes = nil; loadedOwner = nil; loadedOrigin = nil }
+            .confirmationDialog("Share this GIF for review? This confirms your right to publish and permits the server's optional AI review. It does not publish until approved.", isPresented: $sharing) {
+                Button("I have sharing rights; submit") {
+                    guard !busy else { return }
+                    busy = true; failure = nil
+                    Task {
+                        defer { busy = false }
+                        do { _ = try await community.submitUpload(cloud.id, sharingAttested: true); shared = true }
+                        catch { failure = error.localizedDescription }
+                    }
+                }
+            }
+            .confirmationDialog("Delete only this cloud copy? Local copies are not erased.", isPresented: $deleting) {
+                Button("Delete cloud copy", role: .destructive) {
+                    guard !busy else { return }
+                    busy = true; failure = nil
+                    Task {
+                        defer { busy = false }
+                        do { try await community.deleteUpload(cloud.id); dismiss() }
+                        catch { failure = error.localizedDescription }
+                    }
+                }
+            }
+        }
+    }
+}

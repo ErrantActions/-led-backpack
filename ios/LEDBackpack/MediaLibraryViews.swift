@@ -6,6 +6,7 @@ struct LibraryMediaRow: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var library: LocalLibrary
     let item: SavedMedia
+    var cloudStatus: String? = nil
     let action: (Action) -> Void
 
     var body: some View {
@@ -16,10 +17,14 @@ struct LibraryMediaRow: View {
                         .frame(width: 92, height: 92).clipShape(RoundedRectangle(cornerRadius: 12))
                 }.buttonStyle(.borderless).accessibilityLabel("Preview \(item.name)")
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(item.name).font(.headline)
+                    Text(item.name).font(.headline).lineLimit(2)
                     Label(item.categoryName, systemImage: "folder").font(.caption).foregroundStyle(.secondary)
+                    Label(cloudStatus == nil ? "On this iPhone" : "On iPhone + Cloud", systemImage: cloudStatus == nil ? "iphone" : "icloud.fill")
+                        .font(.caption2).foregroundStyle(cloudStatus == nil ? Color.secondary : Color.cyan)
                     if let credit = item.attribution {
-                        Text("\(credit.author) / \(credit.license)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(credit.author.isEmpty ? (credit.license == "unreviewed" ? "Rights not reviewed" : credit.license)
+                            : "\(credit.author) / \(credit.license)")
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
                 Spacer(minLength: 0)
@@ -37,7 +42,7 @@ struct LibraryMediaRow: View {
                 Menu("Actions", systemImage: "ellipsis.circle") {
                     Button("Edit a copy") { action(.edit) }
                     Button("Send to backpack") { action(.send) }
-                    Button("Upload to private catalog library") { action(.share) }
+                    Button(cloudStatus == nil ? "Save a private cloud copy" : "Cloud copy options") { action(.share) }
                     Button("Organize") { action(.organize) }
                     Button("Export GIF") { action(.export) }
                     Button("Delete local copy", role: .destructive) { action(.delete) }

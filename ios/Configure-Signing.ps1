@@ -69,6 +69,9 @@ $xml.LoadXml([Text.Encoding]::UTF8.GetString($cms.ContentInfo.Content))
 $dict = $xml.SelectSingleNode('/plist/dict')
 function ValueNode($parent, $key) { $parent.SelectSingleNode("key[text()='$key']/following-sibling::*[1]") }
 $entitlements = ValueNode $dict 'Entitlements'
+if ((ValueNode $entitlements 'com.apple.developer.applesignin').InnerText -ne 'Default') {
+    throw 'Regenerate the LED Backpack App Store profile with Sign in with Apple enabled.'
+}
 if ((ValueNode $dict 'TeamIdentifier').InnerText -ne $TeamId -or
     (ValueNode $entitlements 'application-identifier').InnerText -ne "$TeamId.$bundleId") {
     throw 'The profile belongs to a different app or Apple team.'

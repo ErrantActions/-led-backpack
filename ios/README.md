@@ -13,6 +13,36 @@ This is an experimental app. Background behavior and optional live features
 depend on iOS permissions, system scheduling and device compatibility.
 See the [packet protocol reference](Protocol.md) for integration details.
 
+## Navigation and library
+
+The app opens in **Library**. Four main tabs keep the common tasks separate:
+**Library**, **Backpack**, **Create** and **Live**. Settings are available from
+the Backpack gear or the Library filter menu. Password and compatibility fields
+on the Backpack screen stay collapsed until requested.
+
+Library has **All / On iPhone / Cloud** scopes. **Discover GIFs** and Commons
+are available without an account; preview a GIF and tap **Save to my library**
+to keep it offline with its attribution, without opening an editor first.
+The **+** menu imports images/GIFs or converts a video. Search is in the
+navigation drawer; category/favorite filters are in the filter menu. Playlist
+creation is a separate composer with slot selection instead of raw slot-ID
+entry boxes.
+
+Signed-in users see private cloud artwork in the same list. A known local/cloud
+pair appears once in All and is labeled **On iPhone + Cloud**. Cloud-only GIFs
+can be opened and kept offline; local artwork can save a private cloud copy
+through its Actions menu. Sign-in resumes the requested cloud-save action.
+Cloud uploads still require credits/license/storage permission and never
+automatically publish.
+
+Cloud refresh is on demand/pull-to-refresh, not a background two-way deletion
+service. Removing a local copy does not delete the cloud record, and signing
+out does not erase independent offline copies. Account/server-scoped cloud
+associations are device-local and omitted from backups; they are not derived
+from raw-file hashes because server GIFs are re-encoded. The cloud list loads up to 100 records per page, with explicit **Load more**
+for larger libraries. Unreviewed private imports remain usable privately but
+cannot be submitted for sharing before admin rights review.
+
 ## Build on GitHub / a Mac
 
 1. Clone the repository, retaining the relative `ios/` and
@@ -76,7 +106,7 @@ embedded credentials, cross-origin media and redirects are not accepted.
 An address on your local network may require iOS local-network permission.
 There is no embedded API secret.
 
-**Library > Browse community catalog** supports guest browsing, category/name
+**Library > Discover GIFs** supports guest browsing, category/name
 search, previews, local imports and signed-in likes/reports/uploader blocking.
 Credits, license information and original-work download restrictions remain
 attached to imported artwork. The connected panel's prepared variant is used
@@ -108,6 +138,16 @@ follows the server's email-confirmation setting; immediate signup does not make
 an unconfirmed email verified. This is not a claim of App Store approval.
 Sessions are scoped to that server and stored only in device-local Keychain,
 not diagnostics, ordinary preferences or library backups.
+
+**Continue with Apple** appears only when the server enables Apple auth and
+declares a compatible deletion policy. A fresh five-minute server challenge
+supplies the nonce; the app hashes its UTF-8 string exactly once for Apple's
+request and sends the original nonce with the returned identity token/code.
+Email matches are never silently merged: sign in with the existing password
+and explicitly **Link Sign in with Apple** when needed. Apple-only accounts
+can freshly authorize deletion through Apple instead of entering a nonexistent
+password. Apple credential revocation is checked on return to the foreground.
+The app never contains an Apple server signing key or client secret.
 
 The Account screen includes permanent account deletion with password
 reauthentication and explicit `DELETE` confirmation. An accepted deletion
@@ -310,6 +350,9 @@ Selection/draft state lives above the geometry-dependent layout, and the BLE
 session lives in the app model, not in a fold-specific view.
 
 Full native iPhone Duo adaptation requires the **iOS 27.1 SDK or later**.
+Both workflows use GitHub's documented `xcode-27` image and exactly Xcode 27.1,
+rejecting an older-toolchain fallback. Native validation selects the iOS 27.1
+iPhone Duo simulator and exports layout screenshots for review.
 The minimum deployment target remains iOS 17.
 
 No private hinge APIs, device-model guesses, or simultaneous independent

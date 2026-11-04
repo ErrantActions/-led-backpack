@@ -1,21 +1,11 @@
 name: LED Backpack iOS
 on:
   workflow_dispatch:
-    inputs:
-      runner:
-        description: Hosted runner pool; Intel is a fallback when ARM capacity is unavailable
-        type: choice
-        options: [macos-latest, macos-15-intel]
-        default: macos-latest
-      require_duo_sdk:
-        description: Require iOS 27.1 or later SDK for native iPhone Duo qualification
-        type: boolean
-        default: false
   push:
     branches: [main]
-    paths: ["ios/LEDBackpack/**", "ios/LEDBackpackTests/**", "ios/Packages/**", "ios/project.yml", "ios/Info.plist", ".github/workflows/ios.yml"]
+    paths: ["ios/LEDBackpack/**", "ios/LEDBackpackTests/**", "ios/LEDBackpackUITests/**", "ios/Packages/**", "ios/project.yml", "ios/Info.plist", "ios/LEDBackpack.entitlements", ".github/workflows/ios.yml"]
   pull_request:
-    paths: ["ios/LEDBackpack/**", "ios/LEDBackpackTests/**", "ios/Packages/**", "ios/project.yml", "ios/Info.plist", ".github/workflows/ios.yml"]
+    paths: ["ios/LEDBackpack/**", "ios/LEDBackpackTests/**", "ios/LEDBackpackUITests/**", "ios/Packages/**", "ios/project.yml", "ios/Info.plist", "ios/LEDBackpack.entitlements", ".github/workflows/ios.yml"]
 permissions:
   contents: read
 concurrency:
@@ -23,33 +13,33 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-and-test:
-    runs-on: ${{ inputs.runner || 'macos-latest' }}
+    runs-on: xcode-27
     timeout-minutes: 30
     defaults:
       run:
         working-directory: ios
     steps:
       - uses: actions/checkout@v4
-      - name: Select newest installed stable Xcode
+      - name: Select required Xcode 27.1
         run: |
-          XCODE=$(python3 -c 'import pathlib,re; apps=[(tuple(map(int,m.group(1).split("."))),str(p)) for p in pathlib.Path("/Applications").glob("Xcode_*.app") if (m:=re.fullmatch(r"Xcode_(\d+(?:\.\d+){1,2})\.app",p.name))]; assert apps, "No stable Xcode installation found"; print(max(apps)[1]+"/Contents/Developer")')
+          XCODE=/Applications/Xcode_27.1.app/Contents/Developer
+          test -d "$XCODE" || { echo "::error::This build requires preinstalled Xcode 27.1; no older-toolchain fallback."; exit 1; }
+          DEVELOPER_DIR="$XCODE" xcodebuild -version | grep -Fx "Xcode 27.1"
           echo "DEVELOPER_DIR=$XCODE" >> "$GITHUB_ENV"
       - name: Show toolchain
-        env:
-          REQUIRE_DUO_SDK: ${{ inputs.require_duo_sdk || 'false' }}
         run: |
           xcodebuild -version
           swift --version
           SDK=$(xcrun --sdk iphoneos --show-sdk-version)
           echo "Selected iOS SDK: $SDK"
-          python3 -c 'import os,sys; v=tuple(map(int,sys.argv[1].split(".")[:2])); required=os.environ["REQUIRE_DUO_SDK"]=="true"; assert not required or v >= (27,1), "Duo qualification requires iOS SDK 27.1+. Select an appropriate hosted Xcode image."; print("Duo SDK qualified" if v >= (27,1) else "Compatibility build only; not a native Duo qualification.")' "$SDK"
+          python3 -c 'import sys; assert tuple(map(int,sys.argv[1].split(".")[:2])) == (27,1), "This build requires the iOS 27.1 SDK"; print("iOS 27.1 SDK selected; physical Duo fold testing remains separate.")' "$SDK"
       - name: Test portable packet codec
         run: swift test --package-path Packages/BackpackProtocol
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
-      - name: Select available iPhone simulator
+      - name: Select iPhone Duo simulator
         run: |
-          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); devices=[x for runtime,items in d["devices"].items() if runtime.endswith(".iOS-27-1") for x in items if x["name"]=="iPhone Duo"]; assert devices, "The required iOS 27.1 iPhone Duo simulator is unavailable"; print(devices[0]["udid"])')
           echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
       - name: Build and test app
         run: |
@@ -59,6 +49,12 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Package simulator app
         run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/LEDBackpack.app LEDBackpack-simulator.zip
+      - name: Export native layout screenshots
+        if: always()
+        run: |
+          if [ -d build/TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/TestResults.xcresult --output-path build/Screenshots
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -66,4 +62,11 @@ jobs:
           path: |
             ios/LEDBackpack-simulator.zip
             ios/build/TestResults.xcresult
+          if-no-files-found: warn
+      - name: Upload layout screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LEDBackpack-layouts
+          path: ios/build/Screenshots
           if-no-files-found: warn

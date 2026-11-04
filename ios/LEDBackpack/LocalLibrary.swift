@@ -17,12 +17,20 @@ struct SavedMedia: Identifiable, Codable {
     var created = Date()
     var category: String?
     var favorite: Bool?
+    var cloudSource: MediaCloudSource?
     var categoryName: String {
         let value = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return value.isEmpty ? "Uncategorized" : value
     }
     var isFavorite: Bool { favorite == true }
     var filename: String { id.uuidString + ".gif" }
+}
+
+struct MediaCloudSource: Codable, Equatable {
+    let server: String
+    let accountID: UUID?
+    let itemID: UUID
+    let assetURL: String
 }
 
 struct SavedPlaylist: Identifiable, Codable {
@@ -125,6 +133,39 @@ final class LocalLibrary: ObservableObject {
     }
 
     func add(name: String, data: Data, attribution: Attribution? = nil, category: String? = nil) throws {
+        _ = try store(name: name, data: data, attribution: attribution, category: category, cloudSource: nil)
+    }
+
+    @discardableResult
+    func saveCatalogGIF(_ data: Data, item: CommunityItem, origin: CommunityOrigin, accountID: UUID?,
+        assetURL: URL) throws -> SavedMedia {
+        guard origin.contains(assetURL), assetURL.path.hasPrefix("/media/") else {
+            throw BackpackError.invalid("The GIF source does not belong to this catalog.")
+        }
+        let source = MediaCloudSource(server: origin.url.absoluteString, accountID: accountID,
+            itemID: item.id, assetURL: assetURL.absoluteString)
+        if let existing = state.media.first(where: { $0.cloudSource == source }) {
+            _ = try self.data(existing)
+            return existing
+        }
+        let category = CommunityCategory(rawValue: item.category)?.label ?? item.category
+        return try store(name: item.title, data: data, attribution: item.credit, category: category, cloudSource: source)
+    }
+
+    func connectCloudCopy(mediaID: UUID, itemID: UUID, origin: CommunityOrigin, accountID: UUID) throws {
+        guard let index = state.media.firstIndex(where: { $0.id == mediaID }) else {
+            throw BackpackError.invalid("Cloud upload succeeded, but the local artwork was removed. Refresh the cloud library.")
+        }
+        let assetURL = origin.url.appendingPathComponent("media")
+            .appendingPathComponent(itemID.uuidString.lowercased()).appendingPathComponent("original.gif")
+        var value = state
+        value.media[index].cloudSource = MediaCloudSource(server: origin.url.absoluteString,
+            accountID: accountID, itemID: itemID, assetURL: assetURL.absoluteString)
+        try commit(value)
+    }
+
+    private func store(name: String, data: Data, attribution: Attribution?, category: String?,
+        cloudSource: MediaCloudSource?) throws -> SavedMedia {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               state.media.count < 100, data.count <= 5_000_000 else {
             throw BackpackError.invalid("Provide a name; the library allows 100 items up to 5 MB each.")
@@ -136,6 +177,7 @@ final class LocalLibrary: ObservableObject {
         _ = try MediaCodec.decode(data)
         var item = SavedMedia(name: String(name.prefix(100)), attribution: attribution)
         item.category = normalized
+        item.cloudSource = cloudSource
         let url = folder.appendingPathComponent(item.filename)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         var value = state; value.media.insert(item, at: 0)
@@ -145,6 +187,7 @@ final class LocalLibrary: ObservableObject {
             catch { throw BackpackError.invalid("Library save and cleanup failed: \(error.localizedDescription)") }
             throw error
         }
+        return item
     }
 
     func delete(_ item: SavedMedia) throws {
@@ -263,7 +306,13 @@ final class LocalLibrary: ObservableObject {
             guard total <= 40_000_000 else { throw BackpackError.invalid("Backup exceeds 40 MB. Export fewer assets first.") }
             files[item.filename] = bytes
         }
-        return try JSONEncoder().encode(LibraryBackup(state: state, files: files))
+        var exported = state
+        exported.media = state.media.map { item in
+            var value = item
+            value.cloudSource = nil
+            return value
+        }
+        return try JSONEncoder().encode(LibraryBackup(state: exported, files: files))
     }
 
     func importBackup(_ data: Data) throws {

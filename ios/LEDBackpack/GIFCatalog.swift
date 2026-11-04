@@ -108,6 +108,8 @@ struct GIFGallery: View {
                 }.padding(20)
             }
             .modernScene().navigationTitle("Find GIFs")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search licensed GIFs")
+            .onSubmit(of: .search) { search() }
             .toolbar { Button("Done") { dismiss() } }
             .task { if !catalog.searched { search() } }
             .onChange(of: topic) { _, _ in search() }
@@ -118,8 +120,6 @@ struct GIFGallery: View {
 
     private var searchControls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Search licensed GIFs", text: $query)
-                .textFieldStyle(.roundedBorder).submitLabel(.search).onSubmit { search() }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(GIFTopic.allCases) { choice in
@@ -128,7 +128,6 @@ struct GIFGallery: View {
                     }
                 }
             }
-            Button("Search") { search() }.buttonStyle(.borderedProminent)
             Text("Browse Wikimedia Commons by category. Tap a preview to animate, review its license and open it in GIF Studio.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -165,6 +164,7 @@ struct GIFGallery: View {
 
 @MainActor
 private struct GIFDetails: View {
+    @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var link: BluetoothLink
     @Environment(\.dismiss) private var dismiss
     let item: GIFResult
@@ -174,6 +174,7 @@ private struct GIFDetails: View {
     @State private var failure: String?
     @State private var retry = 0
     @State private var frameCount: Int?
+    @State private var saved = false
     private var canEdit: Bool { data != nil && frameCount.map { $0 <= 120 } == true }
 
     var body: some View {
@@ -197,7 +198,15 @@ private struct GIFDetails: View {
                     Text("\(item.attribution.author)\n\(item.attribution.license)").font(.subheadline)
                     Link("Review source and license", destination: item.page)
                     if let category { Label(category, systemImage: "folder") }
-                    Button("Edit and save to library") {
+                    Button(saved ? "Saved on this iPhone" : "Save to my library") {
+                        do {
+                            guard let data else { throw BackpackError.invalid("Wait for the GIF download to finish.") }
+                            try GIFPreviewDecoder.validateOriginal(data)
+                            try library.add(name: item.title, data: data, attribution: item.attribution, category: category)
+                            saved = true
+                        } catch { failure = error.localizedDescription }
+                    }.buttonStyle(.borderedProminent).disabled(!canEdit || saved)
+                    Button("Customize a copy") {
                         do {
                             guard let data else { throw BackpackError.invalid("Wait for the GIF download to finish.") }
                             try GIFPreviewDecoder.validateOriginal(data)
@@ -206,7 +215,7 @@ private struct GIFDetails: View {
                             failure = error.localizedDescription
                             link.note("GIF import unavailable: \(error.localizedDescription)")
                         }
-                    }.buttonStyle(.borderedProminent).disabled(!canEdit)
+                    }.buttonStyle(.bordered).disabled(!canEdit)
                     Text("The editor supports up to 120 frames. Imported credits are retained; saving creates a local copy and never changes the backpack automatically.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(20)

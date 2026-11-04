@@ -15,6 +15,7 @@ built with SwiftUI and Core Bluetooth.
 - Animated GIF previews, custom library categories, search and favorites.
 - Optional self-hosted community browsing and native accounts with in-app deletion.
 - In-app community GIF sharing and on-device video-to-GIF conversion.
+- Guest browsing/offline saves and one library for local and private cloud copies.
 - Live GPS, weather, supported system Music metadata and optional fun screens.
 - Custom live themes, animated ink, gauges and saved presets.
 - One-tap scenes combining live displays or stored playlists with brightness.

@@ -177,7 +177,19 @@ struct CommunityUploadView: View {
         busy = true; failure = nil
         Task {
             defer { busy = false }
-            do { submitted = try await community.uploadGIF(library.data(item), metadata: metadata) }
+            do {
+                if community.user == nil { try await community.refreshUser() }
+                guard let owner = community.user?.id, let origin = community.origin else {
+                    throw BackpackError.invalid("Sign in before saving a cloud copy.")
+                }
+                let revision = community.accountRevision
+                let uploaded = try await community.uploadGIF(library.data(item), metadata: metadata)
+                submitted = uploaded
+                guard community.accountRevision == revision else {
+                    throw BackpackError.invalid("Cloud copy was uploaded, but the account changed before it could be linked locally.")
+                }
+                try library.connectCloudCopy(mediaID: item.id, itemID: uploaded.id, origin: origin, accountID: owner)
+            }
             catch { failure = "\(error.localizedDescription) If the connection ended after sending, check My uploads before retrying." }
         }
     }

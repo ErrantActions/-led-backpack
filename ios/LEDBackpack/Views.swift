@@ -49,12 +49,11 @@ struct RootView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var panel: PanelController
     var body: some View {
-        TabView {
-            DeviceView().tabItem { Label("Backpack", systemImage: "backpack") }
-            LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }
-            StudioView().tabItem { Label("Studio", systemImage: "paintbrush.pointed") }
-            LiveView().tabItem { Label("Live", systemImage: "waveform.path") }
-            SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }
+        TabView(selection: $app.selectedTab) {
+            LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
+            DeviceView().tabItem { Label("Backpack", systemImage: "backpack") }.tag(AppTab.backpack)
+            CreateView().tabItem { Label("Create", systemImage: "paintbrush.pointed") }.tag(AppTab.create)
+            LiveView().tabItem { Label("Live", systemImage: "waveform.path") }.tag(AppTab.live)
         }
         .disabled(app.applyingSceneID != nil)
         .alert("LED Backpack", isPresented: Binding(get: { panel.errorMessage != nil },
@@ -77,48 +76,56 @@ struct DeviceView: View {
     @State private var disablePassword = false
     @State private var selectedDelete: Int?
     @State private var showingDelete = false
+    @State private var settings = false
+
+    private var connectionSection: some View {
+        Section {
+            Label(link.state, systemImage: link.connected ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
+                .foregroundStyle(link.connected ? .green : .secondary)
+            if let identity = panel.identity {
+                LabeledContent("Model", value: identity.model)
+                LabeledContent("Firmware", value: identity.firmware)
+            }
+            if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
+            if link.connected {
+                Button("Refresh status") { app.run { try await panel.refresh() } }.disabled(panel.busy || panel.hasDisplayOwner)
+                Button("Disconnect", role: .destructive) {
+                    app.run { await live.stop(); await app.playlist.stop(); link.disconnect() }
+                }
+            } else {
+                Button("Scan for backpacks") { app.run { try link.scan() } }.buttonStyle(.borderedProminent)
+                DisclosureGroup("Discovery options") { Toggle("Show all BLE devices", isOn: $link.showAll) }
+                ForEach(link.nearby) { item in
+                    Button { app.run { try await app.connect(item.id) } } label: {
+                        HStack { Text(item.name); Spacer(); Text("\(item.rssi) dBm").foregroundStyle(.secondary) }
+                    }
+                }
+            }
+        } header: { Text("Connection") } footer: {
+            Text("Keep the backpack powered on. Disconnect the original app or another phone before scanning.")
+        }
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                connectionSection
+                if !link.connected {
                 Section {
                     BackpackHero(connected: link.connected,
                         size: panel.size.map { "\($0.width) x \($0.height) / STOCK FIRMWARE" } ?? "INDEPENDENT LED CONTROL")
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
+                }
+                if link.connected {
                 Section {
                     BackpackMonitor().listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 }
                 QuickScenes()
-                Section {
-                    Label(link.state, systemImage: link.connected ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
-                        .foregroundStyle(link.connected ? .green : .secondary)
-                    if let identity = panel.identity {
-                        LabeledContent("Model", value: identity.model)
-                        LabeledContent("Firmware", value: identity.firmware)
-                    }
-                    if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
-                    if link.connected {
-                        Button("Refresh status") { app.run { try await panel.refresh() } }.disabled(panel.busy || panel.hasDisplayOwner)
-                        Button("Disconnect", role: .destructive) {
-                            app.run { await live.stop(); await app.playlist.stop(); link.disconnect() }
-                        }
-                    } else {
-                        Toggle("Show all BLE devices", isOn: $link.showAll)
-                        Button("Scan for backpacks") { app.run { try link.scan() } }
-                        ForEach(link.nearby) { item in
-                            Button {
-                                app.run { try await app.connect(item.id) }
-                            } label: {
-                                HStack { Text(item.name); Spacer(); Text("\(item.rssi) dBm").foregroundStyle(.secondary) }
-                            }
-                        }
-                    }
-                } header: { Text("Connection") } footer: {
-                    Text("Use the backpack's power brick. Disconnect other phone/Windows clients first. No pairing or vendor account is normally required.")
                 }
                 Section("Panel authentication") {
+                    DisclosureGroup("Panel password and compatibility") {
                     SecureField("Existing panel password", text: $panel.password)
                     Toggle("Legacy identity request", isOn: $panel.legacyInit)
                     Toggle("Remember on this iPhone", isOn: $panel.rememberPassword)
@@ -128,6 +135,7 @@ struct DeviceView: View {
                             try app.rememberPassword()
                         }
                     }.disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
+                    }
                 }
                 Section("Display controls") {
                     HStack {
@@ -143,9 +151,11 @@ struct DeviceView: View {
                     Button("Apply rotation") { app.run { try await panel.rotate(rotation) } }
                 }.disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
                 Section {
+                    DisclosureGroup("Change backpack lock") {
                     SecureField("New panel password", text: $newPassword)
                     Button("Change panel password") { disablePassword = false; confirmPassword = true }
                     Button("Disable panel password", role: .destructive) { disablePassword = true; confirmPassword = true }
+                    }
                 } header: { Text("Panel lock") } footer: {
                     Text("Changing this affects the backpack, not an app account. There is no cloud password recovery. Save your password securely.")
                 }.disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
@@ -167,6 +177,8 @@ struct DeviceView: View {
                 }.disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
             }.modernScene()
             .navigationTitle("LED Backpack")
+            .toolbar { Button("Settings", systemImage: "gearshape") { settings = true } }
+            .sheet(isPresented: $settings) { SettingsView() }
             .confirmationDialog(disablePassword ? "Disable the panel password?" : "Change the panel password?", isPresented: $confirmPassword) {
                 Button("Apply to backpack", role: .destructive) {
                     app.run {
@@ -191,6 +203,13 @@ struct LibraryView: View {
     @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var runner: PlaylistRunner
+    @EnvironmentObject private var community: CommunityController
+    @StateObject private var cloud = CloudLibraryStore()
+    @State private var scope = LibraryScope.all
+    @State private var cloudSelection: CommunityCloudItem?
+    @State private var accountSheet = false
+    @State private var pendingCloudSave: SavedMedia?
+    @State private var settingsSheet = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedVideo: PhotosPickerItem?
     @State private var importingVideo = false
@@ -215,12 +234,9 @@ struct LibraryView: View {
     @State private var uploading = false
     @State private var deletion = false
     @State private var previewData: Data?
+    @State private var previewTitle = "Artwork"
     @State private var exporting = false
     @State private var exportDocument: BinaryDocument?
-    @State private var playlistName = ""
-    @State private var playlistSlots = ""
-    @State private var editingPlaylist: SavedPlaylist?
-    @State private var repeatPlaylist = true
     @State private var useDwell = false
     @State private var dwell = 10
 
@@ -231,6 +247,7 @@ struct LibraryView: View {
     private var filteredMedia: [SavedMedia] {
         let query = libraryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         return library.state.media.filter { item in
+            (scope != .cloud || cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) != nil) &&
             (!favoritesOnly || item.isFavorite) &&
             (selectedCategory.isEmpty || item.categoryName == selectedCategory) &&
             (query.isEmpty || item.name.localizedCaseInsensitiveContains(query) ||
@@ -239,83 +256,104 @@ struct LibraryView: View {
     }
 
     private var categoryChoices: [String] {
-        Array(Set((library.mediaCategories + ["Uncategorized", selectedCategory]).filter { !$0.isEmpty })).sorted()
+        let remote = cloud.items.map { CommunityCategory(rawValue: $0.item.category)?.label ?? $0.item.category }
+        return Array(Set((library.mediaCategories + remote + ["Uncategorized", selectedCategory]).filter { !$0.isEmpty })).sorted()
     }
 
     private var libraryList: some View {
         List {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        StatusPill(title: "YOUR COLLECTION", symbol: "square.stack.3d.up")
-                        Text("Small screen.\nBig energy.").font(.system(.largeTitle, design: .rounded, weight: .bold)).tracking(-1)
-                        Text("Make a little room for a lot of personality.").foregroundStyle(.secondary)
-                    }.padding(22).glassPanel()
-                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
-                }
-                Section("Add artwork") {
-                    PhotosPicker("Choose photo or GIF", selection: $selectedPhoto, matching: .images)
-                    PhotosPicker("Convert video from Photos", selection: $selectedVideo, matching: .videos)
-                        .disabled(videoImporting)
-                    Button("Convert video file to GIF") { importingVideo = true }.disabled(videoImporting)
-                    if videoImporting { ProgressView("Importing video...") }
-                    Button("Import image / animated GIF file") { importing = true }
-                    Button("Search licensed GIFs") { gallery = true }
-                    Button("Browse community catalog") { communityGallery = true }
-                }
-                Section("Browse your collection") {
-                    TextField("Search saved artwork", text: $libraryQuery)
+            libraryHeader
+            libraryArtwork
+            Section {
+                NavigationLink { PlaylistCollection() } label: { Label("Playlists", systemImage: "rectangle.stack") }
+                NavigationLink { ScenesView() } label: { Label("Scenes", systemImage: "square.stack.3d.up") }
+            }
+        }
+        .modernScene().navigationTitle("Library")
+        .searchable(text: $libraryQuery, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search your artwork")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { accountSheet = true } label: { Image(systemName: community.signedIn ? "person.crop.circle.fill" : "person.crop.circle") }
+                    .accessibilityLabel("Catalog account")
+            }
+            ToolbarItem(placement: .topBarTrailing) { importMenu }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
                     Picker("Category", selection: $selectedCategory) {
                         Text("All categories").tag("")
                         ForEach(categoryChoices, id: \.self) { Text($0).tag($0) }
                     }
                     Toggle("Favorites only", isOn: $favoritesOnly)
+                    Button("Settings") { settingsSheet = true }
+                } label: { Image(systemName: "line.3.horizontal.decrease") }
+                    .accessibilityLabel("Filter library")
+            }
+        }
+        .task(id: community.accountRevision) { await cloud.refresh(community) }
+        .onChange(of: community.accountRevision) { _, _ in cloudSelection = nil }
+        .refreshable { await cloud.refresh(community) }
+    }
+
+    private var libraryHeader: some View {
+        Section {
+            Picker("Library location", selection: $scope) {
+                ForEach(LibraryScope.allCases) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented)
+            HStack(spacing: 16) {
+                Button { communityGallery = true } label: { Label("Discover GIFs", systemImage: "sparkle.magnifyingglass") }
+                Spacer()
+                Button { gallery = true } label: { Label("Commons", systemImage: "globe") }.font(.subheadline)
+            }.buttonStyle(.borderless)
+            if !community.signedIn {
+                Text("Browse and save GIFs freely. Sign in only when you want cloud storage or community actions.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if scope == .cloud { Button("Sign in for your cloud library") { accountSheet = true } }
+            }
+            if videoImporting { ProgressView("Importing video...") }
+        }
+    }
+
+    private var libraryArtwork: some View {
+        Section {
+            ForEach(filteredMedia) { item in
+                let connected = cloud.connectedItem(item, origin: community.origin, owner: community.user?.id)
+                LibraryMediaRow(item: item, cloudStatus: connected?.visibility) { action in handle(action, item: item) }
+            }
+            if scope != .device {
+                ForEach(filteredCloud) { item in CloudArtworkRow(cloud: item) { cloudSelection = item } }
+                if cloud.loading { ProgressView("Updating cloud library...") }
+                if cloud.nextPage != nil {
+                    Button("Load more cloud artwork") { Task { await cloud.loadMore(community) } }.disabled(cloud.loading)
                 }
-                Section("Local media (\(filteredMedia.count))") {
-                    ForEach(filteredMedia) { item in
-                        LibraryMediaRow(item: item) { action in handle(action, item: item) }
-                    }
-                    if filteredMedia.isEmpty {
-                        Text(library.state.media.isEmpty ? "Save artwork from the editor or GIF search." : "No artwork matches these filters.")
-                            .foregroundStyle(.secondary)
-                    }
+                if let failure = cloud.failure {
+                    Label(failure, systemImage: "icloud.slash").font(.caption).foregroundStyle(.orange)
+                    Button("Retry cloud refresh") { Task { await cloud.refresh(community) } }
                 }
-                Section("Local playlists") {
-                    Toggle("Repeat app-driven sequence", isOn: $repeatPlaylist)
-                    if runner.running {
-                        Text(runner.status)
-                        Button("Stop timed sequence & restore", role: .destructive) { app.run { await runner.stop() } }
-                    }
-                    TextField("Playlist name", text: $playlistName)
-                    TextField("Slot IDs, e.g. 2,4,7", text: $playlistSlots).keyboardType(.numbersAndPunctuation)
-                    Button("Save playlist") {
-                        app.run {
-                            let tokens = playlistSlots.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                            let ids = tokens.compactMap(Int.init)
-                            guard ids.count == tokens.count else { throw BackpackError.invalid("Use comma-separated slot numbers.") }
-                            try library.savePlaylist(name: playlistName, slots: ids)
-                            playlistName = ""; playlistSlots = ""
-                        }
-                    }
-                    ForEach(library.state.playlists) { playlist in
-                        VStack(alignment: .leading) {
-                            Text(playlist.name).font(.headline)
-                            Text(playlist.slots.map(String.init).joined(separator: ", ")).font(.caption)
-                            Menu("Playlist actions") {
-                                Button("Loop on backpack") { app.run { try await panel.play(list: playlist.slots) } }
-                                    .disabled(!app.link.connected || panel.busy || panel.hasDisplayOwner)
-                                Button("Timed sequence") { app.run { try await runner.start(playlist, repeatPlaylist: repeatPlaylist) } }
-                                    .disabled(!app.link.connected || panel.busy || panel.hasDisplayOwner)
-                                Button("Timing") { editingPlaylist = playlist }
-                                Button("Remove list", role: .destructive) {
-                                    app.run { try library.removePlaylist(playlist.id) }
-                                }
-                                Text("Loop on backpack uses stored GIF/program timing and can continue without the app. Timed sequence uses per-item app durations, requires the foreground, and stops/restores when backgrounded. Edit order by saving a new slot list.")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-        }.modernScene().navigationTitle("Library")
+            }
+            if filteredMedia.isEmpty && (scope == .device || filteredCloud.isEmpty) && !cloud.loading {
+                ContentUnavailableView("Make this space yours", systemImage: "photo.on.rectangle.angled",
+                    description: Text("Discover a GIF or use + to import artwork. Local copies are always available offline."))
+            }
+        }
+    }
+
+    private var filteredCloud: [CommunityCloudItem] {
+        guard !favoritesOnly else { return [] }
+        let query = libraryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cloud.cloudOnly(local: library.state.media, origin: community.origin, owner: community.user?.id).filter {
+            (selectedCategory.isEmpty || CommunityCategory(rawValue: $0.item.category)?.label == selectedCategory ||
+                $0.item.category == selectedCategory) &&
+            (query.isEmpty || $0.item.title.localizedCaseInsensitiveContains(query) || $0.item.category.localizedCaseInsensitiveContains(query))
+        }
+    }
+
+    private var importMenu: some View {
+        Menu {
+            PhotosPicker("Photo or GIF", selection: $selectedPhoto, matching: .images)
+            Button("Image or GIF file") { importing = true }
+            PhotosPicker("Video from Photos", selection: $selectedVideo, matching: .videos).disabled(videoImporting)
+            Button("Video file to GIF") { importingVideo = true }.disabled(videoImporting)
+        } label: { Image(systemName: "plus") }.accessibilityLabel("Add artwork")
     }
 
     private var importingContent: some View {
@@ -397,13 +435,21 @@ struct LibraryView: View {
                     openEditorAfterGallery = true; communityGallery = false
                 }
             }
-            .sheet(item: $editingPlaylist) { PlaylistTimingEditor($0) }
+            .sheet(isPresented: $accountSheet, onDismiss: {
+                let pending = pendingCloudSave
+                pendingCloudSave = nil
+                if community.signedIn { sharing = pending }
+            }) {
+                NavigationStack { CommunityAccountView().toolbar { Button("Done") { accountSheet = false } } }
+            }
+            .sheet(isPresented: $settingsSheet) { SettingsView() }
+            .sheet(item: $cloudSelection, onDismiss: { Task { await cloud.refresh(community) } }) { CloudArtworkDetail(cloud: $0) }
             .sheet(item: $organizing) { MediaOrganizer(item: $0) }
-            .sheet(item: $sharing) { CommunityUploadView(item: $0) }
+            .sheet(item: $sharing, onDismiss: { Task { await cloud.refresh(community) } }) { CommunityUploadView(item: $0) }
             .sheet(isPresented: Binding(get: { previewData != nil }, set: { if !$0 { previewData = nil } })) {
                 NavigationStack {
                     if let data = previewData {
-                        AnimatedPreview(data: data).navigationTitle("Local preview")
+                        AnimatedPreview(data: data).navigationTitle(previewTitle)
                             .toolbar { Button("Done") { previewData = nil } }
                     }
                 }
@@ -447,7 +493,7 @@ struct LibraryView: View {
 
     private func handle(_ action: LibraryMediaRow.Action, item: SavedMedia) {
         switch action {
-        case .preview: app.run { previewData = try library.data(item) }
+        case .preview: app.run { previewTitle = item.name; previewData = try library.data(item) }
         case .edit:
             app.run {
                 editorData = try library.data(item)
@@ -455,7 +501,11 @@ struct LibraryView: View {
                 editorName = "\(item.name) edited"; editor = true
             }
         case .send: selected = item; uploading = true
-        case .share: sharing = item
+        case .share:
+            if !community.signedIn { pendingCloudSave = item; accountSheet = true }
+            else if let connected = cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) {
+                cloudSelection = connected
+            } else { sharing = item }
         case .export:
             app.run { exportDocument = BinaryDocument(data: try library.data(item)); exporting = true }
         case .organize: organizing = item

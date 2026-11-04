@@ -9,7 +9,7 @@ an explicit upload confirmation. It does not submit an App Store release or
 request external beta distribution. First get a passing regular
 **LED Backpack iOS** workflow.
 
-Native validation runs once per app revision. A lightweight Linux gate reuses
+ A lightweight Linux gate reuses
 a successful main-branch push/manual CI run only when the app, tests, protocol
 package, project, Info.plist and native CI workflow are unchanged. Documentation
 and signing-only changes do not rebuild the simulator app. TestFlight still
@@ -17,13 +17,11 @@ creates the required signed device archive, but never repeats simulator tests.
 Keep the native workflow's path filters and the release gate's protected paths
 in sync when adding build inputs.
 
-Both manual workflows offer a runner choice. Prefer `macos-latest`; if GitHub
-fails to allocate an ARM runner before any steps start, use the documented
-`macos-15-intel` fallback instead of launching parallel retries. Run native
-validation once on that pool, then select the same pool for the release archive.
-The workflow prints the actual Xcode/SDK; an older SDK is not Duo qualification.
-Both native and release workflows select the newest installed stable Xcode,
-excluding beta/preview names, rather than relying on an image's older default.
+Both workflows use the documented `xcode-27` hosted image and exactly
+`/Applications/Xcode_27.1.app`. They verify the iOS 27.1 SDK and fail early
+instead of silently falling back to an older SDK. Native validation uses the
+iOS 27.1 iPhone Duo simulator. Review the exported layout screenshots before
+releasing; simulator/rotation checks alone do not prove physical fold behavior.
 
 ## 1. Register the app with Apple
 
@@ -32,8 +30,9 @@ In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/re
 1. Register an explicit App ID for **`com.errantactions.ledbackpack`**.
 2. Use the same Apple Developer team that will sign the build.
 3. This implementation does not need push-notification, iCloud, associated
-   domain, or other paid-service entitlements. Bluetooth/location background
-   modes and privacy strings are in the app's Info.plist.
+   domain, or CloudKit entitlements. Native Apple login requires **Sign in with
+   Apple** on this App ID and the committed `LEDBackpack.entitlements`.
+   Bluetooth/location background modes and privacy strings are in Info.plist.
 
 In [App Store Connect](https://appstoreconnect.apple.com/apps):
 
@@ -94,6 +93,9 @@ In Apple's Profiles section:
 3. Select the matching Apple Distribution certificate from step 2.
 4. Name it, e.g. **LED Backpack App Store**.
 5. Download its `.mobileprovision`.
+6. If Sign in with Apple was added afterward, regenerate the profile before
+   configuring CI. The signing helper requires that capability; an old profile
+   will not sign the updated app. The distribution certificate can be reused.
 
 Do not use a Development, Ad Hoc, enterprise or wildcard profile.
 The CI helper checks the team, exact application identifier, expiration, and

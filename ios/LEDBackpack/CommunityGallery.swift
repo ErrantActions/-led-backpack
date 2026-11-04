@@ -15,7 +15,7 @@ struct CommunityGallery: View {
     let choose: (Data, Attribution, String?, String) -> Void
     @State private var query = ""
     @State private var appliedQuery = ""
-    @State private var category = "memes"
+    @State private var category = ""
     @State private var reload = UUID()
     @State private var items: [CommunityItem] = []
     @State private var page = 1
@@ -49,6 +49,12 @@ struct CommunityGallery: View {
                         if let failure {
                             Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                             Button("Refresh results") { reload = UUID() }
+                            if community.signedIn {
+                                Button("Continue browsing as a guest") {
+                                    do { try community.forgetLocalSession(); reload = UUID() }
+                                    catch { self.failure = error.localizedDescription }
+                                }
+                            }
                         }
                         results
                         if loading { ProgressView("Loading community GIFs...") }
@@ -68,6 +74,8 @@ struct CommunityGallery: View {
                 }.padding(20)
             }
             .modernScene().navigationTitle("Community")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search GIFs")
+            .onSubmit(of: .search) { appliedQuery = query; reload = UUID() }
             .toolbar { Button("Done") { dismiss() } }
             .task(id: filter) { moreTask?.cancel(); await load(reset: true) }
             .onDisappear { moreTask?.cancel() }
@@ -80,24 +88,22 @@ struct CommunityGallery: View {
     }
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Search community GIFs", text: $query).textFieldStyle(.roundedBorder)
-                .submitLabel(.search).onSubmit { appliedQuery = query; reload = UUID() }
-            Picker("Category", selection: $category) {
-                Text("All categories").tag("")
-                ForEach(CommunityCategory.allCases) { Text($0.label).tag($0.rawValue) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    Button("All GIFs") { category = "" }.buttonStyle(.bordered).tint(category.isEmpty ? .cyan : .gray)
+                    ForEach(CommunityCategory.allCases) { value in
+                        Button(value.label) { category = value.rawValue }
+                            .buttonStyle(.bordered).tint(category == value.rawValue ? .cyan : .gray)
+                    }
+                }
             }
             HStack {
-                Button("Search") { appliedQuery = query; reload = UUID() }.buttonStyle(.borderedProminent)
+                Text("Find it. Save it. Make it yours.").font(.headline)
                 Spacer()
                 NavigationLink(community.signedIn ? "Account" : "Sign in") { CommunityAccountView() }
             }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
-            if let url = community.origin?.url {
-                if community.signedIn { NavigationLink("My uploads") { CommunityUploadsView() } }
-                Link("Open moderation portal", destination: url)
-                Text("Upload privately from Library > Actions, then explicitly submit for sharing in My uploads. Deleting your account removes all GIFs you contributed, including approved shared work; other users' independent copies are separate. Download permission alone does not grant permission to rehost.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            Text("No account needed to preview or keep a local copy.").font(.caption).foregroundStyle(.secondary)
         }
     }
     private var results: some View {
@@ -140,6 +146,7 @@ struct CommunityGallery: View {
 private struct CommunityDetail: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var panel: PanelController
+    @EnvironmentObject private var library: LocalLibrary
     @Environment(\.dismiss) private var dismiss
     let item: CommunityItem
     let choose: (Data, Attribution, String?, String) -> Void
@@ -150,6 +157,10 @@ private struct CommunityDetail: View {
     @State private var busy = false
     @State private var reason = ""
     @State private var retry = 0
+    @State private var loadedURL: URL?
+    @State private var loadedOrigin: CommunityOrigin?
+    @State private var saved = false
+    @State private var reporting = false
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -163,29 +174,56 @@ private struct CommunityDetail: View {
                     if item.pageUrl.scheme == "https" { Link("Attribution and license page", destination: item.pageUrl) }
                     if let failure { Text(failure).foregroundStyle(.orange) }
                     if let message { Text(message).font(.caption) }
-                    Button("Edit and save locally") {
+                    Button(saved ? "Saved on this iPhone" : "Save to my library") {
+                        do {
+                            guard let bytes, let loadedURL, let loadedOrigin else {
+                                throw BackpackError.invalid("Wait for the preview to load.")
+                            }
+                            try library.saveCatalogGIF(bytes, item: item, origin: loadedOrigin, accountID: nil, assetURL: loadedURL)
+                            saved = true
+                            message = "Available offline in Library. No account needed."
+                        } catch { failure = error.localizedDescription }
+                    }.buttonStyle(.borderedProminent).disabled(bytes == nil || busy || saved)
+                    Button("Customize a copy") {
                         if let bytes {
                             let category = CommunityCategory(rawValue: item.category)?.label ?? item.category
                             choose(bytes, item.credit, category, item.title)
                         }
-                    }.buttonStyle(.borderedProminent).disabled(bytes == nil || busy)
+                    }.buttonStyle(.bordered).disabled(bytes == nil || busy)
                     Button("Reload preview") { retry += 1 }.disabled(busy)
                     moderation
                 }.padding(20)
             }.modernScene().navigationTitle("Community GIF")
                 .toolbar { Button("Back") { dismiss() } }
                 .task(id: retry) {
-                    bytes = nil; failure = nil
+                    bytes = nil; loadedURL = nil; loadedOrigin = nil; failure = nil; saved = false
                     do {
+                        guard let origin = community.origin else { throw BackpackError.invalid("No catalog is configured.") }
                         let target = panel.size ?? PanelSize(width: 64, height: 64)
                         let variant = item.variants.first { $0.width == target.width && $0.height == target.height }
-                        let data = try await community.download(variant?.url ?? item.gifUrl)
+                        let assetURL = variant?.url ?? item.gifUrl
+                        let data = try await community.download(assetURL)
                         try Task.checkCancellation()
                         try GIFPreviewDecoder.validateOriginal(data)
-                        bytes = data
+                        loadedURL = assetURL; loadedOrigin = origin; bytes = data
                     } catch {
                         guard !Task.isCancelled else { return }
                         failure = error.localizedDescription
+                    }
+                    .sheet(isPresented: $reporting) {
+                        NavigationStack {
+                            Form {
+                                TextField("Describe the concern", text: $reason, axis: .vertical)
+                                Button("Send report") {
+                                    perform {
+                                        try await community.report(item.id, reason: reason)
+                                        message = "Report sent to admins."; reporting = false; reason = ""
+                                    }
+                                }.disabled(busy || reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
+                                if let failure { Text(failure).foregroundStyle(.orange) }
+                            }.modernScene().navigationTitle("Report GIF")
+                                .toolbar { Button("Cancel") { reporting = false }.disabled(busy) }
+                        }
                     }
                 }
         }
@@ -199,9 +237,7 @@ private struct CommunityDetail: View {
                         message = "\(count) likes."
                     }
                 }
-                TextField("Report concern (4-1000 characters)", text: $reason, axis: .vertical)
-                Button("Send report") { perform { try await community.report(item.id, reason: reason); message = "Report sent to moderators." } }
-                    .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
+                Button("Report this GIF") { reporting = true }
                 if let user = community.user, let uploaderID = item.uploader.id, user.id != uploaderID {
                     Button("Block this uploader", role: .destructive) {
                         perform {
