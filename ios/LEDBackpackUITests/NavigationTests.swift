@@ -4,7 +4,15 @@ final class NavigationTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     override func tearDownWithError() throws {
         let app = XCUIApplication()
-        if app.state == .runningForeground { attach(app, name: "Final native layout") }
+        if app.state == .runningForeground {
+            attach(app, name: "Final native layout")
+            if (testRun?.failureCount ?? 0) > 0 {
+                let hierarchy = XCTAttachment(string: app.debugDescription)
+                hierarchy.name = "Native accessibility hierarchy"
+                hierarchy.lifetime = .keepAlways
+                add(hierarchy)
+            }
+        }
     }
 
     func testGuestLibraryAndCreateLandingHaveNoPermanentEntryForms() throws {
@@ -44,7 +52,10 @@ final class NavigationTests: XCTestCase {
         app.keyboards.buttons["Go"].tap()
         let accountName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Rider")).firstMatch
         XCTAssertTrue(accountName.waitForExistence(timeout: 10))
-        let back = app.navigationBars["Catalog account"].buttons.firstMatch
+        let back = app.buttons.matching(NSPredicate(
+            format: "(label == 'Back' OR label == 'Library' OR label == 'Back to Library') AND selected == false"
+        )).firstMatch
+        attach(app, name: "Signed-in account - native vertical back rail")
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in back.exists && back.isEnabled && back.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
         attach(app, name: "Signed-in account - persistent system back navigation")
@@ -63,19 +74,19 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Cloud demo"].exists)
         app.buttons["All"].tap()
 
-        app.buttons.matching(identifier: "Create").firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Create"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Text to GIF"].exists)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Create - focused tool chooser")
 
-        app.buttons.matching(identifier: "Backpack").firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label == %@", "Backpack")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["LED Backpack"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Scan for backpacks"].isHittable)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Backpack - advanced fields collapsed")
 
-        app.buttons.matching(identifier: "Library").firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label == %@", "Library")).firstMatch.tap()
         returnToHeader(app)
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(app.buttons["Discover GIFs"].waitForExistence(timeout: 5))
