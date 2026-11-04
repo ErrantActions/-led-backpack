@@ -211,8 +211,13 @@ public enum Wire {
         ]
         for index in 0..<count {
             let chunk = Array(gif[(index * 960)..<min(gif.count, (index + 1) * 960)])
-            let prefix: [UInt8] = [0xC1, 2, 9, 1, 1, 12, 1, s, 13, 1, 0, 14, 1, 0, 18, 7]
-            messages.append(prefix + le16(count) + le16(index) + [0xC0, 3, 0, 19] + (try length(chunk.count)) + chunk)
+            var message: [UInt8] = [0xC1, 2, 9, 1, 1, 12, 1, s, 13, 1, 0, 14, 1, 0, 18, 7]
+            message.append(contentsOf: le16(count))
+            message.append(contentsOf: le16(index))
+            message.append(contentsOf: [0xC0, 3, 0, 19])
+            message.append(contentsOf: try length(chunk.count))
+            message.append(contentsOf: chunk)
+            messages.append(message)
         }
         messages.append([0xC1, 2, 0x35, 25, s, 19, 0, 0, 0] + (try contentHash(gif, slot: slot)))
         return messages
@@ -224,8 +229,15 @@ public enum Wire {
               mask.count == ((width + 7) / 8) * height, mask.count <= 112 else {
             throw BackpackError.invalid("Invalid bitmap bounds or mask.")
         }
-        return [0xC1, 2, 0x32] + le16(12 + mask.count) + color + le16(x) + le16(y)
-            + le16(x + width - 1) + le16(y + height - 1) + mask
+        var message: [UInt8] = [0xC1, 2, 0x32]
+        message.append(contentsOf: le16(12 + mask.count))
+        message.append(contentsOf: color)
+        message.append(contentsOf: le16(x))
+        message.append(contentsOf: le16(y))
+        message.append(contentsOf: le16(x + width - 1))
+        message.append(contentsOf: le16(y + height - 1))
+        message.append(contentsOf: mask)
+        return message
     }
 }
 

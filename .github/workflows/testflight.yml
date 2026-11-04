@@ -67,7 +67,12 @@ jobs:
           ruby -c fastlane/Fastfile
           ruby -c fastlane/signing.rb
           ruby -e 'abort("Invalid Apple build number") unless ENV.fetch("BUILD_NUMBER").match?(/\A[1-9]\d{0,3}(?:\.\d{1,2}){0,2}\z/); abort("Review export compliance and configure IOS_NON_EXEMPT_ENCRYPTION as true or false") unless %w[true false].include?(ENV.fetch("NON_EXEMPT_ENCRYPTION"))'
-          xcodebuild -version
+      - name: Select newest installed stable Xcode
+        run: |
+          XCODE=$(python3 -c 'import pathlib,re; apps=[(tuple(map(int,m.group(1).split("."))),str(p)) for p in pathlib.Path("/Applications").glob("Xcode_*.app") if (m:=re.fullmatch(r"Xcode_(\d+(?:\.\d+){1,2})\.app",p.name))]; assert apps, "No stable Xcode installation found"; print(max(apps)[1]+"/Contents/Developer")')
+          echo "DEVELOPER_DIR=$XCODE" >> "$GITHUB_ENV"
+      - name: Show release toolchain
+        run: xcodebuild -version
       - name: Generate project
         run: brew install xcodegen && xcodegen generate
       - uses: ruby/setup-ruby@v1

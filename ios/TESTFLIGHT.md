@@ -22,6 +22,8 @@ fails to allocate an ARM runner before any steps start, use the documented
 `macos-15-intel` fallback instead of launching parallel retries. Run native
 validation once on that pool, then select the same pool for the release archive.
 The workflow prints the actual Xcode/SDK; an older SDK is not Duo qualification.
+Both native and release workflows select the newest installed stable Xcode,
+excluding beta/preview names, rather than relying on an image's older default.
 
 ## 1. Register the app with Apple
 
