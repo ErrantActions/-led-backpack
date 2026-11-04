@@ -44,8 +44,6 @@ struct CommunitySettingsView: View {
 @MainActor
 struct CommunityAccountView: View {
     @EnvironmentObject private var community: CommunityController
-    @Environment(\.dismiss) private var dismiss
-    var showsDone = false
     @State private var linkingApple = false
     @State private var email = ""
     @State private var password = ""
@@ -54,6 +52,7 @@ struct CommunityAccountView: View {
     @State private var busy = false
     @State private var message: String?
     @State private var failure: String?
+    @State private var operationTask: Task<Void, Never>?
     private enum Field: Hashable { case email, password, displayName }
     @FocusState private var focusedField: Field?
 
@@ -77,18 +76,12 @@ struct CommunityAccountView: View {
         .navigationTitle("Catalog account")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbar {
-            if showsDone {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(busy) }
-            }
-        }
-        .interactiveDismissDisabled(busy)
         .task { await refresh() }
         .onChange(of: community.signedIn) { _, value in
             focusedField = nil
             if !value { email = ""; displayName = ""; password = ""; message = nil }
         }
-        .onDisappear { password = "" }
+        .onDisappear { operationTask?.cancel(); focusedField = nil; password = "" }
         .sheet(isPresented: $linkingApple) { AppleLinkAccountView() }
     }
 
@@ -204,8 +197,8 @@ struct CommunityAccountView: View {
     private func perform(_ action: @escaping @MainActor () async throws -> String?) {
         guard !busy else { return }
         busy = true; failure = nil; message = nil
-        Task {
-            defer { busy = false; password = "" }
+        operationTask = Task {
+            defer { busy = false; password = ""; operationTask = nil }
             do { message = try await action() }
             catch { failure = error.localizedDescription }
         }

@@ -339,6 +339,7 @@ final class CommunityController: ObservableObject {
         struct Body: Encodable { let email: String; let password: String; let transport = "bearer" }
         let body = try JSONEncoder().encode(Body(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password))
         let result = try JSONDecoder().decode(CommunityLogin.self, from: await request("auth/login", method: "POST", body: body, authenticated: false).data)
+        try Task.checkCancellation()
         try establishSession(result)
     }
     func establishSession(_ result: CommunityLogin, appleUser: String? = nil) throws {

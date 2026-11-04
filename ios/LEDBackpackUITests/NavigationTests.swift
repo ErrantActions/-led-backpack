@@ -44,10 +44,11 @@ final class NavigationTests: XCTestCase {
         app.keyboards.buttons["Go"].tap()
         let accountName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Rider")).firstMatch
         XCTAssertTrue(accountName.waitForExistence(timeout: 10))
-        let close = app.buttons["Done"]
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in close.exists && close.isEnabled && close.isHittable }, object: nil)
+        let back = app.navigationBars["Catalog account"].buttons.firstMatch
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in back.exists && back.isEnabled && back.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
-        app.buttons["Done"].tap()
+        attach(app, name: "Signed-in account - persistent system back navigation")
+        back.tap()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Night ride"].waitForExistence(timeout: 10))
         reveal(app.staticTexts["Cloud demo"], in: app)

@@ -207,7 +207,8 @@ struct LibraryView: View {
     @StateObject private var cloud = CloudLibraryStore()
     @State private var scope = LibraryScope.all
     @State private var cloudSelection: CommunityCloudItem?
-    @State private var accountSheet = false
+    @State private var showAccount = false
+    @State private var libraryVisible = false
     @State private var pendingCloudSave: SavedMedia?
     @State private var settingsSheet = false
     @State private var selectedPhoto: PhotosPickerItem?
@@ -273,7 +274,7 @@ struct LibraryView: View {
         .searchable(text: $libraryQuery, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search your artwork")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button { accountSheet = true } label: { Image(systemName: community.signedIn ? "person.crop.circle.fill" : "person.crop.circle") }
+                Button { showAccount = true } label: { Image(systemName: community.signedIn ? "person.crop.circle.fill" : "person.crop.circle") }
                     .accessibilityLabel("Catalog account")
             }
             ToolbarItem(placement: .topBarTrailing) { importMenu }
@@ -292,6 +293,19 @@ struct LibraryView: View {
         .task(id: community.accountRevision) { await cloud.refresh(community) }
         .onChange(of: community.accountRevision) { _, _ in cloudSelection = nil }
         .refreshable { await cloud.refresh(community) }
+        .navigationDestination(isPresented: $showAccount) { CommunityAccountView() }
+        .onAppear {
+            libraryVisible = true
+            resumeCloudSave()
+        }
+        .onDisappear { libraryVisible = false }
+        .onChange(of: showAccount) { _, value in if !value { resumeCloudSave() } }
+    }
+
+    private func resumeCloudSave() {
+        guard libraryVisible, !showAccount, let pending = pendingCloudSave else { return }
+        pendingCloudSave = nil
+        if community.signedIn { sharing = pending }
     }
 
     private var libraryHeader: some View {
@@ -307,7 +321,7 @@ struct LibraryView: View {
             if !community.signedIn {
                 Text("Browse and save GIFs freely. Sign in only when you want cloud storage or community actions.")
                     .font(.caption).foregroundStyle(.secondary)
-                if scope == .cloud { Button("Sign in for your cloud library") { accountSheet = true } }
+                if scope == .cloud { Button("Sign in for your cloud library") { showAccount = true } }
             }
             if videoImporting { ProgressView("Importing video...") }
         }
@@ -435,13 +449,6 @@ struct LibraryView: View {
                     openEditorAfterGallery = true; communityGallery = false
                 }
             }
-            .sheet(isPresented: $accountSheet, onDismiss: {
-                let pending = pendingCloudSave
-                pendingCloudSave = nil
-                if community.signedIn { sharing = pending }
-            }) {
-                NavigationStack { CommunityAccountView(showsDone: true) }
-            }
             .sheet(isPresented: $settingsSheet) { SettingsView() }
             .sheet(item: $cloudSelection, onDismiss: { Task { await cloud.refresh(community) } }) { CloudArtworkDetail(cloud: $0) }
             .sheet(item: $organizing) { MediaOrganizer(item: $0) }
@@ -502,7 +509,7 @@ struct LibraryView: View {
             }
         case .send: selected = item; uploading = true
         case .share:
-            if !community.signedIn { pendingCloudSave = item; accountSheet = true }
+            if !community.signedIn { pendingCloudSave = item; showAccount = true }
             else if let connected = cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) {
                 cloudSelection = connected
             } else { sharing = item }
