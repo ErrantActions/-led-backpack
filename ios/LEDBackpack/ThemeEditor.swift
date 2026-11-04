@@ -53,9 +53,17 @@ struct ThemeEditor: View {
                 }
                 if let validation { Text(validation).foregroundStyle(.orange) }
             }
-            Section("Palette") {
-                Picker("Ink", selection: $draft.foreground) {
-                    ForEach(PixelInk.allCases) { Label($0.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle($0.color).tag($0) }
+            Section("Your palette") {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 8) {
+                    ForEach(PixelInk.allCases) { ink in
+                        Button { draft.foreground = ink } label: {
+                            Circle().fill(ink.color).frame(width: 25, height: 25)
+                                .overlay(Circle().strokeBorder(.white.opacity(0.3)))
+                                .frame(width: 44, height: 44)
+                                .overlay(Circle().strokeBorder(draft.foreground == ink ? Aurora.mint : .clear, lineWidth: 2))
+                        }.buttonStyle(.plain).accessibilityLabel("\(ink.rawValue.capitalized) ink")
+                            .accessibilityAddTraits(draft.foreground == ink ? .isSelected : [])
+                    }
                 }
                 Picker("Background", selection: $draft.background) {
                     ForEach(PixelInk.allCases) { Text($0.rawValue.capitalized).tag($0) }

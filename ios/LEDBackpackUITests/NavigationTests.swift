@@ -35,8 +35,12 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
         XCTAssertTrue(app.buttons["On iPhone"].exists)
         assertNoVisibleEntryForms(app)
+        attach(app, name: "Aurora guest library - editorial header and glass scopes")
+        reveal(app.staticTexts["Night ride"], in: app)
         XCTAssertTrue(app.staticTexts["Night ride"].exists)
         attach(app, name: "Guest Library - local and cloud")
+        verifyImportPicker("Photo or GIF", in: app)
+        verifyImportPicker("Image or GIF file", in: app)
 
         app.buttons["Catalog account"].tap()
         XCTAssertTrue(app.navigationBars["Catalog account"].waitForExistence(timeout: 5))
@@ -59,17 +63,21 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Signed-in account - persistent system back navigation")
         back.tap()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Night ride"].waitForExistence(timeout: 10))
+        reveal(app.staticTexts["Night ride"], in: app)
         reveal(app.staticTexts["Cloud demo"], in: app)
         attach(app, name: "Unified Library - local and private cloud")
         returnToHeader(app)
         app.buttons["Cloud"].tap()
+        reveal(app.staticTexts["Cloud demo"], in: app)
         XCTAssertTrue(app.staticTexts["Cloud demo"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Meetup glow"].exists)
         attach(app, name: "Cloud scope - local linked and cloud-only")
+        returnToHeader(app)
         app.buttons["On iPhone"].tap()
+        reveal(app.staticTexts["Meetup glow"], in: app)
         XCTAssertTrue(app.staticTexts["Meetup glow"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Cloud demo"].exists)
+        returnToHeader(app)
         app.buttons["All"].tap()
 
         app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
@@ -83,6 +91,19 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Scan for backpacks"].isHittable)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Backpack - advanced fields collapsed")
+        reveal(app.staticTexts["INDEPENDENT LED CONTROL"], in: app)
+        attach(app, name: "Aurora backpack - original floating pixel canvas")
+
+        app.buttons.matching(NSPredicate(format: "label == %@", "Live")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Live"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Customize"].waitForExistence(timeout: 10))
+        attach(app, name: "Aurora live studio - preview and atmosphere")
+        reveal(app.buttons["Customize"], in: app)
+        app.buttons["Customize"].tap()
+        XCTAssertTrue(app.navigationBars["Make it yours"].waitForExistence(timeout: 5))
+        reveal(app.buttons["Cyan ink"], in: app)
+        attach(app, name: "Aurora theme studio - accessible ink palette")
+        app.buttons["Done"].tap()
 
         app.buttons.matching(NSPredicate(format: "label == %@", "Library")).firstMatch.tap()
         returnToHeader(app)
@@ -100,6 +121,18 @@ final class NavigationTests: XCTestCase {
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })
+    }
+
+    private func verifyImportPicker(_ choice: String, in app: XCUIApplication) {
+        app.buttons["Add artwork"].tap()
+        let option = app.buttons[choice]
+        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        option.tap()
+        let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Close'")).firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "\(choice) must open a picker, not silently dismiss the menu.")
+        attach(app, name: "Import regression - \(choice) opens system picker")
+        cancel.tap()
+        XCTAssertTrue(app.buttons["Add artwork"].waitForExistence(timeout: 5))
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

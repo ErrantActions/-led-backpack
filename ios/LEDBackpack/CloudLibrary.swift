@@ -126,19 +126,24 @@ struct CloudArtworkRow: View {
     let open: () -> Void
     var body: some View {
         Button(action: open) {
-            HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 GIFThumbnail(key: cloud.item.previewUrl.absoluteString, cache: false) {
                     try await community.download(cloud.item.previewUrl)
-                }.frame(width: 84, height: 84).clipShape(RoundedRectangle(cornerRadius: 16))
+                }.frame(maxWidth: .infinity).frame(height: 160)
+                    .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 19))
+                    .clipShape(RoundedRectangle(cornerRadius: 19))
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(cloud.item.title).font(.headline).foregroundStyle(.primary)
-                    Label("Cloud only", systemImage: "icloud").font(.caption).foregroundStyle(.cyan)
+                    Text(cloud.item.title).font(.headline).foregroundStyle(.primary).lineLimit(2)
+                    Label("Cloud only", systemImage: "icloud").font(.caption).foregroundStyle(Aurora.mint)
                     Text(cloud.visibility == "private" ? "Private library" : "Shared / \(cloud.status)")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            }
+                HStack {
+                    Text("Keep it offline")
+                    Spacer()
+                    Image(systemName: "arrow.down.circle")
+                }.font(.subheadline.weight(.semibold)).foregroundStyle(Aurora.mint)
+            }.padding(16).glassPanel()
         }.buttonStyle(.plain)
     }
 }

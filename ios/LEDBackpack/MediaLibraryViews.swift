@@ -1,6 +1,36 @@
 import SwiftUI
 
 @MainActor
+struct LibraryScopeControl: View {
+    @Binding var selection: LibraryScope
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 4) { choices }
+            } else {
+                HStack(spacing: 4) { choices }
+            }
+        }
+        .padding(5).glassPanel(radius: 22)
+        .accessibilityElement(children: .contain).accessibilityLabel("Library location")
+    }
+    @ViewBuilder private var choices: some View {
+        ForEach(LibraryScope.allCases) { value in
+            Button { selection = value } label: {
+                Text(value.rawValue).font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(selection == value ? Aurora.mint : Color.secondary)
+                    .background(selection == value ? Aurora.mint.opacity(0.1) : .clear,
+                        in: RoundedRectangle(cornerRadius: 17))
+                    .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(selection == value ? Aurora.mint.opacity(0.2) : .clear))
+            }.buttonStyle(.plain)
+                .accessibilityAddTraits(selection == value ? .isSelected : [])
+        }
+    }
+}
+
+@MainActor
 struct LibraryMediaRow: View {
     enum Action { case preview, edit, send, share, export, organize, delete }
     @EnvironmentObject private var app: AppModel
@@ -10,12 +40,14 @@ struct LibraryMediaRow: View {
     let action: (Action) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 16) {
+            Button { action(.preview) } label: {
+                GIFThumbnail(key: "local:\(item.id.uuidString)") { try library.data(item) }
+                    .frame(maxWidth: .infinity).frame(height: 160)
+                    .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 19))
+                    .clipShape(RoundedRectangle(cornerRadius: 19))
+            }.buttonStyle(.plain).accessibilityLabel("Preview \(item.name)")
             HStack(alignment: .top, spacing: 12) {
-                Button { action(.preview) } label: {
-                    GIFThumbnail(key: "local:\(item.id.uuidString)") { try library.data(item) }
-                        .frame(width: 92, height: 92).clipShape(RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.borderless).accessibilityLabel("Preview \(item.name)")
                 VStack(alignment: .leading, spacing: 6) {
                     Text(item.name).font(.headline).lineLimit(2)
                     Label(item.categoryName, systemImage: "folder").font(.caption).foregroundStyle(.secondary)
@@ -33,7 +65,8 @@ struct LibraryMediaRow: View {
                 } label: {
                     Image(systemName: item.isFavorite ? "star.fill" : "star")
                         .foregroundStyle(item.isFavorite ? Color.yellow : Color.secondary)
-                }.buttonStyle(.borderless)
+                    .frame(minWidth: 44, minHeight: 44)
+                }.buttonStyle(.plain)
                     .accessibilityLabel(item.isFavorite ? "Remove favorite" : "Add favorite")
             }
             HStack {
@@ -47,11 +80,11 @@ struct LibraryMediaRow: View {
                     Button("Export GIF") { action(.export) }
                     Button("Delete local copy", role: .destructive) { action(.delete) }
                 }
-            }.buttonStyle(.borderless)
+            }.font(.subheadline.weight(.semibold)).buttonStyle(.borderless)
             if let credit = item.attribution, let url = URL(string: credit.source), url.scheme == "https" {
                 Link("Source and license", destination: url).font(.caption)
             }
-        }.padding(.vertical, 4)
+        }.padding(16).glassPanel()
     }
 }
 

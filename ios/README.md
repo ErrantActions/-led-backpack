@@ -20,6 +20,15 @@ The app opens in **Library**. Four main tabs keep the common tasks separate:
 the Backpack gear or the Library filter menu. Password and compatibility fields
 on the Backpack screen stay collapsed until requested.
 
+The Aurora visual style uses a dark atmospheric canvas, mint/lavender/rose
+accents, thin translucent cards, and artwork-first adaptive library tiles.
+Library, Backpack, Create and Live use open scroll layouts rather than grouped
+settings rows. System tabs/back navigation remain native, including the Duo
+rail. Reduced Transparency uses opaque card surfaces; increased contrast
+strengthens card edges, and library scopes stack at accessibility text sizes.
+Decorative artwork is original, static and hidden from VoiceOver; connection
+indicators and library badges reflect real state, not concept/demo values.
+
 Library has **All / On iPhone / Cloud** scopes. **Discover GIFs** and Commons
 are available without an account; preview a GIF and tap **Save to my library**
 to keep it offline with its attribution, without opening an editor first.
@@ -27,8 +36,13 @@ The **+** menu imports images/GIFs or converts a video. Search is in the
 navigation drawer; category/favorite filters are in the filter menu. Playlist
 creation is a separate composer with slot selection instead of raw slot-ID
 entry boxes.
+Photo/file pickers are presented from the Library, not embedded in its menu.
+One file picker routes images and videos to their respective editors; Photos
+uses the current encoding to preserve GIF animation. The editor opens after
+the picker closes, selections reset so the same asset can be imported again,
+and loading or import failures are shown rather than silently ignored.
 
-Signed-in users see private cloud artwork in the same list. A known local/cloud
+Signed-in users see private cloud artwork in the same grid. A known local/cloud
 pair appears once in All and is labeled **On iPhone + Cloud**. Cloud-only GIFs
 can be opened and kept offline; local artwork can save a private cloud copy
 through its Actions menu. Sign-in resumes the requested cloud-save action.

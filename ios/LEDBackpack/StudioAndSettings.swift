@@ -88,15 +88,12 @@ struct LiveView: View {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Your world,\nin pixels.").font(.system(.largeTitle, design: .rounded, weight: .bold)).tracking(-1)
-                                Text("A live canvas with your signature.").foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 8)
+                        VStack(alignment: .leading, spacing: 14) {
                             StatusPill(title: live.mode == nil ? "PREVIEW" : "ON AIR",
                                 symbol: live.mode == nil ? "sparkles" : "dot.radiowaves.left.and.right",
-                                color: live.mode == nil ? .cyan : .mint)
+                                color: Aurora.mint)
+                            AuroraHeading(eyebrow: "Live studio", title: "Your world,", accent: "in pixels.")
+                            Text("A live canvas with your signature.").font(.subheadline).foregroundStyle(.secondary)
                         }
                         if geometry.size.width >= 760 {
                             HStack(alignment: .top, spacing: 24) {
@@ -116,7 +113,7 @@ struct LiveView: View {
                     }
                     .padding(24).frame(maxWidth: 1300, alignment: .leading).frame(maxWidth: .infinity)
                 }
-            }.background(AuroraBackground())
+            }.background(AuroraBackground()).tint(Aurora.mint)
             .navigationTitle("Live").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $themeEditor) { ThemeEditor(mode: selected, theme: library.theme(for: selected)) }
             .task(id: "\(selected.rawValue)-\(library.theme(for: selected))-\(panel.size?.width ?? 64)") { updatePreview() }
@@ -148,7 +145,7 @@ struct LiveView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Pick your signal").font(.title2.weight(.bold))
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 125), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 95), spacing: 10)], spacing: 10) {
                 ForEach(LiveMode.allCases) { mode in
                     Button { selected = mode } label: {
                         VStack(alignment: .leading, spacing: 8) {
@@ -156,10 +153,11 @@ struct LiveView: View {
                             Text(mode.rawValue).font(.caption.weight(.semibold)).multilineTextAlignment(.leading)
                         }.frame(maxWidth: .infinity, minHeight: 70, alignment: .leading)
                             .padding(12)
-                            .background(selected == mode ? Color.cyan.opacity(0.16) : Color.white.opacity(0.035),
+                            .background(selected == mode ? Aurora.mint.opacity(0.09) : Color.white.opacity(0.025),
                                 in: RoundedRectangle(cornerRadius: 18))
-                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(selected == mode ? .cyan : .white.opacity(0.08)))
-                    }.buttonStyle(.plain).foregroundStyle(selected == mode ? .cyan : .primary)
+                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(selected == mode ? Aurora.mint.opacity(0.4) : .white.opacity(0.08)))
+                    }.buttonStyle(.plain).foregroundStyle(selected == mode ? Aurora.mint : .primary)
+                        .accessibilityAddTraits(selected == mode ? .isSelected : [])
                         .disabled(live.mode != nil)
                 }
             }
@@ -187,7 +185,7 @@ struct LiveView: View {
                         try await live.start(selected)
                     }
                 } label: { Label("Go live", systemImage: "play.fill").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(starting || !app.link.connected || panel.busy || panel.hasDisplayOwner || panel.size == nil)
             } else {
                 Button("Stop & restore playback", role: .destructive) { app.run { await live.stop() } }
