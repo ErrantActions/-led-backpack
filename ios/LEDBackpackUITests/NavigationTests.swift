@@ -52,9 +52,7 @@ final class NavigationTests: XCTestCase {
         app.keyboards.buttons["Go"].tap()
         let accountName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Rider")).firstMatch
         XCTAssertTrue(accountName.waitForExistence(timeout: 10))
-        let back = app.buttons.matching(NSPredicate(
-            format: "(label == 'Back' OR label == 'Library' OR label == 'Back to Library') AND selected == false"
-        )).firstMatch
+        let back = app.buttons["BackButton"]
         attach(app, name: "Signed-in account - native vertical back rail")
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in back.exists && back.isEnabled && back.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
