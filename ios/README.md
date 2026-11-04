@@ -61,6 +61,9 @@ and App Store Connect record before configuring the protected upload workflow.
 | Background removal, touch-up, frame direction/timing, Vision cutout | [GIFStudio.swift](LEDBackpack/GIFStudio.swift), [GIFEditor.swift](LEDBackpack/GIFEditor.swift) |
 | Foreground timed playlists and shared expected-output monitor | [PlaylistRunner.swift](LEDBackpack/PlaylistRunner.swift), [PlaybackViews.swift](LEDBackpack/PlaybackViews.swift) |
 | One-tap scenes, theme snapshots and playlist presets | [Scenes.swift](LEDBackpack/Scenes.swift) |
+| Category browsing, animated thumbnails and full GIF previews | [GIFCatalog.swift](LEDBackpack/GIFCatalog.swift), [GIFPreviews.swift](LEDBackpack/GIFPreviews.swift) |
+| Local category/favorite controls and preview rows | [MediaLibraryViews.swift](LEDBackpack/MediaLibraryViews.swift) |
+| Crisp pixel text, measured layout and text-to-GIF controls | [TextArtwork.swift](LEDBackpack/TextArtwork.swift), [TextArtworkStudio.swift](LEDBackpack/TextArtworkStudio.swift) |
 
 ### One-tap scenes
 
@@ -102,6 +105,16 @@ The app does not implement cloud password recovery.
 - Text and horizontal marquee generation with system fonts.
 - Pixel drawing, eraser, undo/redo, and local GIF saving.
 - Local media/playlist backups merge with fresh file IDs and preserve credits.
+- Animated previews, custom categories, favorite stars and local name/category
+  search. Use an item's **Actions > Organize** menu to move it to a category.
+  Categories/favorites are preserved in backups and do not rewrite GIF files.
+
+Studio's text tools default to a crisp whole-pixel alphabet with auto-fitting,
+word wrapping and left/center/right alignment. Pixel type uses uppercase A-Z,
+digits and basic punctuation; system, rounded and monospaced fonts remain
+available for other scripts. The preview updates as you edit. Scrolling GIFs
+have adjustable frame duration and reject messages that cannot move smoothly
+within the editor's frame limit; longer messages can use the live display.
 
 Imported source limits are 10 MB, 120 frames, and 4096x4096 input dimensions.
 Encoded/local GIFs are limited to 5 MB; supported render sizes are 16x16, 64x64
@@ -273,12 +286,23 @@ References:
 ## GIF catalogs and licensing
 
 The built-in searchable source is **Wikimedia Commons** through its public
-Action API. Searches request GIF files and license metadata. Files with missing
+Action API. Browse Pixel art, Animals, Nature, Space, Patterns, Symbols or Retro,
+or search across All. Searches use GIF MIME filtering and preserve relevance
+order. More results can be loaded explicitly, up to 100 matches per search.
+Files with missing
 license information or over 5 MB are omitted. Results need not be animated:
 the editor shows their frame count.
 
+Search cards and saved library items show bounded animated thumbnails. Long
+animations use a clearly labeled poster; tap to open the full animated preview.
+Thumbnails are cached in memory and stop animating offscreen. Full previews
+support up to 1200 frames, while importing into GIF Studio still requires no
+more than 120 frames. Errors and unsupported files are shown explicitly.
+
 Source page, author, license label and license URL are stored with imported
-artwork and survive local backup/export of the library. Review the source
+artwork and survive local backup/export of the library. Catalog titles become
+the initial saved name, and the selected browse category is carried into the
+editor. Review the source
 page before use; licenses can require credit and share-alike terms.
 Exporting a GIF alone does not embed a license sidecar: retain/provide the
 displayed attribution when sharing it. Edits do not erase attribution.

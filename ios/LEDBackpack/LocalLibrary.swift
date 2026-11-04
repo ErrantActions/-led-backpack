@@ -15,6 +15,13 @@ struct SavedMedia: Identifiable, Codable {
     var name: String
     var attribution: Attribution?
     var created = Date()
+    var category: String?
+    var favorite: Bool?
+    var categoryName: String {
+        let value = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? "Uncategorized" : value
+    }
+    var isFavorite: Bool { favorite == true }
     var filename: String { id.uuidString + ".gif" }
 }
 
@@ -78,6 +85,7 @@ final class LocalLibrary: ObservableObject {
                 throw BackpackError.invalid("Stored scenes have duplicate IDs or exceed the 50-scene limit.")
             }
             for scene in scenes { try scene.validate() }
+            for item in state.media { _ = try checkedCategory(item.category) }
         } else { state = LibraryState() }
     }
 
@@ -89,7 +97,28 @@ final class LocalLibrary: ObservableObject {
 
     func data(_ item: SavedMedia) throws -> Data { try Data(contentsOf: folder.appendingPathComponent(item.filename)) }
 
-    func add(name: String, data: Data, attribution: Attribution? = nil) throws {
+    var mediaCategories: [String] {
+        Array(Set(state.media.map(\.categoryName))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    private func checkedCategory(_ value: String?) throws -> String? {
+        let category = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard category.count <= 40 else { throw BackpackError.invalid("Category names must be at most 40 characters.") }
+        return category.isEmpty || category == "Uncategorized" ? nil : category
+    }
+
+    func organize(_ id: UUID, category: String?, favorite: Bool) throws {
+        guard let index = state.media.firstIndex(where: { $0.id == id }) else {
+            throw BackpackError.invalid("This artwork is no longer in the library.")
+        }
+        let normalized = try checkedCategory(category)
+        var value = state
+        value.media[index].category = normalized
+        value.media[index].favorite = favorite
+        try commit(value)
+    }
+
+    func add(name: String, data: Data, attribution: Attribution? = nil, category: String? = nil) throws {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               state.media.count < 100, data.count <= 5_000_000 else {
             throw BackpackError.invalid("Provide a name; the library allows 100 items up to 5 MB each.")
@@ -97,8 +126,10 @@ final class LocalLibrary: ObservableObject {
         guard ["GIF87a", "GIF89a"].contains(String(data: data.prefix(6), encoding: .ascii) ?? "") else {
             throw BackpackError.invalid("Local artwork must be encoded as GIF.")
         }
+        let normalized = try checkedCategory(category)
         _ = try MediaCodec.decode(data)
-        let item = SavedMedia(name: String(name.prefix(100)), attribution: attribution)
+        var item = SavedMedia(name: String(name.prefix(100)), attribution: attribution)
+        item.category = normalized
         let url = folder.appendingPathComponent(item.filename)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         var value = state; value.media.insert(item, at: 0)
@@ -265,6 +296,7 @@ final class LocalLibrary: ObservableObject {
             }
         }
         for item in backup.state.media {
+            _ = try checkedCategory(item.category)
             guard let bytes = backup.files[item.filename], bytes.count <= 5_000_000 else {
                 throw BackpackError.invalid("Backup is missing a media file or it exceeds 5 MB.")
             }
@@ -285,7 +317,9 @@ final class LocalLibrary: ObservableObject {
                       ["GIF87a", "GIF89a"].contains(String(data: bytes.prefix(6), encoding: .ascii) ?? "") else {
                     throw BackpackError.invalid("Missing or invalid backup GIF.")
                 }
-                let imported = SavedMedia(name: String(item.name.prefix(100)), attribution: item.attribution)
+                var imported = SavedMedia(name: String(item.name.prefix(100)), attribution: item.attribution)
+                imported.category = try checkedCategory(item.category)
+                imported.favorite = item.favorite
                 let url = folder.appendingPathComponent(imported.filename)
                 try bytes.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
                 created.append(url); value.media.append(imported)

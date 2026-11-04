@@ -8,6 +8,7 @@ struct MediaEditor: View {
     @Environment(\.dismiss) private var dismiss
     let data: Data
     let attribution: Attribution?
+    @State private var categoryName: String
     @State private var animation: MediaCodec.Animation?
     @State private var fit = MediaCodec.Fit.fit
     @State private var turns = 0
@@ -44,6 +45,13 @@ struct MediaEditor: View {
     @State private var undoTouches: [Int: [Int: RGB8]]?
     @State private var drawing = false
     private let sizes = [PanelSize(width: 16, height: 16), PanelSize(width: 64, height: 64), PanelSize(width: 96, height: 128)]
+
+    init(data: Data, attribution: Attribution?, category: String? = nil, initialName: String = "My artwork") {
+        self.data = data
+        self.attribution = attribution
+        _categoryName = State(initialValue: category ?? "")
+        _name = State(initialValue: initialName)
+    }
 
     var body: some View {
         NavigationStack {
@@ -98,7 +106,7 @@ struct MediaEditor: View {
                 process {
                     let bytes = try await output()
                     try Task.checkCancellation()
-                    try library.add(name: name, data: bytes, attribution: attribution)
+                    try library.add(name: name, data: bytes, attribution: attribution, category: categoryName)
                     dismiss()
                 }
             }.buttonStyle(.borderedProminent)
@@ -145,6 +153,7 @@ struct MediaEditor: View {
                 }.aspectRatio(CGFloat(sizes[sizeIndex].width) / CGFloat(sizes[sizeIndex].height), contentMode: .fit)
             }
             TextField("Artwork name", text: $name)
+            TextField("Category (optional)", text: $categoryName)
             if preview == nil { Text("Tap Update frame preview to render the current settings.").font(.caption).foregroundStyle(.secondary) }
             Text("Frame \(frameIndex + 1) / \(animation?.images.count ?? 0)").font(.caption.monospaced())
         }

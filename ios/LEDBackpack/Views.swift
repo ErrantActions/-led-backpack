@@ -196,6 +196,13 @@ struct LibraryView: View {
     @State private var editor = false
     @State private var editorData: Data?
     @State private var attribution: Attribution?
+    @State private var editorCategory: String?
+    @State private var editorName = "My artwork"
+    @State private var openEditorAfterGallery = false
+    @State private var organizing: SavedMedia?
+    @State private var libraryQuery = ""
+    @State private var selectedCategory = ""
+    @State private var favoritesOnly = false
     @State private var gallery = false
     @State private var selected: SavedMedia?
     @State private var targetSlot = 12
@@ -212,8 +219,25 @@ struct LibraryView: View {
     @State private var dwell = 10
 
     var body: some View {
-        NavigationStack {
-            List {
+        NavigationStack { mediaActions }
+    }
+
+    private var filteredMedia: [SavedMedia] {
+        let query = libraryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        return library.state.media.filter { item in
+            (!favoritesOnly || item.isFavorite) &&
+            (selectedCategory.isEmpty || item.categoryName == selectedCategory) &&
+            (query.isEmpty || item.name.localizedCaseInsensitiveContains(query) ||
+                item.categoryName.localizedCaseInsensitiveContains(query))
+        }
+    }
+
+    private var categoryChoices: [String] {
+        Array(Set((library.mediaCategories + ["Uncategorized", selectedCategory]).filter { !$0.isEmpty })).sorted()
+    }
+
+    private var libraryList: some View {
+        List {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
                         StatusPill(title: "YOUR COLLECTION", symbol: "square.stack.3d.up")
@@ -227,28 +251,22 @@ struct LibraryView: View {
                     Button("Import image / animated GIF file") { importing = true }
                     Button("Search licensed GIFs") { gallery = true }
                 }
-                Section("Local media") {
-                    ForEach(library.state.media) { item in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(item.name).font(.headline)
-                            if let credit = item.attribution {
-                                Text("\(credit.author) • \(credit.license)").font(.caption).foregroundStyle(.secondary)
-                                if let url = URL(string: credit.source), url.scheme == "https" { Link("Source and license", destination: url) }
-                            }
-                            HStack {
-                                Button("Preview") { app.run { previewData = try library.data(item) } }
-                                Button("Edit") {
-                                    app.run { editorData = try library.data(item); attribution = item.attribution; editor = true }
-                                }
-                                Button("Send") { selected = item; uploading = true }
-                                Button("Export") {
-                                    app.run { exportDocument = BinaryDocument(data: try library.data(item)); exporting = true }
-                                }
-                                Button(role: .destructive) { selected = item; deletion = true } label: { Image(systemName: "trash") }
-                            }.buttonStyle(.borderless)
-                        }.padding(.vertical, 4)
+                Section("Browse your collection") {
+                    TextField("Search saved artwork", text: $libraryQuery)
+                    Picker("Category", selection: $selectedCategory) {
+                        Text("All categories").tag("")
+                        ForEach(categoryChoices, id: \.self) { Text($0).tag($0) }
                     }
-                    if library.state.media.isEmpty { Text("Save artwork from the editor or GIF search.").foregroundStyle(.secondary) }
+                    Toggle("Favorites only", isOn: $favoritesOnly)
+                }
+                Section("Local media (\(filteredMedia.count))") {
+                    ForEach(filteredMedia) { item in
+                        LibraryMediaRow(item: item) { action in handle(action, item: item) }
+                    }
+                    if filteredMedia.isEmpty {
+                        Text(library.state.media.isEmpty ? "Save artwork from the editor or GIF search." : "No artwork matches these filters.")
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Section("Local playlists") {
                     Toggle("Repeat app-driven sequence", isOn: $repeatPlaylist)
@@ -286,13 +304,17 @@ struct LibraryView: View {
                         }
                     }
                 }
-            }.modernScene().navigationTitle("Library")
+        }.modernScene().navigationTitle("Library")
+    }
+
+    private var importingContent: some View {
+        libraryList
             .onChange(of: selectedPhoto) { _, item in
                 app.run {
                     guard let item, let data = try await item.loadTransferable(type: Data.self) else {
                         throw BackpackError.invalid("Could not load the selected photo.")
                     }
-                    editorData = data; attribution = nil; editor = true
+                    editorData = data; attribution = nil; editorCategory = nil; editorName = "Imported photo"; editor = true
                 }
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.image, .gif]) { result in
@@ -300,20 +322,31 @@ struct LibraryView: View {
                     let url = try result.get()
                     guard url.startAccessingSecurityScopedResource() else { throw BackpackError.invalid("File access denied.") }
                     defer { url.stopAccessingSecurityScopedResource() }
-                    editorData = try Data(contentsOf: url); attribution = nil; editor = true
+                    editorData = try Data(contentsOf: url); attribution = nil; editorCategory = nil
+                    editorName = url.deletingPathExtension().lastPathComponent; editor = true
                 }
             }
             .sheet(isPresented: $editor) {
-                if let data = editorData { MediaEditor(data: data, attribution: attribution) }
-            }
-            .sheet(item: $editingPlaylist) { PlaylistTimingEditor($0) }
-            .sheet(isPresented: $gallery) {
-                GIFGallery { data, credit in
-                    editorData = data; attribution = credit
-                    gallery = false
-                    Task { try? await Task.sleep(for: .milliseconds(500)); editor = true }
+                if let data = editorData {
+                    MediaEditor(data: data, attribution: attribution, category: editorCategory, initialName: editorName)
                 }
             }
+            .sheet(isPresented: $gallery, onDismiss: {
+                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+            }) {
+                GIFGallery { data, credit, category, title in
+                    editorData = data; attribution = credit; editorCategory = category
+                    editorName = title
+                    openEditorAfterGallery = true
+                    gallery = false
+                }
+            }
+    }
+
+    private var mediaActions: some View {
+        importingContent
+            .sheet(item: $editingPlaylist) { PlaylistTimingEditor($0) }
+            .sheet(item: $organizing) { MediaOrganizer(item: $0) }
             .sheet(isPresented: Binding(get: { previewData != nil }, set: { if !$0 { previewData = nil } })) {
                 NavigationStack {
                     if let data = previewData {
@@ -357,62 +390,22 @@ struct LibraryView: View {
             .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .gif, defaultFilename: "backpack-artwork") { result in
                 if case .failure(let error) = result { panel.report(error) }
             }
-        }
     }
-}
 
-@MainActor
-struct GIFGallery: View {
-    @EnvironmentObject private var app: AppModel
-    @Environment(\.dismiss) private var dismiss
-    let choose: (Data, Attribution) -> Void
-    @State private var query = "pixel art"
-    @State private var results: [GIFResult] = []
-    @State private var busy = false
-    @State private var searched = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    TextField("Search Commons GIFs", text: $query).onSubmit { search() }
-                    Button("Search") { search() }.disabled(busy)
-                    if busy { ProgressView() }
-                    Text("Results are GIF files, not all necessarily animated. Review the source license before use. Source/author/license are retained with saved artwork.")
-                        .font(.caption)
-                    Link("Wikimedia Commons usage guidance", destination: URL(string: "https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia")!)
-                }
-                ForEach(results) { item in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.title).font(.headline)
-                        Text("\(item.attribution.author) • \(item.attribution.license)").font(.caption)
-                        Link("Review source / license", destination: item.page)
-                        Button("Download to editor") {
-                            busy = true
-                            app.run {
-                                defer { busy = false }
-                                let data = try await HTTP.fetch(item.url, maxBytes: 5_000_000)
-                                _ = try MediaCodec.decode(data)
-                                choose(data, item.attribution)
-                            }
-                        }.disabled(busy)
-                    }
-                }
-                if searched && results.isEmpty && !busy { Text("No GIFs with license metadata found. Try a broader search.") }
-                Section("Other catalogs") {
-                    Link("Browse GIPHY externally", destination: URL(string: "https://giphy.com")!)
-                    Text("GIPHY API integration requires its own key, approval and terms review. Tenor stopped accepting new API clients in January 2026. Neither catalog is silently scraped or bundled.")
-                        .font(.caption)
-                }
-            }.modernScene().navigationTitle("Find GIFs").toolbar { Button("Done") { dismiss() } }
-        }
-    }
-    private func search() {
-        guard !busy else { return }
-        busy = true
-        app.run {
-            defer { busy = false }
-            results = try await CommonsSearch.search(query); searched = true
+    private func handle(_ action: LibraryMediaRow.Action, item: SavedMedia) {
+        switch action {
+        case .preview: app.run { previewData = try library.data(item) }
+        case .edit:
+            app.run {
+                editorData = try library.data(item)
+                attribution = item.attribution; editorCategory = item.category
+                editorName = "\(item.name) edited"; editor = true
+            }
+        case .send: selected = item; uploading = true
+        case .export:
+            app.run { exportDocument = BinaryDocument(data: try library.data(item)); exporting = true }
+        case .organize: organizing = item
+        case .delete: selected = item; deletion = true
         }
     }
 }

@@ -8,9 +8,6 @@ struct StudioView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var library: LocalLibrary
-    @State private var text = "HELLO"
-    @State private var name = "My text"
-    @State private var animate = false
     @State private var ink: Color = .cyan
     @State private var pixels = PixelFrame.black(PanelSize(width: 64, height: 64))
     @State private var undo: [PixelFrame] = []
@@ -18,36 +15,12 @@ struct StudioView: View {
     @State private var eraser = false
     @State private var gestureStarted = false
     @State private var drawingPreview: UIImage?
-    @State private var textPreview: UIImage?
     private var size: PanelSize { panel.size ?? PanelSize(width: 64, height: 64) }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Text") {
-                    TextField("Message", text: $text)
-                    TextField("Saved name", text: $name)
-                    ColorPicker("Ink", selection: $ink, supportsOpacity: false)
-                    Toggle("Animated horizontal marquee", isOn: $animate)
-                    if let textPreview { Image(uiImage: textPreview).interpolation(.none).resizable().scaledToFit().frame(height: 150) }
-                    Button("Preview text") {
-                        app.run { textPreview = try MediaCodec.text(String(text.prefix(80)), size: size, color: UIColor(ink)).image() }
-                    }
-                    Button("Save text as GIF") {
-                        app.run {
-                            guard !text.isEmpty, text.count <= 80 else { throw BackpackError.invalid("Enter 1 to 80 characters.") }
-                            let frames: [PixelFrame]
-                            if animate {
-                                frames = try (0..<40).map { index in
-                                    try MediaCodec.marquee(text, subtitle: "", size: size,
-                                        color: UIColor(ink), phase: Double(index) / 40)
-                                }
-                            } else { frames = [try MediaCodec.text(text, size: size, color: UIColor(ink))] }
-                            try library.add(name: name, data: MediaCodec.encode(frames,
-                                delays: Array(repeating: animate ? 0.1 : 1, count: frames.count)))
-                        }
-                    }
-                }
+                TextArtworkStudio()
                 Section("Pixel drawing") {
                     Text("Canvas: \(pixels.size.width) x \(pixels.size.height). Selected panel: \(size.width) x \(size.height).")
                         .font(.caption)
@@ -75,6 +48,7 @@ struct StudioView: View {
                                 }.onEnded { _ in gestureStarted = false })
                         }.aspectRatio(CGFloat(pixels.size.width) / CGFloat(pixels.size.height), contentMode: .fit)
                     }
+                    ColorPicker("Brush color", selection: $ink, supportsOpacity: false)
                     Toggle("Eraser", isOn: $eraser)
                     HStack {
                         Button("Undo") {

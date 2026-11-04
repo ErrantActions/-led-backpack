@@ -38,6 +38,7 @@ struct PixelFrame: Equatable {
 
 @MainActor
 enum MediaCodec {
+    static let renderSizes = [PanelSize(width: 16, height: 16), PanelSize(width: 64, height: 64), PanelSize(width: 96, height: 128)]
     struct Animation {
         var images: [UIImage]
         var delays: [Double]
@@ -79,8 +80,7 @@ enum MediaCodec {
     }
 
     static func canvas(_ size: PanelSize, paint: (CGContext) -> Void) throws -> PixelFrame {
-        guard [PanelSize(width: 16, height: 16), PanelSize(width: 64, height: 64),
-               PanelSize(width: 96, height: 128)].contains(size) else {
+        guard renderSizes.contains(size) else {
             throw BackpackError.invalid("Rendering supports 16x16, 64x64 and 96x128 panels.")
         }
         let format = UIGraphicsImageRendererFormat()

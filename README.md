@@ -11,7 +11,8 @@ built with SwiftUI and Core Bluetooth.
 
 - Backpack discovery, status, controls, storage slots and GIF uploads.
 - Local image/GIF library, editing, background cleanup and animation timing.
-- Text/drawing tools and license-aware Wikimedia Commons GIF search.
+- Crisp pixel-text/drawing tools and categorized Wikimedia Commons GIF browsing.
+- Animated GIF previews, custom library categories, search and favorites.
 - Live GPS, weather, supported system Music metadata and optional fun screens.
 - Custom live themes, animated ink, gauges and saved presets.
 - One-tap scenes combining live displays or stored playlists with brightness.
