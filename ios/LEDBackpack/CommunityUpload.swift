@@ -214,7 +214,9 @@ struct CommunityUploadsView: View {
                         if community.user?.role == "admin" {
                             Button("Delete server upload", role: .destructive) { selected = item }.disabled(busy)
                         } else {
-                            Text("Only admins can delete individual server GIFs. Account deletion removes private/unpublished work but retains approved shared work.")
+                            Text(community.config?.accountDeletionRetainsSharedGifs == true
+                                ? "Only admins can delete individual server GIFs. This server retains approved shared work after account deletion."
+                                : "Only admins can delete individual server GIFs. Account deletion removes all GIFs you contributed, including approved shared work.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -227,7 +229,7 @@ struct CommunityUploadsView: View {
         .modernScene().navigationTitle("My uploads")
         .task(id: account) { items = []; if community.signedIn { refresh() } }
         .onDisappear { items = [] }
-        .confirmationDialog("Publish this GIF for review? This may send frames to the server's AI reviewer. If approved, it and its credits remain after account deletion.", isPresented: Binding(
+        .confirmationDialog(sharingWarning, isPresented: Binding(
             get: { sharing != nil }, set: { if !$0 { sharing = nil } })) {
             Button("I have sharing rights; submit for review") {
                 guard let sharing, !busy else { return }
@@ -261,8 +263,17 @@ struct CommunityUploadsView: View {
         busy = true; failure = nil
         Task {
             defer { busy = false }
-            do { items = try await community.myUploads() }
+            do {
+                try await community.loadConfig()
+                items = try await community.myUploads()
+            }
             catch { failure = error.localizedDescription }
         }
+    }
+    private var sharingWarning: String {
+        let retention = community.config?.accountDeletionRetainsSharedGifs == true
+            ? "This server retains approved shared GIFs and credits after account deletion."
+            : "Deleting your account removes your contribution, even after approval. Other users' independent copies remain separate."
+        return "Submit this GIF for community review? Frames may be sent to the server's AI reviewer. \(retention)"
     }
 }

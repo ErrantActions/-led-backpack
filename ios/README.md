@@ -86,8 +86,9 @@ the app with title, category, tags, attribution, an explicit license and
 permission confirmation. Uploads are initially **private** (owner/admin access),
 with no AI submission. **Account > My uploads** separately offers an explicit
 sharing-rights confirmation; only then does a GIF enter shared review and
-optional AI processing. Approved shared GIFs and credits remain after account
-deletion under the server's current policy.
+optional AI processing. Deleting an account removes **all** GIFs contributed by
+that account, including approved shared GIFs. Other users' independent copies
+and contributions are unaffected.
 My uploads shows private/shared visibility and pending/approved/rejected status.
 Only admins can delete individual server GIFs, including private ones; legacy
 moderators have ordinary-user permissions. Server deletion never erases local files.
@@ -100,12 +101,11 @@ Download permission is not redistribution permission: keep imported attribution,
 do not mislabel others' work as original, and confirm the right to publish.
 If an upload connection fails after sending, check My uploads before retrying.
 
-Native signup is **disabled** when shared GIFs are retained after account
-deletion or the retention policy is unknown. This policy is not claimed to
-satisfy Apple's associated-UGC deletion requirements. Existing-account sign-in
-and anonymous browsing remain available. On a server with a compatible explicit
-deletion policy, signup also follows its email-confirmation setting; immediate
-signup does not make an unconfirmed email verified.
+The deployed server declares `accountDeletionRetainsSharedGifs:false`, so native
+signup is available with accessible in-app deletion. Signup is disabled if a
+configured server instead declares retention or omits that policy. Signup also
+follows the server's email-confirmation setting; immediate signup does not make
+an unconfirmed email verified. This is not a claim of App Store approval.
 Sessions are scoped to that server and stored only in device-local Keychain,
 not diagnostics, ordinary preferences or library backups.
 
@@ -114,8 +114,8 @@ reauthentication and explicit `DELETE` confirmation. An accepted deletion
 receipt is retained privately before sign-in credentials and cached account
 identity are cleared. Pending cleanup status is checked without Authorization.
 Failed or expired status checks never claim deletion completed. Receipts show
-the number of retained shared GIFs when supplied; completing account cleanup
-does not imply retained approved work was removed. Server account
+the historic retained-shared count when supplied (zero for new deletions under
+the current all-contributions deletion policy). Server account
 deletion does not erase the iPhone's separate local library or backpack storage.
 
 The server must implement the finalized v1 account-erasure contract. Deployment,

@@ -95,7 +95,7 @@ struct CommunityGallery: View {
             if let url = community.origin?.url {
                 if community.signedIn { NavigationLink("My uploads") { CommunityUploadsView() } }
                 Link("Open moderation portal", destination: url)
-                Text("Upload privately from Library > Actions, then explicitly submit for sharing in My uploads. Approved shared GIFs remain after account deletion under this server's policy. Download permission alone does not grant permission to rehost.")
+                Text("Upload privately from Library > Actions, then explicitly submit for sharing in My uploads. Deleting your account removes all GIFs you contributed, including approved shared work; other users' independent copies are separate. Download permission alone does not grant permission to rehost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
