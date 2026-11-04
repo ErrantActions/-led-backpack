@@ -42,7 +42,9 @@ final class NavigationTests: XCTestCase {
         let password = app.secureTextFields["Password"]
         password.tap(); password.typeText("fixture-password")
         app.keyboards.buttons["Go"].tap()
-        XCTAssertTrue(app.staticTexts["UI Rider"].waitForExistence(timeout: 10))
+        let accountName = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Rider")).firstMatch
+        XCTAssertTrue(accountName.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Done"].isHittable)
         app.buttons["Done"].tap()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Night ride"].waitForExistence(timeout: 10))

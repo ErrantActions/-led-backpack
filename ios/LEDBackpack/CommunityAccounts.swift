@@ -44,6 +44,8 @@ struct CommunitySettingsView: View {
 @MainActor
 struct CommunityAccountView: View {
     @EnvironmentObject private var community: CommunityController
+    @Environment(\.dismiss) private var dismiss
+    var showsDone = false
     @State private var linkingApple = false
     @State private var email = ""
     @State private var password = ""
@@ -66,7 +68,15 @@ struct CommunityAccountView: View {
                 if !community.signedIn, community.deletion != nil { CommunityDeletionStatus() }
             }
         }
+        .id(community.signedIn)
         .modernScene().navigationTitle("Catalog account")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if showsDone {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(busy) }
+            }
+        }
+        .interactiveDismissDisabled(busy)
         .task { await refresh() }
         .onChange(of: community.signedIn) { _, value in
             if !value { email = ""; displayName = ""; password = ""; message = nil }

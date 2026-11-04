@@ -440,7 +440,7 @@ struct LibraryView: View {
                 pendingCloudSave = nil
                 if community.signedIn { sharing = pending }
             }) {
-                NavigationStack { CommunityAccountView().toolbar { Button("Done") { accountSheet = false } } }
+                NavigationStack { CommunityAccountView(showsDone: true) }
             }
             .sheet(isPresented: $settingsSheet) { SettingsView() }
             .sheet(item: $cloudSelection, onDismiss: { Task { await cloud.refresh(community) } }) { CloudArtworkDetail(cloud: $0) }

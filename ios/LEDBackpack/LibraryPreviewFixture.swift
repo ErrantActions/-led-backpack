@@ -23,6 +23,12 @@ private actor LibraryPreviewTransport: CommunityTransport {
         guard request.value(forHTTPHeaderField: "Authorization") == "Bearer ui-preview-only-not-a-real-session" else {
             throw BackpackError.invalid("This UI preview only accepts its generated test account, never real credentials.")
         }
+        if request.httpMethod == "GET", path == "/api/v1/auth/me" {
+            return CommunityResponse(status: 200, data: Data("""
+            {"user":{"id":"\(LibraryPreviewFixture.owner)","email":"ui@example.invalid","displayName":"UI Rider","role":"user","verified":true,
+            "authMethods":{"apple":false,"password":true,"appleOnly":false}}}
+            """.utf8))
+        }
         if request.httpMethod == "GET", path == "/api/v1/me/items" {
             let items = [("Night ride", LibraryPreviewFixture.linkedItem), ("Cloud demo", LibraryPreviewFixture.remoteItem)]
                 .map { entry in
