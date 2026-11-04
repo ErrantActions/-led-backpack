@@ -2,6 +2,11 @@ name: LED Backpack iOS
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: Hosted runner pool; Intel is a fallback when ARM capacity is unavailable
+        type: choice
+        options: [macos-latest, macos-15-intel]
+        default: macos-latest
       require_duo_sdk:
         description: Require iOS 27.1 or later SDK for native iPhone Duo qualification
         type: boolean
@@ -18,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     timeout-minutes: 30
     defaults:
       run:

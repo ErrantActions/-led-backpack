@@ -2,6 +2,11 @@ name: LED Backpack TestFlight
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: Hosted runner pool; use the validated pool when ARM capacity is unavailable
+        type: choice
+        options: [macos-latest, macos-15-intel]
+        default: macos-latest
       build_number:
         description: Unused Apple build number for version 0.1.0; increment on each upload
         type: string
@@ -44,7 +49,7 @@ jobs:
   internal-upload:
     needs: verified-ci
     environment: testflight
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     timeout-minutes: 60
     defaults:
       run:

@@ -17,6 +17,12 @@ creates the required signed device archive, but never repeats simulator tests.
 Keep the native workflow's path filters and the release gate's protected paths
 in sync when adding build inputs.
 
+Both manual workflows offer a runner choice. Prefer `macos-latest`; if GitHub
+fails to allocate an ARM runner before any steps start, use the documented
+`macos-15-intel` fallback instead of launching parallel retries. Run native
+validation once on that pool, then select the same pool for the release archive.
+The workflow prints the actual Xcode/SDK; an older SDK is not Duo qualification.
+
 ## 1. Register the app with Apple
 
 In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list):
