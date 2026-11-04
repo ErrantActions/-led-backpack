@@ -40,6 +40,7 @@ struct SlotPreviewLink: Codable {
 }
 
 struct Preferences: Codable {
+    var communityURL: String?
     var mph = true
     var fahrenheit = true
     var reconnect = true

@@ -301,6 +301,7 @@ struct SettingsView: View {
                     Button("Save preferences") {
                         app.run {
                             guard (1...250).contains(preferences.speedCap) else { throw BackpackError.invalid("Speed cap must be 1...250.") }
+                            preferences.communityURL = library.state.preferences.communityURL
                             try library.savePreferences(preferences)
                             app.apply(preferences)
                         }
@@ -311,9 +312,12 @@ struct SettingsView: View {
                         app.run {
                             document = BinaryDocument(data: try library.backup()); exportName = "led-backpack-backup"; exporter = true
                         }
+                        Section("Community") {
+                            NavigationLink("Catalog server and account") { CommunitySettingsView() }
+                        }
                     }
                     Button("Import / merge backup") { importer = true }
-                    Text("Includes local GIFs, attribution, playlists and preferences. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords and location history are not exported. A backup does not read artwork out of the backpack.")
+                    Text("Includes local GIFs, attribution, playlists and preferences, including the optional catalog URL. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords, catalog sessions, deletion receipts and location history are not exported. A backup does not read artwork out of the backpack.")
                         .font(.caption)
                 }
                 Section("Diagnostics") {

@@ -148,9 +148,13 @@ private struct GIFPreviewImage: UIViewRepresentable {
 struct GIFThumbnail: View {
     @EnvironmentObject private var link: BluetoothLink
     let key: String
+    let cache: Bool
     let load: @MainActor () async throws -> Data
     @State private var preview: GIFPreview?
     @State private var failure: String?
+    init(key: String, cache: Bool = true, load: @escaping @MainActor () async throws -> Data) {
+        self.key = key; self.cache = cache; self.load = load
+    }
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Color.black
@@ -169,12 +173,12 @@ struct GIFThumbnail: View {
         .clipped()
         .task(id: key) {
             preview = nil; failure = nil
-            if let cached = GIFPreviewCache.images.object(forKey: key as NSString) { preview = cached; return }
+            if cache, let cached = GIFPreviewCache.images.object(forKey: key as NSString) { preview = cached; return }
             do {
                 let bytes = try await load()
                 try Task.checkCancellation()
                 let image = try GIFPreviewDecoder.thumbnail(bytes)
-                GIFPreviewCache.images.setObject(image, forKey: key as NSString, cost: image.cost)
+                if cache { GIFPreviewCache.images.setObject(image, forKey: key as NSString, cost: image.cost) }
                 preview = image
             } catch {
                 guard !Task.isCancelled else { return }

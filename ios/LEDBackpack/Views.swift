@@ -204,6 +204,7 @@ struct LibraryView: View {
     @State private var selectedCategory = ""
     @State private var favoritesOnly = false
     @State private var gallery = false
+    @State private var communityGallery = false
     @State private var selected: SavedMedia?
     @State private var targetSlot = 12
     @State private var uploading = false
@@ -250,6 +251,7 @@ struct LibraryView: View {
                     PhotosPicker("Choose photo or GIF", selection: $selectedPhoto, matching: .images)
                     Button("Import image / animated GIF file") { importing = true }
                     Button("Search licensed GIFs") { gallery = true }
+                    Button("Browse community catalog") { communityGallery = true }
                 }
                 Section("Browse your collection") {
                     TextField("Search saved artwork", text: $libraryQuery)
@@ -345,6 +347,14 @@ struct LibraryView: View {
 
     private var mediaActions: some View {
         importingContent
+            .sheet(isPresented: $communityGallery, onDismiss: {
+                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+            }) {
+                CommunityGallery { data, credit, category, title in
+                    editorData = data; attribution = credit; editorCategory = category; editorName = title
+                    openEditorAfterGallery = true; communityGallery = false
+                }
+            }
             .sheet(item: $editingPlaylist) { PlaylistTimingEditor($0) }
             .sheet(item: $organizing) { MediaOrganizer(item: $0) }
             .sheet(isPresented: Binding(get: { previewData != nil }, set: { if !$0 { previewData = nil } })) {

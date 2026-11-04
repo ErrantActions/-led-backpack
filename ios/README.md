@@ -64,6 +64,39 @@ and App Store Connect record before configuring the protected upload workflow.
 | Category browsing, animated thumbnails and full GIF previews | [GIFCatalog.swift](LEDBackpack/GIFCatalog.swift), [GIFPreviews.swift](LEDBackpack/GIFPreviews.swift) |
 | Local category/favorite controls and preview rows | [MediaLibraryViews.swift](LEDBackpack/MediaLibraryViews.swift) |
 | Crisp pixel text, measured layout and text-to-GIF controls | [TextArtwork.swift](LEDBackpack/TextArtwork.swift), [TextArtworkStudio.swift](LEDBackpack/TextArtworkStudio.swift) |
+| Optional community catalog, HTTPS client and account deletion | [CommunityClient.swift](LEDBackpack/CommunityClient.swift), [CommunityAccounts.swift](LEDBackpack/CommunityAccounts.swift), [CommunityGallery.swift](LEDBackpack/CommunityGallery.swift) |
+
+### Optional community catalog and accounts
+
+Set **Settings > Community > Catalog server and account** to the deployed
+catalog's root HTTPS URL. Use a valid trusted TLS certificate; insecure HTTP,
+embedded credentials, cross-origin media and redirects are not accepted.
+An address on your local network may require iOS local-network permission.
+There is no embedded backend address or API secret.
+
+**Library > Browse community catalog** supports guest browsing, category/name
+search, previews, local imports and signed-in likes/reports/uploader blocking.
+Credits, license information and original-work download restrictions remain
+attached to imported artwork. The connected panel's prepared variant is used
+when available, otherwise the default is 64x64. Upload and moderation tools
+currently open in the web portal, which has its own sign-in; native bearer
+credentials are never passed in links.
+
+Native signup/signin follows the server's email-confirmation policy. A server
+that permits immediate signup does not make an unconfirmed email verified.
+Sessions are scoped to that server and stored only in device-local Keychain,
+not diagnostics, ordinary preferences or library backups.
+
+The Account screen includes permanent account deletion with password
+reauthentication and explicit `DELETE` confirmation. An accepted deletion
+receipt is retained privately before sign-in credentials and cached account
+identity are cleared. Pending cleanup status is checked without Authorization.
+Failed or expired status checks never claim deletion completed. Server account
+deletion does not erase the iPhone's separate local library or backpack storage.
+
+The server must implement the finalized v1 account-erasure contract. Deployment,
+TLS and email delivery are operator responsibilities. The optional service does
+not gate Bluetooth, offline media, Commons, scenes or animations by speed.
 
 ### One-tap scenes
 
@@ -319,7 +352,8 @@ No third-party artwork is bundled in this source tree.
 
 ## Privacy and network behavior
 
-- No application account or vendor backend.
+- No vendor account or vendor backend is required. Optional community account
+  information and catalog requests go to the server you configure.
 - Bluetooth/logs are local; diagnostic exports are explicit and may contain
   panel identifiers. Review before sharing.
 - Location is used only after starting a location-based feature.
@@ -327,6 +361,8 @@ No third-party artwork is bundled in this source tree.
   endpoint is involved.
 - Commons search terms and downloads go to Wikimedia.
 - Music metadata is rendered locally.
+- Catalog sessions and account-deletion receipts stay in Keychain. No Bluetooth
+  identity or GPS data is sent to the catalog by these features.
 - No location history is persisted by this implementation.
 - Stored files use protection compatible with operation after the first
   device unlock. Keychain items do not migrate to another device.

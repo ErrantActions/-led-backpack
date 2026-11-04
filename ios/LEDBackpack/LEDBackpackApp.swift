@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     let live: LiveEngine
     let playlist: PlaylistRunner
     let alerts = DisconnectAlerts()
+    let community = CommunityController()
     @Published var library: LocalLibrary?
     @Published var startupError: String?
     @Published private(set) var applyingSceneID: UUID?
@@ -61,6 +62,7 @@ final class AppModel: ObservableObject {
         live.themes = library?.state.liveThemes ?? [:]
         link.autoReconnect = value.reconnect
         link.systemDisconnectAlerts = value.disconnectAlerts
+        community.configure(value.communityURL)
     }
 
     func run(_ operation: @escaping @MainActor () async throws -> Void) {
@@ -162,6 +164,7 @@ struct LEDBackpackApp: App {
                         .environmentObject(app).environmentObject(app.link).environmentObject(app.panel)
                         .environmentObject(app.live).environmentObject(app.sensors).environmentObject(library)
                         .environmentObject(app.playlist)
+                        .environmentObject(app.community)
                 } else {
                     ContentUnavailableView {
                         Label("Library unavailable", systemImage: "externaldrive.badge.exclamationmark")
