@@ -54,8 +54,11 @@ struct CommunityAccountView: View {
     @State private var busy = false
     @State private var message: String?
     @State private var failure: String?
+    private enum Field: Hashable { case email, password, displayName }
+    @FocusState private var focusedField: Field?
 
     var body: some View {
+        ZStack {
         Form {
             if community.origin == nil {
                 NavigationLink("Configure a catalog first") { CommunitySettingsView() }
@@ -69,8 +72,11 @@ struct CommunityAccountView: View {
             }
         }
         .id(community.signedIn)
-        .modernScene().navigationTitle("Catalog account")
+        .modernScene()
+        }
+        .navigationTitle("Catalog account")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             if showsDone {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(busy) }
@@ -79,6 +85,7 @@ struct CommunityAccountView: View {
         .interactiveDismissDisabled(busy)
         .task { await refresh() }
         .onChange(of: community.signedIn) { _, value in
+            focusedField = nil
             if !value { email = ""; displayName = ""; password = ""; message = nil }
         }
         .onDisappear { password = "" }
@@ -134,10 +141,12 @@ struct CommunityAccountView: View {
                 Text("Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.")
                     .font(.caption).foregroundStyle(.orange)
             }
-            if creating { TextField("Display name", text: $displayName) }
+            if creating { TextField("Display name", text: $displayName).focused($focusedField, equals: .displayName) }
             TextField("Email", text: $email).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .focused($focusedField, equals: .email)
             SecureField(creating ? "Password (12-128 characters)" : "Password", text: $password)
+                .focused($focusedField, equals: .password)
                 .submitLabel(.go).onSubmit { submitEmail() }
             if let config = community.config {
                 Text(config.requireEmailVerification
@@ -171,6 +180,7 @@ struct CommunityAccountView: View {
             failure = "Enter your email and password."; return
         }
         let enteredEmail = email, enteredPassword = password, enteredName = displayName, signup = creating
+        focusedField = nil
         perform {
             if signup {
                 return try await community.signUp(email: enteredEmail, password: enteredPassword, displayName: enteredName)
