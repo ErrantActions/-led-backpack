@@ -11,7 +11,13 @@ struct CommunityUser: Codable, Equatable {
     let verified: Bool
 }
 
-struct CommunityConfig: Decodable { let requireEmailVerification: Bool }
+struct CommunityConfig: Decodable {
+    let requireEmailVerification: Bool
+    let passwordRecoveryAvailable: Bool?
+    let privateLibraryEnabled: Bool?
+    let accountDeletionRetainsSharedGifs: Bool?
+    var allowsNativeSignup: Bool { accountDeletionRetainsSharedGifs == false }
+}
 struct CommunitySession: Codable {
     let token: String
     let expiresAt: String
@@ -32,6 +38,7 @@ struct CommunityDeletion: Codable, Equatable {
     let requestedAt: String
     let completedAt: String?
     let error: String?
+    let retainedSharedGifs: Int?
 }
 struct CommunityDeletionResponse: Decodable { let deletion: CommunityDeletion }
 
@@ -54,7 +61,7 @@ struct CommunityItem: Decodable, Identifiable {
     let uploader: Uploader
     let likeCount: Int
     let variants: [Variant]
-    struct Uploader: Decodable { let id: UUID; let displayName: String }
+    struct Uploader: Decodable { let id: UUID?; let displayName: String }
     struct Variant: Decodable {
         let width: Int
         let height: Int
@@ -327,6 +334,10 @@ final class CommunityController: ObservableObject {
         session = saved; user = result.user; setupError = nil
     }
     func signUp(email: String, password: String, displayName: String) async throws -> String {
+        try await loadConfig()
+        guard config?.allowsNativeSignup == true else {
+            throw BackpackError.invalid("Native signup is unavailable while this server retains shared GIFs after account deletion, or its deletion policy is unknown. You can browse as a guest or sign in to an existing account.")
+        }
         struct Body: Encodable { let email: String; let password: String; let displayName: String }
         let body = try JSONEncoder().encode(Body(email: email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: password, displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)))
@@ -464,6 +475,10 @@ final class CommunityController: ObservableObject {
 
     func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata) async throws -> CommunitySubmission {
         guard signedIn else { throw BackpackError.invalid("Sign in before uploading to the community.") }
+        try await loadConfig()
+        guard config?.privateLibraryEnabled == true else {
+            throw BackpackError.invalid("This server has not confirmed private-library uploads. Upload was not sent.")
+        }
         try metadata.validate()
         try CommunityUpload.validateGIF(data)
         let boundary = "LEDBackpack-\(UUID().uuidString)"
@@ -473,8 +488,8 @@ final class CommunityController: ObservableObject {
         guard response.status == 201 else { throw BackpackError.invalid("Unexpected GIF upload response.") }
         struct Result: Decodable { let item: CommunitySubmission }
         let item = try JSONDecoder().decode(Result.self, from: response.data).item
-        guard item.status == "pending" else {
-            throw BackpackError.invalid("The server accepted the GIF but returned an unexpected moderation status. Check My uploads before retrying.")
+        guard item.visibility == "private", item.status == "pending", item.aiState == "disabled" else {
+            throw BackpackError.invalid("The server accepted the GIF but did not confirm private storage without AI review. Check My uploads before retrying.")
         }
         return item
     }
@@ -487,6 +502,18 @@ final class CommunityController: ObservableObject {
 
     func deleteUpload(_ id: UUID) async throws {
         guard signedIn else { throw BackpackError.invalid("Sign in to delete an upload.") }
+        guard user?.role == "admin" else { throw BackpackError.invalid("Only catalog admins can delete individual server GIFs.") }
         _ = try await request("items/\(id.uuidString.lowercased())", method: "DELETE")
+    }
+
+    func submitUpload(_ id: UUID, sharingAttested: Bool) async throws -> CommunitySubmission {
+        guard signedIn, sharingAttested else { throw BackpackError.invalid("Sign in and explicitly confirm publication permission first.") }
+        struct Body: Encodable { let sharingAttested: Bool }
+        struct Result: Decodable { let item: CommunitySubmission }
+        let body = try JSONEncoder().encode(Body(sharingAttested: true))
+        let response = try await request("items/\(id.uuidString.lowercased())/submit", method: "POST", body: body)
+        let item = try JSONDecoder().decode(Result.self, from: response.data).item
+        guard item.visibility == "shared" else { throw BackpackError.invalid("Sharing consent was sent, but the server did not confirm shared visibility. Refresh My uploads.") }
+        return item
     }
 }

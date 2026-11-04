@@ -81,10 +81,16 @@ search, previews, local imports and signed-in likes/reports/uploader blocking.
 Credits, license information and original-work download restrictions remain
 attached to imported artwork. The connected panel's prepared variant is used
 when available, otherwise the default is 64x64. Upload and moderation tools
-are separate: **Library > Actions > Share to community** uploads directly from
+are separate: **Library > Actions > Upload to private catalog library** uploads directly from
 the app with title, category, tags, attribution, an explicit license and
-permission confirmation. **Account > My uploads** shows pending/approved/rejected
-status and allows removal of server uploads without deleting local files.
+permission confirmation. Uploads are initially **private** (owner/admin access),
+with no AI submission. **Account > My uploads** separately offers an explicit
+sharing-rights confirmation; only then does a GIF enter shared review and
+optional AI processing. Approved shared GIFs and credits remain after account
+deletion under the server's current policy.
+My uploads shows private/shared visibility and pending/approved/rejected status.
+Only admins can delete individual server GIFs, including private ones; legacy
+moderators have ordinary-user permissions. Server deletion never erases local files.
 Moderation still uses the web portal with its own sign-in; native credentials
 are never passed in links. Uploading never publishes automatically.
 
@@ -94,8 +100,12 @@ Download permission is not redistribution permission: keep imported attribution,
 do not mislabel others' work as original, and confirm the right to publish.
 If an upload connection fails after sending, check My uploads before retrying.
 
-Native signup/signin follows the server's email-confirmation policy. A server
-that permits immediate signup does not make an unconfirmed email verified.
+Native signup is **disabled** when shared GIFs are retained after account
+deletion or the retention policy is unknown. This policy is not claimed to
+satisfy Apple's associated-UGC deletion requirements. Existing-account sign-in
+and anonymous browsing remain available. On a server with a compatible explicit
+deletion policy, signup also follows its email-confirmation setting; immediate
+signup does not make an unconfirmed email verified.
 Sessions are scoped to that server and stored only in device-local Keychain,
 not diagnostics, ordinary preferences or library backups.
 
@@ -103,7 +113,9 @@ The Account screen includes permanent account deletion with password
 reauthentication and explicit `DELETE` confirmation. An accepted deletion
 receipt is retained privately before sign-in credentials and cached account
 identity are cleared. Pending cleanup status is checked without Authorization.
-Failed or expired status checks never claim deletion completed. Server account
+Failed or expired status checks never claim deletion completed. Receipts show
+the number of retained shared GIFs when supplied; completing account cleanup
+does not imply retained approved work was removed. Server account
 deletion does not erase the iPhone's separate local library or backpack storage.
 
 The server must implement the finalized v1 account-erasure contract. Deployment,

@@ -40,6 +40,7 @@ struct CommunitySubmission: Decodable, Identifiable {
     let moderationReason: String
     let aiState: String
     let aiError: String?
+    let visibility: String
 }
 
 enum CommunityUpload {
@@ -117,9 +118,9 @@ struct CommunityUploadView: View {
         NavigationStack {
             Form {
                 if let submitted {
-                    Section("Submitted for review") {
+                    Section("Saved privately") {
                         Label(submitted.title, systemImage: "checkmark.circle")
-                        Text("Pending moderator approval. Uploading does not publish automatically.")
+                        Text("Only you and catalog admins can access this GIF. It has not been shared or sent for AI review. Use My uploads to separately consent to sharing.")
                         NavigationLink("My uploads") { CommunityUploadsView() }
                     }
                 } else {
@@ -128,10 +129,10 @@ struct CommunityUploadView: View {
                     }
                     metadata
                     Section {
-                        Toggle("I own this work or have permission to publish it under the selected license", isOn: $permission)
+                        Toggle("I own this work or have permission to store it on this server with the selected credits/license", isOn: $permission)
                         Text("Permission to download is not permission to rehost. Preserve original credits and license terms. Do not select 'My original work' for someone else's art.")
                             .font(.caption).foregroundStyle(.secondary)
-                        Button("Upload for moderator review") { upload() }
+                        Button("Upload to private library") { upload() }
                             .buttonStyle(.borderedProminent)
                             .disabled(!community.signedIn || busy || !permission || license == nil)
                     }.disabled(busy)
@@ -139,7 +140,7 @@ struct CommunityUploadView: View {
                 if busy { ProgressView("Uploading...") }
                 if let failure { Text(failure).foregroundStyle(.orange) }
             }
-            .modernScene().navigationTitle("Share GIF")
+            .modernScene().navigationTitle("Upload GIF")
             .toolbar { Button("Done") { dismiss() }.disabled(busy) }
             .interactiveDismissDisabled(busy)
         }
@@ -162,7 +163,7 @@ struct CommunityUploadView: View {
                 Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Text("Animated GIFs: 2-120 frames, up to 5 MB. Artwork stays in your local library; community sharing does not change the backpack.")
+            Text("Animated GIFs: 2-120 frames, up to 5 MB. This upload is private, but admins can access it. Public sharing requires a separate confirmation; neither action changes the backpack.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(busy)
     }
@@ -189,6 +190,7 @@ struct CommunityUploadsView: View {
     @State private var busy = false
     @State private var failure: String?
     @State private var selected: CommunitySubmission?
+    @State private var sharing: CommunitySubmission?
     private struct Account: Equatable {
         let origin: CommunityOrigin?
         let id: UUID?
@@ -203,10 +205,18 @@ struct CommunityUploadsView: View {
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.title).font(.headline)
-                        Text("Status: \(item.status) / AI: \(item.aiState)").font(.caption)
+                        Text("Visibility: \(item.visibility) / status: \(item.status) / AI: \(item.aiState)").font(.caption)
                         if !item.moderationReason.isEmpty { Text(item.moderationReason).font(.caption) }
                         if let error = item.aiError { Text(error).font(.caption).foregroundStyle(.orange) }
-                        Button("Delete server upload", role: .destructive) { selected = item }.disabled(busy)
+                        if item.visibility == "private" {
+                            Button("Submit for community sharing") { sharing = item }.disabled(busy)
+                        }
+                        if community.user?.role == "admin" {
+                            Button("Delete server upload", role: .destructive) { selected = item }.disabled(busy)
+                        } else {
+                            Text("Only admins can delete individual server GIFs. Account deletion removes private/unpublished work but retains approved shared work.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
                 if items.isEmpty && !busy && failure == nil { Text("No uploads yet. Share an animated GIF from Library > Actions.") }
@@ -217,6 +227,20 @@ struct CommunityUploadsView: View {
         .modernScene().navigationTitle("My uploads")
         .task(id: account) { items = []; if community.signedIn { refresh() } }
         .onDisappear { items = [] }
+        .confirmationDialog("Publish this GIF for review? This may send frames to the server's AI reviewer. If approved, it and its credits remain after account deletion.", isPresented: Binding(
+            get: { sharing != nil }, set: { if !$0 { sharing = nil } })) {
+            Button("I have sharing rights; submit for review") {
+                guard let sharing, !busy else { return }
+                self.sharing = nil; busy = true; failure = nil
+                Task {
+                    defer { busy = false }
+                    do {
+                        let updated = try await community.submitUpload(sharing.id, sharingAttested: true)
+                        if let index = items.firstIndex(where: { $0.id == updated.id }) { items[index] = updated }
+                    } catch { failure = error.localizedDescription }
+                }
+            }
+        }
         .confirmationDialog("Delete this server upload? This does not delete your local GIF.", isPresented: Binding(
             get: { selected != nil }, set: { if !$0 { selected = nil } })) {
             Button("Delete server upload", role: .destructive) {

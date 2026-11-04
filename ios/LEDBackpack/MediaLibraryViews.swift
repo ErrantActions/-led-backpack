@@ -37,7 +37,7 @@ struct LibraryMediaRow: View {
                 Menu("Actions", systemImage: "ellipsis.circle") {
                     Button("Edit a copy") { action(.edit) }
                     Button("Send to backpack") { action(.send) }
-                    Button("Share to community") { action(.share) }
+                    Button("Upload to private catalog library") { action(.share) }
                     Button("Organize") { action(.organize) }
                     Button("Export GIF") { action(.export) }
                     Button("Delete local copy", role: .destructive) { action(.delete) }

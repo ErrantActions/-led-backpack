@@ -68,9 +68,9 @@ final class CommunityTests: XCTestCase {
     private func response(_ value: String, status: Int = 200) -> CommunityResponse {
         CommunityResponse(status: status, data: Data(value.utf8))
     }
-    private func login(verified: Bool = false) -> CommunityResponse {
+    private func login(verified: Bool = false, role: String = "user") -> CommunityResponse {
         response("""
-        {"user":{"id":"223609c9-cc77-4818-8951-0c55acdaab4e","email":"test@example.org","displayName":"Rider","role":"user","verified":\(verified)},"token":"\(token)","expiresAt":"2099-01-01T00:00:00.000Z"}
+        {"user":{"id":"223609c9-cc77-4818-8951-0c55acdaab4e","email":"test@example.org","displayName":"Rider","role":"\(role)","verified":\(verified)},"token":"\(token)","expiresAt":"2099-01-01T00:00:00.000Z"}
         """)
     }
     private func receipt(status: String = "pending", origin: String? = nil, http: Int = 202) -> CommunityResponse {
@@ -101,12 +101,11 @@ final class CommunityTests: XCTestCase {
 
     func testImmediateSignupDoesNotFakeEmailVerification() async throws {
         let vault = CommunityMemoryVault()
-        let stub = CommunityStub([response(#"{"requireEmailVerification":false}"#),
+        let stub = CommunityStub([response(#"{"requireEmailVerification":false,"accountDeletionRetainsSharedGifs":false}"#),
             response(#"{"message":"Created"}"#, status: 201), login()])
         let service = client(stub, vault: vault)
-        try await service.loadConfig()
-        XCTAssertEqual(service.config?.requireEmailVerification, false)
         _ = try await service.signUp(email: "test@example.org", password: "example test password", displayName: "Rider")
+        XCTAssertEqual(service.config?.requireEmailVerification, false)
         XCTAssertTrue(service.signedIn)
         XCTAssertEqual(service.user?.verified, false)
         let requests = await stub.history()
@@ -121,7 +120,8 @@ final class CommunityTests: XCTestCase {
 
     func testVerificationSignupDoesNotCreateASession() async throws {
         let vault = CommunityMemoryVault()
-        let stub = CommunityStub([response(#"{"message":"Check email"}"#, status: 202)])
+        let stub = CommunityStub([response(#"{"requireEmailVerification":true,"accountDeletionRetainsSharedGifs":false}"#),
+            response(#"{"message":"Check email"}"#, status: 202)])
         let service = client(stub, vault: vault)
         let message = try await service.signUp(email: "test@example.org", password: "example test password", displayName: "Rider")
         XCTAssertEqual(message, "Check email")
@@ -332,10 +332,13 @@ final class CommunityTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Catalog-Client"), "1")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
         }
+    }
 
         func testNativeUploadUsesBearerAndOrderedMultipartThenLoadsOwnStatus() async throws {
-            let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","status":"pending","moderationReason":"","aiState":"queued","aiError":null}"#
-            let stub = CommunityStub([login(), response("{\"item\":\(item)}", status: 201),
+            let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","visibility":"private","status":"pending","moderationReason":"","aiState":"disabled","aiError":null}"#
+            let stub = CommunityStub([login(role: "admin"),
+                response(#"{"requireEmailVerification":false,"privateLibraryEnabled":true,"accountDeletionRetainsSharedGifs":true}"#),
+                response("{\"item\":\(item)}", status: 201),
                 response("{\"items\":[\(item)]}"), response(#"{"message":"Deleted"}"#)])
             let service = client(stub, vault: CommunityMemoryVault())
             try await service.signIn(email: "test@example.org", password: "example test password")
@@ -349,7 +352,7 @@ final class CommunityTests: XCTestCase {
             XCTAssertEqual(uploads.count, 1)
             try await service.deleteUpload(uploaded.id)
             let requests = await stub.history()
-            let upload = requests[1]
+            let upload = requests[2]
             XCTAssertEqual(upload.httpMethod, "POST")
             XCTAssertEqual(upload.url?.path, "/api/v1/items")
             XCTAssertEqual(upload.value(forHTTPHeaderField: "X-Catalog-Client"), "1")
@@ -359,12 +362,14 @@ final class CommunityTests: XCTestCase {
             let meta = try XCTUnwrap(data.range(of: Data("name=\"metadata\"".utf8)))
             let file = try XCTUnwrap(data.range(of: Data("name=\"file\"".utf8)))
             XCTAssertLessThan(meta.lowerBound, file.lowerBound)
-            XCTAssertEqual(requests[2].url?.path, "/api/v1/me/items")
-            XCTAssertEqual(requests[3].httpMethod, "DELETE")
+            XCTAssertEqual(requests[3].url?.path, "/api/v1/me/items")
+            XCTAssertEqual(requests[4].httpMethod, "DELETE")
         }
 
         func testUploadRequiresAnAccountAndSurfacesServerRejection() async throws {
-            let stub = CommunityStub([login(), response(#"{"error":{"code":"duplicate","message":"Already uploaded"}}"#, status: 409)])
+            let stub = CommunityStub([login(),
+                response(#"{"requireEmailVerification":false,"privateLibraryEnabled":true,"accountDeletionRetainsSharedGifs":true}"#),
+                response(#"{"error":{"code":"duplicate","message":"Already uploaded"}}"#, status: 409)])
             let service = client(stub, vault: CommunityMemoryVault())
             let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
                 attribution: "Test creator", license: .original, ownershipAttested: true)
@@ -376,7 +381,73 @@ final class CommunityTests: XCTestCase {
             do { _ = try await service.uploadGIF(gif, metadata: metadata); XCTFail("Duplicate must fail") }
             catch let failure as CommunityFailure { XCTAssertEqual(failure.status, 409) }
             let requests = await stub.history()
-            XCTAssertEqual(requests.count, 2)
+            XCTAssertEqual(requests.count, 3)
         }
+
+    func testRetentionOrUnknownPolicyBlocksSignupBeforeCredentialsArePosted() async throws {
+        for policy in [#"{"requireEmailVerification":false,"accountDeletionRetainsSharedGifs":true}"#,
+                       #"{"requireEmailVerification":false}"#] {
+            let stub = CommunityStub([response(policy)])
+            let service = client(stub, vault: CommunityMemoryVault())
+            do {
+                _ = try await service.signUp(email: "test@example.org", password: "example test password", displayName: "Rider")
+                XCTFail("Retention or unknown policy must gate native signup")
+            } catch { XCTAssertTrue(error.localizedDescription.contains("Native signup")) }
+            let requests = await stub.history()
+            XCTAssertEqual(requests.count, 1)
+            XCTAssertEqual(requests.first?.url?.path, "/api/v1/config")
+            XCTAssertNil(requests.first?.httpBody)
+            XCTAssertFalse(service.signedIn)
+        }
+    }
+
+    func testOrdinaryUsersCannotDeleteIndividualUploads() async throws {
+        let stub = CommunityStub([login()])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        do { try await service.deleteUpload(UUID()); XCTFail("Deletion must be admin-only") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("Only catalog admins")) }
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 1)
+    }
+
+    func testSharingIsASeparateExplicitRequest() async throws {
+        let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","visibility":"shared","status":"pending","moderationReason":"","aiState":"queued","aiError":null}"#
+        let stub = CommunityStub([login(), response("{\"item\":\(item)}")])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        let id = try XCTUnwrap(UUID(uuidString: "abcdefab-1234-4567-89ab-abcdefabcdef"))
+        do { _ = try await service.submitUpload(id, sharingAttested: false); XCTFail("Consent is required") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("confirm publication")) }
+        let shared = try await service.submitUpload(id, sharingAttested: true)
+        XCTAssertEqual(shared.visibility, "shared")
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[1].url?.path, "/api/v1/items/\(id.uuidString.lowercased())/submit")
+        let body = try XCTUnwrap(requests[1].httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Bool])
+        XCTAssertEqual(object, ["sharingAttested": true])
+    }
+
+    func testDeletedUploaderAndRetentionReceiptDecodeWithoutInventingIdentity() throws {
+        let item = Data("""
+        {"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Retained","category":"memes","tags":[],
+        "displayAttribution":"Original creator","license":"original","licenseUrl":null,"sourceUrl":null,
+        "pageUrl":"https://catalog.example/items/abcdefab-1234-4567-89ab-abcdefabcdef",
+        "gifUrl":"https://catalog.example/media/a/original.gif","previewUrl":"https://catalog.example/media/a/preview.png",
+        "width":64,"height":64,"frameCount":2,"byteSize":1000,"variants":[],"likeCount":0,
+        "uploader":{"id":null,"displayName":"Deleted account"}}
+        """.utf8)
+        let decoded = try JSONDecoder().decode(CommunityItem.self, from: item)
+        XCTAssertNil(decoded.uploader.id)
+        XCTAssertEqual(decoded.uploader.displayName, "Deleted account")
+        XCTAssertEqual(decoded.displayAttribution, "Original creator")
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: receipt(status: "completed", http: 200).data) as? [String: Any])
+        var deletion = try XCTUnwrap(object["deletion"] as? [String: Any])
+        deletion["retainedSharedGifs"] = 2
+        object["deletion"] = deletion
+        let result = try JSONDecoder().decode(CommunityDeletionResponse.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertEqual(result.deletion.retainedSharedGifs, 2)
+        XCTAssertEqual(result.deletion.status, .completed)
     }
 }

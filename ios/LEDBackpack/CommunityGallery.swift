@@ -89,13 +89,13 @@ struct CommunityGallery: View {
             HStack {
                 Button("Search") { appliedQuery = query; reload = UUID() }.buttonStyle(.borderedProminent)
                 Spacer()
-                NavigationLink(community.signedIn ? "Account" : "Sign in / register") { CommunityAccountView() }
+                NavigationLink(community.signedIn ? "Account" : "Sign in") { CommunityAccountView() }
             }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
             if let url = community.origin?.url {
                 if community.signedIn { NavigationLink("My uploads") { CommunityUploadsView() } }
                 Link("Open moderation portal", destination: url)
-                Text("Share from Library > Actions > Share to community. The web portal has its own sign-in. Download permission alone does not grant permission to re-upload someone else's work.")
+                Text("Upload privately from Library > Actions, then explicitly submit for sharing in My uploads. Approved shared GIFs remain after account deletion under this server's policy. Download permission alone does not grant permission to rehost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -202,11 +202,11 @@ private struct CommunityDetail: View {
                 TextField("Report concern (4-1000 characters)", text: $reason, axis: .vertical)
                 Button("Send report") { perform { try await community.report(item.id, reason: reason); message = "Report sent to moderators." } }
                     .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
-                if let user = community.user, user.id != item.uploader.id {
+                if let user = community.user, let uploaderID = item.uploader.id, user.id != uploaderID {
                     Button("Block this uploader", role: .destructive) {
                         perform {
-                            try await community.block(item.uploader.id)
-                            blocked(item.uploader.id); dismiss()
+                            try await community.block(uploaderID)
+                            blocked(uploaderID); dismiss()
                         }
                     }
                 }

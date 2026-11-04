@@ -77,7 +77,7 @@ struct CommunityAccountView: View {
                 LabeledContent("Email", value: user.email)
                 Text(user.verified ? "Email confirmed." : "Email is not confirmed.")
                     .font(.caption).foregroundStyle(.secondary)
-                NavigationLink("Delete account and server uploads") {
+                NavigationLink("Delete account / review data retention") {
                     CommunityDeleteAccountView()
                 }
             } else {
@@ -95,7 +95,11 @@ struct CommunityAccountView: View {
 
     private var signInControls: some View {
         Section(creating ? "Create account" : "Sign in") {
-            Toggle("Create a new account", isOn: $creating)
+            Toggle("Create a new account", isOn: $creating).disabled(community.config?.allowsNativeSignup != true)
+            if community.config?.allowsNativeSignup != true {
+                Text("Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
             if creating { TextField("Display name", text: $displayName) }
             TextField("Email", text: $email).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -116,12 +120,15 @@ struct CommunityAccountView: View {
                     return "Signed in."
                 }
             }.buttonStyle(.borderedProminent)
-                .disabled(email.isEmpty || password.isEmpty || (creating && (community.config == nil ||
+                .disabled(email.isEmpty || password.isEmpty || (creating && (community.config?.allowsNativeSignup != true ||
                     displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                     !(12...128).contains(password.utf16.count))))
             Button("Forgot password") {
                 perform { try await community.forgotPassword(email: email) }
-            }.disabled(email.isEmpty)
+            }.disabled(email.isEmpty || community.config?.passwordRecoveryAvailable != true)
+            if community.config?.passwordRecoveryAvailable == false {
+                Text("Password recovery is not available on this server.").font(.caption).foregroundStyle(.secondary)
+            }
             Button("Reload server policy") { perform { try await community.loadConfig(); return nil } }
             if community.setupError != nil {
                 Button("Forget saved sign-in on this iPhone") {
@@ -162,7 +169,14 @@ struct CommunityDeletionStatus: View {
     var body: some View {
         Section("Deletion receipt") {
             if let receipt = community.deletion {
-                Text(receipt.status == .completed ? "Account and associated server data deleted." : "Deletion accepted. Server cleanup is pending.")
+                Text(receipt.status == .completed ? "Account cleanup completed." : "Deletion accepted. Server cleanup is pending.")
+                if let retained = receipt.retainedSharedGifs {
+                    Text("\(retained) approved shared GIF(s) retained by the server, including existing credits.")
+                        .font(.caption).foregroundStyle(retained > 0 ? .orange : .secondary)
+                } else {
+                    Text("This receipt does not specify how many shared GIFs were retained.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Text("Receipt requested: \(receipt.requestedAt)").font(.caption).foregroundStyle(.secondary)
                 if let error = receipt.error { Text(error).font(.caption).foregroundStyle(.orange) }
                 Text("Sessions for the deleted account were revoked. This receipt contains no account identity; status checks do not send Authorization. Completed receipts expire after 24 hours.")
@@ -197,7 +211,9 @@ private struct CommunityDeleteAccountView: View {
             if community.signedIn {
                 Section("Permanent server deletion") {
                     if let user = community.user { Text("Delete \(user.email)") }
-                    Text("This removes your server account, uploaded GIFs, and associated community data. All server sessions are revoked immediately. Cleanup may continue after you leave this screen.")
+                    Text(community.config?.accountDeletionRetainsSharedGifs == false
+                        ? "This removes your server account and associated uploaded work under this server's deletion policy. All sessions are revoked immediately; cleanup may continue after you leave."
+                        : "This removes your server account, private-library GIFs and unpublished/rejected uploads. Approved shared GIFs and their credits are retained under the server's policy, attributed to 'Deleted account'. Names in existing credit/source text may remain. All sessions are revoked immediately; cleanup may continue after you leave.")
                         .foregroundStyle(.orange)
                     Text("Your iPhone's local artwork and backpack storage are not erased.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -212,7 +228,16 @@ private struct CommunityDeleteAccountView: View {
                             do { try await community.deleteAccount(password: enteredPassword, confirmation: enteredConfirmation) }
                             catch { failure = error.localizedDescription }
                         }
-                    }.disabled(busy || password.isEmpty || confirmation != "DELETE")
+                    }.disabled(busy || password.isEmpty || confirmation != "DELETE" || community.config?.accountDeletionRetainsSharedGifs == nil)
+                    if community.config?.accountDeletionRetainsSharedGifs == nil {
+                        Text("Load the server's deletion policy before confirming.").font(.caption).foregroundStyle(.orange)
+                        Button("Load policy") {
+                            Task {
+                                do { try await community.loadConfig() }
+                                catch { failure = error.localizedDescription }
+                            }
+                        }
+                    }
                 }.disabled(busy)
             }
             if busy { ProgressView("Requesting deletion...") }
