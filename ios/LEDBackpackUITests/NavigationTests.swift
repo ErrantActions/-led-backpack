@@ -90,11 +90,11 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Discover GIFs"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
         XCTAssertTrue(app.windows.firstMatch.frame.intersects(app.buttons["Discover GIFs"].frame))
-        attach(app, name: "Duo Library - landscape resize")
+        attach(app, name: "Duo Library - landscape orientation request")
         XCUIDevice.shared.orientation = .portrait
         XCTAssertTrue(app.buttons["Discover GIFs"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
-        attach(app, name: "Duo Library - portrait resize")
+        attach(app, name: "Duo Library - portrait orientation request")
     }
 
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {

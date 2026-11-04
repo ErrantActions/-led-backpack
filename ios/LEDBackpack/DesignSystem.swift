@@ -83,6 +83,15 @@ struct PixelArtwork: View {
 struct BackpackHero: View {
     let connected: Bool
     let size: String
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Make your\npixels move.").font(.system(.title2, design: .rounded, weight: .bold))
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Live data.\nInfinite personality.").font(.caption).foregroundStyle(.secondary)
+            Text(size).font(.caption2.monospaced()).foregroundStyle(.cyan)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -92,14 +101,16 @@ struct BackpackHero: View {
                 Spacer()
                 Image(systemName: "backpack.fill").font(.title2).foregroundStyle(.white.opacity(0.7))
             }
-            HStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Make your\npixels move.").font(.system(.largeTitle, design: .rounded, weight: .bold))
-                        .tracking(-1).fixedSize(horizontal: false, vertical: true)
-                    Text("Live data. Infinite personality.").font(.subheadline).foregroundStyle(.secondary)
-                    Text(size).font(.caption.monospaced()).foregroundStyle(.cyan)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 18) {
+                    copy.fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    PixelArtwork().frame(width: 84, height: 84)
                 }
-                PixelArtwork().frame(maxWidth: 150)
+                VStack(alignment: .leading, spacing: 16) {
+                    copy
+                    PixelArtwork().frame(width: 84, height: 84)
+                }
             }
         }.padding(24).glassPanel()
     }
