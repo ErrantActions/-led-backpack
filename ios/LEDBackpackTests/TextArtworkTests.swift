@@ -32,7 +32,7 @@ final class TextArtworkTests: XCTestCase {
 
     func testMeasuredPixelWrappingFitsWithoutLosingWords() throws {
         let layout = try TextArtwork.pixelLayout("hello world", size: size)
-        XCTAssertEqual(layout.lines, ["HELLO", "WORLD"])
+        XCTAssertEqual(layout.lines, ["hello", "world"])
         XCTAssertEqual(layout.scale, 2)
         XCTAssertLessThanOrEqual(layout.height, size.height - layout.padding * 2)
         for line in layout.lines { XCTAssertLessThanOrEqual(layout.width(of: line), size.width - layout.padding * 2) }

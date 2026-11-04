@@ -67,8 +67,94 @@ enum TextArtwork {
         "<": [1,2,4,8,4,2,1], ">": [16,8,4,2,4,8,16],
         "#": [10,10,31,10,31,10,10], "%": [25,25,2,4,8,19,19],
         "&": [12,18,20,8,21,18,13], "*": [0,21,14,31,14,21,0],
-        "@": [14,17,23,21,23,16,14], "|": [4,4,4,4,4,4,4]
+        "@": [14,17,23,21,23,16,14], "|": [4,4,4,4,4,4,4],
+        "$": [4,15,20,14,5,30,4], "^": [4,10,17,0,0,0,0],
+        "`": [8,4,2,0,0,0,0], "{": [2,4,4,8,4,4,2],
+        "}": [8,4,4,2,4,4,8], "~": [0,0,8,21,2,0,0],
+        "a": [0,0,14,1,15,17,15], "b": [16,16,22,25,17,17,30],
+        "c": [0,0,14,17,16,17,14], "d": [1,1,13,19,17,17,15],
+        "e": [0,0,14,17,31,16,14], "f": [6,9,8,28,8,8,8],
+        "g": [0,14,17,17,15,1,14], "h": [16,16,22,25,17,17,17],
+        "i": [4,0,12,4,4,4,14], "j": [2,0,6,2,2,18,12],
+        "k": [16,16,18,20,24,20,18], "l": [12,4,4,4,4,4,14],
+        "m": [0,0,26,21,21,21,21], "n": [0,0,22,25,17,17,17],
+        "o": [0,0,14,17,17,17,14], "p": [0,30,17,17,30,16,16],
+        "q": [0,15,17,17,15,1,1], "r": [0,0,22,25,16,16,16],
+        "s": [0,0,15,16,14,1,30], "t": [8,8,28,8,8,9,6],
+        "u": [0,0,17,17,17,19,13], "v": [0,0,17,17,17,10,4],
+        "w": [0,0,17,17,21,21,10], "x": [0,0,17,10,4,10,17],
+        "y": [0,17,17,17,15,1,14], "z": [0,0,31,2,4,8,31]
     ]
+
+    static var supportedCharacters: [Character] { (32...126).compactMap { UnicodeScalar($0).map(Character.init) } }
+    static func glyphRows(_ character: Character) throws -> [UInt8] {
+        guard let rows = glyphs[character] else { throw BackpackError.invalid("Unsupported pixel-font character.") }
+        return rows
+    }
+    static func maximumPixelScale(_ size: PanelSize) -> Int {
+        let padding = max(1, min(size.width, size.height) / 32)
+        return max(1, min((size.width - padding * 2) / 5, (size.height - padding * 2) / 7))
+    }
+    static func lineCapacity(width: Int, scale: Int) -> Int {
+        guard width > 0, scale > 0 else { return 0 }
+        return (width + scale) / (6 * scale)
+    }
+
+    static func canDrawPixel(_ text: String) -> Bool {
+        text.allSatisfy { glyphs[$0] != nil }
+    }
+    static func pixelLabelLines(_ text: String, width: Int) -> [String] {
+        wrapped(text, columns: max(1, lineCapacity(width: width, scale: 1)))
+    }
+
+    static func drawPixelLabel(_ text: String, in rect: CGRect, context: CGContext, color: UIColor,
+        alignment: ArtworkAlignment) throws {
+        let lines = pixelLabelLines(text, width: Int(rect.width))
+        guard lines.count * 8 - 1 <= Int(rect.height) else {
+            throw BackpackError.invalid("Label is too long for this screen. Shorten it to keep every letter readable.")
+        }
+        for (index, line) in lines.enumerated() {
+            try drawPixelLine(line, in: CGRect(x: rect.minX, y: rect.minY + CGFloat(index * 8), width: rect.width, height: 7),
+                context: context, color: color, alignment: alignment, scale: 1)
+        }
+    }
+
+    static func drawPixelLine(_ text: String, in rect: CGRect, context: CGContext, color: UIColor,
+        alignment: ArtworkAlignment = .center, scale: Int? = nil, scroll: Double? = nil, drift: Double = 0) throws {
+        guard canDrawPixel(text), rect.width >= 5, rect.height >= 7 else {
+            throw BackpackError.invalid("This label does not fit the 5x7 pixel font. Shorten it or choose a system typeface.")
+        }
+        let heightScale = Int(rect.height) / 7
+        let widthScale = text.isEmpty ? heightScale : Int(rect.width) / max(1, text.count * 6 - 1)
+        let selected = min(scale ?? heightScale, scroll == nil ? widthScale : heightScale)
+        guard selected >= 1 else {
+            throw BackpackError.invalid("This label is too long for a whole-pixel line. Shorten it or enable marquee.")
+        }
+        let width = max(0, text.count * 6 - 1) * selected
+        var x: CGFloat
+        switch alignment {
+        case .left: x = rect.minX
+        case .center: x = rect.midX - CGFloat(width) / 2
+        case .right: x = rect.maxX - CGFloat(width)
+        }
+        x = max(rect.minX, min(rect.maxX - CGFloat(width), x + CGFloat(drift) * max(0, rect.width - CGFloat(width)) / 2))
+        if let scroll { x = rect.maxX - CGFloat(scroll) * (rect.width + CGFloat(width)) }
+        x = floor(x)
+        let y = floor(rect.midY - CGFloat(selected * 7) / 2)
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.clip(to: rect)
+        context.setFillColor(color.cgColor)
+        for (index, character) in text.enumerated() {
+            let rows = try glyphRows(character)
+            for row in 0..<7 {
+                for column in 0..<5 where rows[row] & (1 << (4 - column)) != 0 {
+                    context.fill(CGRect(x: x + CGFloat((index * 6 + column) * selected),
+                        y: y + CGFloat(row * selected), width: selected, height: selected))
+                }
+            }
+        }
+    }
 
     private static func check(_ text: String, size: PanelSize) throws {
         guard MediaCodec.renderSizes.contains(size) else { throw BackpackError.invalid("Choose a supported canvas size.") }
@@ -78,9 +164,9 @@ enum TextArtwork {
     }
 
     private static func pixelMessage(_ text: String) throws -> String {
-        let value = text.uppercased()
+        let value = text.replacingOccurrences(of: "\r\n", with: "\n")
         guard value.count <= 80, value.allSatisfy({ $0 == "\n" || glyphs[$0] != nil }) else {
-            throw BackpackError.invalid("Pixel font supports A-Z, digits and basic punctuation. Choose a system font for other characters.")
+            throw BackpackError.invalid("Pixel font supports A-Z, a-z, digits and printable ASCII punctuation. Choose a system font for other characters.")
         }
         return value
     }
@@ -111,20 +197,27 @@ enum TextArtwork {
         return lines
     }
 
-    static func pixelLayout(_ text: String, size: PanelSize) throws -> PixelTextLayout {
+    static func pixelLayout(_ text: String, size: PanelSize, scale requestedScale: Int? = nil) throws -> PixelTextLayout {
         try check(text, size: size)
         let text = try pixelMessage(text)
         let padding = max(1, min(size.width, size.height) / 32)
         let width = size.width - padding * 2, height = size.height - padding * 2
-        let maximum = min(width / 5, height / 7)
+        let maximum = maximumPixelScale(size)
+        if let requestedScale, !(1...maximum).contains(requestedScale) {
+            throw BackpackError.invalid("Choose a pixel scale from 1 to \(maximum) for this canvas.")
+        }
         guard maximum >= 1 else { throw BackpackError.invalid("The canvas is too small for pixel text.") }
-        for scale in stride(from: maximum, through: 1, by: -1) {
-            let columns = (width + scale) / (6 * scale)
+        let longest = text.components(separatedBy: .whitespacesAndNewlines).map(\.count).max() ?? 0
+        let smallestCapacity = lineCapacity(width: width, scale: 1)
+        let scales = requestedScale.map { [$0] } ?? Array(stride(from: maximum, through: 1, by: -1))
+        for scale in scales {
+            let columns = lineCapacity(width: width, scale: scale)
             guard columns > 0 else { continue }
+            if longest <= smallestCapacity && longest > columns { continue }
             let layout = PixelTextLayout(lines: wrapped(text, columns: columns), scale: scale, padding: padding)
             if layout.height <= height { return layout }
         }
-        throw BackpackError.invalid("All text will not fit clearly. Shorten it or use a scrolling message.")
+        throw BackpackError.invalid("Text does not fit at this pixel size without splitting a word or clipping. Reduce the size, shorten it, or use scrolling.")
     }
 
     private static func rgb(_ color: UIColor) throws -> [UInt8] {
@@ -159,11 +252,12 @@ enum TextArtwork {
         }
     }
 
-    static func render(_ text: String, size: PanelSize, font: ArtworkFont, alignment: ArtworkAlignment, color: UIColor) throws -> PixelFrame {
+    static func render(_ text: String, size: PanelSize, font: ArtworkFont, alignment: ArtworkAlignment,
+        color: UIColor, pixelScale: Int? = nil) throws -> PixelFrame {
         try check(text, size: size)
         let ink = try rgb(color)
         if font != .pixel { return try systemText(text, size: size, font: font, alignment: alignment, color: color) }
-        let layout = try pixelLayout(text, size: size)
+        let layout = try pixelLayout(text, size: size, scale: pixelScale)
         var frame = PixelFrame.black(size)
         let top = (size.height - layout.height) / 2
         for (index, line) in layout.lines.enumerated() {
@@ -204,11 +298,13 @@ enum TextArtwork {
         throw BackpackError.invalid("The text is too long to render clearly. Shorten it or use scrolling.")
     }
 
-    private static func scrollingPlan(_ text: String, size: PanelSize, font: ArtworkFont) throws -> (text: String, scale: Int, width: Int, frames: Int) {
+    private static func scrollingPlan(_ text: String, size: PanelSize, font: ArtworkFont,
+        pixelScale: Int?) throws -> (text: String, scale: Int, width: Int, frames: Int) {
         try check(text, size: size)
         guard !text.contains("\n") else { throw BackpackError.invalid("Scrolling GIFs use a single line of text.") }
         let value = font == .pixel ? try pixelMessage(text) : text
-        let scale = max(1, min(3, (size.height - 4) / 7))
+        let scale = pixelScale ?? max(1, min(3, (size.height - 4) / 7))
+        guard (1...maximumPixelScale(size)).contains(scale) else { throw BackpackError.invalid("Pixel size exceeds this canvas.") }
         let width: Int
         if font == .pixel { width = max(0, value.count * 6 - 1) * scale }
         else { width = Int(ceil((value as NSString).size(withAttributes: [.font: font.font(CGFloat(size.height) * 0.4)]).width)) }
@@ -221,9 +317,10 @@ enum TextArtwork {
         return (value, scale, width, frames)
     }
 
-    static func scrollingFrame(_ text: String, size: PanelSize, font: ArtworkFont, color: UIColor, phase: Double) throws -> PixelFrame {
+    static func scrollingFrame(_ text: String, size: PanelSize, font: ArtworkFont, color: UIColor,
+        phase: Double, pixelScale: Int? = nil) throws -> PixelFrame {
         guard phase.isFinite, (0...1).contains(phase) else { throw BackpackError.invalid("Invalid text animation position.") }
-        let plan = try scrollingPlan(text, size: size, font: font)
+        let plan = try scrollingPlan(text, size: size, font: font, pixelScale: pixelScale)
         let ink = try rgb(color)
         let x = size.width + 2 - Int((Double(size.width + plan.width + 4) * phase).rounded())
         if font == .pixel {
@@ -242,10 +339,10 @@ enum TextArtwork {
         }
     }
 
-    static func animation(_ text: String, size: PanelSize, font: ArtworkFont, color: UIColor) throws -> [PixelFrame] {
-        let plan = try scrollingPlan(text, size: size, font: font)
+    static func animation(_ text: String, size: PanelSize, font: ArtworkFont, color: UIColor, pixelScale: Int? = nil) throws -> [PixelFrame] {
+        let plan = try scrollingPlan(text, size: size, font: font, pixelScale: pixelScale)
         return try (0..<plan.frames).map {
-            try scrollingFrame(text, size: size, font: font, color: color, phase: Double($0) / Double(plan.frames - 1))
+            try scrollingFrame(text, size: size, font: font, color: color, phase: Double($0) / Double(plan.frames - 1), pixelScale: pixelScale)
         }
     }
 }

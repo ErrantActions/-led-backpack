@@ -156,11 +156,13 @@ The app does not implement cloud password recovery.
   Categories/favorites are preserved in backups and do not rewrite GIF files.
 
 Studio's text tools default to a crisp whole-pixel alphabet with auto-fitting,
-word wrapping and left/center/right alignment. Pixel type uses uppercase A-Z,
-digits and basic punctuation; system, rounded and monospaced fonts remain
+whole-word wrapping and left/center/right alignment. Pixel type supports A-Z,
+a-z, digits and all printable ASCII punctuation; system, rounded and monospaced fonts remain
 available for other scripts. The preview updates as you edit. Scrolling GIFs
 have adjustable frame duration and reject messages that cannot move smoothly
 within the editor's frame limit; longer messages can use the live display.
+Choose an exact LED letter size or open **Inspect every letter and size** to
+save a physical-panel proof GIF. See the [letter-size guide](LED-TEXT.md).
 
 Imported source limits are 10 MB, 120 frames, and 4096x4096 input dimensions.
 Encoded/local GIFs are limited to 5 MB; supported render sizes are 16x16, 64x64

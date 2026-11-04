@@ -22,11 +22,11 @@ enum PixelInk: String, Codable, Hashable, CaseIterable, Identifiable {
 }
 
 enum LiveTypeface: String, Codable, Hashable, CaseIterable, Identifiable {
-    case mono = "Monospaced", rounded = "Rounded", system = "System"
+    case pixel = "LED pixel", mono = "Monospaced", rounded = "Rounded", system = "System"
     var id: String { rawValue }
     func font(_ points: CGFloat) -> UIFont {
         switch self {
-        case .mono: return .monospacedSystemFont(ofSize: points, weight: .bold)
+        case .pixel, .mono: return .monospacedSystemFont(ofSize: points, weight: .bold)
         case .system: return .systemFont(ofSize: points, weight: .bold)
         case .rounded:
             let base = UIFont.systemFont(ofSize: points, weight: .bold)
@@ -51,7 +51,7 @@ enum LiveField: String, Codable, Hashable, CaseIterable, Identifiable {
 struct LiveTheme: Codable, Equatable, Hashable {
     var foreground = PixelInk.cyan
     var background = PixelInk.black
-    var typeface = LiveTypeface.mono
+    var typeface = LiveTypeface.pixel
     var scale = 1.0
     var layout = LiveLayout.centered
     var topLabel = ""
@@ -78,7 +78,7 @@ struct LiveTheme: Codable, Equatable, Hashable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         foreground = try c.decodeIfPresent(PixelInk.self, forKey: .foreground) ?? .cyan
         background = try c.decodeIfPresent(PixelInk.self, forKey: .background) ?? .black
-        typeface = try c.decodeIfPresent(LiveTypeface.self, forKey: .typeface) ?? .mono
+        typeface = try c.decodeIfPresent(LiveTypeface.self, forKey: .typeface) ?? .pixel
         scale = try c.decodeIfPresent(Double.self, forKey: .scale) ?? 1
         layout = try c.decodeIfPresent(LiveLayout.self, forKey: .layout) ?? .centered
         topLabel = try c.decodeIfPresent(String.self, forKey: .topLabel) ?? ""
@@ -167,6 +167,33 @@ extension MediaCodec {
                 message = String(text.prefix(count))
             } else { message = text }
             let scrolling = theme.animation == .marquee && !requiredStatus
+            let label = requiredStatus ? subtitle : field ?? (theme.bottomLabel.isEmpty ? subtitle : theme.bottomLabel)
+            let pixelSupported = [message, label, theme.topLabel].allSatisfy(TextArtwork.canDrawPixel)
+            if theme.typeface == .pixel, pixelSupported, size.width >= 32 {
+                let top = !theme.topLabel.isEmpty && !requiredStatus
+                let bottom = (theme.showSecondary || requiredStatus) && !label.isEmpty
+                let topHeight = CGFloat(TextArtwork.pixelLabelLines(theme.topLabel, width: size.width - 2).count * 8 - 1)
+                let bottomHeight = CGFloat(TextArtwork.pixelLabelLines(label, width: size.width - 2).count * 8 - 1)
+                let topInset: CGFloat = top ? topHeight + 4 : 2
+                let bottomInset: CGFloat = bottom ? bottomHeight + 4 : 2
+                let availableHeight = h - topInset - bottomInset - (hasGauge ? 8 : 0)
+                let height = min(availableHeight, max(7, floor(h * 0.48 * CGFloat(requiredStatus ? 1 : theme.scale))))
+                let y = theme.layout == .stacked && !requiredStatus ? topInset : topInset + (availableHeight - height) / 2
+                let area = CGRect(x: 2, y: floor(y), width: w - 4, height: height)
+                let align: ArtworkAlignment = theme.layout == .left && !requiredStatus ? .left : .center
+                try TextArtwork.drawPixelLine(message, in: area, context: context, color: theme.foreground.uiColor,
+                    alignment: align, scroll: scrolling ? safePhase : nil,
+                    drift: theme.animation == .bounce && !requiredStatus ? sin(safePhase * .pi * 2) * 0.2 : 0)
+                if top {
+                    try TextArtwork.drawPixelLabel(theme.topLabel, in: CGRect(x: 1, y: 1, width: w - 2, height: topHeight),
+                        context: context, color: theme.foreground.uiColor, alignment: align)
+                }
+                if bottom {
+                    try TextArtwork.drawPixelLabel(label, in: CGRect(x: 1, y: h - bottomHeight - 2, width: w - 2, height: bottomHeight),
+                        context: context, color: theme.foreground.uiColor, alignment: align)
+                }
+                return
+            }
             let base = scrolling ? h * 0.4 : min(h * (hasGauge ? 0.36 : 0.48), w * 1.5 / CGFloat(max(1, message.count)))
             var points = max(5, min(h * 0.75, base * (requiredStatus ? 1 : theme.scale)))
             if requiredStatus {

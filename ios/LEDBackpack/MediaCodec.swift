@@ -79,19 +79,22 @@ enum MediaCodec {
         return Animation(images: images, delays: delays)
     }
 
-    static func canvas(_ size: PanelSize, paint: (CGContext) -> Void) throws -> PixelFrame {
+    static func canvas(_ size: PanelSize, paint: (CGContext) throws -> Void) throws -> PixelFrame {
         guard renderSizes.contains(size) else {
             throw BackpackError.invalid("Rendering supports 16x16, 64x64 and 96x128 panels.")
         }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1; format.opaque = true
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: CGFloat(size.width), height: CGFloat(size.height)), format: format)
+        var paintFailure: Error?
         let image = renderer.image { context in
             UIColor.black.setFill()
             context.fill(CGRect(x: 0, y: 0, width: CGFloat(size.width), height: CGFloat(size.height)))
             context.cgContext.setShouldAntialias(false)
-            paint(context.cgContext)
+            do { try paint(context.cgContext) }
+            catch { paintFailure = error }
         }
+        if let paintFailure { throw paintFailure }
         guard let cg = image.cgImage else { throw BackpackError.invalid("Could not render pixels.") }
         var rgba = [UInt8](repeating: 0, count: size.width * size.height * 4)
         let success = rgba.withUnsafeMutableBytes { buffer -> Bool in
