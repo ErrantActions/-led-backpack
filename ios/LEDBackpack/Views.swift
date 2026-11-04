@@ -192,6 +192,10 @@ struct LibraryView: View {
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var runner: PlaylistRunner
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var selectedVideo: PhotosPickerItem?
+    @State private var importingVideo = false
+    @State private var video: ImportedVideo?
+    @State private var videoImporting = false
     @State private var importing = false
     @State private var editor = false
     @State private var editorData: Data?
@@ -200,6 +204,7 @@ struct LibraryView: View {
     @State private var editorName = "My artwork"
     @State private var openEditorAfterGallery = false
     @State private var organizing: SavedMedia?
+    @State private var sharing: SavedMedia?
     @State private var libraryQuery = ""
     @State private var selectedCategory = ""
     @State private var favoritesOnly = false
@@ -249,6 +254,10 @@ struct LibraryView: View {
                 }
                 Section("Add artwork") {
                     PhotosPicker("Choose photo or GIF", selection: $selectedPhoto, matching: .images)
+                    PhotosPicker("Convert video from Photos", selection: $selectedVideo, matching: .videos)
+                        .disabled(videoImporting)
+                    Button("Convert video file to GIF") { importingVideo = true }.disabled(videoImporting)
+                    if videoImporting { ProgressView("Importing video...") }
                     Button("Import image / animated GIF file") { importing = true }
                     Button("Search licensed GIFs") { gallery = true }
                     Button("Browse community catalog") { communityGallery = true }
@@ -310,12 +319,13 @@ struct LibraryView: View {
     }
 
     private var importingContent: some View {
-        libraryList
+        videoImports
             .onChange(of: selectedPhoto) { _, item in
                 app.run {
                     guard let item, let data = try await item.loadTransferable(type: Data.self) else {
                         throw BackpackError.invalid("Could not load the selected photo.")
                     }
+
                     editorData = data; attribution = nil; editorCategory = nil; editorName = "Imported photo"; editor = true
                 }
             }
@@ -345,6 +355,38 @@ struct LibraryView: View {
             }
     }
 
+    private var videoImports: some View {
+        libraryList
+            .onChange(of: selectedVideo) { _, item in
+                guard let item, !videoImporting else { return }
+                videoImporting = true
+                Task {
+                    defer { videoImporting = false; selectedVideo = nil }
+                    do {
+                        guard let imported = try await item.loadTransferable(type: ImportedVideo.self) else {
+                            throw BackpackError.invalid("Could not import the selected video.")
+                        }
+                        video = imported
+                    } catch { panel.report(error) }
+                }
+            }
+            .fileImporter(isPresented: $importingVideo, allowedContentTypes: [.movie, .video]) { result in
+                do {
+                    let url = try result.get()
+                    guard url.startAccessingSecurityScopedResource() else { throw BackpackError.invalid("Video file access denied.") }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    video = try ImportedVideo.copy(url)
+                } catch { panel.report(error) }
+            }
+            .sheet(item: $video) { imported in
+                VideoGIFEditor(video: imported)
+                    .onDisappear {
+                        do { try imported.remove() }
+                        catch { panel.report(error) }
+                    }
+            }
+    }
+
     private var mediaActions: some View {
         importingContent
             .sheet(isPresented: $communityGallery, onDismiss: {
@@ -357,6 +399,7 @@ struct LibraryView: View {
             }
             .sheet(item: $editingPlaylist) { PlaylistTimingEditor($0) }
             .sheet(item: $organizing) { MediaOrganizer(item: $0) }
+            .sheet(item: $sharing) { CommunityUploadView(item: $0) }
             .sheet(isPresented: Binding(get: { previewData != nil }, set: { if !$0 { previewData = nil } })) {
                 NavigationStack {
                     if let data = previewData {
@@ -412,6 +455,7 @@ struct LibraryView: View {
                 editorName = "\(item.name) edited"; editor = true
             }
         case .send: selected = item; uploading = true
+        case .share: sharing = item
         case .export:
             app.run { exportDocument = BinaryDocument(data: try library.data(item)); exporting = true }
         case .organize: organizing = item

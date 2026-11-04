@@ -332,5 +332,51 @@ final class CommunityTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Catalog-Client"), "1")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
         }
+
+        func testNativeUploadUsesBearerAndOrderedMultipartThenLoadsOwnStatus() async throws {
+            let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","status":"pending","moderationReason":"","aiState":"queued","aiError":null}"#
+            let stub = CommunityStub([login(), response("{\"item\":\(item)}", status: 201),
+                response("{\"items\":[\(item)]}"), response(#"{"message":"Deleted"}"#)])
+            let service = client(stub, vault: CommunityMemoryVault())
+            try await service.signIn(email: "test@example.org", password: "example test password")
+            let size = PanelSize(width: 16, height: 16)
+            let gif = try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
+            let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
+                attribution: "Test creator", license: .original, ownershipAttested: true)
+            let uploaded = try await service.uploadGIF(gif, metadata: metadata)
+            XCTAssertEqual(uploaded.status, "pending")
+            let uploads = try await service.myUploads()
+            XCTAssertEqual(uploads.count, 1)
+            try await service.deleteUpload(uploaded.id)
+            let requests = await stub.history()
+            let upload = requests[1]
+            XCTAssertEqual(upload.httpMethod, "POST")
+            XCTAssertEqual(upload.url?.path, "/api/v1/items")
+            XCTAssertEqual(upload.value(forHTTPHeaderField: "X-Catalog-Client"), "1")
+            XCTAssertEqual(upload.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
+            XCTAssertTrue(upload.value(forHTTPHeaderField: "Content-Type")?.hasPrefix("multipart/form-data; boundary=LEDBackpack-") == true)
+            let data = try XCTUnwrap(upload.httpBody)
+            let meta = try XCTUnwrap(data.range(of: Data("name=\"metadata\"".utf8)))
+            let file = try XCTUnwrap(data.range(of: Data("name=\"file\"".utf8)))
+            XCTAssertLessThan(meta.lowerBound, file.lowerBound)
+            XCTAssertEqual(requests[2].url?.path, "/api/v1/me/items")
+            XCTAssertEqual(requests[3].httpMethod, "DELETE")
+        }
+
+        func testUploadRequiresAnAccountAndSurfacesServerRejection() async throws {
+            let stub = CommunityStub([login(), response(#"{"error":{"code":"duplicate","message":"Already uploaded"}}"#, status: 409)])
+            let service = client(stub, vault: CommunityMemoryVault())
+            let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
+                attribution: "Test creator", license: .original, ownershipAttested: true)
+            do { _ = try await service.uploadGIF(Data(), metadata: metadata); XCTFail("Guest upload must fail") }
+            catch { XCTAssertTrue(error.localizedDescription.contains("Sign in")) }
+            try await service.signIn(email: "test@example.org", password: "example test password")
+            let size = PanelSize(width: 16, height: 16)
+            let gif = try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
+            do { _ = try await service.uploadGIF(gif, metadata: metadata); XCTFail("Duplicate must fail") }
+            catch let failure as CommunityFailure { XCTAssertEqual(failure.status, 409) }
+            let requests = await stub.history()
+            XCTAssertEqual(requests.count, 2)
+        }
     }
 }

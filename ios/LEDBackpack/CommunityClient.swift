@@ -280,14 +280,16 @@ final class CommunityController: ObservableObject {
         }
     }
     func request(_ path: String, method: String = "GET", body: Data? = nil,
-        query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false) async throws -> CommunityResponse {
+        query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false,
+        contentType: String = "application/json") async throws -> CommunityResponse {
         guard let origin, let transport else { throw BackpackError.invalid("Configure a catalog HTTPS URL first.") }
+        let requestToken = authenticated ? session?.token : nil
         var request = URLRequest(url: try origin.api(path, query: query), timeoutInterval: 30)
         request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if method != "GET" {
             request.setValue("1", forHTTPHeaderField: "X-Catalog-Client")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         }
         if authenticated, let session {
             try validateSession(session)
@@ -296,6 +298,9 @@ final class CommunityController: ObservableObject {
         let response = try await transport.send(request, maxBytes: 2_000_000)
         guard allowServerChange || self.origin == origin else {
             throw BackpackError.invalid("The catalog server changed during the request. Retry on the selected server.")
+        }
+        guard allowServerChange || !authenticated || session?.token == requestToken else {
+            throw BackpackError.invalid("The catalog account changed during the request. Refresh using the current account.")
         }
         guard (200...299).contains(response.status) else {
             struct Envelope: Decodable {
@@ -455,5 +460,33 @@ final class CommunityController: ObservableObject {
         guard signedIn else { throw BackpackError.invalid("Sign in to block an uploader.") }
         struct Body: Encodable { let userId: String }
         _ = try await request("blocks", method: "POST", body: JSONEncoder().encode(Body(userId: id.uuidString.lowercased())))
+    }
+
+    func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata) async throws -> CommunitySubmission {
+        guard signedIn else { throw BackpackError.invalid("Sign in before uploading to the community.") }
+        try metadata.validate()
+        try CommunityUpload.validateGIF(data)
+        let boundary = "LEDBackpack-\(UUID().uuidString)"
+        let body = try CommunityUpload.multipart(data, metadata: metadata, boundary: boundary)
+        let response = try await request("items", method: "POST", body: body,
+            contentType: "multipart/form-data; boundary=\(boundary)")
+        guard response.status == 201 else { throw BackpackError.invalid("Unexpected GIF upload response.") }
+        struct Result: Decodable { let item: CommunitySubmission }
+        let item = try JSONDecoder().decode(Result.self, from: response.data).item
+        guard item.status == "pending" else {
+            throw BackpackError.invalid("The server accepted the GIF but returned an unexpected moderation status. Check My uploads before retrying.")
+        }
+        return item
+    }
+
+    func myUploads() async throws -> [CommunitySubmission] {
+        guard signedIn else { throw BackpackError.invalid("Sign in to view your uploads.") }
+        struct Result: Decodable { let items: [CommunitySubmission] }
+        return try JSONDecoder().decode(Result.self, from: await request("me/items").data).items
+    }
+
+    func deleteUpload(_ id: UUID) async throws {
+        guard signedIn else { throw BackpackError.invalid("Sign in to delete an upload.") }
+        _ = try await request("items/\(id.uuidString.lowercased())", method: "DELETE")
     }
 }

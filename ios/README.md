@@ -81,8 +81,18 @@ search, previews, local imports and signed-in likes/reports/uploader blocking.
 Credits, license information and original-work download restrictions remain
 attached to imported artwork. The connected panel's prepared variant is used
 when available, otherwise the default is 64x64. Upload and moderation tools
-currently open in the web portal, which has its own sign-in; native bearer
-credentials are never passed in links.
+are separate: **Library > Actions > Share to community** uploads directly from
+the app with title, category, tags, attribution, an explicit license and
+permission confirmation. **Account > My uploads** shows pending/approved/rejected
+status and allows removal of server uploads without deleting local files.
+Moderation still uses the web portal with its own sign-in; native credentials
+are never passed in links. Uploading never publishes automatically.
+
+Community sharing accepts animated GIFs only: 2-120 frames, at most 5 MB and
+40 million decoded pixels. One-frame text/drawings remain usable locally.
+Download permission is not redistribution permission: keep imported attribution,
+do not mislabel others' work as original, and confirm the right to publish.
+If an upload connection fails after sending, check My uploads before retrying.
 
 Native signup/signin follows the server's email-confirmation policy. A server
 that permits immediate signup does not make an unconfirmed email verified.
@@ -140,6 +150,7 @@ The app does not implement cloud password recovery.
 - Text and horizontal marquee generation with system fonts.
 - Pixel drawing, eraser, undo/redo, and local GIF saving.
 - Local media/playlist backups merge with fresh file IDs and preserve credits.
+- Video import from Photos or Files, trimmed and converted locally to GIF.
 - Animated previews, custom categories, favorite stars and local name/category
   search. Use an item's **Actions > Organize** menu to move it to a category.
   Categories/favorites are preserved in backups and do not rewrite GIF files.
@@ -159,6 +170,19 @@ Keep original media files: local backups cannot recover unknown artwork
 already stored on the backpack.
 App updates do not rewrite existing artwork. If an older saved GIF already
 contains inverted text, re-create it instead of reusing the inverted export.
+
+### Video to GIF
+
+Choose **Library > Convert video from Photos** or **Convert video file to GIF**.
+Set the start/length, 2-20 FPS, panel size and fit/fill framing. Convert to preview,
+then save the new GIF locally before sending to a backpack or sharing it.
+Video orientation is respected; audio is omitted. No source video is uploaded.
+
+Video sources are limited to 256 MB, 8192x8192 and 24 hours. Select clips of at
+most 12 seconds producing 2-120 frames; shorten the clip or reduce FPS if it
+exceeds that limit. The resulting GIF must fit the existing 5 MB library limit.
+Conversion has progress/cancellation and releases its temporary source copy
+when the editor closes. Closing the editor never deletes the original video.
 
 ### Live screens
 

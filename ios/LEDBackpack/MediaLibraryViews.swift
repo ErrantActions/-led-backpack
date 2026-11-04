@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 struct LibraryMediaRow: View {
-    enum Action { case preview, edit, send, export, organize, delete }
+    enum Action { case preview, edit, send, share, export, organize, delete }
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var library: LocalLibrary
     let item: SavedMedia
@@ -37,6 +37,7 @@ struct LibraryMediaRow: View {
                 Menu("Actions", systemImage: "ellipsis.circle") {
                     Button("Edit a copy") { action(.edit) }
                     Button("Send to backpack") { action(.send) }
+                    Button("Share to community") { action(.share) }
                     Button("Organize") { action(.organize) }
                     Button("Export GIF") { action(.export) }
                     Button("Delete local copy", role: .destructive) { action(.delete) }

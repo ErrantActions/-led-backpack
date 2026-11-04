@@ -93,8 +93,9 @@ struct CommunityGallery: View {
             }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
             if let url = community.origin?.url {
-                Link("Open upload / moderation portal", destination: url)
-                Text("The web portal has its own sign-in. Native credentials are never passed in links. Download permission alone does not grant permission to re-upload someone else's work.")
+                if community.signedIn { NavigationLink("My uploads") { CommunityUploadsView() } }
+                Link("Open moderation portal", destination: url)
+                Text("Share from Library > Actions > Share to community. The web portal has its own sign-in. Download permission alone does not grant permission to re-upload someone else's work.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

@@ -84,6 +84,7 @@ struct CommunityAccountView: View {
                 Text("Refresh your account before managing deletion.").font(.caption)
             }
             Button("Refresh account") { perform { try await community.refreshUser(); return nil } }
+            NavigationLink("My uploads") { CommunityUploadsView() }
             Button("Sign in again") {
                 do { try community.forgetLocalSession() }
                 catch { failure = error.localizedDescription }

@@ -14,6 +14,7 @@ built with SwiftUI and Core Bluetooth.
 - Crisp pixel-text/drawing tools and categorized Wikimedia Commons GIF browsing.
 - Animated GIF previews, custom library categories, search and favorites.
 - Optional self-hosted community browsing and native accounts with in-app deletion.
+- In-app community GIF sharing and on-device video-to-GIF conversion.
 - Live GPS, weather, supported system Music metadata and optional fun screens.
 - Custom live themes, animated ink, gauges and saved presets.
 - One-tap scenes combining live displays or stored playlists with brightness.
