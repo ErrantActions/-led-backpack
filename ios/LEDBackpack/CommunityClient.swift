@@ -250,7 +250,7 @@ final class CommunityController: ObservableObject {
                     session = saved
                 }
             } catch {
-                origin = nil; transport = nil; session = nil; user = nil; config = nil; deletion = nil
+                session = nil; user = nil
                 setupError = error.localizedDescription
             }
             do {
@@ -260,7 +260,10 @@ final class CommunityController: ObservableObject {
                     deletion = saved
                 }
             } catch { setupError = [setupError, error.localizedDescription].compactMap { $0 }.joined(separator: " ") }
-        } catch { setupError = error.localizedDescription }
+        } catch {
+            origin = nil; transport = nil; session = nil; user = nil; config = nil; deletion = nil
+            setupError = error.localizedDescription
+        }
     }
     func reloadLocalState() {
         guard let origin else { return }

@@ -255,15 +255,37 @@ final class CommunityTests: XCTestCase {
         XCTAssertNotNil(vault.values["deletion|\(root)"])
     }
 
-    func testDeletionReceiptRestoresIndependentlyOfBadSavedCredentials() throws {
+    func testDeletionReceiptRestoresIndependentlyOfBadSavedCredentials() async throws {
         let vault = CommunityMemoryVault()
         vault.values["session|\(root)"] = Data("invalid session".utf8)
         let saved = try JSONDecoder().decode(CommunityDeletionResponse.self, from: receipt().data).deletion
         vault.values["deletion|\(root)"] = try JSONEncoder().encode(saved)
-        let service = client(CommunityStub([]), vault: vault)
+        let stub = CommunityStub([receipt(status: "completed", http: 200)])
+        let service = client(stub, vault: vault)
         XCTAssertFalse(service.signedIn)
         XCTAssertNotNil(service.setupError)
         XCTAssertEqual(service.deletion?.id, receiptID)
+        XCTAssertEqual(service.origin?.url.absoluteString, root)
+        try await service.refreshDeletion()
+        XCTAssertEqual(service.deletion?.status, .completed)
+        let requests = await stub.history()
+        XCTAssertNil(requests.first?.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testInvalidServerConfigurationDoesNotKeepUsingOldCredentials() async throws {
+        let vault = CommunityMemoryVault()
+        let stub = CommunityStub([login()])
+        let service = client(stub, vault: vault)
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        service.configure("http://insecure.example")
+        XCTAssertNil(service.origin)
+        XCTAssertFalse(service.signedIn)
+        XCTAssertNil(service.user)
+        XCTAssertNotNil(service.setupError)
+        do { _ = try await service.request("config"); XCTFail("Invalid origin must not send requests") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("Configure")) }
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 1)
     }
 
     func testRejectedAuthDoesNotAutomaticallyRetryAsGuestOrAnotherOrigin() async throws {
