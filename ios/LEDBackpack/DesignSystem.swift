@@ -30,7 +30,7 @@ struct AuroraBackground: View {
 struct AuroraSurface: View {
     var radius: CGFloat = 26
     @Environment(\.accessibilityReduceTransparency) private var opaque
-    @Environment(\.accessibilityContrast) private var contrast
+    @Environment(\.colorSchemeContrast) private var contrast
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         ZStack {
