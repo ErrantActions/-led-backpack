@@ -140,10 +140,16 @@ final class NavigationTests: XCTestCase {
         let option = app.buttons[choice]
         XCTAssertTrue(option.waitForExistence(timeout: 5))
         option.tap()
+        if choice == "Photo or GIF" {
+            XCTAssertTrue(app.navigationBars["Photos"].waitForExistence(timeout: 30))
+        }
         let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Close'")).firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 30), "\(choice) must open a picker, not silently dismiss the menu.")
+        let pickerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in cancel.exists && cancel.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [pickerReady], timeout: 30), .completed)
         attach(app, name: "Import regression - \(choice) opens system picker")
         cancel.tap()
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 20))
         let add = app.buttons["Add artwork"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in add.exists && add.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
