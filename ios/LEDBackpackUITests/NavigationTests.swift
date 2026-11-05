@@ -143,7 +143,7 @@ final class NavigationTests: XCTestCase {
         if choice == "Photo or GIF" {
             XCTAssertTrue(app.navigationBars["Photos"].waitForExistence(timeout: 30))
         }
-        let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Close'")).firstMatch
+        let cancel = app.buttons["Cancel"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 30), "\(choice) must open a picker, not silently dismiss the menu.")
         let pickerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in cancel.exists && cancel.isHittable }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [pickerReady], timeout: 30), .completed)
