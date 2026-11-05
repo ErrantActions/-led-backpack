@@ -156,11 +156,18 @@ final class NavigationTests: XCTestCase {
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<3 {
-            if element.isHittable { return }
-            app.swipeUp()
+        let visible = app.windows.firstMatch.frame.insetBy(dx: 0, dy: 80)
+        for _ in 0..<5 {
+            if element.exists {
+                if element.isHittable && visible.contains(element.frame) { return }
+                if element.frame.minY < visible.minY { app.swipeDown() }
+                else { app.swipeUp() }
+            } else {
+                app.swipeUp()
+            }
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
+        XCTAssertTrue(element.isHittable && visible.contains(element.frame), "Reveal the entire control before interacting.")
     }
 
     private func returnToHeader(_ app: XCUIApplication) {
