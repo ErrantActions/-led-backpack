@@ -161,7 +161,10 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   REVOKE, owned/current-account/fresh-auth exception, exact receipt and only matching
   local-key clearing; separate integrity epoch, no account/vault identity rewrite.
 - [ ] Recovery focused mocks/compile in the next batched unsigned Mac checkpoint.
-- [ ] Immutable upload stream snapshot/hash.
+- [x] Protected owned immutable upload stream snapshot/hash source: bounded incremental
+  SHA256, source change/link checks, read-only protected snapshot, exact content length
+  and stream signed from its bytes; originals are untouched and owned cleanup is explicit.
+- [ ] Focused file snapshot tests in next batched unsigned Mac checkpoint.
 - [ ] Authenticated SSE opening proof.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
   entitlements, signed devices, provider environment or production enforcement.

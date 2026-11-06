@@ -121,9 +121,10 @@ final class NativeAppIntegrity {
         try await queue(requiresSDK: false, check: check, work: work)
     }
     func perform(_ request: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
-        transport: any CommunityTransport, maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+        transport: any CommunityTransport, maxBytes: Int, bodyFile: NativeRequestFile? = nil,
+        check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
         try await queue(check: check) {
-            try await self.execute(request, origin: origin, account: account, token: token, transport: transport, maxBytes: maxBytes, check: check)
+            try await self.execute(request, origin: origin, account: account, token: token, transport: transport, maxBytes: maxBytes, bodyFile: bodyFile, check: check)
         }
     }
     func performGuest(_ original: URLRequest, origin: CommunityOrigin, transport: any CommunityTransport,
@@ -183,7 +184,8 @@ final class NativeAppIntegrity {
         return try await withTaskCancellationHandler { try await job.value } onCancel: { job.cancel() }
     }
     private func execute(_ original: URLRequest, origin: CommunityOrigin, account: UUID?, token: String,
-        transport: any CommunityTransport, maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+        transport: any CommunityTransport, maxBytes: Int, bodyFile: NativeRequestFile? = nil,
+        check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
         guard let url = original.url, origin.contains(url), url.fragment == nil, original.httpBodyStream == nil,
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               parts.percentEncodedPath.hasPrefix("/api/v1/"),
@@ -198,10 +200,12 @@ final class NativeAppIntegrity {
         let path = parts.percentEncodedPath + (parts.percentEncodedQuery.map { "?\($0)" } ?? "")
         let method = original.httpMethod ?? "GET"
         guard ["GET", "POST", "PUT", "PATCH", "DELETE"].contains(method),
-              method != "GET" || (original.httpBody ?? Data()).isEmpty else {
+              method != "GET" || ((original.httpBody ?? Data()).isEmpty && bodyFile == nil),
+              bodyFile == nil || original.httpBody == nil,
+              bodyFile == nil || original.value(forHTTPHeaderField: "Content-Length") == bodyFile.map({ String($0.byteCount) }) else {
             throw BackpackError.invalid("Unsupported integrity HTTP method/body.")
         }
-        let digest = NativeIntegrityBinding.digest(original.httpBody ?? Data())
+        let digest = bodyFile?.bodyHash ?? NativeIntegrityBinding.digest(original.httpBody ?? Data())
         let slot = storage(origin, account, token: token)
         var key: Key
         if let bytes = try cache.read(slot) { key = try JSONDecoder().decode(Key.self, from: bytes) }
@@ -246,6 +250,7 @@ final class NativeAppIntegrity {
         request.setValue(key.id, forHTTPHeaderField: "X-Catalog-App-Attest-Key-Id")
         request.setValue(challenge.id, forHTTPHeaderField: "X-Catalog-App-Attest-Challenge-Id")
         request.setValue(encoded, forHTTPHeaderField: "X-Catalog-App-Attest-Assertion")
+        if let bodyFile { request.httpBodyStream = try bodyFile.openStream() }
         let response = try await transport.send(request, maxBytes: maxBytes)
         try check(); return response
     }

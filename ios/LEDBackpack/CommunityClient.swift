@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import Security
 import BackpackProtocol
+import os
 
 struct CommunityUser: Codable, Equatable {
     let id: UUID
@@ -493,6 +494,14 @@ final class CommunityController: ObservableObject {
         guard (1...5_000_000).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog response budget.") }
         guard let origin, let transport else { throw BackpackError.invalid("Configure a catalog HTTPS URL first.") }
         let requestToken = authenticated ? session?.token : nil
+        let requestRevision = accountRevision
+        var capturedFile: NativeRequestFile?
+        defer {
+            if let capturedFile {
+                do { try capturedFile.remove() }
+                catch { Logger(subsystem: "com.errantactions.ledbackpack", category: "native-upload").error("Protected upload snapshot cleanup failed; no upload retry implied.") }
+            }
+        }
         var request = URLRequest(url: try origin.api(path, query: query), timeoutInterval: 30)
         request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
         if let bodyFile {
@@ -500,10 +509,18 @@ final class CommunityController: ObservableObject {
                   bodyFile.isFileURL, let stream = InputStream(url: bodyFile) else {
                 throw BackpackError.invalid("File uploads require an authorized community ZIP import.")
             }
-            request.httpBodyStream = stream
             let size = try bodyFile.resourceValues(forKeys: [.fileSizeKey]).fileSize
             guard let size, size > 0 else { throw BackpackError.invalid("The ZIP upload file is empty.") }
-            request.setValue(String(size), forHTTPHeaderField: "Content-Length")
+            if config?.appIntegrityEnforcementEnabled == true {
+                capturedFile = try await NativeRequestFileBuilder.shared.capture(bodyFile, maxBytes: AdminArchiveBuilder.maxBytes + 4096)
+                guard accountRevision == requestRevision, self.origin == origin, session?.token == requestToken else {
+                    throw BackpackError.invalid("Account/origin changed while taking the immutable upload snapshot.")
+                }
+                request.setValue(capturedFile.map { String($0.byteCount) }, forHTTPHeaderField: "Content-Length")
+            } else {
+                request.httpBodyStream = stream
+                request.setValue(String(size), forHTTPHeaderField: "Content-Length")
+            }
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let expectedAccountID { request.setValue(expectedAccountID.uuidString.lowercased(), forHTTPHeaderField: "X-Catalog-Expected-Account") }
@@ -529,7 +546,7 @@ final class CommunityController: ObservableObject {
             }
             let scopeRevision = accountRevision, token = session.token
             response = try await nativeIntegrity.perform(request, origin: origin, account: id, token: token,
-                transport: transport, maxBytes: maxBytes, check: { [weak self] in
+                transport: transport, maxBytes: maxBytes, bodyFile: capturedFile, check: { [weak self] in
                     guard let self, self.origin == origin, self.accountRevision == scopeRevision,
                           self.user?.id == id, self.session?.token == token else { throw BackpackError.invalid("Attested request account/origin changed.") }
                 })
