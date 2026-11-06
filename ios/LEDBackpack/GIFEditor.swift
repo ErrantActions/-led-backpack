@@ -44,6 +44,8 @@ struct MediaEditor: View {
     @State private var touches: [Int: [Int: RGB8]] = [:]
     @State private var undoTouches: [Int: [Int: RGB8]]?
     @State private var drawing = false
+    @State private var resetFrameCanvas = false
+    @State private var previewIsOriginal = false
     private let sizes = [PanelSize(width: 16, height: 16), PanelSize(width: 64, height: 64), PanelSize(width: 96, height: 128)]
 
     init(data: Data, attribution: Attribution?, category: String? = nil, initialName: String = "My artwork") {
@@ -70,6 +72,7 @@ struct MediaEditor: View {
             canvas
             framing
             cleanup
+            ghosting
             timing
             manual
             outputActions
@@ -94,13 +97,20 @@ struct MediaEditor: View {
             .onChange(of: haloThreshold) { _, _ in invalidate() }
             .onChange(of: isolated) { _, _ in invalidate() }
             .onChange(of: subject) { _, _ in invalidate() }
+            .onChange(of: resetFrameCanvas) { _, _ in
+                preview = nil; previewPixels = nil; subjects = [:]
+                do {
+                    animation = try MediaCodec.decode(data, resetFrameCanvas: resetFrameCanvas)
+                    process { try await updatePreview() }
+                } catch { animation = nil; panel.report(error) }
+            }
     }
 
     private var outputActions: some View {
         Section {
             Button("Update frame preview") { process { try await updatePreview() } }
             Button("Preview edited animation") {
-                process { previewAnimation = try await output() }
+                process { previewIsOriginal = false; previewAnimation = try await output() }
             }
             Button("Save new GIF to library") {
                 process {
@@ -119,7 +129,7 @@ struct MediaEditor: View {
     private var animationPreview: some View {
         NavigationStack {
             if let bytes = previewAnimation {
-                AnimatedPreview(data: bytes).navigationTitle("Edited preview")
+                AnimatedPreview(data: bytes).navigationTitle(previewIsOriginal ? "Original preview" : "Edited preview")
                     .toolbar { Button("Done") { previewAnimation = nil } }
             }
         }
@@ -176,6 +186,7 @@ struct MediaEditor: View {
             Picker("Remove background", selection: $removal) {
                 ForEach(BackgroundRemoval.allCases) { Text($0.rawValue).tag($0) }
             }
+
             ColorPicker("Background color", selection: $keyColor, supportsOpacity: false)
             Slider(value: $tolerance, in: 0...1) { Text("Color tolerance") }
             Text("Tolerance \(Int(tolerance * 100))%. Edge-connected removal preserves matching areas enclosed inside the subject.").font(.caption)
@@ -186,6 +197,22 @@ struct MediaEditor: View {
             Text("Cutout runs on device on supported hardware and may fail for some art. All selected frames are processed individually; no cloud image service is used. Edge cleanup can remove intentional tiny details.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(busy)
+    }
+
+    @ViewBuilder private var ghosting: some View {
+        if ["GIF87a", "GIF89a"].contains(String(data: data.prefix(6), encoding: .ascii) ?? "") {
+            Section("Ghost trails") {
+                Toggle("Reset canvas between GIF frames", isOn: $resetFrameCanvas)
+                    .disabled(busy || !touches.isEmpty)
+                Text("Repairs trails caused by frames retaining previous pixels. Some GIFs intentionally update only part of the canvas; resetting may remove wanted details. Preview before saving.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Faint outlines already painted into a frame are different: use Trim dark halos, background cleanup or the eraser. Canvas reset cannot reconstruct obscured artwork.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Compare original animation") { previewIsOriginal = true; previewAnimation = data }
+                    .disabled(busy)
+                if !touches.isEmpty { Text("Reset manual edits before changing frame disposal.").font(.caption) }
+            }
+        }
     }
 
     private var timing: some View {

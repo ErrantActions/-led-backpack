@@ -60,11 +60,11 @@ enum CommunityUpload {
         guard data.count <= 5_000_000,
               ["GIF87a", "GIF89a"].contains(String(data: data.prefix(6), encoding: .ascii) ?? ""),
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else {
-            throw BackpackError.invalid("Upload an animated GIF no larger than 5 MB.")
+            throw BackpackError.invalid("Upload a GIF no larger than 5 MB.")
         }
         let count = CGImageSourceGetCount(source)
-        guard (2...120).contains(count) else {
-            throw BackpackError.invalid("Community uploads require 2-120 frames. Single-frame artwork can still be used locally.")
+        guard (1...120).contains(count) else {
+            throw BackpackError.invalid("Community uploads require 1-120 frames.")
         }
         var pixels = 0
         for index in 0..<count {
@@ -113,6 +113,7 @@ struct CommunityUploadView: View {
     @State private var busy = false
     @State private var failure: String?
     @State private var submitted: CommunitySubmission?
+    @State private var sharingAttested = false
     @Environment(\.dismiss) private var dismiss
 
     init(item: SavedMedia) {
@@ -123,10 +124,10 @@ struct CommunityUploadView: View {
         NavigationStack {
             Form {
                 if let submitted {
-                    Section("Saved privately") {
+                    Section("Submitted for community review") {
                         Label(submitted.title, systemImage: "checkmark.circle")
-                        Text("Only you and catalog admins can access this GIF. It has not been shared or sent for AI review. Use My uploads to separately consent to sharing.")
-                        NavigationLink("My uploads") { CommunityUploadsView() }
+                        Text("This is not a private backup. The server may send the GIF and metadata for AI review and publish it when approved.")
+                        NavigationLink("My community uploads") { CommunityUploadsView() }
                     }
                 } else {
                     if !community.signedIn {
@@ -134,9 +135,10 @@ struct CommunityUploadView: View {
                     }
                     metadata
                     Section {
-                        Button("Upload to private library") { upload() }
+                        Toggle("I have sharing rights and consent to community publication and AI review", isOn: $sharingAttested)
+                        Button("Submit to community review") { upload() }
                             .buttonStyle(.borderedProminent)
-                            .disabled(!community.signedIn || busy)
+                            .disabled(!community.signedIn || busy || !sharingAttested)
                     }.disabled(busy)
                 }
                 if busy { ProgressView("Uploading...") }
@@ -158,12 +160,12 @@ struct CommunityUploadView: View {
                 Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Text("Animated GIFs: 2-120 frames, up to 5 MB. This upload is private, but admins can access it. Public sharing requires a separate confirmation; neither action changes the backpack.")
+            Text("GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. This submission is for public community review, not private storage. Use Private cloud for backups. Neither action changes the backpack.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(busy)
     }
     private func upload() {
-        guard !busy else { return }
+        guard !busy, sharingAttested else { return }
         let metadata = CommunityUploadMetadata.preserving(item.attribution,
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category, tags: tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
@@ -172,16 +174,15 @@ struct CommunityUploadView: View {
             defer { busy = false }
             do {
                 if community.user == nil { try await community.refreshUser() }
-                guard let owner = community.user?.id, let origin = community.origin else {
-                    throw BackpackError.invalid("Sign in before saving a cloud copy.")
+                guard community.user != nil, community.origin != nil else {
+                    throw BackpackError.invalid("Sign in before submitting to community review.")
                 }
                 let revision = community.accountRevision
-                let uploaded = try await community.uploadGIF(library.data(item), metadata: metadata)
-                submitted = uploaded
+                let uploaded = try await community.uploadGIF(library.data(item), metadata: metadata, sharingAttested: sharingAttested)
                 guard community.accountRevision == revision else {
-                    throw BackpackError.invalid("Cloud copy was uploaded, but the account changed before it could be linked locally.")
+                    throw BackpackError.invalid("The account changed during submission. Check uploads in the original account before retrying.")
                 }
-                try library.connectCloudCopy(mediaID: item.id, itemID: uploaded.id, origin: origin, accountID: owner)
+                submitted = uploaded
             }
             catch { failure = "\(error.localizedDescription) If the connection ended after sending, check My uploads before retrying." }
         }
@@ -226,7 +227,7 @@ struct CommunityUploadsView: View {
                         }
                     }
                 }
-                if items.isEmpty && !busy && failure == nil { Text("No uploads yet. Share an animated GIF from Library > Actions.") }
+                if items.isEmpty && !busy && failure == nil { Text("No uploads yet. Share a GIF from Library > Actions.") }
             }
             if busy { ProgressView() }
             if let failure { Text(failure).foregroundStyle(.orange) }

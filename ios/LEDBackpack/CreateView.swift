@@ -15,8 +15,8 @@ struct CreateView: View {
                     } label: {
                         tool("Text to GIF", detail: "Crisp letters, exact LED sizing and scrolling.", symbol: "textformat", color: Aurora.mint)
                     }.buttonStyle(.plain)
-                    NavigationLink { StudioView() } label: {
-                        tool("Pixel drawing", detail: "Draw, erase and save your own style.", symbol: "paintbrush.pointed", color: Aurora.rose)
+                    NavigationLink { PixelAnimationStudio() } label: {
+                        tool("Pixel drawing", detail: "Draw frames, animate, preview and save local GIFs.", symbol: "paintbrush.pointed", color: Aurora.rose)
                     }.buttonStyle(.plain)
                     Button { app.selectedTab = .library } label: {
                         tool("Images and video", detail: "Open Library, then + to import or convert.", symbol: "film", color: Aurora.lavender)

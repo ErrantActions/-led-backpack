@@ -28,11 +28,16 @@ struct PlaylistCollection: View {
                         Text(playlist.name).font(.headline)
                         Text("\(playlist.slots.count) stored GIFs").font(.caption).foregroundStyle(.secondary)
                         Menu("Playback and timing", systemImage: "play.circle") {
-                            Button("Loop on backpack") { app.run { try await panel.play(list: playlist.slots) } }
+                            Button("Loop on backpack") {
+                                app.run {
+                                    try playlist.validateForDevice(serial: panel.identity?.serial, inventory: panel.slots)
+                                    try await panel.play(list: playlist.slots)
+                                }
+                            }
                                 .disabled(!app.link.connected || panel.busy || panel.hasDisplayOwner)
                             Button("Timed sequence") { app.run { try await runner.start(playlist, repeatPlaylist: repeating) } }
                                 .disabled(!app.link.connected || panel.busy || panel.hasDisplayOwner)
-                            Button("Edit timing") { editing = playlist }
+                            Button("Edit order and timing") { editing = playlist }
                             Button("Remove playlist", role: .destructive) { app.run { try library.removePlaylist(playlist.id) } }
                         }
                     }.padding(.vertical, 6)
@@ -46,43 +51,94 @@ struct PlaylistCollection: View {
         }
         .modernScene().navigationTitle("Playlists")
         .toolbar { Button("New playlist", systemImage: "plus") { creating = true } }
-        .sheet(isPresented: $creating) { NewPlaylist() }
-        .sheet(item: $editing) { PlaylistTimingEditor($0) }
+        .sheet(isPresented: $creating) { PlaylistEditor() }
+        .sheet(item: $editing) { PlaylistEditor(playlist: $0) }
     }
 }
 
 @MainActor
-private struct NewPlaylist: View {
+private struct PlaylistEditor: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var panel: PanelController
     @Environment(\.dismiss) private var dismiss
+    let playlist: SavedPlaylist?
     @State private var name = ""
-    @State private var slots: [Int] = []
+    @State private var draft = PlaylistDraft()
+    @State private var serial: String?
+    @State private var loaded = false
+    @State private var loadFailed = false
+    init(playlist: SavedPlaylist? = nil) { self.playlist = playlist }
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") { TextField("Playlist name", text: $name) }
-                Section("Tap GIF slots in playback order") {
-                    if panel.slots.isEmpty { Text("Connect and refresh backpack storage to choose GIFs.") }
-                    ForEach(panel.slots.filter(\.occupied)) { slot in
-                        Button {
-                            if slots.contains(slot.id) { slots.removeAll { $0 == slot.id } }
-                            else { slots.append(slot.id) }
-                        } label: {
-                            HStack {
-                                Label("Slot \(slot.id)", systemImage: "photo")
-                                Spacer()
-                                if let index = slots.firstIndex(of: slot.id) { Text("\(index + 1)").bold() }
-                            }
+                Section("Playlist") {
+                    TextField("Playlist name", text: $name)
+                    Text(serial.map { "Backpack: \($0)" } ?? "Legacy/unbound playlist: verify the connected backpack before playback.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Playback order — use Edit to reorder or remove") {
+                    ForEach($draft.entries) { $entry in
+                        VStack(alignment: .leading) {
+                            Text("Slot \(entry.slot)")
+                            Stepper("Foreground sequence: \(Int(entry.seconds))s", value: $entry.seconds,
+                                in: 1...3600, step: 1)
                         }
                     }
+                    .onMove { offsets, target in
+                        do { try draft.move(offsets, to: target) } catch { panel.report(error) }
+                    }
+                    .onDelete { offsets in
+                        do { try draft.remove(offsets) } catch { panel.report(error) }
+                    }
                 }
+                Section("Append stored artwork") {
+                    Text("Tap repeatedly to use a slot more than once. Up to 60 entries.")
+                        .font(.caption)
+                    if panel.inventoryDeviceID == nil { Text("Connect and refresh backpack storage to add GIFs.") }
+                    if serial == nil || serial == panel.identity?.serial {
+                        ForEach(panel.slots.filter(\.occupied)) { slot in
+                            Button {
+                                do { try draft.append(slot.id) } catch { panel.report(error) }
+                            } label: {
+                                HStack {
+                                    StoredSlotThumbnail(slot: slot).frame(width: 48, height: 48)
+                                    Text("Add slot \(slot.id)")
+                                }
+                            }.disabled(draft.entries.count >= 60 || panel.inventoryDeviceID != panel.link.selectedID || panel.inventoryDeviceID == nil)
+                        }
+                    } else { Text("Connect this playlist's backpack to add slots.") }
+                }
+                Text("Loop on backpack sends the ordered slot list once and continues without the phone. The per-entry seconds above are for foreground timed sequences only. Autonomous dwell uses each GIF/program's already stored duration; editing this list never silently overwrites backpack artwork.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button("Save playlist") {
-                    app.run { try library.savePlaylist(name: name, slots: slots); dismiss() }
-                }.buttonStyle(.borderedProminent).disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || slots.isEmpty)
-            }.modernScene().navigationTitle("New playlist")
-                .toolbar { Button("Cancel") { dismiss() } }
+                    app.run {
+                        let title = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let ids = draft.entries.map(\.slot), durations = draft.entries.map(\.seconds)
+                        if var existing = playlist {
+                            existing.name = title; existing.slots = ids; existing.durations = durations; existing.panelSerial = serial
+                            try library.updatePlaylist(existing)
+                        } else { try library.savePlaylist(name: title, slots: ids, durations: durations, panelSerial: serial) }
+                        dismiss()
+                    }
+                }.buttonStyle(.borderedProminent)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.entries.isEmpty || loadFailed)
+            }.modernScene().navigationTitle(playlist == nil ? "New playlist" : "Edit playlist")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .primaryAction) { EditButton() }
+                }
+                .task {
+                    guard !loaded else { return }
+                    loaded = true
+                    serial = playlist?.panelSerial ?? (panel.link.connected && panel.inventoryDeviceID != nil &&
+                        panel.inventoryDeviceID == panel.link.selectedID ? panel.identity?.serial : nil)
+                    if let playlist {
+                        name = playlist.name
+                        do { draft = try PlaylistDraft(playlist) }
+                        catch { loadFailed = true; panel.report(error) }
+                    }
+                }
         }
     }
 }

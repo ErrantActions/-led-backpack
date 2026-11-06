@@ -24,6 +24,20 @@ struct CommunityConfig: Decodable {
     let privateLibraryEnabled: Bool?
     let accountDeletionRetainsSharedGifs: Bool?
     let appleSignInEnabled: Bool?
+    var communityUploadPolicy: String? = nil
+    var cloudLibraryEncryptionEnabled: Bool? = nil
+    var cloudUserHeldEncryptionEnabled: Bool? = nil
+    var cloudDeviceAdoptionEnabled: Bool? = nil
+    var cloudPasskeyRelyingPartyId: String? = nil
+    var cloudNativePasskeyAssociationConfigured: Bool? = nil
+    var socialEnabled: Bool? = nil
+    var avatarsEnabled: Bool? = nil
+    var eventsEnabled: Bool? = nil
+    var eventTemplatesEnabled: Bool? = nil
+    var eventParticipationReviewEnabled: Bool? = nil
+    var eventMapPlanningEnabled: Bool? = nil
+    var eventExclusiveGifsEnabled: Bool? = nil
+    var eventExclusiveRouteArtworkEnabled: Bool? = nil
     var allowsNativeSignup: Bool { accountDeletionRetainsSharedGifs == false }
 }
 struct CommunitySession: Codable {
@@ -138,7 +152,7 @@ struct CommunityOrigin: Equatable, Sendable {
     }
 }
 
-struct CommunityResponse: Sendable { let status: Int; let data: Data }
+struct CommunityResponse: Sendable { let status: Int; let data: Data; var headers: [String: String] = [:] }
 protocol CommunityTransport: Sendable {
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse
 }
@@ -182,7 +196,10 @@ final class CommunityHTTP: CommunityTransport {
             data.append(byte)
         }
         try Task.checkCancellation()
-        return CommunityResponse(status: http.statusCode, data: data)
+        let headers = http.allHeaderFields.reduce(into: [String: String]()) { result, pair in
+            result[String(describing: pair.key).lowercased()] = String(describing: pair.value)
+        }
+        return CommunityResponse(status: http.statusCode, data: data, headers: headers)
     }
 }
 
@@ -242,6 +259,23 @@ final class CommunityController: ObservableObject {
     private let vault: any CommunityVault
     private let factory: (CommunityOrigin) -> any CommunityTransport
     var signedIn: Bool { session != nil }
+    var isAdmin: Bool { signedIn && user?.role == "admin" }
+    func checkAccountSession() throws {
+        guard let session else {
+            throw CommunityFailure(status: 401, code: "authentication_required", message: "Sign in first.")
+        }
+        do { try validateSession(session) }
+        catch { throw CommunityFailure(status: 401, code: "session_expired", message: error.localizedDescription) }
+    }
+    func checkAdminSession() throws {
+        guard isAdmin, let session else {
+            throw CommunityFailure(status: 403, code: "admin_required", message: "Sign in with an admin account.")
+        }
+        do { try validateSession(session) }
+        catch {
+            throw CommunityFailure(status: 401, code: "session_expired", message: error.localizedDescription)
+        }
+    }
     private var sessionKey: String { "session|\(origin?.url.absoluteString ?? "")" }
     private var deletionKey: String { "deletion|\(origin?.url.absoluteString ?? "")" }
 
@@ -288,6 +322,34 @@ final class CommunityController: ObservableObject {
         guard let origin else { return }
         configure(origin.url.absoluteString, reload: true)
     }
+    func cloudClient() throws -> CloudVaultClient {
+        guard config?.cloudLibraryEncryptionEnabled == true, let origin, let user, let session, let transport else {
+            throw BackpackError.invalid("Private cloud is unavailable or not signed in.")
+        }
+        try validateSession(session)
+        let scope = CloudVaultScope(origin: origin, accountID: user.id, revision: accountRevision)
+        let token = session.token
+        return CloudVaultClient(scope: scope, send: { [weak self] request, maxBytes in
+            guard let self else { throw BackpackError.invalid("Cloud account is no longer available.") }
+            return try await self.sendCloud(request, maxBytes: maxBytes, scope: scope, token: token, transport: transport)
+        })
+    }
+    private func sendCloud(_ original: URLRequest, maxBytes: Int, scope: CloudVaultScope, token: String,
+        transport: any CommunityTransport) async throws -> CommunityResponse {
+        guard origin == scope.origin, user?.id == scope.accountID, accountRevision == scope.revision, session?.token == token,
+              let url = original.url, scope.origin.contains(url),
+              url.path == "/api/v1/cloud" || url.path.hasPrefix("/api/v1/cloud/") else {
+            throw BackpackError.invalid("Cloud account or server changed before the request.")
+        }
+        if let session { try validateSession(session) }
+        var request = original
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let response = try await transport.send(request, maxBytes: maxBytes)
+        guard origin == scope.origin, user?.id == scope.accountID, accountRevision == scope.revision, session?.token == token else {
+            throw BackpackError.invalid("Discarded a private cloud response after an account/server change.")
+        }
+        return response
+    }
     private func validateSession(_ value: CommunitySession) throws {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -300,12 +362,34 @@ final class CommunityController: ObservableObject {
     }
     func request(_ path: String, method: String = "GET", body: Data? = nil,
         query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false,
-        contentType: String = "application/json") async throws -> CommunityResponse {
+        contentType: String = "application/json", communityUpload: Bool = false,
+        bodyFile: URL? = nil, maxBytes: Int = 2_000_000, expectedAccountRevision: UUID? = nil) async throws -> CommunityResponse {
+        guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
+            throw BackpackError.invalid("The account changed before this request. Refresh first.")
+        }
+        guard (1...5_000_000).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog response budget.") }
         guard let origin, let transport else { throw BackpackError.invalid("Configure a catalog HTTPS URL first.") }
         let requestToken = authenticated ? session?.token : nil
         var request = URLRequest(url: try origin.api(path, query: query), timeoutInterval: 30)
         request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
+        if let bodyFile {
+            guard path == "admin/imports", method == "POST", isAdmin, communityUpload, body == nil,
+                  bodyFile.isFileURL, let stream = InputStream(url: bodyFile) else {
+                throw BackpackError.invalid("File uploads require an authorized community ZIP import.")
+            }
+            request.httpBodyStream = stream
+            let size = try bodyFile.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            guard let size, size > 0 else { throw BackpackError.invalid("The ZIP upload file is empty.") }
+            request.setValue(String(size), forHTTPHeaderField: "Content-Length")
+        }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if communityUpload {
+            guard ["items", "admin/imports"].contains(path), method == "POST",
+                  path != "admin/imports" || isAdmin else {
+                throw BackpackError.invalid("Community upload policy is only valid for an authorized community submission.")
+            }
+            request.setValue("community-review", forHTTPHeaderField: "X-Catalog-Upload-Policy")
+        }
         if method != "GET" {
             request.setValue("1", forHTTPHeaderField: "X-Catalog-Client")
             request.setValue(contentType, forHTTPHeaderField: "Content-Type")
@@ -314,7 +398,7 @@ final class CommunityController: ObservableObject {
             try validateSession(session)
             request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
         }
-        let response = try await transport.send(request, maxBytes: 2_000_000)
+        let response = try await transport.send(request, maxBytes: maxBytes)
         guard allowServerChange || self.origin == origin else {
             throw BackpackError.invalid("The catalog server changed during the request. Retry on the selected server.")
         }
@@ -476,7 +560,10 @@ final class CommunityController: ObservableObject {
                 message: "Your catalog sign-in ended. Open Account to sign in again or sign out and browse as a guest.")
         }
     }
-    func download(_ url: URL) async throws -> Data {
+    func download(_ url: URL, expectedAccountRevision: UUID? = nil) async throws -> Data {
+        guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
+            throw BackpackError.invalid("Account changed before artwork download.")
+        }
         guard let origin, origin.contains(url), url.query == nil, url.fragment == nil,
               url.path.hasPrefix("/media/"), let transport else {
             throw BackpackError.invalid("Media must come from this catalog's HTTPS server.")
@@ -489,6 +576,9 @@ final class CommunityController: ObservableObject {
         }
         let response = try await transport.send(request, maxBytes: 5_000_000)
         guard self.origin == origin else { throw BackpackError.invalid("The catalog server changed during the download.") }
+        guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
+            throw BackpackError.invalid("Account changed during artwork download.")
+        }
         guard response.status == 200 else { throw BackpackError.invalid("Catalog media is unavailable (HTTP \(response.status)).") }
         return response.data
     }
@@ -508,29 +598,31 @@ final class CommunityController: ObservableObject {
         struct Body: Encodable { let reason: String }
         _ = try await request("items/\(id.uuidString.lowercased())/reports", method: "POST", body: JSONEncoder().encode(Body(reason: reason)))
     }
-    func block(_ id: UUID) async throws {
+    func block(_ id: UUID, expectedRevision: UUID? = nil) async throws {
         guard signedIn else { throw BackpackError.invalid("Sign in to block an uploader.") }
         struct Body: Encodable { let userId: String }
-        _ = try await request("blocks", method: "POST", body: JSONEncoder().encode(Body(userId: id.uuidString.lowercased())))
+        _ = try await request("blocks", method: "POST", body: JSONEncoder().encode(Body(userId: id.uuidString.lowercased())),
+            expectedAccountRevision: expectedRevision)
     }
 
-    func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata) async throws -> CommunitySubmission {
+    func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata, sharingAttested: Bool) async throws -> CommunitySubmission {
         guard signedIn else { throw BackpackError.invalid("Sign in before uploading to the community.") }
         try await loadConfig()
-        guard config?.privateLibraryEnabled == true else {
-            throw BackpackError.invalid("This server has not confirmed private-library uploads. Upload was not sent.")
+        guard sharingAttested else { throw BackpackError.invalid("Explicitly confirm sharing rights, community publication and AI review before submitting.") }
+        guard config?.communityUploadPolicy == "ai-screened" else {
+            throw BackpackError.invalid("This server has not confirmed the explicit community-review upload policy. Use private cloud for backups.")
         }
         try metadata.validate()
         try CommunityUpload.validateGIF(data)
         let boundary = "LEDBackpack-\(UUID().uuidString)"
         let body = try CommunityUpload.multipart(data, metadata: metadata, boundary: boundary)
         let response = try await request("items", method: "POST", body: body,
-            contentType: "multipart/form-data; boundary=\(boundary)")
+            contentType: "multipart/form-data; boundary=\(boundary)", communityUpload: true)
         guard response.status == 201 else { throw BackpackError.invalid("Unexpected GIF upload response.") }
         struct Result: Decodable { let item: CommunitySubmission }
         let item = try JSONDecoder().decode(Result.self, from: response.data).item
-        guard item.visibility == "private", item.status == "pending", item.aiState == "disabled" else {
-            throw BackpackError.invalid("The server accepted the GIF but did not confirm private storage without AI review. Check My uploads before retrying.")
+        guard item.visibility == "shared", ["pending", "approved"].contains(item.status) else {
+            throw BackpackError.invalid("The server did not confirm a community-review submission. Check My community uploads before retrying.")
         }
         return item
     }

@@ -48,8 +48,9 @@ enum MediaCodec {
         var id: String { rawValue }
     }
 
-    static func decode(_ data: Data) throws -> Animation {
-        guard data.count <= 10_000_000, let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+    static func decode(_ data: Data, resetFrameCanvas: Bool = false) throws -> Animation {
+        let input = resetFrameCanvas ? try GIFFrameDisposal.resettingCanvas(data) : data
+        guard input.count <= 10_000_000, let source = CGImageSourceCreateWithData(input as CFData, nil) else {
             throw BackpackError.invalid("Choose a supported image/GIF smaller than 10 MB.")
         }
         let count = CGImageSourceGetCount(source)
@@ -204,15 +205,20 @@ enum MediaCodec {
         }
     }
 
-    static func delta(from previous: PixelFrame, to target: PixelFrame) throws -> [[UInt8]] {
-        guard previous.size == target.size else { throw BackpackError.invalid("Live frame size changed.") }
+    static func delta(from previous: PixelFrame, to target: PixelFrame, forceFullFrame: Bool = false) throws -> [[UInt8]] {
+        guard previous.size == target.size, (1...1024).contains(target.size.width),
+              (1...1024).contains(target.size.height),
+              previous.rgb.count == target.size.width * target.size.height * 3,
+              target.rgb.count == previous.rgb.count else {
+            throw BackpackError.invalid("Live frame dimensions or pixel lengths are invalid.")
+        }
         let size = target.size
         var groups: [Int: [Int]] = [:]
         for pixel in 0..<(size.width * size.height) {
             let offset = pixel * 3
             let old = (0..<3).map { previous.exactLiveColors ? Int(previous.rgb[offset + $0]) : previous.rgb[offset + $0] >= 128 ? 255 : 0 }
             let next = (0..<3).map { target.exactLiveColors ? Int(target.rgb[offset + $0]) : target.rgb[offset + $0] >= 128 ? 255 : 0 }
-            if old == next { continue }
+            if old == next && !forceFullFrame { continue }
             let color = next[0] << 16 | next[1] << 8 | next[2]
             groups[color, default: []].append(pixel)
         }

@@ -126,25 +126,11 @@ struct CloudArtworkRow: View {
     let open: () -> Void
     var body: some View {
         Button(action: open) {
-            VStack(alignment: .leading, spacing: 16) {
-                GIFThumbnail(key: cloud.item.previewUrl.absoluteString, cache: false) {
-                    try await community.download(cloud.item.previewUrl)
-                }.frame(maxWidth: .infinity).frame(height: 160)
-                    .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 19))
-                    .clipShape(RoundedRectangle(cornerRadius: 19))
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(cloud.item.title).font(.headline).foregroundStyle(.primary).lineLimit(2)
-                    Label("Cloud only", systemImage: "icloud").font(.caption).foregroundStyle(Aurora.mint)
-                    Text(cloud.visibility == "private" ? "Private library" : "Shared / \(cloud.status)")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                HStack {
-                    Text("Keep it offline")
-                    Spacer()
-                    Image(systemName: "arrow.down.circle")
-                }.font(.subheadline.weight(.semibold)).foregroundStyle(Aurora.mint)
-            }.padding(16).glassPanel()
-        }.buttonStyle(.plain)
+            GIFThumbnail(key: cloud.item.previewUrl.absoluteString, cache: false) {
+                try await community.download(cloud.item.previewUrl)
+            }.aspectRatio(1, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 19))
+        }.buttonStyle(.plain).accessibilityLabel("Preview \(cloud.item.title)")
     }
 }
 

@@ -38,6 +38,7 @@ struct SavedPlaylist: Identifiable, Codable {
     var name: String
     var slots: [Int]
     var durations: [Double]?
+    var panelSerial: String? = nil
 }
 
 struct SlotPreviewLink: Codable {
@@ -73,6 +74,7 @@ struct LibraryState: Codable {
     var livePresets: [LivePreset]?
     var slotPreviews: [SlotPreviewLink]?
     var scenes: [SavedScene]?
+    var transferQueue: [QueuedMedia]?
 }
 
 struct LibraryBackup: Codable {
@@ -100,6 +102,7 @@ final class LocalLibrary: ObservableObject {
             }
             for scene in scenes { try scene.validate() }
             for item in state.media { _ = try checkedCategory(item.category) }
+            try validateQueue(state.transferQueue ?? [], media: state.media)
         } else { state = LibraryState() }
     }
 
@@ -110,6 +113,37 @@ final class LocalLibrary: ObservableObject {
     }
 
     func data(_ item: SavedMedia) throws -> Data { try Data(contentsOf: folder.appendingPathComponent(item.filename)) }
+
+    private func validateQueue(_ entries: [QueuedMedia], media: [SavedMedia]) throws {
+        guard entries.count <= 60, Set(entries.map(\.id)).count == entries.count,
+              entries.allSatisfy({ entry in media.contains { $0.id == entry.mediaID } }) else {
+            throw BackpackError.invalid("The send queue has invalid entries or exceeds 60 GIFs.")
+        }
+    }
+    func enqueue(_ ids: [UUID]) throws {
+        guard !ids.isEmpty else { throw BackpackError.invalid("Choose at least one local GIF to queue.") }
+        var value = state
+        value.transferQueue = (value.transferQueue ?? []) + ids.map { QueuedMedia(mediaID: $0) }
+        try validateQueue(value.transferQueue ?? [], media: value.media)
+        try commit(value)
+    }
+    func removeQueuedMedia(_ ids: Set<UUID>) throws {
+        var value = state
+        value.transferQueue?.removeAll { ids.contains($0.id) }
+        try commit(value)
+    }
+    func reorderQueuedMedia(_ ids: [UUID]) throws {
+        let current = state.transferQueue ?? []
+        guard ids.count == current.count, Set(ids).count == ids.count, Set(ids) == Set(current.map(\.id)) else {
+            throw BackpackError.invalid("The send queue changed. Refresh it before reordering.")
+        }
+        let lookup = Dictionary(uniqueKeysWithValues: current.map { ($0.id, $0) })
+        let ordered = try ids.map { id -> QueuedMedia in
+            guard let item = lookup[id] else { throw BackpackError.invalid("A queued entry is missing.") }
+            return item
+        }
+        var value = state; value.transferQueue = ordered; try commit(value)
+    }
 
     var mediaCategories: [String] {
         Array(Set(state.media.map(\.categoryName))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
@@ -134,6 +168,21 @@ final class LocalLibrary: ObservableObject {
 
     func add(name: String, data: Data, attribution: Attribution? = nil, category: String? = nil) throws {
         _ = try store(name: name, data: data, attribution: attribution, category: category, cloudSource: nil)
+    }
+
+    @discardableResult
+    func savePrivateCloudGIF(_ data: Data, title: String, attribution: Attribution?, category: String?,
+        origin: CommunityOrigin, accountID: UUID, itemID: UUID, assetURL: URL) throws -> SavedMedia {
+        guard origin.contains(assetURL), assetURL.path == "/api/v1/cloud/items/\(itemID.uuidString.lowercased())/media" else {
+            throw BackpackError.invalid("Private GIF source must belong to this account's captured cloud server.")
+        }
+        let source = MediaCloudSource(server: origin.url.absoluteString, accountID: accountID,
+            itemID: itemID, assetURL: assetURL.absoluteString)
+        if let existing = state.media.first(where: { $0.cloudSource == source }) {
+            _ = try self.data(existing)
+            return existing
+        }
+        return try store(name: title, data: data, attribution: attribution, category: category, cloudSource: source)
     }
 
     @discardableResult
@@ -193,12 +242,13 @@ final class LocalLibrary: ObservableObject {
     func delete(_ item: SavedMedia) throws {
         var value = state; value.media.removeAll { $0.id == item.id }
         value.slotPreviews?.removeAll { $0.mediaID == item.id }
+        value.transferQueue?.removeAll { $0.mediaID == item.id }
         try commit(value)
         do { try FileManager.default.removeItem(at: folder.appendingPathComponent(item.filename)) }
         catch { throw BackpackError.invalid("Item removed from library, but file cleanup failed: \(error.localizedDescription)") }
     }
 
-    func savePlaylist(name: String, slots: [Int], durations: [Double]? = nil) throws {
+    func savePlaylist(name: String, slots: [Int], durations: [Double]? = nil, panelSerial: String? = nil) throws {
         guard !name.isEmpty, !slots.isEmpty, slots.count <= 60, slots.allSatisfy({ (0..<60).contains($0) }) else {
             throw BackpackError.invalid("Playlist needs a name and 1 to 60 slot IDs in 0...59.")
         }
@@ -207,7 +257,9 @@ final class LocalLibrary: ObservableObject {
                 throw BackpackError.invalid("Playlist durations must match the slots and be 1...3600 seconds.")
             }
         }
-        var value = state; value.playlists.append(SavedPlaylist(name: String(name.prefix(100)), slots: slots, durations: durations))
+        guard panelSerial == nil || !(panelSerial?.isEmpty ?? true) else { throw BackpackError.invalid("Invalid playlist backpack identity.") }
+        var value = state
+        value.playlists.append(SavedPlaylist(name: String(name.prefix(100)), slots: slots, durations: durations, panelSerial: panelSerial))
         try commit(value)
     }
 
@@ -216,6 +268,7 @@ final class LocalLibrary: ObservableObject {
               !playlist.name.isEmpty, !playlist.slots.isEmpty, playlist.slots.count <= 60,
               playlist.slots.allSatisfy({ (0..<60).contains($0) }),
               let durations = playlist.durations, durations.count == playlist.slots.count,
+              playlist.panelSerial == nil || !(playlist.panelSerial?.isEmpty ?? true),
               durations.allSatisfy({ $0.isFinite && (1...3600).contains($0) }) else {
             throw BackpackError.invalid("Invalid playlist or per-item timing.")
         }
@@ -327,7 +380,14 @@ final class LocalLibrary: ObservableObject {
             throw BackpackError.invalid("Backup scenes have duplicate IDs or would exceed the 50-scene limit.")
         }
         for scene in scenes { try scene.validate() }
+        try validateQueue(backup.state.transferQueue ?? [], media: backup.state.media)
+        guard (backup.state.transferQueue?.count ?? 0) + (state.transferQueue?.count ?? 0) <= 60 else {
+            throw BackpackError.invalid("Merged send queue would exceed 60 GIFs.")
+        }
         for list in backup.state.playlists {
+            guard list.panelSerial == nil || !(list.panelSerial?.isEmpty ?? true) else {
+                throw BackpackError.invalid("Backup contains an invalid playlist backpack identity.")
+            }
             guard list.slots.count <= 60, list.slots.allSatisfy({ (0..<60).contains($0) }) else {
                 throw BackpackError.invalid("Backup has invalid playlist slot IDs.")
             }
@@ -380,7 +440,14 @@ final class LocalLibrary: ObservableObject {
                 created.append(url); value.media.append(imported)
                 importedIDs[item.id] = imported.id
             }
-            value.playlists += backup.state.playlists.map { SavedPlaylist(name: $0.name, slots: $0.slots, durations: $0.durations) }
+            let queue = try (backup.state.transferQueue ?? []).map { entry -> QueuedMedia in
+                guard let id = importedIDs[entry.mediaID] else { throw BackpackError.invalid("Missing imported queue artwork.") }
+                return QueuedMedia(mediaID: id)
+            }
+            value.transferQueue = (value.transferQueue ?? []) + queue
+            value.playlists += backup.state.playlists.map {
+                SavedPlaylist(name: $0.name, slots: $0.slots, durations: $0.durations, panelSerial: $0.panelSerial)
+            }
             var themes = value.liveThemes ?? [:]
             for (mode, theme) in backup.state.liveThemes ?? [:] where themes[mode] == nil { themes[mode] = theme }
             value.liveThemes = themes

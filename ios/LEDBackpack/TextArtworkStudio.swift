@@ -12,7 +12,8 @@ struct TextArtworkStudio: View {
     @State private var font = ArtworkFont.pixel
     @State private var alignment = ArtworkAlignment.center
     @State private var ink: Color = .cyan
-    @State private var scrolling = false
+    @State private var effect = TextArtworkEffect.still
+    private var scrolling: Bool { effect == .scroll }
     @State private var pixelScale = 0
     @State private var delay = 0.08
     @State private var preview: UIImage?
@@ -27,12 +28,13 @@ struct TextArtworkStudio: View {
         let font: ArtworkFont
         let alignment: ArtworkAlignment
         let ink: Color
-        let scrolling: Bool
+        let effect: TextArtworkEffect
+        var scrolling: Bool { effect == .scroll }
         let size: PanelSize
         let pixelScale: Int?
     }
     private var previewKey: PreviewKey {
-        PreviewKey(text: text, font: font, alignment: alignment, ink: ink, scrolling: scrolling, size: size,
+        PreviewKey(text: text, font: font, alignment: alignment, ink: ink, effect: effect, size: size,
             pixelScale: pixelScale == 0 ? nil : pixelScale)
     }
 
@@ -48,11 +50,8 @@ struct TextArtworkStudio: View {
             let key = previewKey
             do {
                 try await Task.sleep(for: .milliseconds(150))
-                let frame = key.scrolling
-                    ? try TextArtwork.scrollingFrame(key.text, size: key.size, font: key.font, color: UIColor(key.ink), phase: 0.5,
-                        pixelScale: key.pixelScale)
-                    : try TextArtwork.render(key.text, size: key.size, font: key.font, alignment: key.alignment, color: UIColor(key.ink),
-                        pixelScale: key.pixelScale)
+                let frame = try TextArtworkEffects.frame(key.text, size: key.size, font: key.font, alignment: key.alignment,
+                    color: UIColor(key.ink), effect: key.effect, phase: 0.5, pixelScale: key.pixelScale)
                 preview = try frame.image()
                 if key.font == .pixel {
                     let scale = key.scrolling ? key.pixelScale ?? max(1, min(3, (key.size.height - 4) / 7))
@@ -96,10 +95,14 @@ struct TextArtworkStudio: View {
                 }.pickerStyle(.segmented)
             }
             ColorPicker("Text color", selection: $ink, supportsOpacity: false)
-            Toggle("Scrolling animation", isOn: $scrolling)
-            if scrolling {
+            Picker("Animation", selection: $effect) {
+                ForEach(TextArtworkEffect.allCases) { Text($0.rawValue).tag($0) }
+            }
+            if effect.animated {
                 Slider(value: $delay, in: 0.03...0.3, step: 0.01) { Text("Frame duration") }
                 Text("\(Int((delay * 1000).rounded())) ms per frame").font(.caption).foregroundStyle(.secondary)
+                Text("Effects are rendered into GIF frames, not firmware commands. Rainbow cycles colors; Bounce may clip at canvas edges. Preview before saving.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Text(font == .pixel
                 ? "Pixel type uses crisp whole-pixel A-Z, a-z, digits and punctuation. Auto fit keeps words intact when possible; fixed sizes never silently shrink."
@@ -126,7 +129,7 @@ struct TextArtworkStudio: View {
         Group {
             TextField("Saved name", text: $name)
             TextField("Category (optional)", text: $category)
-            if scrolling {
+            if effect.animated {
                 Button("Play animation preview") { generate(save: false) }.disabled(saving || preview == nil || failure != nil)
             }
             Button("Save text as GIF") { generate(save: true) }
@@ -144,11 +147,9 @@ struct TextArtworkStudio: View {
             saving = true
             defer { saving = false }
             await Task.yield()
-            let frames = key.scrolling
-                ? try TextArtwork.animation(key.text, size: key.size, font: key.font, color: UIColor(key.ink), pixelScale: key.pixelScale)
-                : [try TextArtwork.render(key.text, size: key.size, font: key.font, alignment: key.alignment,
-                    color: UIColor(key.ink), pixelScale: key.pixelScale)]
-            let bytes = try MediaCodec.encode(frames, delays: Array(repeating: key.scrolling ? frameDelay : 1, count: frames.count))
+            let frames = try TextArtworkEffects.frames(key.text, size: key.size, font: key.font, alignment: key.alignment,
+                color: UIColor(key.ink), effect: key.effect, pixelScale: key.pixelScale)
+            let bytes = try MediaCodec.encode(frames, delays: Array(repeating: key.effect.animated ? frameDelay : 1, count: frames.count))
             if save {
                 try library.add(name: savedName, data: bytes, category: savedCategory)
                 status = "Saved to Library."

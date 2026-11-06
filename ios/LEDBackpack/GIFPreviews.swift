@@ -1,17 +1,27 @@
 import SwiftUI
 import ImageIO
+import UniformTypeIdentifiers
 import BackpackProtocol
 
 final class GIFPreview: NSObject {
     let frames: [UIImage]
     let duration: Double
-    let caption: String
+    let frameEnds: [Double]
     let cost: Int
-    init(frames: [UIImage], duration: Double, caption: String, cost: Int) {
+    let cycles: Int?
+    init(frames: [UIImage], delays: [Double], cost: Int, cycles: Int? = nil) {
         self.frames = frames
-        self.duration = duration
-        self.caption = caption
+        var elapsed = 0.0
+        self.frameEnds = delays.map { elapsed += $0; return elapsed }
+        self.duration = frames.count > 1 ? elapsed : 0
         self.cost = cost
+        self.cycles = cycles
+    }
+
+    func frameIndex(at elapsed: TimeInterval) -> Int {
+        guard duration > 0, elapsed.isFinite else { return 0 }
+        let phase = max(0, elapsed).truncatingRemainder(dividingBy: duration)
+        return frameEnds.firstIndex(where: { phase < $0 }) ?? (frames.count - 1)
     }
 }
 
@@ -47,55 +57,72 @@ enum GIFPreviewDecoder {
     }
 
     static func thumbnail(_ data: Data) throws -> GIFPreview {
+        try decode(data, maximumPixelSize: 160, pixelBudget: 4_000_000, costLimit: 8_000_000, phone: false)
+    }
+
+    static func phoneDisplay(_ data: Data) throws -> GIFPreview {
+        try decode(data, maximumPixelSize: 2048, pixelBudget: 32_000_000, costLimit: 40_000_000, phone: true)
+    }
+
+    private static func decode(_ data: Data, maximumPixelSize: Int, pixelBudget: Double, costLimit: Int, phone: Bool) throws -> GIFPreview {
         guard data.count <= 5_000_000,
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else {
             throw BackpackError.invalid("This image cannot be previewed.")
         }
         try checkDimensions(source)
         let count = CGImageSourceGetCount(source)
-        guard count > 0 else { throw BackpackError.invalid("The preview contains no frames.") }
-        let posterOnly = count > 20
+        guard (1...1200).contains(count) else {
+            throw BackpackError.invalid("The preview supports 1 to 1200 frames.")
+        }
+        if phone && count > 1 {
+            guard let type = CGImageSourceGetType(source), type as String == UTType.gif.identifier else {
+                throw BackpackError.invalid("Use GIF for phone animations; other supported images must be stills.")
+            }
+        }
         var frames: [UIImage] = []
-        var ticks: [Int] = []
+        var delays: [Double] = []
         var cost = 0
+        // Bound decoded pixels across the whole animation, not just its first frame.
+        let budgetSize = min(maximumPixelSize, Int(sqrt(pixelBudget / Double(count * 4))))
+        let first = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] ?? [:]
+        let originalSize = max(first[kCGImagePropertyPixelWidth as String] as? Int ?? 0,
+            first[kCGImagePropertyPixelHeight as String] as? Int ?? 0)
+        let pixelSize = phone ? min(budgetSize, originalSize) : budgetSize
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: 160,
+            kCGImageSourceThumbnailMaxPixelSize: pixelSize,
             kCGImageSourceShouldCache: false
         ]
-        for index in 0..<(posterOnly ? 1 : count) {
+        for index in 0..<count {
+            try Task.checkCancellation()
             guard let image = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else {
                 throw BackpackError.invalid("Could not decode the GIF preview.")
             }
             frames.append(UIImage(cgImage: image))
             cost += image.bytesPerRow * image.height
+            guard cost <= costLimit else {
+                throw BackpackError.invalid("The animation exceeds the preview memory budget.")
+            }
             let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [String: Any] ?? [:]
             let gif = properties[kCGImagePropertyGIFDictionary as String] as? [String: Any] ?? [:]
             let delay = gif[kCGImagePropertyGIFUnclampedDelayTime as String] as? Double
                 ?? gif[kCGImagePropertyGIFDelayTime as String] as? Double ?? 0.1
-            guard delay.isFinite, (0...10).contains(delay) else {
+            guard delay.isFinite, (0...(phone ? 655.35 : 10)).contains(delay) else {
                 throw BackpackError.invalid("The preview has unsupported frame timing.")
             }
-            ticks.append(max(2, Int((delay * 100).rounded())))
+            delays.append(Double(max(phone ? 1 : 2, Int((delay * 100).rounded()))) / 100)
         }
-        if posterOnly || frames.count == 1 {
-            return GIFPreview(frames: frames, duration: 0, caption: count > 1 ? "Tap to animate" : "Still preview", cost: cost)
+        var cycles: Int?
+        if phone {
+            let properties = CGImageSourceCopyProperties(source, nil) as? [String: Any] ?? [:]
+            let gif = properties[kCGImagePropertyGIFDictionary as String] as? [String: Any]
+            if let repeats = gif?[kCGImagePropertyGIFLoopCount as String] as? Int {
+                guard (0...65535).contains(repeats) else { throw BackpackError.invalid("Unsupported GIF repeat count.") }
+                cycles = repeats == 0 ? nil : repeats + 1
+            } else { cycles = 1 }
         }
-        func gcd(_ first: Int, _ second: Int) -> Int {
-            var a = first, b = second
-            while b != 0 { let remainder = a % b; a = b; b = remainder }
-            return a
-        }
-        let unit = ticks.dropFirst().reduce(ticks[0], gcd)
-        let repeats = ticks.map { $0 / unit }
-        guard repeats.reduce(0, +) <= 120 else {
-            return GIFPreview(frames: [frames[0]], duration: 0, caption: "Tap to animate", cost: cost)
-        }
-        // Repeated image references preserve variable GIF delays without decoding extra pixels.
-        let playback = frames.indices.flatMap { Array(repeating: frames[$0], count: repeats[$0]) }
-        return GIFPreview(frames: playback, duration: Double(ticks.reduce(0, +)) / 100,
-            caption: "Animated preview", cost: cost)
+        return GIFPreview(frames: frames, delays: delays, cost: cost, cycles: cycles)
     }
 }
 
@@ -112,7 +139,11 @@ private enum GIFPreviewCache {
 @MainActor
 private struct GIFPreviewImage: UIViewRepresentable {
     let preview: GIFPreview
-    final class Coordinator { var preview: GIFPreview? }
+    let index: Int
+    final class Coordinator {
+        var preview: GIFPreview?
+        var index: Int?
+    }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
@@ -124,34 +155,28 @@ private struct GIFPreviewImage: UIViewRepresentable {
         return view
     }
     func updateUIView(_ view: UIImageView, context: Context) {
-        guard context.coordinator.preview !== preview else { return }
+        guard context.coordinator.preview !== preview || context.coordinator.index != index else { return }
         context.coordinator.preview = preview
-        view.stopAnimating()
-        view.animationImages = nil
-        view.image = preview.frames.first
-        if preview.frames.count > 1 {
-            view.animationImages = preview.frames
-            view.animationDuration = preview.duration
-            view.animationRepeatCount = 0
-            view.startAnimating()
-        }
+        context.coordinator.index = index
+        view.image = preview.frames[index]
     }
     static func dismantleUIView(_ view: UIImageView, coordinator: Coordinator) {
-        view.stopAnimating()
-        view.animationImages = nil
         view.image = nil
         coordinator.preview = nil
+        coordinator.index = nil
     }
 }
 
 @MainActor
 struct GIFThumbnail: View {
     @EnvironmentObject private var link: BluetoothLink
+    @Environment(\.scenePhase) private var scenePhase
     let key: String
     let cache: Bool
     let load: @MainActor () async throws -> Data
     @State private var preview: GIFPreview?
     @State private var failure: String?
+    @State private var visible = false
     init(key: String, cache: Bool = true, load: @escaping @MainActor () async throws -> Data) {
         self.key = key; self.cache = cache; self.load = load
     }
@@ -159,8 +184,11 @@ struct GIFThumbnail: View {
         ZStack(alignment: .bottomLeading) {
             Color.black
             if let preview {
-                GIFPreviewImage(preview: preview).padding(4)
-                Text(preview.caption).font(.caption2).padding(5).background(.black.opacity(0.75))
+                TimelineView(.animation(minimumInterval: 0.02,
+                    paused: !visible || scenePhase != .active || preview.duration == 0)) { context in
+                    GIFPreviewImage(preview: preview,
+                        index: preview.frameIndex(at: context.date.timeIntervalSinceReferenceDate))
+                }.accessibilityHidden(true)
             } else if let failure {
                 VStack(spacing: 5) {
                     Image(systemName: "photo.badge.exclamationmark")
@@ -186,6 +214,7 @@ struct GIFThumbnail: View {
                 link.note("GIF preview unavailable: \(error.localizedDescription)")
             }
         }
-        .onDisappear { preview = nil }
+        .onAppear { visible = true }
+        .onDisappear { visible = false; preview = nil }
     }
 }

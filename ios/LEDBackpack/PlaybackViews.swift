@@ -4,6 +4,7 @@ import SwiftUI
 struct BackpackMonitor: View {
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var link: BluetoothLink
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -21,41 +22,23 @@ struct BackpackMonitor: View {
                     description: Text("Live frames sent by this app and its cached uploads can be previewed here."))
             }
             Text(panel.monitorCaption).font(.caption).foregroundStyle(.secondary)
+            Text(BackpackPlaybackStatus.caption(panel.playback)).font(.caption.monospaced())
+            Button("Read now-playing status") { Task { do { try await panel.refreshPlaybackStatus() } catch { panel.report(error) } } }
+                .disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
             Text("No device screen-stream/readback command has been found. GIF phase, unknown stored artwork, and changes made elsewhere may not match this preview.")
                 .font(.caption2).foregroundStyle(.secondary)
         }.padding(20).glassPanel()
-    }
-}
-
-@MainActor
-struct PlaylistTimingEditor: View {
-    @EnvironmentObject private var app: AppModel
-    @EnvironmentObject private var library: LocalLibrary
-    @Environment(\.dismiss) private var dismiss
-    @State private var draft: SavedPlaylist
-    @State private var durations: [Double]
-    init(_ playlist: SavedPlaylist) {
-        _draft = State(initialValue: playlist)
-        _durations = State(initialValue: playlist.durations ?? Array(repeating: 10, count: playlist.slots.count))
-    }
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Playlist name", text: $draft.name)
-                Section("App-driven duration per GIF") {
-                    ForEach(Array(draft.slots.enumerated()), id: \.offset) { entry in
-                        Stepper("Slot \(entry.element): \(Int(durations[entry.offset]))s",
-                            value: Binding(get: { durations[entry.offset] }, set: { durations[entry.offset] = $0 }),
-                            in: 1...3600, step: 1)
-                    }
+        .task(id: "\(link.connected)-\(scenePhase)") {
+            guard link.connected, scenePhase == .active else { return }
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(5))
+                    if link.connected && !panel.busy && !panel.hasDisplayOwner { try await panel.refreshPlaybackStatus() }
+                } catch {
+                    if !Task.isCancelled { panel.report(error) }
+                    return
                 }
-                Text("These durations apply to the foreground timed sequence. The backpack's autonomous loop uses timing already stored with its GIFs/programs; changing this list does not rewrite device storage.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button("Save timings") {
-                    app.run { draft.durations = durations; try library.updatePlaylist(draft); dismiss() }
-                }.buttonStyle(.borderedProminent)
-            }.modernScene().navigationTitle("Playlist timing")
-                .toolbar { Button("Cancel") { dismiss() } }
+            }
         }
     }
 }

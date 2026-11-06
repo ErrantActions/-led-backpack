@@ -3,6 +3,7 @@ import PhotosUI
 import UniformTypeIdentifiers
 import WebKit
 import BackpackProtocol
+import Combine
 
 struct BinaryDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.data, .json, .gif] }
@@ -48,6 +49,10 @@ struct AnimatedPreview: UIViewRepresentable {
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var panel: PanelController
+    @EnvironmentObject private var community: CommunityController
+    @EnvironmentObject private var library: LocalLibrary
+    @EnvironmentObject private var vault: CloudVaultStore
+    @EnvironmentObject private var phone: PhoneDisplayController
     var body: some View {
         TabView(selection: $app.selectedTab) {
             LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
@@ -56,11 +61,21 @@ struct RootView: View {
             LiveView().tabItem { Label("Live", systemImage: "waveform.path") }.tag(AppTab.live)
         }
         .tint(Aurora.mint)
+        .task(id: community.accountRevision) {
+            await vault.bind(community)
+            vault.requestSynchronization(library)
+        }
+        .onReceive(library.$state.dropFirst().debounce(for: .milliseconds(500), scheduler: RunLoop.main)) { _ in
+            vault.requestSynchronization(library)
+        }
         .disabled(app.applyingSceneID != nil)
         .alert("LED Backpack", isPresented: Binding(get: { panel.errorMessage != nil },
             set: { if !$0 { panel.errorMessage = nil } })) {
             Button("OK") { panel.errorMessage = nil }
         } message: { Text(panel.errorMessage ?? "") }
+        .fullScreenCover(isPresented: Binding(get: { phone.presented }, set: { if !$0 { phone.dismiss() } })) {
+            PhoneDisplayView()
+        }
     }
 }
 
@@ -75,8 +90,6 @@ struct DeviceView: View {
     @State private var newPassword = ""
     @State private var confirmPassword = false
     @State private var disablePassword = false
-    @State private var selectedDelete: Int?
-    @State private var showingDelete = false
     @State private var settings = false
 
     private var connectionSection: some View {
@@ -97,7 +110,7 @@ struct DeviceView: View {
             if link.connected {
                 Button("Refresh status") { app.run { try await panel.refresh() } }.disabled(panel.busy || panel.hasDisplayOwner)
                 Button("Disconnect", role: .destructive) {
-                    app.run { await live.stop(); await app.playlist.stop(); link.disconnect() }
+                    app.run { await app.batch.stop(); await app.drawing.stop(); await live.stop(); await app.playlist.stop(); link.disconnect() }
                 }
             } else {
                 Button { app.run { try link.scan() } } label: {
@@ -129,7 +142,7 @@ struct DeviceView: View {
                     BackpackMonitor()
                     VStack(alignment: .leading, spacing: 16) { QuickScenes() }.padding(20).glassPanel()
                     displayControls
-                    storage
+                    BackpackStorageView()
                 }
                 VStack(alignment: .leading, spacing: 16) {
                     DisclosureGroup("Panel password and compatibility") {
@@ -172,11 +185,6 @@ struct DeviceView: View {
                 }
 
             }
-            .confirmationDialog("Permanently delete stored artwork?", isPresented: $showingDelete) {
-                Button("Delete slot \(selectedDelete ?? 0)", role: .destructive) {
-                    if let slot = selectedDelete { app.run { try await panel.delete(slot: slot) } }
-                }
-            } message: { Text("There is no firmware-level backup/readback of stored artwork. This cannot be undone.") }
         }
     }
 
@@ -203,26 +211,6 @@ struct DeviceView: View {
         }.padding(20).glassPanel().disabled(panel.busy || panel.hasDisplayOwner)
     }
 
-    private var storage: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("On your backpack").font(.title3.weight(.semibold))
-            Text("\(panel.slots.filter(\.occupied).count) / 60 slots occupied").font(.caption).foregroundStyle(.secondary)
-            if let progress = panel.progress { ProgressView(value: progress) }
-            ForEach(panel.slots) { slot in
-                HStack {
-                    Label("Slot \(slot.id)", systemImage: slot.occupied ? "photo.fill" : "square.dashed")
-                    Spacer()
-                    Text(slot.occupied ? "Occupied" : "Empty").font(.caption).foregroundStyle(.secondary)
-                    if slot.occupied {
-                        Button("Play") { app.run { try await panel.play(slot: slot.id) } }
-                        Button(role: .destructive) {
-                            selectedDelete = slot.id; showingDelete = true
-                        } label: { Image(systemName: "trash").frame(minWidth: 44, minHeight: 44) }
-                    }
-                }.buttonStyle(.borderless)
-            }
-        }.padding(20).glassPanel().disabled(panel.busy || panel.hasDisplayOwner)
-    }
 }
 
 @MainActor
@@ -232,12 +220,16 @@ struct LibraryView: View {
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var runner: PlaylistRunner
     @EnvironmentObject private var community: CommunityController
+    @EnvironmentObject private var vault: CloudVaultStore
+    @EnvironmentObject private var phone: PhoneDisplayController
     @StateObject private var cloud = CloudLibraryStore()
     @State private var scope = LibraryScope.all
     @State private var cloudSelection: CommunityCloudItem?
     @State private var showAccount = false
     @State private var libraryVisible = false
     @State private var pendingCloudSave: SavedMedia?
+    @State private var privateCloudSettings = false
+    @State private var foreignCopy: SavedMedia?
     @State private var settingsSheet = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showingPhotos = false
@@ -278,7 +270,7 @@ struct LibraryView: View {
     private var filteredMedia: [SavedMedia] {
         let query = libraryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         return library.state.media.filter { item in
-            (scope != .cloud || cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) != nil) &&
+            (scope != .cloud || vault.connected(item.id) != nil || (!vault.available && cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) != nil)) &&
             (!favoritesOnly || item.isFavorite) &&
             (selectedCategory.isEmpty || item.categoryName == selectedCategory) &&
             (query.isEmpty || item.name.localizedCaseInsensitiveContains(query) ||
@@ -287,7 +279,8 @@ struct LibraryView: View {
     }
 
     private var categoryChoices: [String] {
-        let remote = cloud.items.map { CommunityCategory(rawValue: $0.item.category)?.label ?? $0.item.category }
+        let remote = vault.available ? Array(vault.categories.values) :
+            cloud.items.map { CommunityCategory(rawValue: $0.item.category)?.label ?? $0.item.category }
         return Array(Set((library.mediaCategories + remote + ["Uncategorized", selectedCategory]).filter { !$0.isEmpty })).sorted()
     }
 
@@ -326,7 +319,11 @@ struct LibraryView: View {
         }
         .task(id: community.accountRevision) { await cloud.refresh(community) }
         .onChange(of: community.accountRevision) { _, _ in cloudSelection = nil }
-        .refreshable { await cloud.refresh(community) }
+        .refreshable {
+            if vault.available {
+                if !vault.busy { vault.run { try await vault.refresh() } }
+            } else { await cloud.refresh(community) }
+        }
         .navigationDestination(isPresented: $showAccount) { CommunityAccountView() }
         .onAppear {
             libraryVisible = true
@@ -338,6 +335,10 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var collectionLinks: some View {
+        NavigationLink { BatchTransferView() } label: {
+            Label("Send queue (\(library.state.transferQueue?.count ?? 0))", systemImage: "square.stack.3d.up")
+                .frame(maxWidth: .infinity, minHeight: 44).padding(12).glassPanel(radius: 20)
+        }
         NavigationLink { PlaylistCollection() } label: {
             Label("Playlists", systemImage: "rectangle.stack").frame(maxWidth: .infinity, minHeight: 44).padding(12).glassPanel(radius: 20)
         }
@@ -355,6 +356,10 @@ struct LibraryView: View {
     private var libraryHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
             LibraryScopeControl(selection: $scope)
+            NavigationLink { PhoneDisplayLibraryView() } label: {
+                Label("Phone display", systemImage: "iphone")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }.buttonStyle(AuroraPrimaryButton())
             Button { communityGallery = true } label: {
                 HStack {
                     Image(systemName: "sparkle.magnifyingglass")
@@ -384,29 +389,47 @@ struct LibraryView: View {
                 Spacer()
                 Image(systemName: "square.grid.2x2").foregroundStyle(Aurora.lavender).accessibilityHidden(true)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                 ForEach(filteredMedia) { item in
-                    let connected = cloud.connectedItem(item, origin: community.origin, owner: community.user?.id)
-                    LibraryMediaRow(item: item, cloudStatus: connected?.visibility) { action in handle(action, item: item) }
+                    LibraryMediaRow(item: item) { action in handle(action, item: item) }
                 }
                 if scope != .device {
-                    ForEach(filteredCloud) { item in CloudArtworkRow(cloud: item) { cloudSelection = item } }
+                    if vault.available {
+                        ForEach(filteredVault) { item in CloudVaultArtworkRow(item: item) }
+                    } else {
+                        ForEach(filteredCloud) { item in CloudArtworkRow(cloud: item) { cloudSelection = item } }
+                    }
                 }
             }
             if scope != .device {
-                if cloud.loading { ProgressView("Updating cloud library...") }
-                if cloud.nextPage != nil {
+                NavigationLink("Private cloud settings / unlock") { CloudVaultSettingsView() }
+                if vault.available && !vault.syncing { Text("Private cloud is paused on this device. Local files are unchanged.").font(.caption) }
+                if vault.available {
+                    if vault.busy { ProgressView("Updating private cloud…") }
+                    if let failure = vault.failure { Text(failure).foregroundStyle(.orange).font(.caption) }
+                } else if cloud.loading { ProgressView("Updating cloud library...") }
+                if !vault.available && cloud.nextPage != nil {
                     Button("Load more cloud artwork") { Task { await cloud.loadMore(community) } }.disabled(cloud.loading)
                 }
-                if let failure = cloud.failure {
+                if !vault.available, let failure = cloud.failure {
                     Label(failure, systemImage: "icloud.slash").font(.caption).foregroundStyle(.orange)
                     Button("Retry cloud refresh") { Task { await cloud.refresh(community) } }
                 }
             }
-            if filteredMedia.isEmpty && (scope == .device || filteredCloud.isEmpty) && !cloud.loading {
+            if filteredMedia.isEmpty && (scope == .device || (vault.available ? filteredVault.isEmpty : filteredCloud.isEmpty)) && !cloud.loading {
                 ContentUnavailableView("Make this space yours", systemImage: "photo.on.rectangle.angled",
                     description: Text("Discover a GIF or use + to import artwork. Local copies are always available offline."))
             }
+        }
+    }
+
+    private var filteredVault: [CloudVaultItem] {
+        guard !favoritesOnly else { return [] }
+        let query = libraryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        return vault.cloudOnly(local: library.state.media).filter {
+            (selectedCategory.isEmpty || vault.categories[$0.id] == selectedCategory) &&
+            (query.isEmpty || (vault.titles[$0.id] ?? "").localizedCaseInsensitiveContains(query) ||
+                (vault.categories[$0.id] ?? "").localizedCaseInsensitiveContains(query))
         }
     }
 
@@ -529,6 +552,19 @@ struct LibraryView: View {
                 }
             }
             .sheet(isPresented: $settingsSheet) { SettingsView() }
+            .sheet(isPresented: $privateCloudSettings) {
+                NavigationStack {
+                    CloudVaultSettingsView().toolbar { Button("Done") { privateCloudSettings = false } }
+                }
+            }
+            .confirmationDialog("Create an independent private-cloud copy? Other-account associations and deleted/reset cloud libraries will not be restored.", isPresented: Binding(
+                get: { foreignCopy != nil }, set: { if !$0 { foreignCopy = nil } })) {
+                Button("Back up independent copy") {
+                    guard let item = foreignCopy else { return }
+                    foreignCopy = nil
+                    vault.run { try await vault.synchronize(library, selected: [item.id], allowForeignCopies: true) }
+                }
+            }
             .sheet(item: $cloudSelection, onDismiss: { Task { await cloud.refresh(community) } }) { CloudArtworkDetail(cloud: $0) }
             .sheet(item: $organizing) { MediaOrganizer(item: $0) }
             .sheet(item: $sharing, onDismiss: { Task { await cloud.refresh(community) } }) { CommunityUploadView(item: $0) }
@@ -587,11 +623,23 @@ struct LibraryView: View {
                 editorName = "\(item.name) edited"; editor = true
             }
         case .send: selected = item; uploading = true
+        case .phone:
+            do { try phone.show(library.data(item), mediaID: item.id) }
+            catch { phone.report(error) }
+        case .enqueue: app.run { try library.enqueue([item.id]) }
         case .share:
             if !community.signedIn { pendingCloudSave = item; showAccount = true }
             else if let connected = cloud.connectedItem(item, origin: community.origin, owner: community.user?.id) {
                 cloudSelection = connected
             } else { sharing = item }
+        case .cloud:
+            if !vault.syncing || vault.locked { privateCloudSettings = true }
+            else {
+                do {
+                    if try vault.requiresExplicitCopy(item) { foreignCopy = item }
+                    else { vault.run { try await vault.synchronize(library, selected: [item.id]) } }
+                } catch { panel.report(error) }
+            }
         case .export:
             app.run { exportDocument = BinaryDocument(data: try library.data(item)); exporting = true }
         case .organize: organizing = item

@@ -357,19 +357,20 @@ final class CommunityTests: XCTestCase {
         }
     }
 
-        func testNativeUploadUsesBearerAndOrderedMultipartThenLoadsOwnStatus() async throws {
-            let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","visibility":"private","status":"pending","moderationReason":"","aiState":"disabled","aiError":null}"#
+        func testSingleFrameUploadPreservesBytesUsesBearerAndOrderedMultipartThenLoadsOwnStatus() async throws {
+            let item = #"{"id":"abcdefab-1234-4567-89ab-abcdefabcdef","title":"Test","visibility":"shared","status":"pending","moderationReason":"","aiState":"disabled","aiError":null}"#
             let stub = CommunityStub([login(role: "admin"),
-                response(#"{"requireEmailVerification":false,"privateLibraryEnabled":true,"accountDeletionRetainsSharedGifs":true}"#),
+                response(#"{"requireEmailVerification":false,"communityUploadPolicy":"ai-screened","accountDeletionRetainsSharedGifs":true}"#),
                 response("{\"item\":\(item)}", status: 201),
                 response("{\"items\":[\(item)]}"), response(#"{"message":"Deleted"}"#)])
             let service = client(stub, vault: CommunityMemoryVault())
             try await service.signIn(email: "test@example.org", password: "example test password")
             let size = PanelSize(width: 16, height: 16)
-            let gif = try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
+            let gif = try MediaCodec.encode([.black(size)], delays: [1])
+            XCTAssertEqual(try MediaCodec.decode(gif).images.count, 1)
             let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
                 attribution: "Test creator", license: .original)
-            let uploaded = try await service.uploadGIF(gif, metadata: metadata)
+            let uploaded = try await service.uploadGIF(gif, metadata: metadata, sharingAttested: true)
             XCTAssertEqual(uploaded.status, "pending")
             let uploads = try await service.myUploads()
             XCTAssertEqual(uploads.count, 1)
@@ -379,33 +380,72 @@ final class CommunityTests: XCTestCase {
             XCTAssertEqual(upload.httpMethod, "POST")
             XCTAssertEqual(upload.url?.path, "/api/v1/items")
             XCTAssertEqual(upload.value(forHTTPHeaderField: "X-Catalog-Client"), "1")
+            XCTAssertEqual(upload.value(forHTTPHeaderField: "X-Catalog-Upload-Policy"), "community-review")
             XCTAssertEqual(upload.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
             XCTAssertTrue(upload.value(forHTTPHeaderField: "Content-Type")?.hasPrefix("multipart/form-data; boundary=LEDBackpack-") == true)
             let data = try XCTUnwrap(upload.httpBody)
             let meta = try XCTUnwrap(data.range(of: Data("name=\"metadata\"".utf8)))
             let file = try XCTUnwrap(data.range(of: Data("name=\"file\"".utf8)))
             XCTAssertLessThan(meta.lowerBound, file.lowerBound)
+            let fileHeader = try XCTUnwrap(data.range(of: Data("Content-Type: image/gif\r\n\r\n".utf8)))
+            let fileEnd = try XCTUnwrap(data.range(of: Data("\r\n--".utf8), in: fileHeader.upperBound..<data.endIndex))
+            let uploadedGIF = data.subdata(in: fileHeader.upperBound..<fileEnd.lowerBound)
+            XCTAssertEqual(uploadedGIF, gif)
+            XCTAssertEqual(try MediaCodec.decode(uploadedGIF).images.count, 1)
             XCTAssertEqual(requests[3].url?.path, "/api/v1/me/items")
             XCTAssertEqual(requests[4].httpMethod, "DELETE")
         }
 
         func testUploadRequiresAnAccountAndSurfacesServerRejection() async throws {
             let stub = CommunityStub([login(),
-                response(#"{"requireEmailVerification":false,"privateLibraryEnabled":true,"accountDeletionRetainsSharedGifs":true}"#),
+                response(#"{"requireEmailVerification":false,"communityUploadPolicy":"ai-screened","accountDeletionRetainsSharedGifs":true}"#),
                 response(#"{"error":{"code":"duplicate","message":"Already uploaded"}}"#, status: 409)])
             let service = client(stub, vault: CommunityMemoryVault())
             let metadata = CommunityUploadMetadata(title: "Test", category: "memes", tags: [],
                 attribution: "Test creator", license: .original)
-            do { _ = try await service.uploadGIF(Data(), metadata: metadata); XCTFail("Guest upload must fail") }
+            do { _ = try await service.uploadGIF(Data(), metadata: metadata, sharingAttested: true); XCTFail("Guest upload must fail") }
             catch { XCTAssertTrue(error.localizedDescription.contains("Sign in")) }
             try await service.signIn(email: "test@example.org", password: "example test password")
             let size = PanelSize(width: 16, height: 16)
             let gif = try MediaCodec.encode([.black(size), MediaCodec.text("A", size: size)], delays: [0.1, 0.1])
-            do { _ = try await service.uploadGIF(gif, metadata: metadata); XCTFail("Duplicate must fail") }
+            do { _ = try await service.uploadGIF(gif, metadata: metadata, sharingAttested: true); XCTFail("Duplicate must fail") }
             catch let failure as CommunityFailure { XCTAssertEqual(failure.status, 409) }
             let requests = await stub.history()
             XCTAssertEqual(requests.count, 3)
         }
+
+    func testMissingCommunityPolicyCannotFallBackFromPrivateBackupToPublicUpload() async throws {
+        let stub = CommunityStub([login(), response(#"{"requireEmailVerification":false,"privateLibraryEnabled":true}"#)])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        do {
+            _ = try await service.uploadGIF(Data(), metadata: CommunityUploadMetadata(title: "Private", category: "memes", tags: []), sharingAttested: true)
+            XCTFail("An old private-first config must never allow public submission.")
+        } catch { XCTAssertTrue(error.localizedDescription.contains("community-review")) }
+        let requests = await stub.history()
+        XCTAssertEqual(requests.map { $0.url?.path }, ["/api/v1/auth/login", "/api/v1/config"])
+    }
+
+    func testCloudSenderDropsInflightResponsesAfterAccountOrOriginChanges() async throws {
+        for changeOrigin in [false, true] {
+            let stub = DeferredCommunityStub([response(#"{"requireEmailVerification":false,"cloudLibraryEncryptionEnabled":true}"#)])
+            let service = client(stub, vault: CommunityMemoryVault())
+            let user = CommunityUser(id: UUID(), email: "fixture@example.org", displayName: "Fixture", role: "user", verified: true, authMethods: nil)
+            try service.establishSession(CommunityLogin(user: user, token: token, expiresAt: "2099-01-01T00:00:00Z"))
+            try await service.loadConfig()
+            let cloud = try service.cloudClient()
+            let pending = Task { try await cloud.state() }
+            await stub.waitForRequest()
+            if changeOrigin { service.configure("https://other.example") }
+            else {
+                let other = CommunityUser(id: UUID(), email: "other-fixture@example.org", displayName: "Other", role: "user", verified: true, authMethods: nil)
+                try service.establishSession(CommunityLogin(user: other, token: token, expiresAt: "2099-01-01T00:00:00Z"))
+            }
+            await stub.finish(response("{}"))
+            do { _ = try await pending.value; XCTFail("Inflight response must be discarded.") }
+            catch { XCTAssertTrue(error.localizedDescription.contains("account/server change")) }
+        }
+    }
 
     func testRetentionOrUnknownPolicyBlocksSignupBeforeCredentialsArePosted() async throws {
         for policy in [#"{"requireEmailVerification":false,"accountDeletionRetainsSharedGifs":true}"#,
@@ -450,6 +490,61 @@ final class CommunityTests: XCTestCase {
         let body = try XCTUnwrap(requests[1].httpBody)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Bool])
         XCTAssertEqual(object, ["sharingAttested": true])
+    }
+
+    func testBlockedAccountsListAndUnblockUseScopedBearerAndCanonicalID() async throws {
+        let id = try XCTUnwrap(UUID(uuidString: "abcdefab-1234-4567-89ab-abcdefabcdef"))
+        let stub = CommunityStub([login(), response("{\"users\":[{\"id\":\"\(id)\",\"displayName\":\"Blocked rider\"}]}"),
+            response(#"{"message":"Unblocked"}"#)])
+        let service = client(stub, vault: CommunityMemoryVault())
+        do { _ = try await service.blockedUsers(); XCTFail("Guests cannot list blocked accounts") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("Sign in")) }
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        let users = try await service.blockedUsers()
+        XCTAssertEqual(users.first?.id, id)
+        try await service.unblock(id, revision: service.accountRevision, server: XCTUnwrap(service.origin))
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 3)
+        XCTAssertEqual(requests[1].url?.path, "/api/v1/blocks")
+        XCTAssertEqual(requests[2].url?.path, "/api/v1/blocks/\(id.uuidString.lowercased())")
+        XCTAssertEqual(requests[2].httpMethod, "DELETE")
+        XCTAssertEqual(requests[2].value(forHTTPHeaderField: "X-Catalog-Client"), "1")
+        XCTAssertNotNil(requests[2].value(forHTTPHeaderField: "Authorization"))
+        XCTAssertNil(requests[2].value(forHTTPHeaderField: "Cookie"))
+    }
+
+    func testStaleUnblockConfirmationCannotMutateAnotherOrigin() async throws {
+        let stub = CommunityStub([login()])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        let revision = service.accountRevision, origin = try XCTUnwrap(service.origin)
+        service.configure("https://another.example")
+        do { try await service.unblock(UUID(), revision: revision, server: origin); XCTFail("Stale confirmation must fail") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("changed")) }
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 1)
+    }
+
+    func testInflightBlockedAccountListIsDiscardedOnScopeChange() async throws {
+        let stub = DeferredCommunityStub([login()])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        let loading = Task { try await service.blockedUsers() }
+        await stub.waitForRequest()
+        service.configure("https://another.example")
+        await stub.finish(response(#"{"users":[]}"#))
+        do { _ = try await loading.value; XCTFail("Old-account results must be discarded") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("changed")) }
+    }
+
+    func testBlockedAccountErrorsAreNotPresentedAsAnEmptyList() async throws {
+        let stub = CommunityStub([login(), response(#"{"error":{"code":"forbidden","message":"Account access denied"}}"#, status: 403)])
+        let service = client(stub, vault: CommunityMemoryVault())
+        try await service.signIn(email: "test@example.org", password: "example test password")
+        do { _ = try await service.blockedUsers(); XCTFail("Denied access must not become an empty-list success") }
+        catch let failure as CommunityFailure { XCTAssertEqual(failure.status, 403) }
+        let requests = await stub.history()
+        XCTAssertEqual(requests.count, 2)
     }
 
     func testDeletedUploaderAndRetentionReceiptDecodeWithoutInventingIdentity() throws {

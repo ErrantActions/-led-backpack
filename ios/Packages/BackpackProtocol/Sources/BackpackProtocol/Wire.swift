@@ -176,6 +176,11 @@ public enum Wire {
         guard (0..<60).contains(value) else { throw BackpackError.invalid("Slot must be 0 through 59.") }
     }
 
+    public static func deleteSlot(_ value: Int) throws -> [UInt8] {
+        try checkSlot(value)
+        return [0xC1, 2, 8, 2, 0, UInt8(value)]
+    }
+
     public static func contentHash(_ data: [UInt8], slot: Int) throws -> [UInt8] {
         try checkSlot(slot)
         let seed = UInt32(truncatingIfNeeded: UInt64(slot + 1) * 2246822507)

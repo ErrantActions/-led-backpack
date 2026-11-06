@@ -103,7 +103,23 @@ struct CommunityAccountView: View {
                community.user?.authMethods?.apple != true {
                 Button("Link Sign in with Apple") { linkingApple = true }
             }
-            NavigationLink("My uploads") { CommunityUploadsView() }
+            NavigationLink("Private cloud library") { CloudVaultSettingsView() }
+            NavigationLink("My community uploads") { CommunityUploadsView() }
+            NavigationLink("Blocked accounts") { CommunityBlocksView() }
+            if community.config?.socialEnabled == true {
+                NavigationLink("Friends & profile") { CommunitySocialView() }
+            }
+            if community.config?.avatarsEnabled == true {
+                NavigationLink("Profile avatar") { CommunityAvatarView() }
+            }
+            if community.config?.eventsEnabled == true {
+                NavigationLink("Events") { CommunityEventsView() }
+            }
+            if community.isAdmin {
+                NavigationLink { CommunityAdminView() } label: {
+                    Label("Administration", systemImage: "shield.lefthalf.filled")
+                }
+            }
             Button("Sign in again") {
                 do { try community.forgetLocalSession() }
                 catch { failure = error.localizedDescription }

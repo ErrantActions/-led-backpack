@@ -12,8 +12,12 @@ final class AppModel: ObservableObject {
     let sensors: LiveSensors
     let live: LiveEngine
     let playlist: PlaylistRunner
+    let drawing: DrawingLivePreview
+    let batch: BatchTransferQueue
     let alerts = DisconnectAlerts()
     let community: CommunityController
+    let cloudVault = CloudVaultStore()
+    let phoneDisplay = PhoneDisplayController()
     @Published var library: LocalLibrary?
     @Published var startupError: String?
     @Published private(set) var applyingSceneID: UUID?
@@ -28,6 +32,8 @@ final class AppModel: ObservableObject {
         self.link = link; self.panel = panel; self.sensors = sensors
         live = LiveEngine(panel: panel, sensors: sensors)
         playlist = PlaylistRunner(panel: panel)
+        drawing = DrawingLivePreview(panel: panel)
+        batch = BatchTransferQueue(panel: panel)
         #if DEBUG
         community = ProcessInfo.processInfo.arguments.contains("--library-ui-fixture")
             ? LibraryPreviewFixture.community() : CommunityController()
@@ -46,11 +52,17 @@ final class AppModel: ObservableObject {
         }
         link.onDisconnect = { [weak self] in
             self?.live.connectionLost(); self?.playlist.connectionLost()
+            self?.drawing.connectionLost(); self?.batch.connectionLost()
             self?.panel.monitorUnavailable("Disconnected. Physical display state is unknown.")
         }
+        link.onLiveError = { [weak self] error in
+            self?.panel.report(error)
+            self?.live.connectionLost(); self?.drawing.connectionLost()
+        }
         panel.previewProvider = { [weak self] slot in
-            guard let self, let key = self.panel.identity?.serial,
-                  let record = self.panel.slots.first(where: { $0.id == slot }) else { return nil }
+            guard let self, self.link.connected, self.panel.inventoryDeviceID != nil,
+                  self.panel.inventoryDeviceID == self.link.selectedID, let key = self.panel.identity?.serial,
+                  let record = self.panel.slots.first(where: { $0.id == slot && $0.occupied }) else { return nil }
             return try self.library?.cachedSlot(panel: key, slot: slot, identifier: record.identifier)
         }
         link.onEstablishedDrop = { [weak self] name in
@@ -92,7 +104,7 @@ final class AppModel: ObservableObject {
 
     func applyScene(_ scene: SavedScene) async throws {
         try scene.validate()
-        guard !backgrounded, applyingSceneID == nil, link.connected, !panel.busy else {
+        guard !backgrounded, applyingSceneID == nil, link.connected, !panel.busy, !batch.running else {
             throw BackpackError.invalid("Connect first and finish the current operation before applying a scene.")
         }
         switch scene.content {
@@ -113,6 +125,7 @@ final class AppModel: ObservableObject {
         do {
             await live.stop()
             await playlist.stop()
+            await drawing.stop()
             guard !backgrounded, link.connected, !panel.busy, !panel.hasDisplayOwner else {
                 throw BackpackError.invalid("Could not release the previous display session.")
             }
@@ -143,6 +156,8 @@ final class AppModel: ObservableObject {
 
     func setBackground(_ value: Bool) {
         backgrounded = value
+        drawing.setBackground(value)
+        batch.setBackground(value)
         live.setBackground(value)
         if value { Task { await playlist.stop() } }
     }
@@ -180,7 +195,10 @@ struct LEDBackpackApp: App {
                         .environmentObject(app).environmentObject(app.link).environmentObject(app.panel)
                         .environmentObject(app.live).environmentObject(app.sensors).environmentObject(library)
                         .environmentObject(app.playlist)
+                        .environmentObject(app.drawing).environmentObject(app.batch)
                         .environmentObject(app.community)
+                        .environmentObject(app.cloudVault)
+                        .environmentObject(app.phoneDisplay)
                 } else {
                     ContentUnavailableView {
                         Label("Library unavailable", systemImage: "externaldrive.badge.exclamationmark")
@@ -195,9 +213,15 @@ struct LEDBackpackApp: App {
             .tint(.cyan)
             .onChange(of: scenePhase) { _, value in
                 app.setBackground(value == .background)
+                app.phoneDisplay.setForeground(value == .active)
+                if value == .background { app.cloudVault.stopWork() }
+                if value == .active, let library = app.library { app.cloudVault.requestSynchronization(library) }
                 if value == .active { Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } } }
             }
-            .task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
+            .task {
+                app.phoneDisplay.setForeground(scenePhase == .active)
+                do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) }
+            }
             .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in
                 Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
             }

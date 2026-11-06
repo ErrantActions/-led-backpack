@@ -32,59 +32,37 @@ struct LibraryScopeControl: View {
 
 @MainActor
 struct LibraryMediaRow: View {
-    enum Action { case preview, edit, send, share, export, organize, delete }
+    enum Action { case preview, edit, phone, send, enqueue, share, cloud, export, organize, delete }
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var library: LocalLibrary
     let item: SavedMedia
-    var cloudStatus: String? = nil
     let action: (Action) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Button { action(.preview) } label: {
-                GIFThumbnail(key: "local:\(item.id.uuidString)") { try library.data(item) }
-                    .frame(maxWidth: .infinity).frame(height: 160)
-                    .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 19))
-                    .clipShape(RoundedRectangle(cornerRadius: 19))
-            }.buttonStyle(.plain).accessibilityLabel("Preview \(item.name)")
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(item.name).font(.headline).lineLimit(2)
-                    Label(item.categoryName, systemImage: "folder").font(.caption).foregroundStyle(.secondary)
-                    Label(cloudStatus == nil ? "On this iPhone" : "On iPhone + Cloud", systemImage: cloudStatus == nil ? "iphone" : "icloud.fill")
-                        .font(.caption2).foregroundStyle(cloudStatus == nil ? Color.secondary : Color.cyan)
-                    if let credit = item.attribution {
-                        Text(credit.author.isEmpty ? (credit.license == "unreviewed" ? "Rights not reviewed" : credit.license)
-                            : "\(credit.author) / \(credit.license)")
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                    }
-                }
-                Spacer(minLength: 0)
-                Button {
-                    app.run { try library.organize(item.id, category: item.category, favorite: !item.isFavorite) }
-                } label: {
-                    Image(systemName: item.isFavorite ? "star.fill" : "star")
-                        .foregroundStyle(item.isFavorite ? Color.yellow : Color.secondary)
-                    .frame(minWidth: 44, minHeight: 44)
-                }.buttonStyle(.plain)
-                    .accessibilityLabel(item.isFavorite ? "Remove favorite" : "Add favorite")
+        Button { action(.preview) } label: {
+            GIFThumbnail(key: "local:\(item.id.uuidString)") { try library.data(item) }
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 19))
+        }.buttonStyle(.plain)
+        .accessibilityLabel("Preview \(item.name)")
+        .accessibilityHint("Opens artwork. Touch and hold for actions.")
+        .contextMenu {
+            Button("Edit a copy") { action(.edit) }
+            Button("Display on phone") { action(.phone) }
+            Button("Send to backpack") { action(.send) }
+            Button("Add to send queue") { action(.enqueue) }
+            Button("Back up to private cloud") { action(.cloud) }
+            Button("Submit to community review") { action(.share) }
+            Button(item.isFavorite ? "Remove favorite" : "Add favorite") {
+                app.run { try library.organize(item.id, category: item.category, favorite: !item.isFavorite) }
             }
-            HStack {
-                Button("Preview") { action(.preview) }
-                Spacer()
-                Menu("Actions", systemImage: "ellipsis.circle") {
-                    Button("Edit a copy") { action(.edit) }
-                    Button("Send to backpack") { action(.send) }
-                    Button(cloudStatus == nil ? "Save a private cloud copy" : "Cloud copy options") { action(.share) }
-                    Button("Organize") { action(.organize) }
-                    Button("Export GIF") { action(.export) }
-                    Button("Delete local copy", role: .destructive) { action(.delete) }
-                }
-            }.font(.subheadline.weight(.semibold)).buttonStyle(.borderless)
+            Button("Organize") { action(.organize) }
+            Button("Export GIF") { action(.export) }
             if let credit = item.attribution, let url = URL(string: credit.source), url.scheme == "https" {
-                Link("Source and license", destination: url).font(.caption)
+                Link("Source and license", destination: url)
             }
-        }.padding(16).glassPanel()
+            Button("Delete local copy", role: .destructive) { action(.delete) }
+        }
     }
 }
 

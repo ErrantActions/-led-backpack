@@ -11,6 +11,10 @@ final class PlaylistRunner: ObservableObject {
     init(panel: PanelController) { self.panel = panel }
 
     func start(_ playlist: SavedPlaylist, repeatPlaylist: Bool) async throws {
+        try playlist.validateForDevice(serial: panel.identity?.serial, inventory: panel.slots)
+        guard panel.inventoryDeviceID == panel.link.selectedID, panel.inventoryDeviceID != nil else {
+            throw BackpackError.invalid("Authenticate and refresh this backpack first.")
+        }
         guard task == nil, !playlist.slots.isEmpty, playlist.slots.count <= 60,
               playlist.slots.allSatisfy({ (0..<60).contains($0) }) else {
             throw BackpackError.invalid("Choose 1 to 60 valid slots and stop the current timed sequence.")

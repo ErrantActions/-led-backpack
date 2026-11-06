@@ -17,6 +17,7 @@
     <key>NSMotionUsageDescription</key><string>Show optional phone motion measurements during your live display session.</string>
     <key>NSAppleMusicUsageDescription</key><string>Read supported system Music metadata for your explicitly started now-playing display.</string>
     <key>NSLocalNetworkUsageDescription</key><string>Connect to your optional self-hosted GIF catalog when it is on your local network.</string>
+    <key>NSCameraUsageDescription</key><string>Scan a public QR code on another signed-in device to explicitly approve trusted private-library key adoption.</string>
     <key>UIBackgroundModes</key><array><string>bluetooth-central</string><string>location</string></array>
     <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
     <key>UIApplicationSupportsIndirectInputEvents</key><true/>

@@ -84,13 +84,14 @@ final class UploadVideoTests: XCTestCase {
         }
     }
 
-    func testOnlyActualAnimatedGIFsCanBeShared() throws {
+    func testSingleFrameAndAnimatedGIFsCanBeSharedWithinBudgets() throws {
         let size = PanelSize(width: 16, height: 16)
         let black = PixelFrame.black(size)
         var marked = black
         marked.rgb[0] = 255
         let still = try MediaCodec.encode([black], delays: [1])
-        XCTAssertThrowsError(try CommunityUpload.validateGIF(still))
+        XCTAssertNoThrow(try CommunityUpload.validateGIF(still))
+        XCTAssertEqual(try MediaCodec.decode(still).images.count, 1)
         let animated = try MediaCodec.encode([marked, black], delays: [0.1, 0.1])
         XCTAssertNoThrow(try CommunityUpload.validateGIF(animated))
         XCTAssertThrowsError(try CommunityUpload.validateGIF(Data("not a GIF".utf8)))

@@ -1,0 +1,77 @@
+name: Unsigned native source validation
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Compile completed source and optionally run focused native unit tests
+        type: choice
+        options: [focused, compile]
+        default: focused
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: unsigned-native-source-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  unsigned-validation:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify installed Xcode and SDK
+        run: |
+          XCODE=/Applications/Xcode_27.1.app/Contents/Developer
+          test -d "$XCODE" || { echo "::error::Required Xcode 27.1 is not installed on this runner."; exit 1; }
+          DEVELOPER_DIR="$XCODE" xcodebuild -version | grep -Fx "Xcode 27.1"
+          echo "DEVELOPER_DIR=$XCODE" >> "$GITHUB_ENV"
+          export DEVELOPER_DIR="$XCODE"
+          sw_vers
+          xcodebuild -version
+          swift --version
+          xcodebuild -showsdks
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          echo "Selected simulator SDK: $SDK"
+          test "$SDK" = "27.1" || { echo "::error::Simulator SDK is not 27.1."; exit 1; }
+      - name: Generate project with existing tooling
+        run: |
+          if ! xcodegen --version; then brew install xcodegen; fi
+          xcodegen generate
+      - name: Verify available simulator
+        run: |
+          xcrun simctl list devices available
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; data=json.load(sys.stdin); devices=[x for runtime,items in data["devices"].items() if runtime.endswith(".iOS-27-1") for x in items if x["name"]=="iPhone Duo"]; assert devices, "Required iOS 27.1 iPhone Duo simulator is unavailable"; print(devices[0]["udid"])')
+          echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
+      - name: Unsigned compilation and focused tests
+        env:
+          VALIDATION_MODE: ${{ inputs.mode }}
+        run: |
+          set -o pipefail
+          mkdir -p build
+          if [ "$VALIDATION_MODE" = compile ]; then
+            xcodebuild build-for-testing -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+              -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+              -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
+          else
+            TESTS=()
+            for CLASS in CloudVaultCryptoTests CloudVaultProtocolTests CommunityAdminTests CommunityFeatureTests \
+              EventRouteTests PhoneDisplayTests ExtraParityTests BackpackFeatureTests CommunityTests \
+              UploadVideoTests GIFPreviewTests; do
+              TESTS+=("-only-testing:LEDBackpackTests/$CLASS")
+            done
+            xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+              -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+              -derivedDataPath build -resultBundlePath build/UnsignedTests.xcresult \
+              -parallel-testing-enabled NO "${TESTS[@]}" CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unsigned-native-validation
+          path: |
+            ios/build/unsigned-validation.log
+            ios/build/UnsignedTests.xcresult
+          if-no-files-found: warn
