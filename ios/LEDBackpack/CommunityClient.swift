@@ -275,8 +275,9 @@ final class CommunityController: ObservableObject {
     @Published private(set) var accountRevision = UUID()
     @Published private(set) var avatarPolicyRevision = UUID()
     @Published private(set) var avatarPolicyChanging = false
+    @Published private(set) var nativeIntegrityRevision = UUID()
     private var session: CommunitySession?
-    private let nativeIntegrity = NativeAppIntegrity()
+    private let nativeIntegrity: NativeAppIntegrity
     var nativePushCleanup: (() async throws -> Void)?
     var nativeApplePushAvailable: Bool {
         config?.applePushEnabled == true && config?.appIntegrityProtocol == "app-attest-v1" &&
@@ -352,9 +353,57 @@ final class CommunityController: ObservableObject {
     private var deletionKey: String { "deletion|\(origin?.url.absoluteString ?? "")" }
 
     convenience init() { self.init(vault: CommunityKeychain()) }
-    init(vault: any CommunityVault,
+    init(vault: any CommunityVault, integrity: NativeAppIntegrity? = nil,
         factory: @escaping (CommunityOrigin) -> any CommunityTransport = { CommunityHTTP(origin: $0) }) {
-        self.vault = vault; self.factory = factory
+        self.vault = vault; self.factory = factory; nativeIntegrity = integrity ?? NativeAppIntegrity()
+    }
+    var integrityControlsAvailable: Bool {
+        signedIn && config?.appIntegrityProtocol == "app-attest-v1" && config?.appIntegrityEnforcementEnabled == true
+    }
+    func integrityKeys() async throws -> [NativeIntegrityOwnedKey] {
+        let response = try await integrityKeyControl(nil)
+        struct Result: Decodable { let keys: [NativeIntegrityOwnedKey] }
+        let result = try JSONDecoder().decode(Result.self, from: response.data).keys
+        guard result.count <= 20, Set(result.map(\.keyId)).count == result.count else { throw BackpackError.invalid("Invalid owned-key recovery list.") }
+        for key in result { try key.validate() }
+        return result
+    }
+    func revokeIntegrityKey(_ key: NativeIntegrityOwnedKey) async throws {
+        try key.validate()
+        _ = try await integrityKeyControl(key.keyId)
+    }
+    private func integrityKeyControl(_ key: String?) async throws -> CommunityResponse {
+        try checkAccountSession()
+        guard integrityControlsAvailable, let origin, let user, let session, let transport else {
+            throw BackpackError.invalid("Fresh-auth key recovery is unavailable; enforcement remains unchanged.")
+        }
+        let revision = accountRevision, token = session.token, account = user.id
+        let check: @MainActor () throws -> Void = { [weak self] in
+            guard let self, self.origin == origin, self.accountRevision == revision, self.user?.id == account,
+                  self.session?.token == token, self.integrityControlsAvailable else { throw BackpackError.invalid("Owned key recovery scope changed.") }
+        }
+        var request = URLRequest(url: try NativeIntegrityKeyRoute.url(origin: origin, key: key))
+        request.httpShouldHandleCookies = false
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if key != nil {
+            request.httpMethod = "DELETE"; request.httpBody = Data(#"{"confirmation":"REVOKE"}"#.utf8)
+            request.setValue("1", forHTTPHeaderField: "X-Catalog-Client"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        return try await nativeIntegrity.control(check: check) {
+            let result = try await transport.send(request, maxBytes: 16384)
+            try check()
+            guard (200...299).contains(result.status) else {
+                throw CommunityFailure(status: result.status, code: "integrity_key_recovery_failed",
+                    message: "Owned-key recovery was not confirmed. Primary login must be within ten minutes; reauthenticate explicitly. No device-proof fallback.")
+            }
+            if let key {
+                struct Receipt: Decodable { let keyId: String; let revoked: Bool }
+                let receipt = try JSONDecoder().decode(Receipt.self, from: result.data)
+                guard receipt.keyId == key, receipt.revoked else { throw BackpackError.invalid("The captured owned key revocation was not confirmed.") }
+                if try self.nativeIntegrity.removeMatchingKey(origin: origin, account: account, keyID: key) { self.nativeIntegrityRevision = UUID() }
+            }
+            return result
+        }
     }
     func configure(_ text: String?, reload: Bool = false) {
         do {

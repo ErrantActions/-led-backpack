@@ -112,6 +112,14 @@ final class NativeAppIntegrity {
         guard let bytes = try cache.read(storage(origin, account)) else { return nil }
         return try JSONDecoder().decode(Key.self, from: bytes).id
     }
+    func removeMatchingKey(origin: CommunityOrigin, account: UUID, keyID: String) throws -> Bool {
+        guard try self.keyID(origin: origin, account: account) == keyID else { return false }
+        try cache.remove(storage(origin, account)); return true
+    }
+    func control(check: @escaping @MainActor () throws -> Void,
+        work: @escaping @MainActor () async throws -> CommunityResponse) async throws -> CommunityResponse {
+        try await queue(requiresSDK: false, check: check, work: work)
+    }
     func perform(_ request: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
         transport: any CommunityTransport, maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
         try await queue(check: check) {
@@ -162,9 +170,9 @@ final class NativeAppIntegrity {
         let value = GuestSession(token: reply.token, expiresAt: reply.expiresAt)
         try cache.save(JSONEncoder().encode(value), key: guestStorage(origin)); return value
     }
-    private func queue(check: @escaping @MainActor () throws -> Void,
+    private func queue(requiresSDK: Bool = true, check: @escaping @MainActor () throws -> Void,
         work: @escaping @MainActor () async throws -> CommunityResponse) async throws -> CommunityResponse {
-        guard supported else { throw BackpackError.invalid("A real supported App Attest device is required; no simulator/header fallback.") }
+        guard !requiresSDK || supported else { throw BackpackError.invalid("A real supported App Attest device is required; no simulator/header fallback.") }
         let previous = tail
         let job = Task {
             await previous?.value

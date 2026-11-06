@@ -232,6 +232,7 @@ struct LEDBackpackApp: App {
                 Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
             }
             .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.applePush.bind(app.community) }
+            .onReceive(app.community.$nativeIntegrityRevision.dropFirst()) { _ in app.applePush.bind(app.community) }
             .onReceive(NativeApplePushEvents.shared.$activity) { value in
                 if let value { app.applePush.resolve(value); NativeApplePushEvents.shared.clearActivity() }
             }

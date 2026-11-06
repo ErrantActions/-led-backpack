@@ -157,7 +157,10 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   attempt 2 at `c748042`: 199 executed, zero failures, one exact unsigned
   Keychain skip; all three guest tests. Attempt 1 had GitHub's internal
   runner error with no steps/log; retried without settings changes.
-- [ ] Fresh-auth owned-key recovery UI.
+- [x] Fresh-auth owned-key recovery source: standard-base64 path encoding, explicit
+  REVOKE, owned/current-account/fresh-auth exception, exact receipt and only matching
+  local-key clearing; separate integrity epoch, no account/vault identity rewrite.
+- [ ] Recovery focused mocks/compile in the next batched unsigned Mac checkpoint.
 - [ ] Immutable upload stream snapshot/hash.
 - [ ] Authenticated SSE opening proof.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,

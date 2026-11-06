@@ -127,6 +127,9 @@ struct CommunityAccountView: View {
             if community.config?.applePushEnabled == true {
                 NavigationLink("Apple device alerts") { NativeApplePushView() }
             }
+            if community.config?.appIntegrityProtocol == "app-attest-v1" {
+                NavigationLink("App key recovery") { NativeIntegrityRecoveryView() }
+            }
             if community.isAdmin {
                 NavigationLink { CommunityAdminView() } label: {
                     Label("Administration", systemImage: "shield.lefthalf.filled")
