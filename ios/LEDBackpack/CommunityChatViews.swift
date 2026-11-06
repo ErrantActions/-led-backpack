@@ -167,6 +167,9 @@ struct CommunityConversationView: View {
                     if !typing.isEmpty { Text("\(typing.map(\.displayName).joined(separator: ", ")) typing...").font(.caption) }
                     if let client = session.client {
                         composer(client)
+                        if client.chatNotificationPreferencesEnabled {
+                            NavigationLink("Alerts for this conversation") { ConversationNotificationView(context: context) }
+                        }
                     }
                     if let room { Button("Room information / members") { roomInfo = true }.disabled(session.busy || room.archived) }
                     Button("Recheck conversation access") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)

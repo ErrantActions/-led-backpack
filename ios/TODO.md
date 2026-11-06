@@ -152,12 +152,27 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [x] Guest server-session bootstrap, independently reconstructed null user scope,
   guest-only header, qualified login request and guest key adoption to account
   storage after successful primary login; no anonymous header on authenticated calls.
-- [ ] Separate guest Mac mock/compile checkpoint.
+- [x] Separate guest Mac mock/compile checkpoint passed in
+  [42155215746](https://github.com/ErrantActions/-led-backpack/actions/runs/42155215746)
+  attempt 2 at `c748042`: 199 executed, zero failures, one exact unsigned
+  Keychain skip; all three guest tests. Attempt 1 had GitHub's internal
+  runner error with no steps/log; retried without settings changes.
 - [ ] Fresh-auth owned-key recovery UI.
 - [ ] Immutable upload stream snapshot/hash.
 - [ ] Authenticated SSE opening proof.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
   entitlements, signed devices, provider environment or production enforcement.
+
+### Per-conversation notification mute (`f1005e1`, separate slice)
+
+- [x] Actual `chatNotificationPreferencesEnabled` gate hides missing/false controls.
+  Owner/current-access read/write for exactly one room or direct/question context.
+- [x] Captured revision/choice bytes, explicit save/reload, retained conflict intent,
+  no silent retry/overwrite. Account/origin/feature guards apply after I/O.
+- [x] Alerts-only disclosure: no history/message/unread/membership/typing/invitation/
+  old inbox/activity deletion or navigation changes.
+- [ ] Separate unsigned Mac compile and six scoped mute tests.
+- [ ] Authorized physical/visual/provider/queued-delivery validation remains separate.
 
 - [x] Frozen direct/group/event chat and separate organizer questions, scoped
   history/revisions, live hints/typing and private image/GIF attachments.

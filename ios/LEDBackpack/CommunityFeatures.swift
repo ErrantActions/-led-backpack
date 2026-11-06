@@ -70,6 +70,7 @@ final class CommunityFeatureClient {
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
     var chatReferencesEnabled: Bool { community.config?.chatReferencesEnabled == true }
+    var chatNotificationPreferencesEnabled: Bool { community.config?.chatNotificationPreferencesEnabled == true }
     var referencePolicyChanging: Bool { community.avatarPolicyChanging }
     var referencePolicyRevision: UUID { community.avatarPolicyRevision }
     var chatLiveEnabled: Bool { community.config?.liveChatEnabled == true && community.config?.chatLiveProtocol == "sse-v1" }
@@ -125,7 +126,7 @@ final class CommunityFeatureClient {
         case .some(.avatars): enabled = community.config?.avatarsEnabled == true
         case .some(.events): enabled = community.config?.eventsEnabled == true
         case .some(.messaging): enabled = community.config?.messagingEnabled == true
-        case .some(.notifications): enabled = community.config?.notificationsEnabled == true || community.config?.notificationPreferencesEnabled == true
+        case .some(.notifications): enabled = community.config?.notificationsEnabled == true || community.config?.notificationPreferencesEnabled == true || chatNotificationPreferencesEnabled
         case .none: enabled = true
         }
         guard enabled else { throw BackpackError.invalid("This server has not enabled this feature.") }

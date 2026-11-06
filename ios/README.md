@@ -609,6 +609,30 @@ Failed access refresh hides reference metadata until reverified; media policy
 is checked again after I/O. Production `6bed90c` lacks the new capability;
 signed physical Apple/provider, transport/visual/lifecycle checks remain separate.
 
+### Guest native integrity checkpoint
+
+The separate frozen HTTP-v1 guest source now obtains a real server anonymous
+session, binds null user scope/token/body/query through the official SDK adapter,
+uses only `X-Catalog-Integrity-Session` for guests and adopts the anonymous
+enrolled key after successful primary login. Authenticated calls omit that header;
+OFF/missing gates preserve legacy login without integrity Keychain calls.
+Unsigned Mac run `42155215746` attempt 2 at `c748042` passed 199 tests, zero
+failures and one exact unsigned Keychain skip, including three guest mocks.
+This does not prove Apple device attestation or activate enforcement.
+
+### Per-conversation alerts
+
+Per-conversation notification mute is a separate frozen `f1005e1` source slice.
+Messages > Alerts for this conversation appears only with the actual
+`chatNotificationPreferencesEnabled` capability. Owner-only settings bind exactly
+one direct thread, private organizer question or group/event room and the displayed
+revision. A failed save retains its immutable intent; explicit reload may retain the
+choice but never silently save against a new revision. Late account/origin/access
+changes cannot apply a result. Mute suppresses only new message alerts, not messages,
+history, unread counts, typing, memberships, invitations or existing inbox/activity
+links. Backend producer/queued-delivery filtering remains server-owned. This source
+awaits its separate unsigned Mac checkpoint; no provider/enforcement activation occurs.
+
 ### Batch send queue
 
 Long-press a library GIF and choose **Add to send queue**, or open **Library >
