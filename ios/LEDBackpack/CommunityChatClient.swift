@@ -117,6 +117,7 @@ extension CommunityFeatureClient {
         return page
     }
     func sendChat(_ intent: ChatSendIntent) async throws -> NativeChatMessage {
+        if intent.reference != nil && !chatReferencesEnabled { throw BackpackError.invalid("Scoped shared references are unavailable.") }
         if intent.attachmentID != nil && !chatMediaEnabled { throw BackpackError.invalid("Private chat media is unavailable.") }
         if intent.pin != nil && !chatPinsEnabled { throw BackpackError.invalid("Fixed chat pins are unavailable.") }
         struct Result: Decodable { let message: NativeChatMessage }

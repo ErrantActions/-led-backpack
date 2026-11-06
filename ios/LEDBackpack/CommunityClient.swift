@@ -40,6 +40,7 @@ struct CommunityConfig: Decodable {
     var eventChatsEnabled: Bool? = nil
     var chatMediaEnabled: Bool? = nil
     var chatPinsEnabled: Bool? = nil
+    var chatReferencesEnabled: Bool? = nil
     var liveChatEnabled: Bool? = nil
     var chatLiveProtocol: String? = nil
     var notificationsEnabled: Bool? = nil

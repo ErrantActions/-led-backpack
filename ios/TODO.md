@@ -133,7 +133,7 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   history/revisions, live hints/typing and private image/GIF attachments.
 - [x] Manual Apple Maps fixed chat pins, no device GPS/tracking.
 - [x] Owner notification global/category/channel preferences and activity links.
-- [ ] Actual proof-bound APNs registration/token lifecycle, no fake proof/bypass.
+- [x] Bounded actual SDK/proof-bound APNs registration/token lifecycle source.
 - [x] Default-off event reminders.
 - [ ] Shared community/event cards: completed backend source `8697481`; implement
   as a separate bounded native checkpoint, not part of `6c2883b`.
@@ -174,7 +174,9 @@ native APNs remains the next separate slice.
   local disconnect notification presentation.
 - [x] Activity payload only contributes an opaque UUID; authorized server destination
   opens current feature reads. Phone artwork/playback is not replaced.
-- [ ] Unsigned Mac compilation/mock/codec tests for this separate source checkpoint.
+- [x] Unsigned Mac app/test compilation and eight codec/mock tests passed in
+  [42144043428](https://github.com/ErrantActions/-led-backpack/actions/runs/42144043428)
+  at `d51512c`: 182 executed, zero failures, one exact unsigned Keychain skip.
 - [ ] Authorized signed physical App Attest/provider/token/delivery/visual checks.
 - No credentials, capabilities/profiles/entitlements or production flags are
   provisioned. Missing App Attest/provider flags and unsupported SDK remain blocked.
@@ -183,3 +185,18 @@ native APNs remains the next separate slice.
   not fabricated by an ordinary bearer/header; do not activate enforcement from this
   checkpoint. Lost enrollment/registration acknowledgments require explicit recovery,
   not guessed device IDs or replay. Provider acceptance is not delivery.
+
+### Protected shared reference cards: separate `8697481` slice
+
+- [x] Actual `chatReferencesEnabled` gates, bounded current-conversation community
+  GIF/event pickers and strictly scoped authenticated media (no public/cloud fallback).
+- [x] Reference-only/exact-retry intents, displayed private-event and participation
+  revisions, separate current event review/RSVP path, no invitation/access/progress/GPS.
+- [x] Current-viewer unavailable hydration discards private metadata, explicit event
+  material/plan changes, IANA timezone dates and approved-only supplied cover paths.
+- [x] Direct/room opaque token invalidation, independent five-second reconciliation
+  even with live hints, stable message IDs, older-page discard on token changes and
+  immediate picker/history/media-policy clearing on mature preference changes.
+- [ ] Mac compilation/focused reference tests for this separate checkpoint.
+- [ ] Authorized native visual/pointer/lifecycle/real transport/revocation validation;
+  new source capability remains unavailable on production `6bed90c`.

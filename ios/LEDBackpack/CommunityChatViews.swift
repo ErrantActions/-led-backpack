@@ -144,6 +144,9 @@ struct CommunityConversationView: View {
     @State private var typingClient = UUID()
     @State private var roomInfo = false
     @State private var choosingPin = false
+    @State private var choosingReference = false
+    @State private var reference: ChatReferenceSelection?
+    @State private var referencePolicyStale = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -154,8 +157,8 @@ struct CommunityConversationView: View {
                     if let liveFailure { Text(liveFailure).font(.caption).foregroundStyle(.orange) }
                     if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                     if more { Button("Load older messages") { load(older: true) }.disabled(session.busy) }
-                    ForEach(messages) { message in
-                        NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client) {
+                    ForEach(community.avatarPolicyChanging ? [] : messages) { message in
+                        NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client, referenceEpoch: viewToken ?? "") {
                             deleting = message; deleteScope = session.client?.instanceID
                         }
                     }
@@ -209,6 +212,17 @@ struct CommunityConversationView: View {
             }
         }
         .onChange(of: text) { _, _ in scheduleTyping() }
+        .task(id: "reference:\(phase):\(community.accountRevision):\(community.config?.chatReferencesEnabled == true):\(community.avatarPolicyChanging)") {
+            guard phase == .active, community.config?.chatReferencesEnabled == true, !community.avatarPolicyChanging else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                if !session.busy && !revoked { load(older: false, reconcile: true) }
+            }
+        }
+        .onChange(of: community.avatarPolicyChanging) { _, changing in
+            if changing { messages = []; choosingReference = false; reference = nil; referencePolicyStale = intent?.reference != nil }
+            else if !session.busy { load(older: false) }
+        }
         .onChange(of: shareTyping) { _, _ in scheduleTyping() }
         .onChange(of: phase) { _, state in if state != .active { stopTyping() } }
         .onChange(of: community.accountRevision) { _, _ in stopTyping(); clear(); session.clear(); dismiss() }
@@ -223,6 +237,9 @@ struct CommunityConversationView: View {
         }
         .sheet(isPresented: $roomInfo) { if let room, let client = session.client { NativeRoomInfoView(initial: room, client: client) } }
         .sheet(isPresented: $choosingPin) { ChatFixedPinPicker { pin = $0; choosingPin = false } }
+        .sheet(isPresented: $choosingReference) {
+            if let client = session.client { ChatReferencePicker(client: client, context: context) { reference = $0; choosingReference = false } }
+        }
         .confirmationDialog("Delete your sent message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             if let message = deleting {
                 Button("Delete for both accounts", role: .destructive) {
@@ -242,15 +259,20 @@ struct CommunityConversationView: View {
                 }.disabled(session.busy || intent != nil)
             }
             if let pin { Text("Fixed place: \(pin.label)").font(.caption); Button("Remove unsent place") { self.pin = nil }.disabled(intent != nil) }
+            if let reference {
+                Label(reference.kind == "event" ? "Current event reference attached" : "Community GIF reference attached", systemImage: "link")
+                Button("Remove unsent reference") { self.reference = nil }.disabled(intent != nil)
+            }
             TextField("Message", text: $text, axis: .vertical).lineLimit(1...6).disabled(intent != nil)
             HStack {
                 if client.chatMediaEnabled { Button("Attach image / GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || attachment != nil) }
                 if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil) }
+                if client.chatReferencesEnabled { Button("Share GIF / event") { choosingReference = true }.disabled(intent != nil) }
                 Spacer()
                 Button(intent == nil ? "Send" : "Retry exact send") { send() }.buttonStyle(.borderedProminent)
             }
             if intent != nil {
-                Button("Discard failed send intent", role: .destructive) { intent = nil }
+                Button("Discard failed send intent", role: .destructive) { intent = nil; referencePolicyStale = false }
                 Text("A failed connection may have accepted the message. Retry retains the same ID/bytes; check history before starting a different intent.").font(.caption)
             }
             if client.chatLiveEnabled { Toggle("Share ephemeral typing indicator", isOn: $shareTyping) }
@@ -259,12 +281,13 @@ struct CommunityConversationView: View {
     }
     private func send() {
         session.run({ client in
-            if intent == nil { intent = try ChatSendIntent(context: context, text: text, attachmentID: attachment?.attachment.id, pin: pin) }
+            guard !referencePolicyStale else { throw BackpackError.invalid("Media policy changed. Discard the captured failed intent and reselect current references explicitly.") }
+            if intent == nil { intent = try ChatSendIntent(context: context, text: text, attachmentID: attachment?.attachment.id, pin: pin, reference: reference) }
             guard let intent else { throw BackpackError.invalid("Prepare a valid send intent.") }
             _ = try await client.sendChat(intent)
-        }, success: { intent = nil; text = ""; attachment = nil; pin = nil; stopTyping(); load(older: false) })
+        }, success: { intent = nil; text = ""; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; stopTyping(); load(older: false) })
     }
-    private func load(older: Bool) {
+    private func load(older: Bool, reconcile: Bool = false) {
         session.run { client in
             do {
                 let rows: [NativeChatMessage]
@@ -272,20 +295,28 @@ struct CommunityConversationView: View {
                 case .direct(let peer, let event):
                     let result = try await client.directHistory(peer: peer, event: event, before: older ? directCursor : nil)
                     try session.checked(client)
-                    rows = result.messages; directCursor = result.nextBefore; more = result.hasMore
-                    if !older { messages = [] }
+                    rows = result.messages
+                    let tokenChanged = result.viewToken != nil && result.viewToken != viewToken
+                    if !reconcile || tokenChanged { directCursor = result.nextBefore; more = result.hasMore }
+                    if let token = result.viewToken { if tokenChanged { messages = [] }; viewToken = token }
+                    if !older && !reconcile { messages = [] }
                 case .room(let id):
                     let result = try await client.roomHistory(id, before: older ? roomCursor : nil)
                     try session.checked(client)
-                    if viewToken != result.viewToken { messages = [] }
-                    if !older { messages = [] }
-                    viewToken = result.viewToken; room = result.chat; roomCursor = result.nextBefore; more = result.hasMore
+                    let tokenChanged = viewToken != result.viewToken
+                    if tokenChanged { messages = [] }
+                    if !older && !reconcile { messages = [] }
+                    viewToken = result.viewToken; room = result.chat
+                    if !reconcile || tokenChanged { roomCursor = result.nextBefore; more = result.hasMore }
                     rows = result.messages
                     if !older, phase == .active, let visible = rows.compactMap(\.sequence).max(), visible > result.readSequence {
                         try await client.markRoomRead(id, sequence: visible)
                     }
                 }
                 try session.checked(client)
+                if reconcile {
+                    for row in rows { if let index = messages.firstIndex(where: { $0.id == row.id }) { messages[index] = row } }
+                }
                 var ids = Set(messages.map(\.id))
                 messages += rows.filter { ids.insert($0.id).inserted }
                 messages.sort { ($0.sequence.map(Double.init) ?? $0.createdAt) < ($1.sequence.map(Double.init) ?? $1.createdAt) }
@@ -316,7 +347,7 @@ struct CommunityConversationView: View {
             catch { Logger(subsystem: "com.errantactions.ledbackpack", category: "chat-lifecycle").error("Typing cleanup failed; memory-only indicator expires after its bounded TTL.") }
         }
     }
-    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; typing = []; viewToken = nil; revoked = false }
+    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; choosingReference = false; typing = []; viewToken = nil; revoked = false }
 }
 
 @MainActor
@@ -340,6 +371,7 @@ private struct NativeChatBubble: View {
     let message: NativeChatMessage
     let mine: Bool
     let client: CommunityFeatureClient?
+    let referenceEpoch: String
     let delete: () -> Void
     @State private var hover = false
     @State private var selected = false
@@ -349,6 +381,9 @@ private struct NativeChatBubble: View {
             if !message.text.isEmpty { Text(message.text).textSelection(.enabled) }
             if let attachment = message.attachment, let client { PrivateChatImage(item: attachment, client: client).frame(height: 200) }
             if let pin = message.pin { ChatFixedPinCard(pin: pin) }
+            if let reference = message.reference, let client {
+                ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch).id("\(reference.fingerprint):\(referenceEpoch)")
+            }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading).glassPanel(radius: 22)
         .overlay(alignment: .topTrailing) {

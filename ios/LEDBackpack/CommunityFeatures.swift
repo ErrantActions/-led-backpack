@@ -69,6 +69,8 @@ final class CommunityFeatureClient {
     var eventChatsEnabled: Bool { community.config?.eventChatsEnabled == true }
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
+    var chatReferencesEnabled: Bool { community.config?.chatReferencesEnabled == true }
+    var referencePolicyChanging: Bool { community.avatarPolicyChanging }
     var chatLiveEnabled: Bool { community.config?.liveChatEnabled == true && community.config?.chatLiveProtocol == "sse-v1" }
     var notificationPreferencesEnabled: Bool { community.config?.notificationPreferencesEnabled == true }
     var notificationsEnabled: Bool { community.config?.notificationsEnabled == true }

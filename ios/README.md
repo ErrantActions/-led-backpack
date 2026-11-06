@@ -564,7 +564,10 @@ and require recovery. Remote notification `activity.id` is only an opaque input 
 authenticated proof-bound destination resolution; payload route/type/reference is
 not trusted. Local BLE disconnect notifications and independent phone display remain.
 
-This new slice awaits its separate unsigned Mac checkpoint. Signed physical
+This slice passed unsigned Mac app/test compilation and eight codec/mock tests in
+run `42144043428` at `d51512c`: 182 executed, zero failures and the one exact
+unsigned Keychain skip. It does not verify Apple's cryptographic/device response.
+Signed physical
 App Attest, APNs capability/profile/provider environment, delivery, visual/lifecycle
 and SDK validation remain unproven and are not provisioned/activated here. Guest
 bootstrap/login, fresh-auth attestation recovery UI, immutable file-stream upload
@@ -572,6 +575,19 @@ hashing and authenticated SSE integrity remain integration blockers before any
 enforcement activation. Ordinary authenticated in-memory requests use official
 proofs when enforcement is advertised; unsupported targets fail rather than
 downgrade. Production flags/keys/models/release stay unchanged.
+
+Protected community GIF/event chat cards are a separate frozen `8697481` source
+slice. Explicit current-chat pickers have 24-row paging and scoped authenticated
+media, not catalog-wide/private-cloud/exclusive access. Private-event sharing binds
+displayed event/participation revisions and never grants an invitation, RSVP or
+progress/GPS. History hydrates current-viewer metadata, hides unavailable private
+titles/venues/covers, shows changed plans, formats IANA event timezone and opens
+the existing current-event review flow. Opaque direct/room tokens invalidate older
+pages; visible cards reconcile every five seconds even with SSE. Normal message IDs
+remain stable; mature preference transitions clear media/history/pickers immediately.
+Exact retry intents retain references, never rebase to a changed event silently.
+This new source awaits its separate Mac reference test checkpoint; production
+`6bed90c` lacks the new capability, and physical/visual/transport tests remain separate.
 
 ### Batch send queue
 

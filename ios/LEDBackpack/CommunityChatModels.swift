@@ -43,6 +43,7 @@ struct NativeChatMessage: Decodable, Identifiable {
     var sequence: Int?
     var attachment: PrivateChatAttachment?
     var pin: ChatPin?
+    var reference: HydratedChatReference?
 }
 struct NativeChatRoom: Decodable, Identifiable {
     let id: UUID
@@ -87,6 +88,7 @@ struct DirectChatPage: Decodable {
     let page, limit: Int
     let hasMore: Bool
     let nextBefore: DirectChatCursor?
+    let viewToken: String?
 }
 struct RoomChatPage: Decodable {
     let chat: NativeChatRoom
@@ -114,9 +116,10 @@ struct ChatSendIntent {
     let data: Data
     let attachmentID: UUID?
     let pin: ChatPin?
-    init(context: ChatConversation, text: String, attachmentID: UUID?, pin: ChatPin?, clientID: UUID = UUID()) throws {
+    let reference: ChatReferenceSelection?
+    init(context: ChatConversation, text: String, attachmentID: UUID?, pin: ChatPin?, reference: ChatReferenceSelection? = nil, clientID: UUID = UUID()) throws {
         let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard content.utf16.count <= 4000, !content.isEmpty || attachmentID != nil || pin != nil else {
+        guard content.utf16.count <= 4000, !content.isEmpty || attachmentID != nil || pin != nil || reference != nil else {
             throw BackpackError.invalid("Write a message or explicitly attach media/place before sending.")
         }
         struct Body: Encodable {
@@ -126,12 +129,14 @@ struct ChatSendIntent {
             var recipientId: String?
             var eventId: String?
             let pin: ChatPin?
+            let reference: ChatReferenceSelection?
         }
         var body = Body(text: content.isEmpty ? nil : content, clientMessageId: clientID.uuidString.lowercased(),
-            attachmentId: attachmentID?.uuidString.lowercased(), pin: try pin?.normalized())
+            attachmentId: attachmentID?.uuidString.lowercased(), pin: try pin?.normalized(), reference: reference)
         if case .direct(let peer, let event) = context { body.recipientId = peer.uuidString.lowercased(); body.eventId = event?.uuidString.lowercased() }
         self.context = context; clientMessageID = clientID
         self.attachmentID = attachmentID; self.pin = try pin?.normalized()
+        self.reference = reference
         data = try JSONEncoder().encode(body)
     }
 }
