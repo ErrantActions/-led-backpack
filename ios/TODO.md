@@ -1,7 +1,8 @@
 # Native TODO
 
-Status is **source implementation**, not native compilation, device validation,
-TestFlight availability or a claim that the product backlog is finished.
+Status tracks source and explicitly identified Mac validation checkpoints.
+Neither source nor simulator success proves device behavior, TestFlight
+availability or that the product backlog is finished.
 
 ## Authorized unsigned Mac validation
 
@@ -10,7 +11,7 @@ TestFlight availability or a claim that the product backlog is finished.
   production key/model/APNs provisioning remain outside this permission.
 - [x] Actions enabled; existing `xcode-27` runner recently passed exact Xcode 27.1
   preflight. The new manual validation rechecks actual installed Xcode/SDK/device.
-- [ ] Complete unsigned app/test compilation and focused native tests; record the
+- [x] Complete unsigned app/test compilation and focused native tests; record the
   actual run/toolchain/result. Do not count parsing as compilation.
 - First actual run `42135859007` at source `6f13b25` verified Xcode 27.1
   (`27A9275`), Swift 6.4 and simulator SDK 27.1. Compilation failed with exit65:
@@ -22,6 +23,12 @@ TestFlight availability or a claim that the product backlog is finished.
   phone classes passed; this is not an overall validation pass or device proof.
   Fixture/interop assertions are corrected; only exact unsigned-simulator
   `errSecMissingEntitlement` skips the signed-host Keychain integration test.
+- Run [42138289158](https://github.com/ErrantActions/-led-backpack/actions/runs/42138289158)
+  at `2e8fee2` **passed** unsigned app/test compilation and 155 tests: zero
+  failures, one exact missing-entitlement Keychain integration skip.
+  Xcode 27.1/build `27A9275`, Swift 6.4, simulator SDK 27.1, iPhone Duo,
+  macOS 27.0.1. This includes six AI-avatar tests, 16 MapKit and 11 phone tests.
+  Real signed-host Keychain policy remains unverified.
 - [ ] Physical-device/network/provider and visual validations remain separate.
 
 The manual `native-compile.yml` workflow is intentionally separate from
@@ -46,7 +53,8 @@ not silently become release approval.
 - [x] Self-contained Codable artwork/playback snapshots can restore original
   bytes, source ID and pause/playhead intent without requiring a device slot.
 - [x] Focused source test fixtures and source-only documentation/grammar checks.
-- [ ] Authorized Swift type-check/XCTest and portrait/landscape visual review.
+- [x] Authorized unsigned Mac compilation and 11 focused phone tests passed.
+- [ ] Portrait/landscape visual review.
 - [ ] Inspect Dynamic Type, VoiceOver, Reduce Transparency/contrast and reduced
   motion on-device; source styling alone is not proof of visual quality.
 - [ ] Real-device cold start/offline use with Bluetooth denied/no backpack.
@@ -88,10 +96,10 @@ badges, gallery ordering and chat source are not included in this native slice.
   keeping artwork/finish rewards, with no automatic retry/rebase.
 - [x] Participation revision-bound going confirmation and material-review state;
   no automatic progress re-sharing; decline remains available after cancellation.
-- [x] 16 targeted model/mock tests prepared (not executed); source grammar,
-  method/type-scope, privacy/control-isolation and whitespace checks only.
-- [ ] Authorized Xcode 27.1 Mac compile/type-check/XCTest. No such environment is
-  available in this Windows session; grammar parsing is not compilation.
+- [x] 16 targeted model/mock tests passed on authorized Xcode 27.1 Mac CI;
+  source grammar/privacy/control-isolation and whitespace checks also passed.
+- [x] Unsigned app/test compilation and MapKit XCTest checkpoint passed in
+  run `42138289158`. Source parsing was not counted as compilation.
 - [ ] Real iOS MapKit search/tap/drag/circle/reorder/fit interactions, network loss,
   private-event/member/owner revocation and concurrent 409 recovery.
 - [ ] Visual/VoiceOver/Dynamic Type/Reduce Motion/contrast/transparent-material
@@ -113,9 +121,9 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   version. Do not retain a manual-approval workflow for the automated contract.
 - [x] Handle allowed/mature/blocked/failed/pending states and mature-preference
   changes without stale media, including owner/admin contexts.
-- [x] Six focused AI-avatar model/mock cases prepared; prior avatar fixtures
-  updated to the frozen AI contract. Not executed until the new slice reaches CI.
-- [ ] Execute native mocks through authorized unsigned Mac CI and report exact
+- [x] Six focused AI-avatar model/mock cases passed; prior avatar fixtures
+  updated to the frozen AI contract.
+- [x] Execute native mocks through authorized unsigned Mac CI and report exact
   compilation/test evidence. Real model/device validation remains separate;
   production/provider/key/push provisioning and live operations stay unmodified.
 
@@ -128,3 +136,14 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [ ] Actual proof-bound APNs registration/token lifecycle, no fake proof/bypass.
 - [ ] Default-off event reminders.
 - [ ] Shared community/event cards remain unfinished and excluded.
+
+Chat/pin source checkpoint: frozen `bfdd5ef`, explicit capability gates;
+Account > Messages, friends/recent/group invitations, owner revision-bound
+management, explicit event-wide join vs private organizer question, immutable
+exact-byte retry intents, paired direct cursors/room view-token invalidation,
+authenticated hint-only SSE and explicitly degraded polling, opt-in memory-only
+typing, private staged image/GIF attachments, hover/tap deletion, and consented
+manual fixed pins. No E2EE/GPS/shared-card/role bypass. Thirteen focused tests are
+prepared; syntax/static checks pass. **New chat source awaits actual Mac CI**;
+the earlier green run does not include it. Background/permission/gesture/
+screenreader/visual and authorized real transport/device checks remain pending.

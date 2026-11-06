@@ -57,7 +57,7 @@ jobs:
               -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           else
             TESTS=()
-            for CLASS in CloudVaultCryptoTests CloudVaultProtocolTests CommunityAdminTests CommunityFeatureTests AIAvatarTests \
+            for CLASS in CloudVaultCryptoTests CloudVaultProtocolTests CommunityAdminTests CommunityFeatureTests AIAvatarTests CommunityChatTests \
               EventRouteTests PhoneDisplayTests ExtraParityTests BackpackFeatureTests CommunityTests \
               UploadVideoTests GIFPreviewTests; do
               TESTS+=("-only-testing:LEDBackpackTests/$CLASS")

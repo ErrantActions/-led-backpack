@@ -6,7 +6,8 @@ backpacks. No vendor login, cloud database or account subscription is required.
 ## Requirements
 
 - iOS 17 or later.
-- A compatible Bluetooth LED backpack.
+- A compatible backpack only for Bluetooth controls; phone display works
+  offline without a backpack or account.
 - Location, Bluetooth and notification permissions for the features you enable.
 - Optional camera permission only when scanning a trusted-device adoption QR.
 
@@ -396,7 +397,7 @@ Images use canonical authenticated same-origin routes,
 visible/active; Reduce Motion uses the static preview with explicit play.
 Profile avatars are not a private-cloud media browser.
 
-The next AI-avatar slice uses frozen `bfdd5ef`/completed backend `6d4f56b`.
+The AI-avatar slice uses frozen `bfdd5ef`/completed backend `6d4f56b`.
 Uploads/retry require actual `avatarUploadsEnabled:true`,
 `avatarApprovalMode:"ai"` and matching owner `uploadsEnabled/approvalMode`.
 Absent flags on production `6bed90c` do not enable this workflow. Legacy owned
@@ -504,8 +505,38 @@ plan before reconfirming; no attendee pins or progress-sharing control is added.
 Aurora headers/glass cards/mint-lavender controls are reused. Existing phone
 display, BLE/emulator, vault and community-upload behavior is preserved.
 See [native TODO](TODO.md) for compile/device/visual gates. Targeted model/mock
-tests are prepared but not executed; no Xcode 27.1 Mac is available here, and no
-CI, live requests/mutations, production settings, keys or models were changed.
+tests passed on authorized unsigned Xcode 27.1 Mac CI (run `42138289158`).
+That run compiled app/tests and executed 155 tests with zero failures and one
+unsigned-host Keychain entitlement skip, including 16 MapKit, 11 phone and six
+AI-avatar tests. Real signed-host/device/MapKit gesture/visual/provider checks
+remain separate. Production settings, keys, models and signing/release remain
+unchanged.
+
+### Completed-contract messaging source
+
+Frozen backend `bfdd5ef` supplies direct/group/event chat, separate private
+organizer questions, private attachments and fixed pins. These source-only
+features are unavailable on servers missing their actual capability flags;
+production `6bed90c` is not assumed upgraded. Account > Messages separates
+friends/recent questions from group/event-wide rooms. Event detail explicitly
+opens/joins an eligible event-wide room; it never copies private questions or
+auto-RSVPs. Group creation/invitation management uses named friends and captured
+history choices/revisions, never account-admin bypass.
+
+Send retains one exact serialized intent/ID for uncertain retries. Private
+history uses paired direct cursors or room sequence/view-token invalidation;
+account/access changes clear cached rows/drafts. Authorized SSE contains only
+bounded hints, followed by current authorized reads; absent live support uses
+labeled periodic refresh. Typing is optional, memory-only and carries no draft
+text. Private image/GIF attachments are authenticated, context-bound unsent
+drafts until explicit Send; deletion cannot recall saved recipient copies.
+
+Fixed pins require explicit Apple Maps page consent and manual placement plus
+chat Send. Receiving a card fetches no map imagery; opening its Apple Maps link
+requires disclosure confirmation. No device GPS, route/navigation promise,
+web tile dependency, AI input, private dedup or E2EE label is introduced.
+New chat/pin source and thirteen prepared fixtures await their own Mac CI run;
+the earlier avatar/MapKit green run does not validate this new source.
 
 ### Batch send queue
 

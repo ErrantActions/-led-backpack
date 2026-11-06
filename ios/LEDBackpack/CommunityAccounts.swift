@@ -115,6 +115,9 @@ struct CommunityAccountView: View {
             if community.config?.eventsEnabled == true {
                 NavigationLink("Events") { CommunityEventsView() }
             }
+            if community.config?.messagingEnabled == true {
+                NavigationLink("Messages") { CommunityMessagesView() }
+            }
             if community.isAdmin {
                 NavigationLink { CommunityAdminView() } label: {
                     Label("Administration", systemImage: "shield.lefthalf.filled")

@@ -3,7 +3,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import BackpackProtocol
 
-enum CommunityFeature: Equatable { case social, avatars, events }
+enum CommunityFeature: Equatable { case social, avatars, events, messaging }
 
 struct SocialPerson: Decodable, Identifiable {
     let id: UUID
@@ -61,6 +61,15 @@ final class CommunityFeatureClient {
     let origin: CommunityOrigin
     let accountID, revision: UUID
     private let community: CommunityController
+    func chatEventsRequest(_ context: ChatConversation) throws -> (CommunityOrigin, URLRequest) {
+        try check(.messaging)
+        return try community.makeChatEventsRequest(context, revision: revision, account: accountID)
+    }
+    var groupsEnabled: Bool { community.config?.groupChatsEnabled == true }
+    var eventChatsEnabled: Bool { community.config?.eventChatsEnabled == true }
+    var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
+    var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
+    var chatLiveEnabled: Bool { community.config?.liveChatEnabled == true && community.config?.chatLiveProtocol == "sse-v1" }
     var automaticAvatarUploads: Bool {
         community.config?.avatarsEnabled == true && community.config?.avatarUploadsEnabled == true &&
             community.config?.avatarApprovalMode == "ai"
@@ -109,6 +118,7 @@ final class CommunityFeatureClient {
         case .some(.social): enabled = community.config?.socialEnabled == true
         case .some(.avatars): enabled = community.config?.avatarsEnabled == true
         case .some(.events): enabled = community.config?.eventsEnabled == true
+        case .some(.messaging): enabled = community.config?.messagingEnabled == true
         case .none: enabled = true
         }
         guard enabled else { throw BackpackError.invalid("This server has not enabled this feature.") }
@@ -126,7 +136,8 @@ final class CommunityFeatureClient {
             throw BackpackError.invalid("Invalid feature request path.")
         }
         let result = try await community.request(path, method: method, body: body, query: query,
-            contentType: contentType, maxBytes: maxBytes, expectedAccountRevision: revision)
+            contentType: contentType, maxBytes: maxBytes, expectedAccountRevision: revision,
+            expectedAccountID: feature == .messaging ? accountID : nil)
         try Task.checkCancellation(); try check(feature)
         if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Avatar screening availability changed during the request. Refresh before retrying.") }
         return result.data
@@ -420,7 +431,8 @@ final class CommunityFeatureSession: ObservableObject {
             do { try await work(client); try checked(client); guard stamp == current else { return }; busy = false; success() }
             catch {
                 guard stamp == current, !Task.isCancelled else { return }
-                if let error = error as? CommunityFailure, [401, 403].contains(error.status) { clear(); denied = true }
+                if let error = error as? CommunityFailure,
+                   [401, 403].contains(error.status) || (error.status == 409 && error.code == "account_changed") { clear(); denied = true }
                 failure = error.localizedDescription; busy = false
             }
         }

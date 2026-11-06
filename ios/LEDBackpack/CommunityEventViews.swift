@@ -89,6 +89,7 @@ struct CommunityEventDetailView: View {
     @State private var value: TimedCatalogEvent?
     @State private var editingEvent: CatalogEvent?
     @State private var planningEvent: CatalogEvent?
+    @State private var chatSelection: ChatScreenSelection?
     private var editing: Bool { editingEvent != nil || planningEvent != nil }
     @State private var target = ""
     @State private var action = CommunityFeatureClient.OrganizerAction.invite
@@ -143,6 +144,24 @@ struct CommunityEventDetailView: View {
                     Section("Organizers") {
                         ForEach(event.organizers) { organizer in
                             LabeledContent(organizer.displayName, value: organizer.eventRole.rawValue)
+                            if community.config?.messagingEnabled == true, organizer.id != community.user?.id {
+                                Button("Private question to \(organizer.displayName)") {
+                                    chatSelection = ChatScreenSelection(context: .direct(peer: organizer.id, event: event.id), title: "Private organizer question")
+                                }
+                            }
+                        }
+                    }
+                    if community.config?.messagingEnabled == true, community.config?.eventChatsEnabled == true {
+                        Section("Event-wide conversation") {
+                            Button("Explicitly open / join event-wide chat") {
+                                session.run({ client in
+                                    let room = try await client.openEventRoom(event.id)
+                                    try session.checked(client)
+                                    chatSelection = ChatScreenSelection(context: .room(room.id), title: room.title)
+                                })
+                            }.disabled(session.busy || event.cancelled || event.requiresReconfirmation == true ||
+                                (event.access.role == nil && event.rsvpStatus != .going))
+                            Text("Separate from private organizer questions. Joining never RSVPs or shares progress. Current eligibility is checked by the server.").font(.caption)
                         }
                     }
                     if event.access.canManage && !event.cancelled {
@@ -177,6 +196,7 @@ struct CommunityEventDetailView: View {
             } else { Text(session.failure ?? "This event feature is unavailable.") }
         }
         .modernScene().navigationTitle("Event")
+        .navigationDestination(item: $chatSelection) { item in CommunityConversationView(context: item.context, title: item.title) }
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.eventsEnabled == true)") {
             value = nil; pending = nil; notice = nil; session.bind(community)
             editingEvent = nil

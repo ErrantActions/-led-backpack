@@ -35,6 +35,13 @@ struct CommunityConfig: Decodable {
     var avatarsEnabled: Bool? = nil
     var avatarUploadsEnabled: Bool? = nil
     var avatarApprovalMode: String? = nil
+    var messagingEnabled: Bool? = nil
+    var groupChatsEnabled: Bool? = nil
+    var eventChatsEnabled: Bool? = nil
+    var chatMediaEnabled: Bool? = nil
+    var chatPinsEnabled: Bool? = nil
+    var liveChatEnabled: Bool? = nil
+    var chatLiveProtocol: String? = nil
     var eventsEnabled: Bool? = nil
     var eventTemplatesEnabled: Bool? = nil
     var eventParticipationReviewEnabled: Bool? = nil
@@ -272,6 +279,19 @@ final class CommunityController: ObservableObject {
         do { try validateSession(session) }
         catch { throw CommunityFailure(status: 401, code: "session_expired", message: error.localizedDescription) }
     }
+    func makeChatEventsRequest(_ context: ChatConversation, revision: UUID, account: UUID) throws -> (CommunityOrigin, URLRequest) {
+        try checkAccountSession()
+        guard accountRevision == revision, user?.id == account, let origin, let session,
+              config?.messagingEnabled == true, config?.liveChatEnabled == true, config?.chatLiveProtocol == "sse-v1" else {
+            throw BackpackError.invalid("Live chat/account context is unavailable.")
+        }
+        var request = URLRequest(url: try origin.api("social/chat-events", query: context.query), timeoutInterval: 70)
+        request.httpShouldHandleCookies = false
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
+        request.setValue(account.uuidString.lowercased(), forHTTPHeaderField: "X-Catalog-Expected-Account")
+        return (origin, request)
+    }
     func checkAdminSession() throws {
         guard isAdmin, let session else {
             throw CommunityFailure(status: 403, code: "admin_required", message: "Sign in with an admin account.")
@@ -368,10 +388,12 @@ final class CommunityController: ObservableObject {
     func request(_ path: String, method: String = "GET", body: Data? = nil,
         query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false,
         contentType: String = "application/json", communityUpload: Bool = false,
-        bodyFile: URL? = nil, maxBytes: Int = 2_000_000, expectedAccountRevision: UUID? = nil) async throws -> CommunityResponse {
+        bodyFile: URL? = nil, maxBytes: Int = 2_000_000, expectedAccountRevision: UUID? = nil,
+        expectedAccountID: UUID? = nil) async throws -> CommunityResponse {
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("The account changed before this request. Refresh first.")
         }
+        guard expectedAccountID == nil || expectedAccountID == user?.id else { throw BackpackError.invalid("The displayed account changed before this request.") }
         guard (1...5_000_000).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog response budget.") }
         guard let origin, let transport else { throw BackpackError.invalid("Configure a catalog HTTPS URL first.") }
         let requestToken = authenticated ? session?.token : nil
@@ -388,6 +410,7 @@ final class CommunityController: ObservableObject {
             request.setValue(String(size), forHTTPHeaderField: "Content-Length")
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let expectedAccountID { request.setValue(expectedAccountID.uuidString.lowercased(), forHTTPHeaderField: "X-Catalog-Expected-Account") }
         if communityUpload {
             guard ["items", "admin/imports"].contains(path), method == "POST",
                   path != "admin/imports" || isAdmin else {
