@@ -12,6 +12,10 @@ TestFlight availability or a claim that the product backlog is finished.
   preflight. The new manual validation rechecks actual installed Xcode/SDK/device.
 - [ ] Complete unsigned app/test compilation and focused native tests; record the
   actual run/toolchain/result. Do not count parsing as compilation.
+- First actual run `42135859007` at source `6f13b25` verified Xcode 27.1
+  (`27A9275`), Swift 6.4 and simulator SDK 27.1. Compilation failed with exit65:
+  a local `state` binding shadowed the vault store property. Tests did not run.
+  The member assignment is corrected; another authorized run must verify it.
 - [ ] Physical-device/network/provider and visual validations remain separate.
 
 The manual `native-compile.yml` workflow is intentionally separate from

@@ -436,7 +436,7 @@ final class CloudVaultStore: ObservableObject {
         if let keyID = state.keyId, let cache { try await cache.remove(scope: cacheScope(client, keyID)) }
         try checked(client)
         keys = [:]; locked = true; pin.paused = true; pin.remoteReset = true; items = []; titles = [:]; categories = [:]
-        try pin.accept(reply.cloud); state = reply.cloud; try savePin()
+        try pin.accept(reply.cloud); self.state = reply.cloud; try savePin()
     }
     func deleteItem(_ item: CloudVaultItem) async throws {
         let client = try connection()
