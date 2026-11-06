@@ -160,15 +160,15 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [x] Fresh-auth owned-key recovery source: standard-base64 path encoding, explicit
   REVOKE, owned/current-account/fresh-auth exception, exact receipt and only matching
   local-key clearing; separate integrity epoch, no account/vault identity rewrite.
-- [ ] Recovery focused mocks/compile in the next batched unsigned Mac checkpoint.
+- [x] Five recovery mocks/compile passed in the focused batch below.
 - [x] Protected owned immutable upload stream snapshot/hash source: bounded incremental
   SHA256, source change/link checks, read-only protected snapshot, exact content length
   and stream signed from its bytes; originals are untouched and owned cleanup is explicit.
-- [ ] Focused file snapshot tests in next batched unsigned Mac checkpoint.
+- [x] Five file snapshot tests passed in the focused batch below.
 - [x] Authenticated SSE opening proof source signs the exact GET/query/bodyless
   request through the official adapter, serializes through actual response-header
   acceptance, then retains existing lease/parser/redirect/account cancellation.
-- [ ] Stream opening/late-scope/exact upload-wire focused fixtures in batched Mac run.
+- [x] Three stream opening/late-scope/exact upload-wire fixtures passed in the batch.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
   entitlements, signed devices, provider environment or production enforcement.
 - Recovery/file/SSE source were validated together after the owner requested batched
@@ -185,7 +185,10 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   restricted admin report review only, no private-chat/evidence unlock.
 - [x] Literal explanation text, captured revisions/intent, conflict retention,
   account/access guards, no automatic block/deletion/punishment or plaintext fallback.
-- [ ] Focused report/auth Mac checkpoint; fixtures prepared, not yet executed.
+- [x] Focused report/auth Mac checkpoint
+  [42159868752](https://github.com/ErrantActions/-led-backpack/actions/runs/42159868752)
+  at `0c5850e` passed unsigned app/test compilation and **49 tests, zero
+  failures, no skips**; all six report cases passed.
 - [ ] Physical/visual/real transport/release remain separate and unclaimed.
 
 ### Per-conversation notification mute (`f1005e1`, separate slice)

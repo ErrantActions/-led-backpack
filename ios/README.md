@@ -647,8 +647,11 @@ are submitted; literal/script-looking explanation text renders as text. The
 existing original message remains unchanged. Identical retries preserve captured
 bytes; conflicts require explicit review. Owner withdrawal and restricted admin
 review bind displayed revisions, never unlock private chats, auto-block or delete
-messages. Missing `chatReportsEnabled` hides controls. This source awaits its focused
-report/auth Mac checkpoint; provider/production/signing/device/release remain unchanged.
+messages. Missing `chatReportsEnabled` hides controls. Focused report/auth Mac run
+[42159868752](https://github.com/ErrantActions/-led-backpack/actions/runs/42159868752)
+at `0c5850e` passed unsigned app/test compilation and 49 tests, zero failures/no
+skips, including all six report cases. Provider/production/signing/device/release
+remain unchanged.
 
 ### Batch send queue
 
