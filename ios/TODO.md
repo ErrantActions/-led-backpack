@@ -165,7 +165,10 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   SHA256, source change/link checks, read-only protected snapshot, exact content length
   and stream signed from its bytes; originals are untouched and owned cleanup is explicit.
 - [ ] Focused file snapshot tests in next batched unsigned Mac checkpoint.
-- [ ] Authenticated SSE opening proof.
+- [x] Authenticated SSE opening proof source signs the exact GET/query/bodyless
+  request through the official adapter, serializes through actual response-header
+  acceptance, then retains existing lease/parser/redirect/account cancellation.
+- [ ] Stream opening/late-scope/exact upload-wire focused fixtures in batched Mac run.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
   entitlements, signed devices, provider environment or production enforcement.
 
@@ -177,7 +180,9 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   no silent retry/overwrite. Account/origin/feature guards apply after I/O.
 - [x] Alerts-only disclosure: no history/message/unread/membership/typing/invitation/
   old inbox/activity deletion or navigation changes.
-- [ ] Separate unsigned Mac compile and six scoped mute tests.
+- [x] Separate unsigned Mac compile and six scoped mute tests passed in
+  [42157183297](https://github.com/ErrantActions/-led-backpack/actions/runs/42157183297)
+  at `8d7e107`: 205 executed, zero failures, one exact unsigned Keychain skip.
 - [ ] Authorized physical/visual/provider/queued-delivery validation remains separate.
 
 - [x] Frozen direct/group/event chat and separate organizer questions, scoped

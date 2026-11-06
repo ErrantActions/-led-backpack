@@ -40,7 +40,7 @@ private final class ChatLiveRedirects: NSObject, URLSessionTaskDelegate {
 @MainActor
 extension CommunityFeatureClient {
     func chatHints(_ context: ChatConversation) throws -> AsyncThrowingStream<ChatLiveHint, Error> {
-        let (origin, request) = try chatEventsRequest(context)
+        let (origin, _) = try chatEventsRequest(context)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 let configuration = URLSessionConfiguration.ephemeral
@@ -50,7 +50,7 @@ extension CommunityFeatureClient {
                 let session = URLSession(configuration: configuration, delegate: ChatLiveRedirects(), delegateQueue: nil)
                 defer { session.invalidateAndCancel() }
                 do {
-                    let (bytes, response) = try await session.bytes(for: request)
+                    let (bytes, response) = try await openChatEvents(context, network: session)
                     guard let response = response as? HTTPURLResponse, let url = response.url, origin.contains(url),
                           response.statusCode == 200,
                           response.value(forHTTPHeaderField: "Content-Type")?.hasPrefix("text/event-stream") == true else {

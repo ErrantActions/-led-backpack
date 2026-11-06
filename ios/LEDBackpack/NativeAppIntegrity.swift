@@ -123,8 +123,15 @@ final class NativeAppIntegrity {
     func perform(_ request: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
         transport: any CommunityTransport, maxBytes: Int, bodyFile: NativeRequestFile? = nil,
         check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+        try await authorized(request, origin: origin, account: account, token: token, transport: transport,
+            bodyFile: bodyFile, check: check, send: { try await transport.send($0, maxBytes: maxBytes) })
+    }
+    func authorized<Value>(_ request: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
+        transport: any CommunityTransport, bodyFile: NativeRequestFile? = nil,
+        check: @escaping @MainActor () throws -> Void, send: @escaping @MainActor (URLRequest) async throws -> Value) async throws -> Value {
         try await queue(check: check) {
-            try await self.execute(request, origin: origin, account: account, token: token, transport: transport, maxBytes: maxBytes, bodyFile: bodyFile, check: check)
+            try await self.execute(request, origin: origin, account: account, token: token, transport: transport,
+                bodyFile: bodyFile, check: check, send: send)
         }
     }
     func performGuest(_ original: URLRequest, origin: CommunityOrigin, transport: any CommunityTransport,
@@ -136,7 +143,7 @@ final class NativeAppIntegrity {
             guard request.value(forHTTPHeaderField: "Authorization") == nil else { throw BackpackError.invalid("Guest integrity cannot carry authenticated credentials.") }
             request.setValue(session.token, forHTTPHeaderField: "X-Catalog-Integrity-Session")
             return try await self.execute(request, origin: origin, account: nil, token: session.token,
-                transport: transport, maxBytes: maxBytes, check: check)
+                transport: transport, check: check, send: { try await transport.send($0, maxBytes: maxBytes) })
         }
     }
     func adoptGuestKey(origin: CommunityOrigin, account: UUID) throws {
@@ -171,8 +178,8 @@ final class NativeAppIntegrity {
         let value = GuestSession(token: reply.token, expiresAt: reply.expiresAt)
         try cache.save(JSONEncoder().encode(value), key: guestStorage(origin)); return value
     }
-    private func queue(requiresSDK: Bool = true, check: @escaping @MainActor () throws -> Void,
-        work: @escaping @MainActor () async throws -> CommunityResponse) async throws -> CommunityResponse {
+    private func queue<Value>(requiresSDK: Bool = true, check: @escaping @MainActor () throws -> Void,
+        work: @escaping @MainActor () async throws -> Value) async throws -> Value {
         guard !requiresSDK || supported else { throw BackpackError.invalid("A real supported App Attest device is required; no simulator/header fallback.") }
         let previous = tail
         let job = Task {
@@ -183,9 +190,9 @@ final class NativeAppIntegrity {
         tail = Task { _ = await job.result }
         return try await withTaskCancellationHandler { try await job.value } onCancel: { job.cancel() }
     }
-    private func execute(_ original: URLRequest, origin: CommunityOrigin, account: UUID?, token: String,
-        transport: any CommunityTransport, maxBytes: Int, bodyFile: NativeRequestFile? = nil,
-        check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+    private func execute<Value>(_ original: URLRequest, origin: CommunityOrigin, account: UUID?, token: String,
+        transport: any CommunityTransport, bodyFile: NativeRequestFile? = nil,
+        check: @escaping @MainActor () throws -> Void, send: @escaping @MainActor (URLRequest) async throws -> Value) async throws -> Value {
         guard let url = original.url, origin.contains(url), url.fragment == nil, original.httpBodyStream == nil,
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               parts.percentEncodedPath.hasPrefix("/api/v1/"),
@@ -251,7 +258,7 @@ final class NativeAppIntegrity {
         request.setValue(challenge.id, forHTTPHeaderField: "X-Catalog-App-Attest-Challenge-Id")
         request.setValue(encoded, forHTTPHeaderField: "X-Catalog-App-Attest-Assertion")
         if let bodyFile { request.httpBodyStream = try bodyFile.openStream() }
-        let response = try await transport.send(request, maxBytes: maxBytes)
+        let response = try await send(request)
         try check(); return response
     }
     private func challenge(key: String, purpose: String, method: String, path: String, bodyHash: String,

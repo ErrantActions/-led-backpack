@@ -65,6 +65,10 @@ final class CommunityFeatureClient {
         try check(.messaging)
         return try community.makeChatEventsRequest(context, revision: revision, account: accountID)
     }
+    func openChatEvents(_ context: ChatConversation, network: URLSession) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        try check(.messaging)
+        return try await community.openChatEvents(context, revision: revision, account: accountID, network: network)
+    }
     var groupsEnabled: Bool { community.config?.groupChatsEnabled == true }
     var eventChatsEnabled: Bool { community.config?.eventChatsEnabled == true }
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }

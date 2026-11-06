@@ -341,6 +341,25 @@ final class CommunityController: ObservableObject {
         request.setValue(account.uuidString.lowercased(), forHTTPHeaderField: "X-Catalog-Expected-Account")
         return (origin, request)
     }
+    func openChatEvents(_ context: ChatConversation, revision: UUID, account: UUID, network: URLSession) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        let (origin, request) = try makeChatEventsRequest(context, revision: revision, account: account)
+        guard let session, let transport else { throw BackpackError.invalid("Current live-chat credentials are unavailable.") }
+        let token = session.token
+        let check: @MainActor () throws -> Void = { [weak self] in
+            guard let self, self.origin == origin, self.accountRevision == revision, self.user?.id == account,
+                  self.session?.token == token, self.config?.messagingEnabled == true, self.config?.liveChatEnabled == true,
+                  self.config?.chatLiveProtocol == "sse-v1" else { throw BackpackError.invalid("Live-chat account/origin/capability changed.") }
+        }
+        if config?.appIntegrityEnforcementEnabled == true {
+            guard config?.appIntegrityProtocol == "app-attest-v1" else { throw BackpackError.invalid("Qualified SSE integrity protocol is unavailable.") }
+            return try await nativeIntegrity.authorized(request, origin: origin, account: account, token: token, transport: transport, check: check) {
+                let result = try await network.bytes(for: $0)
+                try check(); return result
+            }
+        }
+        let result = try await network.bytes(for: request)
+        try check(); return result
+    }
     func checkAdminSession() throws {
         guard isAdmin, let session else {
             throw CommunityFailure(status: 403, code: "admin_required", message: "Sign in with an admin account.")
@@ -505,7 +524,7 @@ final class CommunityController: ObservableObject {
         var request = URLRequest(url: try origin.api(path, query: query), timeoutInterval: 30)
         request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
         if let bodyFile {
-            guard path == "admin/imports", method == "POST", isAdmin, communityUpload, body == nil,
+            guard path == "admin/imports", method == "POST", authenticated, isAdmin, communityUpload, body == nil,
                   bodyFile.isFileURL, let stream = InputStream(url: bodyFile) else {
                 throw BackpackError.invalid("File uploads require an authorized community ZIP import.")
             }
