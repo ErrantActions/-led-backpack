@@ -535,8 +535,20 @@ Fixed pins require explicit Apple Maps page consent and manual placement plus
 chat Send. Receiving a card fetches no map imagery; opening its Apple Maps link
 requires disclosure confirmation. No device GPS, route/navigation promise,
 web tile dependency, AI input, private dedup or E2EE label is introduced.
-New chat/pin source and thirteen prepared fixtures await their own Mac CI run;
-the earlier avatar/MapKit green run does not validate this new source.
+Chat/pin source at `6c2883b` passed unsigned Mac CI `42140284682`: 168 tests,
+zero failures and one unsigned Keychain skip, including thirteen chat fixtures.
+Real gesture/visual/permission/transport-device checks remain separate.
+
+Account > Private activity and Notification settings use the frozen owner-only
+notification APIs and actual capabilities. Generic notices expose no private
+message/venue/media previews and open current authorized feature reads, never a
+reference interpreted as a route or peer ID. Settings capture revision/account
+and preserve choices on conflict. Eight category/global/channel controls include
+explicit default-off reviewed-event reminders; they do not auto-RSVP or collect
+GPS. Apple push availability is not OS permission/registration/delivery, and an
+unconfigured provider cannot become an enabled success. Six notification tests
+are prepared; this separate new source awaits Mac CI. Proof-bound native APNs
+and real Apple validation remain separate, not implied by these controls.
 
 ### Batch send queue
 

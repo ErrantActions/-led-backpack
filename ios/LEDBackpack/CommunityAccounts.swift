@@ -118,6 +118,12 @@ struct CommunityAccountView: View {
             if community.config?.messagingEnabled == true {
                 NavigationLink("Messages") { CommunityMessagesView() }
             }
+            if community.config?.notificationsEnabled == true {
+                NavigationLink("Private activity") { CommunityActivityView() }
+            }
+            if community.config?.notificationPreferencesEnabled == true {
+                NavigationLink("Notification settings") { CommunityNotificationSettingsView() }
+            }
             if community.isAdmin {
                 NavigationLink { CommunityAdminView() } label: {
                     Label("Administration", systemImage: "shield.lefthalf.filled")

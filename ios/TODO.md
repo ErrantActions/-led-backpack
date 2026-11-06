@@ -129,9 +129,9 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 
 ## Next completed backend source slices
 
-- [ ] Frozen direct/group/event chat and separate organizer questions, scoped
+- [x] Frozen direct/group/event chat and separate organizer questions, scoped
   history/revisions, live hints/typing and private image/GIF attachments.
-- [ ] Manual Apple Maps fixed chat pins, no device GPS/tracking.
+- [x] Manual Apple Maps fixed chat pins, no device GPS/tracking.
 - [ ] Owner notification global/category/channel preferences and activity links.
 - [ ] Actual proof-bound APNs registration/token lifecycle, no fake proof/bypass.
 - [ ] Default-off event reminders.
@@ -144,6 +144,15 @@ exact-byte retry intents, paired direct cursors/room view-token invalidation,
 authenticated hint-only SSE and explicitly degraded polling, opt-in memory-only
 typing, private staged image/GIF attachments, hover/tap deletion, and consented
 manual fixed pins. No E2EE/GPS/shared-card/role bypass. Thirteen focused tests are
-prepared; syntax/static checks pass. **New chat source awaits actual Mac CI**;
-the earlier green run does not include it. Background/permission/gesture/
+passed in [42140284682](https://github.com/ErrantActions/-led-backpack/actions/runs/42140284682)
+at `6c2883b`: unsigned app/test compilation, 168 tests, zero failures and the
+one exact unsigned Keychain skip. Background/permission/gesture/
 screenreader/visual and authorized real transport/device checks remain pending.
+
+Notification/reminder source checkpoint: frozen `bfdd5ef`, owner-only
+capability-gated private generic activity, global/channel/eight category
+preferences with captured revision/account, explicit conflict retention/discard,
+unavailable Apple push blocked, and actual default-off event-reminder opt-in.
+No automatic RSVP, location or APNs registration is performed. Six focused
+fixtures are prepared and static checks pass; this new source awaits its own
+Mac test run. Actual proof-bound native APNs remains the next separate slice.

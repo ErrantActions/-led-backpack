@@ -3,7 +3,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import BackpackProtocol
 
-enum CommunityFeature: Equatable { case social, avatars, events, messaging }
+enum CommunityFeature: Equatable { case social, avatars, events, messaging, notifications }
 
 struct SocialPerson: Decodable, Identifiable {
     let id: UUID
@@ -70,6 +70,9 @@ final class CommunityFeatureClient {
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
     var chatLiveEnabled: Bool { community.config?.liveChatEnabled == true && community.config?.chatLiveProtocol == "sse-v1" }
+    var notificationPreferencesEnabled: Bool { community.config?.notificationPreferencesEnabled == true }
+    var notificationsEnabled: Bool { community.config?.notificationsEnabled == true }
+    var eventRemindersEnabled: Bool { community.config?.eventRemindersEnabled == true }
     var automaticAvatarUploads: Bool {
         community.config?.avatarsEnabled == true && community.config?.avatarUploadsEnabled == true &&
             community.config?.avatarApprovalMode == "ai"
@@ -119,6 +122,7 @@ final class CommunityFeatureClient {
         case .some(.avatars): enabled = community.config?.avatarsEnabled == true
         case .some(.events): enabled = community.config?.eventsEnabled == true
         case .some(.messaging): enabled = community.config?.messagingEnabled == true
+        case .some(.notifications): enabled = community.config?.notificationsEnabled == true || community.config?.notificationPreferencesEnabled == true
         case .none: enabled = true
         }
         guard enabled else { throw BackpackError.invalid("This server has not enabled this feature.") }
@@ -132,12 +136,13 @@ final class CommunityFeatureClient {
         guard !path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }),
               !path.contains("\\"), !path.contains("?"), !path.contains("#"),
               path.utf8.allSatisfy({ (33...126).contains($0) }),
-              (feature == .events ? path == "events" || path.hasPrefix("events/") : path.hasPrefix("social/")) else {
+              (feature == .events ? path == "events" || path.hasPrefix("events/") :
+                  feature == .notifications ? path == "notifications" || path.hasPrefix("notifications/") : path.hasPrefix("social/")) else {
             throw BackpackError.invalid("Invalid feature request path.")
         }
         let result = try await community.request(path, method: method, body: body, query: query,
             contentType: contentType, maxBytes: maxBytes, expectedAccountRevision: revision,
-            expectedAccountID: feature == .messaging ? accountID : nil)
+            expectedAccountID: feature == .messaging || feature == .notifications ? accountID : nil)
         try Task.checkCancellation(); try check(feature)
         if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Avatar screening availability changed during the request. Refresh before retrying.") }
         return result.data
