@@ -396,6 +396,26 @@ Images use canonical authenticated same-origin routes,
 visible/active; Reduce Motion uses the static preview with explicit play.
 Profile avatars are not a private-cloud media browser.
 
+The next AI-avatar slice uses frozen `bfdd5ef`/completed backend `6d4f56b`.
+Uploads/retry require actual `avatarUploadsEnabled:true`,
+`avatarApprovalMode:"ai"` and matching owner `uploadsEnabled/approvalMode`.
+Absent flags on production `6bed90c` do not enable this workflow. Legacy owned
+avatars may be read, but there is no manual-approval fallback for new writes.
+Failed/pending screening exposes the owner error and explicit retry bound to
+the displayed `expectedVersion`; no rebase/retry occurs automatically.
+Upload metadata remains exactly `{"public":true}` per the frozen schema.
+A preflight detects a changed displayed replacement version, but upload itself
+has no server version-CAS field; only retry has a wire `expectedVersion`.
+
+Approved mature-masked avatars may legitimately have null media URLs. Global
+`allowMature` uses the existing owner preference endpoint. Renderers clear while
+the setting is changing and invalidate their epoch afterward, without changing
+vault/account session identity. All avatar surfaces retain authenticated,
+canonical reads and `cache:false`; known URLs cannot be used as a mature filter
+bypass. Server masking is authoritative for owners/admins too, and previously
+downloaded copies cannot be recalled. Screening uncertainty is not proof every
+frame is safe; private library/chat media are never screening inputs here.
+
 Events support accessible/mine/invitations offset pagination, authorized detail,
 explicit `going`/`declined` RSVP and capacity errors, and a server-time-anchored
 countdown after going RSVP. The actual source keys are **`startsAtISO` and

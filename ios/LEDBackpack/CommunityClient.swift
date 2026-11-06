@@ -10,6 +10,7 @@ struct CommunityUser: Codable, Equatable {
     let role: String
     let verified: Bool
     let authMethods: CommunityAuthMethods?
+    var allowMature: Bool? = nil
 }
 
 struct CommunityAuthMethods: Codable, Equatable {
@@ -32,6 +33,8 @@ struct CommunityConfig: Decodable {
     var cloudNativePasskeyAssociationConfigured: Bool? = nil
     var socialEnabled: Bool? = nil
     var avatarsEnabled: Bool? = nil
+    var avatarUploadsEnabled: Bool? = nil
+    var avatarApprovalMode: String? = nil
     var eventsEnabled: Bool? = nil
     var eventTemplatesEnabled: Bool? = nil
     var eventParticipationReviewEnabled: Bool? = nil
@@ -254,6 +257,8 @@ final class CommunityController: ObservableObject {
     @Published private(set) var deletion: CommunityDeletion?
     @Published private(set) var setupError: String?
     @Published private(set) var accountRevision = UUID()
+    @Published private(set) var avatarPolicyRevision = UUID()
+    @Published private(set) var avatarPolicyChanging = false
     private var session: CommunitySession?
     private var transport: (any CommunityTransport)?
     private let vault: any CommunityVault
@@ -449,11 +454,30 @@ final class CommunityController: ObservableObject {
     }
     func refreshUser() async throws {
         guard signedIn else { return }
-        do { user = try JSONDecoder().decode(CommunityMe.self, from: await request("auth/me").data).user }
+        do {
+            let current = try JSONDecoder().decode(CommunityMe.self, from: await request("auth/me").data).user
+            if user?.allowMature != current.allowMature { avatarPolicyRevision = UUID() }
+            user = current
+        }
         catch let error as CommunityFailure where error.status == 401 {
             try clearCredentials()
             throw error
         }
+    }
+    func setMaturePreference(_ allowed: Bool, expectedRevision: UUID) async throws {
+        guard signedIn, accountRevision == expectedRevision, let account = user?.id, !avatarPolicyChanging else {
+            throw BackpackError.invalid("Refresh your account and finish the current preference update first.")
+        }
+        avatarPolicyChanging = true
+        defer { avatarPolicyChanging = false; avatarPolicyRevision = UUID() }
+        struct Body: Encodable { let allowMature: Bool }
+        let data = try await request("auth/me/preferences", method: "PATCH", body: JSONEncoder().encode(Body(allowMature: allowed)),
+            expectedAccountRevision: expectedRevision).data
+        let result = try JSONDecoder().decode(CommunityMe.self, from: data).user
+        guard accountRevision == expectedRevision, result.id == account, result.allowMature == allowed else {
+            throw BackpackError.invalid("The account's mature-content preference was not confirmed.")
+        }
+        user = result
     }
     func forgotPassword(email: String) async throws -> String {
         struct Body: Encodable { let email: String }

@@ -95,17 +95,30 @@ badges, gallery ordering and chat source are not included in this native slice.
   a MapKit dependency; false/missing/changed web configuration retains drafts.
   MapKit never consumes the web tile URL or asks users for a map key.
 
-## Next eligible source slice: automated avatars
+## Eligible source slice: automated avatars
 
 Backend source handoff: `6d4f56b`; production remains `6bed90c`.
-This is not implemented by the MapKit gate correction.
+Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 
-- [ ] Read the frozen automated-avatar contract before native work; do not infer
+- [x] Read the frozen automated-avatar contract before native work; do not infer
   source-only capabilities on the live service.
-- [ ] Gate new upload/retry UI on actual AI approval/upload availability, preserve
+- [x] Gate new upload/retry UI on actual AI approval/upload availability, preserve
   authenticated canonical media resolution, and bind retries to the displayed
   version. Do not retain a manual-approval workflow for the automated contract.
-- [ ] Handle allowed/mature/blocked/failed/pending states and mature-preference
+- [x] Handle allowed/mature/blocked/failed/pending states and mature-preference
   changes without stale media, including owner/admin contexts.
-- [ ] Native mocks, authorized compilation and real model/device validation remain
-  separate; no provider/model/key activation, CI or live operations is authorized.
+- [x] Six focused AI-avatar model/mock cases prepared; prior avatar fixtures
+  updated to the frozen AI contract. Not executed until the new slice reaches CI.
+- [ ] Execute native mocks through authorized unsigned Mac CI and report exact
+  compilation/test evidence. Real model/device validation remains separate;
+  production/provider/key/push provisioning and live operations stay unmodified.
+
+## Next completed backend source slices
+
+- [ ] Frozen direct/group/event chat and separate organizer questions, scoped
+  history/revisions, live hints/typing and private image/GIF attachments.
+- [ ] Manual Apple Maps fixed chat pins, no device GPS/tracking.
+- [ ] Owner notification global/category/channel preferences and activity links.
+- [ ] Actual proof-bound APNs registration/token lifecycle, no fake proof/bypass.
+- [ ] Default-off event reminders.
+- [ ] Shared community/event cards remain unfinished and excluded.

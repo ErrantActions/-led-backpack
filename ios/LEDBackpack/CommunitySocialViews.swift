@@ -176,9 +176,10 @@ struct CommunityProfileAvatar: View {
     @State private var manual = false
     var body: some View {
         VStack {
-            if community.config?.avatarsEnabled == true, let preview = person.avatarPreviewUrl {
+            if !community.avatarPolicyChanging, community.config?.avatarsEnabled == true, person.avatarMasked != true,
+               (person.avatarMature != true || community.user?.allowMature == true), let preview = person.avatarPreviewUrl {
                 let url = person.avatarAnimated == true && (!reducedMotion || manual) ? (person.avatarUrl ?? preview) : preview
-                GIFThumbnail(key: "avatar:\(client.instanceID):\(url)", cache: false) { try await client.avatarMedia(url) }
+                GIFThumbnail(key: "avatar:\(client.instanceID):\(community.avatarPolicyRevision):\(url)", cache: false) { try await client.avatarMedia(url) }
                     .clipShape(Circle())
                 if reducedMotion && person.avatarAnimated == true {
                     Button(manual ? "Pause avatar" : "Play avatar") { manual.toggle() }.font(.caption2)
@@ -192,12 +193,19 @@ struct CommunityProfileAvatar: View {
 struct CommunityAvatarView: View {
     @EnvironmentObject private var community: CommunityController
     @StateObject private var session = CommunityFeatureSession()
-    @State private var avatar: SocialAvatar?
+    @State private var owned: OwnedAvatarState?
+    private var avatar: SocialAvatar? { owned?.avatar }
     @State private var consent = false
     @State private var picking = false
     @State private var pickerScope: UUID?
+    @State private var pickerVersion: UUID?
     @State private var deleting = false
     @State private var deleteScope: UUID?
+    @State private var retryVersion: UUID?
+    @State private var retryScope: UUID?
+    private var uploadReady: Bool {
+        session.client?.automaticAvatarUploads == true && owned?.approvalMode == "ai" && owned?.uploadsEnabled == true
+    }
     var body: some View {
         Form {
             if community.config?.avatarsEnabled == true && community.signedIn && !session.denied &&
@@ -205,16 +213,33 @@ struct CommunityAvatarView: View {
                 if let client = session.client, let avatar {
                     CommunityProfileAvatar(person: SocialPerson(id: avatar.userId,
                         displayName: community.user?.displayName ?? "Your profile", avatarUrl: avatar.avatarUrl,
-                        avatarPreviewUrl: avatar.avatarPreviewUrl, avatarAnimated: avatar.avatarAnimated),
+                        avatarPreviewUrl: avatar.avatarPreviewUrl, avatarAnimated: avatar.avatarAnimated,
+                        avatarMature: avatar.avatarMature, avatarMasked: avatar.avatarMasked),
                         client: client).frame(width: 128, height: 128)
                     LabeledContent("Review status", value: avatar.status)
+                    if avatar.approvalMode == "ai" {
+                        LabeledContent("Automatic screening", value: avatar.aiState ?? "Unavailable")
+                        if let error = avatar.aiError, !error.isEmpty { Text(error).font(.caption).foregroundStyle(.orange) }
+                    }
+                    if avatar.avatarMasked == true { Text("Mature avatar hidden by your content preference.").font(.caption) }
+                    if avatar.status == "pending", avatar.aiState == "failed" {
+                        Button("Retry this avatar's screening") {
+                            retryVersion = avatar.version; retryScope = session.client?.instanceID
+                        }.disabled(session.busy || !uploadReady)
+                    }
                 }
                 if avatar == nil && !session.busy { Text("Default profile avatar") }
-                Toggle("I consent to upload this public-profile avatar for admin review", isOn: $consent)
-                Text("This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Other people see it only after approval and profile authorization.")
+                Toggle("I have permission and consent to automatic public-profile screening", isOn: $consent)
+                Text("This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Allowed art publishes after automatic screening; uncertain/mature art is filtered by content preferences and prohibited imagery is blocked.")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("Choose avatar image or GIF") { pickerScope = session.client?.instanceID; picking = true }
-                    .disabled(!consent || session.busy || session.client == nil)
+                if !uploadReady { Text("Uploads/retry are unavailable until this server advertises configured automatic screening. There is no manual-approval fallback.").font(.caption).foregroundStyle(.secondary) }
+                Button("Choose avatar image or GIF") { pickerScope = session.client?.instanceID; pickerVersion = avatar?.version; picking = true }
+                    .disabled(!consent || session.busy || !uploadReady)
+                if let mature = community.user?.allowMature {
+                    Toggle("Show mature avatars and community content", isOn: Binding(get: { community.user?.allowMature ?? mature },
+                        set: { allowed in session.run { try await $0.setMaturePreference(allowed) } }))
+                        .disabled(session.busy || community.avatarPolicyChanging)
+                }
                 Button("Refresh avatar", action: load).disabled(session.busy)
                 Button("Remove avatar", role: .destructive) {
                     deleteScope = session.client?.instanceID; deleting = true
@@ -224,23 +249,18 @@ struct CommunityAvatarView: View {
             } else { Text(session.failure ?? "Avatars are not enabled by this server.") }
         }
         .modernScene().navigationTitle("Profile avatar")
-        .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.avatarsEnabled == true)") {
-            avatar = nil; consent = false; session.bind(community)
+        .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.avatarPolicyRevision):\(community.config?.avatarsEnabled == true):\(community.config?.avatarApprovalMode ?? ""):\(community.config?.avatarUploadsEnabled == true)") {
+            owned = nil; consent = false; retryVersion = nil; session.bind(community)
             if community.config?.avatarsEnabled == true { load() }
         }
-        .onChange(of: session.denied) { _, denied in if denied { avatar = nil; consent = false } }
-        .onDisappear { if !picking { session.clear(); avatar = nil; consent = false } }
+        .onChange(of: session.denied) { _, denied in if denied { owned = nil; consent = false; retryVersion = nil } }
+        .onDisappear { if !picking { session.clear(); owned = nil; consent = false; retryVersion = nil } }
         .fileImporter(isPresented: $picking, allowedContentTypes: [.image, .gif]) { result in
             session.run(expected: pickerScope, { client in
                 let url = try result.get()
                 guard url.isFileURL else { throw BackpackError.invalid("Choose a local image file for the avatar.") }
-                let access = url.startAccessingSecurityScopedResource()
-                defer { if access { url.stopAccessingSecurityScopedResource() } }
-                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize
-                guard let size, (1...5_000_000).contains(size), consent else {
-                    throw BackpackError.invalid("Choose a nonempty image up to 5 MB and confirm public-profile consent.")
-                }
-                try await client.uploadAvatar(Data(contentsOf: url), publicConsent: consent)
+                let bytes = try PhoneDisplayFileReader.read(url)
+                try await client.uploadAvatar(bytes, publicConsent: consent, expectedVersion: pickerVersion)
             }, success: { consent = false; load() })
         }
         .confirmationDialog("Remove your profile avatar?", isPresented: $deleting) {
@@ -248,8 +268,17 @@ struct CommunityAvatarView: View {
                 session.run(expected: deleteScope, { try await $0.removeAvatar() }, success: load)
             }
         }
+        .confirmationDialog("Retry the displayed failed avatar?", isPresented: Binding(get: { retryVersion != nil },
+            set: { if !$0 { retryVersion = nil } })) {
+                if let version = retryVersion {
+                    Button("Retry this version") {
+                        session.run(expected: retryScope, { try await $0.retryAvatar(expectedVersion: version) },
+                            success: { retryVersion = nil; load() })
+                    }
+                }
+            } message: { Text("A replaced or no-longer-failed avatar is not retried automatically. Refresh on conflict.") }
     }
     private func load() {
-        session.run { client in let value = try await client.avatar(); try session.checked(client); avatar = value }
+        session.run { client in let value = try await client.ownedAvatar(); try session.checked(client); owned = value }
     }
 }

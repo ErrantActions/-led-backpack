@@ -47,7 +47,7 @@ final class CommunityFeatureTests: XCTestCase {
         """)
     }
     private func config(enabled: Bool = true) -> CommunityResponse {
-        response(enabled ? #"{"requireEmailVerification":false,"socialEnabled":true,"eventsEnabled":true,"avatarsEnabled":true}"# :
+        response(enabled ? #"{"requireEmailVerification":false,"socialEnabled":true,"eventsEnabled":true,"avatarsEnabled":true,"avatarUploadsEnabled":true,"avatarApprovalMode":"ai"}"# :
             #"{"requireEmailVerification":false}"#)
     }
     private func controller(_ transport: FeatureTransport) async throws -> CommunityController {
@@ -269,23 +269,24 @@ final class CommunityFeatureTests: XCTestCase {
         let base = "https://catalog.example/api/v1/social/avatars/\(owner.uuidString.lowercased())/\(version.uuidString.lowercased())"
         let avatar = """
         {"userId":"\(owner)","version":"\(version)","status":"pending","createdAt":1700000000000,
-        "avatarUrl":"\(base)/image.gif","avatarPreviewUrl":"\(base)/preview.png","avatarAnimated":false}
+        "avatarUrl":"\(base)/image.gif","avatarPreviewUrl":"\(base)/preview.png","avatarAnimated":false,"approvalMode":"ai","aiState":"queued","aiError":""}
         """
-        let transport = FeatureTransport([login, config(), response("{\"avatar\":\(avatar)}", status: 202)])
+        let transport = FeatureTransport([login, config(), response(#"{"avatar":null,"uploadsEnabled":true,"approvalMode":"ai"}"#),
+            response("{\"avatar\":\(avatar)}", status: 202)])
         let community = try await controller(transport)
         let client = try CommunityFeatureClient(community)
         do { try await client.uploadAvatar(gif, publicConsent: false); XCTFail("Consent is required before any avatar upload") }
         catch { XCTAssertTrue(error.localizedDescription.contains("consent")) }
         try await client.uploadAvatar(gif, publicConsent: true)
         let requests = await transport.history()
-        let data = try XCTUnwrap(requests[2].httpBody)
+        let data = try XCTUnwrap(requests[3].httpBody)
         let metadata = try XCTUnwrap(data.range(of: Data("name=\"metadata\"".utf8)))
         let file = try XCTUnwrap(data.range(of: Data("name=\"file\"".utf8)))
         XCTAssertLessThan(metadata.lowerBound, file.lowerBound)
         XCTAssertNotNil(data.range(of: Data("{\"public\":true}".utf8)))
         XCTAssertNotNil(data.range(of: gif))
-        XCTAssertEqual(requests[2].url?.path, "/api/v1/social/avatar")
-        XCTAssertNil(requests[2].value(forHTTPHeaderField: "X-Catalog-Upload-Policy"))
+        XCTAssertEqual(requests[3].url?.path, "/api/v1/social/avatar")
+        XCTAssertNil(requests[3].value(forHTTPHeaderField: "X-Catalog-Upload-Policy"))
         XCTAssertEqual(try MediaCodec.decode(gif).images.count, 1)
         XCTAssertThrowsError(try NativeAvatarInput.kind(Data(repeating: 0, count: 5_000_001)))
     }

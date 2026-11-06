@@ -13,6 +13,8 @@ struct SocialPerson: Decodable, Identifiable {
     var avatarAnimated: Bool?
     var locationFeaturesAllowed: Bool?
     var mutualLocationFeaturesAllowed: Bool?
+    var avatarMature: Bool?
+    var avatarMasked: Bool?
 }
 struct SocialPreferences: Decodable {
     let profile: SocialPerson
@@ -41,6 +43,16 @@ struct SocialAvatar: Decodable {
     let createdAt: Double
     let avatarUrl, avatarPreviewUrl: URL?
     let avatarAnimated: Bool
+    var aiState: String?
+    var aiError: String?
+    var approvalMode: String?
+    var avatarMature: Bool?
+    var avatarMasked: Bool?
+}
+struct OwnedAvatarState: Decodable {
+    let avatar: SocialAvatar?
+    var uploadsEnabled: Bool?
+    var approvalMode: String?
 }
 
 @MainActor
@@ -49,6 +61,10 @@ final class CommunityFeatureClient {
     let origin: CommunityOrigin
     let accountID, revision: UUID
     private let community: CommunityController
+    var automaticAvatarUploads: Bool {
+        community.config?.avatarsEnabled == true && community.config?.avatarUploadsEnabled == true &&
+            community.config?.avatarApprovalMode == "ai"
+    }
     var plannerEnabled: Bool { community.config?.eventsEnabled == true }
     var participationReviewEnabled: Bool { community.config?.eventParticipationReviewEnabled == true }
     func exclusiveRouteEnabled(_ event: CatalogEvent) -> Bool {
@@ -100,6 +116,9 @@ final class CommunityFeatureClient {
     func send(_ feature: CommunityFeature, _ path: String, method: String = "GET", body: Data? = nil,
         query: [URLQueryItem] = [], contentType: String = "application/json", maxBytes: Int = 2_000_000) async throws -> Data {
         try check(feature)
+        let automatedAvatarWrite = feature == .avatars && method == "POST" &&
+            (path == "social/avatar" || path == "social/avatar/retry")
+        if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Automatic avatar uploads/screening became unavailable.") }
         guard !path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }),
               !path.contains("\\"), !path.contains("?"), !path.contains("#"),
               path.utf8.allSatisfy({ (33...126).contains($0) }),
@@ -109,6 +128,7 @@ final class CommunityFeatureClient {
         let result = try await community.request(path, method: method, body: body, query: query,
             contentType: contentType, maxBytes: maxBytes, expectedAccountRevision: revision)
         try Task.checkCancellation(); try check(feature)
+        if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Avatar screening availability changed during the request. Refresh before retrying.") }
         return result.data
     }
     private func paging(_ page: Int) throws -> [URLQueryItem] {
@@ -212,10 +232,15 @@ final class CommunityFeatureClient {
         try check(.social); try await community.block(id, expectedRevision: revision); try check(.social)
     }
     func avatar() async throws -> SocialAvatar? {
-        struct Result: Decodable { let avatar: SocialAvatar? }
-        let value = try JSONDecoder().decode(Result.self, from: await send(.avatars, "social/avatar")).avatar
-        if let value { try validate(value) }
-        return value
+        try await ownedAvatar().avatar
+    }
+    func ownedAvatar() async throws -> OwnedAvatarState {
+        let state = try JSONDecoder().decode(OwnedAvatarState.self, from: await send(.avatars, "social/avatar"))
+        if let value = state.avatar {
+            try validate(value)
+            if state.approvalMode == "ai", value.approvalMode != "ai" { throw BackpackError.invalid("Automatic avatar metadata was not confirmed.") }
+        }
+        return state
     }
     func removeAvatar() async throws {
         struct Result: Decodable { let removed: Bool }
@@ -223,8 +248,13 @@ final class CommunityFeatureClient {
             throw BackpackError.invalid("Avatar removal was not confirmed.")
         }
     }
-    func uploadAvatar(_ data: Data, publicConsent: Bool) async throws {
+    func uploadAvatar(_ data: Data, publicConsent: Bool, expectedVersion: UUID? = nil) async throws {
         guard publicConsent else { throw BackpackError.invalid("Explicitly consent to public-profile avatar review before uploading.") }
+        guard automaticAvatarUploads else { throw BackpackError.invalid("Automatic avatar uploads are not enabled/configured on this server.") }
+        let state = try await ownedAvatar()
+        guard state.uploadsEnabled == true, state.approvalMode == "ai", state.avatar?.version == expectedVersion else {
+            throw BackpackError.invalid("Avatar availability/version changed. Refresh before selecting a replacement.")
+        }
         let kind = try NativeAvatarInput.kind(data)
         let boundary = "LEDBackpack-\(UUID().uuidString)"
         guard data.range(of: Data(boundary.utf8)) == nil else { throw BackpackError.invalid("Avatar upload boundary collision. Try again.") }
@@ -234,7 +264,27 @@ final class CommunityFeatureClient {
         struct Result: Decodable { let avatar: SocialAvatar }
         let value = try JSONDecoder().decode(Result.self, from: await send(.avatars, "social/avatar", method: "POST",
             body: body, contentType: "multipart/form-data; boundary=\(boundary)")).avatar
+        guard value.approvalMode == "ai" else { throw BackpackError.invalid("The server did not confirm automatic avatar screening.") }
         try validate(value)
+    }
+    func retryAvatar(expectedVersion: UUID) async throws {
+        guard automaticAvatarUploads else { throw BackpackError.invalid("Automatic avatar screening is not configured.") }
+        let state = try await ownedAvatar()
+        guard state.uploadsEnabled == true, state.approvalMode == "ai", let avatar = state.avatar,
+              avatar.version == expectedVersion, avatar.status == "pending", avatar.aiState == "failed" else {
+            throw BackpackError.invalid("Refresh the current failed avatar before retrying; no version is rebased automatically.")
+        }
+        struct Body: Encodable { let expectedVersion: String }
+        struct Result: Decodable { let queued: Bool }
+        guard try JSONDecoder().decode(Result.self, from: await send(.avatars, "social/avatar/retry", method: "POST",
+            body: JSONEncoder().encode(Body(expectedVersion: expectedVersion.uuidString.lowercased())))).queued else {
+            throw BackpackError.invalid("Avatar retry was not confirmed.")
+        }
+    }
+    func setMaturePreference(_ allowed: Bool) async throws {
+        try check(.avatars)
+        try await community.setMaturePreference(allowed, expectedRevision: revision)
+        try check(.avatars)
     }
     private func validate(_ avatar: SocialAvatar) throws {
         guard avatar.userId == accountID, ["pending", "approved", "rejected"].contains(avatar.status) else {
@@ -243,8 +293,17 @@ final class CommunityFeatureClient {
         if avatar.status == "rejected" && (avatar.avatarUrl != nil || avatar.avatarPreviewUrl != nil) {
             throw BackpackError.invalid("Rejected avatars cannot expose media.")
         }
+        let masked = avatar.avatarMasked == true
         guard (avatar.avatarUrl == nil) == (avatar.avatarPreviewUrl == nil),
-              avatar.status == "rejected" || avatar.avatarUrl != nil else { throw BackpackError.invalid("Incomplete avatar media.") }
+              avatar.status == "rejected" || masked || avatar.avatarUrl != nil,
+              !masked || (avatar.avatarMature == true && avatar.avatarUrl == nil && !avatar.avatarAnimated) else {
+            throw BackpackError.invalid("Incomplete or incorrectly masked avatar media.")
+        }
+        if avatar.approvalMode == "ai" {
+            guard ["queued", "running", "done", "failed"].contains(avatar.aiState ?? ""), avatar.aiError != nil else {
+                throw BackpackError.invalid("Invalid automatic avatar screening state.")
+            }
+        }
         for url in [avatar.avatarUrl, avatar.avatarPreviewUrl].compactMap({ $0 }) {
             let parts = try avatarPath(url)
             guard parts[4] == avatar.userId.uuidString.lowercased(), parts[5] == avatar.version.uuidString.lowercased() else {
