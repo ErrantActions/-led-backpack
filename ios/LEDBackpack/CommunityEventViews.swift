@@ -166,6 +166,7 @@ struct CommunityEventDetailView: View {
                     }
                     if event.access.canManage && !event.cancelled {
                         Section("Organizer tools") {
+                            NavigationLink("Replace an existing event image") { EventImageReplacementView(event: event) }
                             Button("Edit / reschedule event") { editingEvent = event }
                             if event.access.canManageRoute, event.route != nil, event.badges != nil {
                                 Button("Plan venue route & checkpoints") { planningEvent = event }

@@ -129,6 +129,22 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 
 ## Next completed backend source slices
 
+### Immutable event image replacement (`e64affb`)
+
+- [x] Narrow organizer-only existing-image listing/replace entry; no broader gallery,
+  badge, publication/reorder controls or admin bypass.
+- [x] Metadata-first raster request captures asset revision, complete displayed
+  order, selected immutable bytes, descriptions and explicit permission.
+- [x] Refresh/conflict retain draft/file and never rebase expected revision/order.
+  Cancel/reload is explicit. Lost access removes editing controls.
+- [x] New immutable ID/retired ID receipt and post-publication exact order/cover/
+  reset approval verification; acknowledged work is verified, never resubmitted.
+- [ ] Separate unsigned Mac compile/focused replacement tests.
+- [ ] Physical visual/file-picker/conflict/lifecycle and authorized deployment checks.
+- Actual frozen API has no replacement-specific capability flag. The source uses
+  `eventsEnabled` plus current organizer access/`canReorder`; unavailable routes
+  fail explicitly, not via an invented flag or production availability assertion.
+
 - [x] Frozen direct/group/event chat and separate organizer questions, scoped
   history/revisions, live hints/typing and private image/GIF attachments.
 - [x] Manual Apple Maps fixed chat pins, no device GPS/tracking.

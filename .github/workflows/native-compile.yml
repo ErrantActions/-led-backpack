@@ -58,7 +58,7 @@ jobs:
           else
             TESTS=()
             for CLASS in CloudVaultCryptoTests CloudVaultProtocolTests CommunityAdminTests CommunityFeatureTests AIAvatarTests CommunityChatTests ChatReferenceTests NotificationSettingsTests NativeIntegrityTests \
-              EventRouteTests PhoneDisplayTests ExtraParityTests BackpackFeatureTests CommunityTests \
+              EventRouteTests EventImageReplacementTests PhoneDisplayTests ExtraParityTests BackpackFeatureTests CommunityTests \
               UploadVideoTests GIFPreviewTests; do
               TESTS+=("-only-testing:LEDBackpackTests/$CLASS")
             done

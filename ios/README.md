@@ -370,6 +370,17 @@ accessibility review remain outstanding. No builds/CI/live operations ran.
 
 ### Friends, avatars and events: source foundation
 
+The separate frozen `e64affb` event-image replacement source is under organizer
+tools. It replaces only a selected existing image: metadata first, captured asset
+revision and entire displayed gallery order, PNG/JPEG/WebP still bytes within
+5 MB/8192px/40M decoded pixels, explicit permission and retained descriptions/file.
+Refresh/conflict cannot rebase a captured draft. A new immutable ID/URL is verified
+in the same order/cover position with public approval reset; acknowledged requests
+are verified rather than repeated. Explicit Cancel discards/reloads. Current
+organizer access and `canReorder` are required, never global admin privilege.
+There is no invented replacement flag or production-route assertion. This bounded
+slice awaits its separate Mac checkpoint; physical/deployment tests remain separate.
+
 Account links appear only when the actual server config explicitly advertises
 `socialEnabled`, `avatarsEnabled` or `eventsEnabled`. Missing/false flags are
 unavailable. Source implementation does not prove deployment, native compilation
