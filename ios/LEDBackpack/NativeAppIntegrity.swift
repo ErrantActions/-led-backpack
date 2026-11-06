@@ -34,10 +34,12 @@ enum NativeIntegrityBinding {
         guard canonicalKey(key) else { throw BackpackError.invalid("App Attest returned a noncanonical key identifier.") }
         return digest(try json(["led-backpack.app-integrity.enroll.v1", key]))
     }
-    static func validatedHash(_ value: NativeIntegrityChallenge, origin: CommunityOrigin, account: UUID, token: String,
+    static func validatedHash(_ value: NativeIntegrityChallenge, origin: CommunityOrigin, account: UUID?, token: String,
         key: String, purpose: String, method: String, path: String, bodyHash: String, now: Date = Date()) throws -> Data {
         let session = digest(Data(token.utf8))
-        let scope = digest(try json([account.uuidString.lowercased(), session]))
+        let user: Any
+        if let account { user = account.uuidString.lowercased() } else { user = NSNull() }
+        let scope = digest(try json([user, session]))
         let expires = try CatalogEventTime.parse(value.expiresAt)
         guard value.protocol == "app-attest-v1", value.origin == origin.url.absoluteString,
               UUID(uuidString: value.id) != nil, canonicalDigest(value.nonce), canonicalKey(key),
@@ -48,7 +50,7 @@ enum NativeIntegrityBinding {
             throw BackpackError.invalid("App Attest challenge does not match the captured account/origin/key/request or lifetime.")
         }
         let bytes = try json(["led-backpack.app-integrity.v1", value.origin, value.id, value.nonce, purpose, key,
-            account.uuidString.lowercased(), session, scope, method, path, bodyHash])
+            user, session, scope, method, path, bodyHash])
         guard Data(value.message.utf8) == bytes else { throw BackpackError.invalid("Refusing to sign arbitrary server challenge text.") }
         return Data(SHA256.hash(data: bytes))
     }
@@ -95,32 +97,84 @@ final class OfficialNativeAttest: NativeAttestProvider {
 @MainActor
 final class NativeAppIntegrity {
     struct Key: Codable { let id: String; var enrolled: Bool; var uncertain: Bool }
+    struct GuestSession: Codable { let token, expiresAt: String }
     private let provider: any NativeAttestProvider
     private let cache: any CommunityVault
     private var tail: Task<Void, Never>?
     var supported: Bool { provider.supported }
     init() { provider = OfficialNativeAttest(); cache = CommunityKeychain() }
     init(provider: any NativeAttestProvider, cache: any CommunityVault) { self.provider = provider; self.cache = cache }
-    private func storage(_ origin: CommunityOrigin, _ account: UUID) -> String {
-        "app-attest|\(origin.url.absoluteString)|\(account.uuidString.lowercased())"
+    private func storage(_ origin: CommunityOrigin, _ account: UUID?, token: String = "") -> String {
+        "app-attest|\(origin.url.absoluteString)|\(account?.uuidString.lowercased() ?? "guest|" + NativeIntegrityBinding.digest(Data(token.utf8)))"
     }
+    private func guestStorage(_ origin: CommunityOrigin) -> String { "app-attest-guest|\(origin.url.absoluteString)" }
     func keyID(origin: CommunityOrigin, account: UUID) throws -> String? {
         guard let bytes = try cache.read(storage(origin, account)) else { return nil }
         return try JSONDecoder().decode(Key.self, from: bytes).id
     }
     func perform(_ request: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
         transport: any CommunityTransport, maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+        try await queue(check: check) {
+            try await self.execute(request, origin: origin, account: account, token: token, transport: transport, maxBytes: maxBytes, check: check)
+        }
+    }
+    func performGuest(_ original: URLRequest, origin: CommunityOrigin, transport: any CommunityTransport,
+        maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
+        try await queue(check: check) {
+            let session = try await self.guestSession(origin, transport: transport)
+            try check()
+            var request = original
+            guard request.value(forHTTPHeaderField: "Authorization") == nil else { throw BackpackError.invalid("Guest integrity cannot carry authenticated credentials.") }
+            request.setValue(session.token, forHTTPHeaderField: "X-Catalog-Integrity-Session")
+            return try await self.execute(request, origin: origin, account: nil, token: session.token,
+                transport: transport, maxBytes: maxBytes, check: check)
+        }
+    }
+    func adoptGuestKey(origin: CommunityOrigin, account: UUID) throws {
+        guard let data = try cache.read(guestStorage(origin)) else { return }
+        let session = try JSONDecoder().decode(GuestSession.self, from: data)
+        let source = storage(origin, nil, token: session.token)
+        if let bytes = try cache.read(source) {
+            let key = try JSONDecoder().decode(Key.self, from: bytes)
+            guard key.enrolled, !key.uncertain else { throw BackpackError.invalid("An unconfirmed guest key cannot become account identity.") }
+            if try cache.read(storage(origin, account)) == nil { try cache.save(bytes, key: storage(origin, account)) }
+            try cache.remove(source)
+        }
+        try cache.remove(guestStorage(origin))
+    }
+    private func guestSession(_ origin: CommunityOrigin, transport: any CommunityTransport) async throws -> GuestSession {
+        if let data = try cache.read(guestStorage(origin)) {
+            let session = try JSONDecoder().decode(GuestSession.self, from: data)
+            guard NativeIntegrityBinding.canonicalDigest(session.token) else { throw BackpackError.invalid("Stored guest integrity token is invalid; no scope fallback.") }
+            if try CatalogEventTime.parse(session.expiresAt) > Date() { return session }
+            try cache.remove(storage(origin, nil, token: session.token)); try cache.remove(guestStorage(origin))
+        }
+        var request = URLRequest(url: try origin.api("app-integrity/sessions"))
+        request.httpMethod = "POST"; request.httpBody = Data("{}".utf8); request.httpShouldHandleCookies = false
+        request.setValue("1", forHTTPHeaderField: "X-Catalog-Client"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let response = try await transport.send(request, maxBytes: 4096)
+        guard response.status == 200 else { throw CommunityFailure(status: response.status, code: "integrity_guest_unavailable", message: "Guest integrity bootstrap was not confirmed; no login fallback.") }
+        struct Reply: Decodable { let `protocol`, token, expiresAt: String }
+        let reply = try JSONDecoder().decode(Reply.self, from: response.data)
+        let expiry = try CatalogEventTime.parse(reply.expiresAt)
+        guard reply.protocol == "app-attest-v1", NativeIntegrityBinding.canonicalDigest(reply.token),
+              expiry > Date(), expiry.timeIntervalSinceNow <= 86430 else { throw BackpackError.invalid("Invalid server guest integrity token/lifetime.") }
+        let value = GuestSession(token: reply.token, expiresAt: reply.expiresAt)
+        try cache.save(JSONEncoder().encode(value), key: guestStorage(origin)); return value
+    }
+    private func queue(check: @escaping @MainActor () throws -> Void,
+        work: @escaping @MainActor () async throws -> CommunityResponse) async throws -> CommunityResponse {
         guard supported else { throw BackpackError.invalid("A real supported App Attest device is required; no simulator/header fallback.") }
         let previous = tail
         let job = Task {
             await previous?.value
             try Task.checkCancellation(); try check()
-            return try await execute(request, origin: origin, account: account, token: token, transport: transport, maxBytes: maxBytes, check: check)
+            return try await work()
         }
         tail = Task { _ = await job.result }
         return try await withTaskCancellationHandler { try await job.value } onCancel: { job.cancel() }
     }
-    private func execute(_ original: URLRequest, origin: CommunityOrigin, account: UUID, token: String,
+    private func execute(_ original: URLRequest, origin: CommunityOrigin, account: UUID?, token: String,
         transport: any CommunityTransport, maxBytes: Int, check: @escaping @MainActor () throws -> Void) async throws -> CommunityResponse {
         guard let url = original.url, origin.contains(url), url.fragment == nil, original.httpBodyStream == nil,
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -128,7 +182,9 @@ final class NativeAppIntegrity {
               !parts.percentEncodedPath.contains("\\"),
               !parts.percentEncodedPath.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }),
               !["%2e", "%2f", "%5c"].contains(where: { parts.percentEncodedPath.lowercased().contains($0) }),
-              original.value(forHTTPHeaderField: "Authorization") == "Bearer \(token)" else {
+              (account != nil ? original.value(forHTTPHeaderField: "Authorization") == "Bearer \(token)" &&
+                original.value(forHTTPHeaderField: "X-Catalog-Integrity-Session") == nil :
+                original.value(forHTTPHeaderField: "Authorization") == nil && original.value(forHTTPHeaderField: "X-Catalog-Integrity-Session") == token) else {
             throw BackpackError.invalid("Unsupported integrity request target/stream/token. No key or proof generated.")
         }
         let path = parts.percentEncodedPath + (parts.percentEncodedQuery.map { "?\($0)" } ?? "")
@@ -138,7 +194,7 @@ final class NativeAppIntegrity {
             throw BackpackError.invalid("Unsupported integrity HTTP method/body.")
         }
         let digest = NativeIntegrityBinding.digest(original.httpBody ?? Data())
-        let slot = storage(origin, account)
+        let slot = storage(origin, account, token: token)
         var key: Key
         if let bytes = try cache.read(slot) { key = try JSONDecoder().decode(Key.self, from: bytes) }
         else {
@@ -152,7 +208,7 @@ final class NativeAppIntegrity {
             try check()
             let projection = try NativeIntegrityBinding.enrollmentHash(key.id)
             let challenge = try await challenge(key: key.id, purpose: "enroll", method: "POST", path: "/api/v1/app-integrity/enroll",
-                bodyHash: projection, origin: origin, token: token, transport: transport)
+                bodyHash: projection, origin: origin, token: token, transport: transport, guest: account == nil)
             try check()
             let hash = try NativeIntegrityBinding.validatedHash(challenge, origin: origin, account: account, token: token,
                 key: key.id, purpose: "enroll", method: "POST", path: "/api/v1/app-integrity/enroll", bodyHash: projection)
@@ -163,14 +219,14 @@ final class NativeAppIntegrity {
             let body = try JSONSerialization.data(withJSONObject: ["challengeId": challenge.id, "keyId": key.id,
                 "attestation": NativeIntegrityBinding.base64URL(attestation)])
             struct Enrollment: Decodable { let `protocol`, keyId, environment: String; let enforcementReady: Bool }
-            let reply = try JSONDecoder().decode(Enrollment.self, from: await bootstrap("enroll", body: body, origin: origin, token: token, transport: transport))
+            let reply = try JSONDecoder().decode(Enrollment.self, from: await bootstrap("enroll", body: body, origin: origin, token: token, transport: transport, guest: account == nil))
             guard reply.protocol == "app-attest-v1", reply.keyId == key.id, reply.environment == "production", !reply.enforcementReady else {
                 throw BackpackError.invalid("Unexpected App Attest enrollment contract; no claimed activation.")
             }
             try check(); key.enrolled = true; key.uncertain = false; try cache.save(JSONEncoder().encode(key), key: slot)
         }
         let challenge = try await challenge(key: key.id, purpose: "request", method: method, path: path, bodyHash: digest,
-            origin: origin, token: token, transport: transport)
+            origin: origin, token: token, transport: transport, guest: account == nil)
         try check()
         let hash = try NativeIntegrityBinding.validatedHash(challenge, origin: origin, account: account, token: token,
             key: key.id, purpose: "request", method: method, path: path, bodyHash: digest)
@@ -186,16 +242,16 @@ final class NativeAppIntegrity {
         try check(); return response
     }
     private func challenge(key: String, purpose: String, method: String, path: String, bodyHash: String,
-        origin: CommunityOrigin, token: String, transport: any CommunityTransport) async throws -> NativeIntegrityChallenge {
+        origin: CommunityOrigin, token: String, transport: any CommunityTransport, guest: Bool) async throws -> NativeIntegrityChallenge {
         var object = ["purpose": purpose, "keyId": key]
         if purpose == "request" { object["method"] = method; object["path"] = path; object["bodyHash"] = bodyHash }
         return try JSONDecoder().decode(NativeIntegrityChallenge.self, from: await bootstrap("challenges",
-            body: JSONSerialization.data(withJSONObject: object), origin: origin, token: token, transport: transport))
+            body: JSONSerialization.data(withJSONObject: object), origin: origin, token: token, transport: transport, guest: guest))
     }
-    private func bootstrap(_ action: String, body: Data, origin: CommunityOrigin, token: String, transport: any CommunityTransport) async throws -> Data {
+    private func bootstrap(_ action: String, body: Data, origin: CommunityOrigin, token: String, transport: any CommunityTransport, guest: Bool) async throws -> Data {
         var request = URLRequest(url: try origin.api("app-integrity/\(action)"))
         request.httpMethod = "POST"; request.httpBody = body; request.httpShouldHandleCookies = false
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(guest ? token : "Bearer \(token)", forHTTPHeaderField: guest ? "X-Catalog-Integrity-Session" : "Authorization")
         request.setValue("1", forHTTPHeaderField: "X-Catalog-Client"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let response = try await transport.send(request, maxBytes: 65536)
         guard (200...299).contains(response.status) else { throw CommunityFailure(status: response.status,

@@ -483,6 +483,13 @@ final class CommunityController: ObservableObject {
                     guard let self, self.origin == origin, self.accountRevision == scopeRevision,
                           self.user?.id == id, self.session?.token == token else { throw BackpackError.invalid("Attested request account/origin changed.") }
                 })
+        } else if !authenticated, path != "config", config?.appIntegrityEnforcementEnabled == true {
+            guard config?.appIntegrityProtocol == "app-attest-v1" else { throw BackpackError.invalid("The frozen guest integrity protocol is unavailable.") }
+            let scope = accountRevision
+            response = try await nativeIntegrity.performGuest(request, origin: origin, transport: transport, maxBytes: maxBytes, check: { [weak self] in
+                guard let self, self.origin == origin, self.accountRevision == scope,
+                      self.config?.appIntegrityEnforcementEnabled == true else { throw BackpackError.invalid("Guest request origin/account/capability changed.") }
+            })
         } else {
             response = try await transport.send(request, maxBytes: maxBytes)
         }
@@ -517,6 +524,7 @@ final class CommunityController: ObservableObject {
         guard let token = result.token else { throw BackpackError.invalid("The server did not return a native bearer session.") }
         let saved = CommunitySession(token: token, expiresAt: result.expiresAt, appleUser: appleUser)
         try validateSession(saved)
+        if let origin { try nativeIntegrity.adoptGuestKey(origin: origin, account: result.user.id) }
         try vault.save(JSONEncoder().encode(saved), key: sessionKey)
         accountRevision = UUID()
         session = saved; user = result.user; setupError = nil

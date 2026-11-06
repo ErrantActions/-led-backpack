@@ -379,7 +379,11 @@ in the same order/cover position with public approval reset; acknowledged reques
 are verified rather than repeated. Explicit Cancel discards/reloads. Current
 organizer access and `canReorder` are required, never global admin privilege.
 There is no invented replacement flag or production-route assertion. This bounded
-slice awaits its separate Mac checkpoint; physical/deployment tests remain separate.
+slice passed unsigned Mac compilation and all six replacement tests in
+[42153544210](https://github.com/ErrantActions/-led-backpack/actions/runs/42153544210):
+196 executed, zero failures and the exact one unsigned Keychain skip, at
+`c9c9e23` / Xcode 27.1 / Swift 6.4 / simulator SDK 27.1.
+Physical/deployment tests remain separate.
 
 Account links appear only when the actual server config explicitly advertises
 `socialEnabled`, `avatarsEnabled` or `eventsEnabled`. Missing/false flags are

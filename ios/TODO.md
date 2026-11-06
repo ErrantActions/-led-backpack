@@ -139,11 +139,25 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
   Cancel/reload is explicit. Lost access removes editing controls.
 - [x] New immutable ID/retired ID receipt and post-publication exact order/cover/
   reset approval verification; acknowledged work is verified, never resubmitted.
-- [ ] Separate unsigned Mac compile/focused replacement tests.
+- [x] Separate unsigned Mac compile and six replacement tests passed in
+  [42153544210](https://github.com/ErrantActions/-led-backpack/actions/runs/42153544210)
+  at `c9c9e23`: 196 executed, zero failures, one exact unsigned Keychain skip.
 - [ ] Physical visual/file-picker/conflict/lifecycle and authorized deployment checks.
 - Actual frozen API has no replacement-specific capability flag. The source uses
   `eventsEnabled` plus current organizer access/`canReorder`; unavailable routes
   fail explicitly, not via an invented flag or production availability assertion.
+
+### Frozen App Attest HTTP-v1 source gap checkpoints
+
+- [x] Guest server-session bootstrap, independently reconstructed null user scope,
+  guest-only header, qualified login request and guest key adoption to account
+  storage after successful primary login; no anonymous header on authenticated calls.
+- [ ] Separate guest Mac mock/compile checkpoint.
+- [ ] Fresh-auth owned-key recovery UI.
+- [ ] Immutable upload stream snapshot/hash.
+- [ ] Authenticated SSE opening proof.
+- Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
+  entitlements, signed devices, provider environment or production enforcement.
 
 - [x] Frozen direct/group/event chat and separate organizer questions, scoped
   history/revisions, live hints/typing and private image/GIF attachments.
