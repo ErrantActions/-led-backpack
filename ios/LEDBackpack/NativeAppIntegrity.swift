@@ -98,6 +98,7 @@ final class OfficialNativeAttest: NativeAttestProvider {
 final class NativeAppIntegrity {
     struct Key: Codable { let id: String; var enrolled: Bool; var uncertain: Bool }
     struct GuestSession: Codable { let token, expiresAt: String }
+    private struct Enrollment: Decodable { let `protocol`, keyId, environment: String; let enforcementReady: Bool }
     private let provider: any NativeAttestProvider
     private let cache: any CommunityVault
     private var tail: Task<Void, Never>?
@@ -237,7 +238,6 @@ final class NativeAppIntegrity {
             guard !attestation.isEmpty, attestation.count <= 32768 else { throw BackpackError.invalid("Attestation exceeds the actual wire bound.") }
             let body = try JSONSerialization.data(withJSONObject: ["challengeId": challenge.id, "keyId": key.id,
                 "attestation": NativeIntegrityBinding.base64URL(attestation)])
-            struct Enrollment: Decodable { let `protocol`, keyId, environment: String; let enforcementReady: Bool }
             let reply = try JSONDecoder().decode(Enrollment.self, from: await bootstrap("enroll", body: body, origin: origin, token: token, transport: transport, guest: account == nil))
             guard reply.protocol == "app-attest-v1", reply.keyId == key.id, reply.environment == "production", !reply.enforcementReady else {
                 throw BackpackError.invalid("Unexpected App Attest enrollment contract; no claimed activation.")
