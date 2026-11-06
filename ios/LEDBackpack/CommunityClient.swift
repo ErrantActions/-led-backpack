@@ -46,6 +46,9 @@ struct CommunityConfig: Decodable {
     var notificationPreferencesEnabled: Bool? = nil
     var applePushEnabled: Bool? = nil
     var eventRemindersEnabled: Bool? = nil
+    var appIntegrityProtocol: String? = nil
+    var appIntegrityEnforcementEnabled: Bool? = nil
+    var appIntegrityEnforcementReady: Bool? = nil
     var eventsEnabled: Bool? = nil
     var eventTemplatesEnabled: Bool? = nil
     var eventParticipationReviewEnabled: Bool? = nil
@@ -271,6 +274,44 @@ final class CommunityController: ObservableObject {
     @Published private(set) var avatarPolicyRevision = UUID()
     @Published private(set) var avatarPolicyChanging = false
     private var session: CommunitySession?
+    private let nativeIntegrity = NativeAppIntegrity()
+    var nativePushCleanup: (() async throws -> Void)?
+    var nativeApplePushAvailable: Bool {
+        config?.applePushEnabled == true && config?.appIntegrityProtocol == "app-attest-v1" &&
+            config?.appIntegrityEnforcementEnabled == true && nativeIntegrity.supported
+    }
+    func nativeAppleKeyID() throws -> String? {
+        guard let origin, let id = user?.id else { return nil }
+        return try nativeIntegrity.keyID(origin: origin, account: id)
+    }
+    func applePushRequest(_ path: String, method: String = "GET", body: Data? = nil, revision: UUID) async throws -> Data {
+        try checkAccountSession()
+        guard nativeApplePushAvailable, accountRevision == revision, let origin, let id = user?.id,
+              let session, let transport, NativeApplePushRoute.valid(path, method: method), (body?.count ?? 0) <= 4096,
+              method != "GET" || body == nil else {
+            throw BackpackError.invalid("Verified native push/account/provider prerequisites are unavailable. No header-only fallback.")
+        }
+        let token = session.token
+        var request = URLRequest(url: try origin.api(path))
+        request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(id.uuidString.lowercased(), forHTTPHeaderField: "X-Catalog-Expected-Account")
+        if method != "GET" {
+            request.setValue("1", forHTTPHeaderField: "X-Catalog-Client")
+            if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
+        }
+        let response = try await nativeIntegrity.perform(request, origin: origin, account: id, token: token,
+            transport: transport, maxBytes: 65536, check: { [weak self] in
+                guard let self, self.accountRevision == revision, self.user?.id == id,
+                      self.origin == origin, self.session?.token == token, self.nativeApplePushAvailable else {
+                    throw BackpackError.invalid("Native push scope changed; discard this response.")
+                }
+            })
+        guard (200...299).contains(response.status) else {
+            throw CommunityFailure(status: response.status, code: "apple_push_request_failed", message: "Verified Apple device/activity request failed. Refresh access/version; do not retry blindly.")
+        }
+        return response.data
+    }
     private var transport: (any CommunityTransport)?
     private let vault: any CommunityVault
     private let factory: (CommunityOrigin) -> any CommunityTransport
@@ -430,7 +471,20 @@ final class CommunityController: ObservableObject {
             try validateSession(session)
             request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
         }
-        let response = try await transport.send(request, maxBytes: maxBytes)
+        let response: CommunityResponse
+        if authenticated, let session, config?.appIntegrityEnforcementEnabled == true {
+            guard config?.appIntegrityProtocol == "app-attest-v1", let id = user?.id else {
+                throw BackpackError.invalid("Qualified current-account integrity scope is required; no ordinary-header fallback.")
+            }
+            let scopeRevision = accountRevision, token = session.token
+            response = try await nativeIntegrity.perform(request, origin: origin, account: id, token: token,
+                transport: transport, maxBytes: maxBytes, check: { [weak self] in
+                    guard let self, self.origin == origin, self.accountRevision == scopeRevision,
+                          self.user?.id == id, self.session?.token == token else { throw BackpackError.invalid("Attested request account/origin changed.") }
+                })
+        } else {
+            response = try await transport.send(request, maxBytes: maxBytes)
+        }
         guard allowServerChange || self.origin == origin else {
             throw BackpackError.invalid("The catalog server changed during the request. Retry on the selected server.")
         }
@@ -535,6 +589,7 @@ final class CommunityController: ObservableObject {
         guard let server = origin else { throw BackpackError.invalid("No catalog is configured.") }
         guard let token = session?.token else { throw BackpackError.invalid("No active catalog session to sign out.") }
         var failure: Error?
+        do { try await nativePushCleanup?() } catch { failure = error }
         do { _ = try await request("auth/logout", method: "POST", body: Data("{}".utf8), allowServerChange: true) }
         catch { failure = error }
         try clearCredentials(for: server, matching: token)

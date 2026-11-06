@@ -124,6 +124,9 @@ struct CommunityAccountView: View {
             if community.config?.notificationPreferencesEnabled == true {
                 NavigationLink("Notification settings") { CommunityNotificationSettingsView() }
             }
+            if community.config?.applePushEnabled == true {
+                NavigationLink("Apple device alerts") { NativeApplePushView() }
+            }
             if community.isAdmin {
                 NavigationLink { CommunityAdminView() } label: {
                     Label("Administration", systemImage: "shield.lefthalf.filled")

@@ -132,10 +132,11 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [x] Frozen direct/group/event chat and separate organizer questions, scoped
   history/revisions, live hints/typing and private image/GIF attachments.
 - [x] Manual Apple Maps fixed chat pins, no device GPS/tracking.
-- [ ] Owner notification global/category/channel preferences and activity links.
+- [x] Owner notification global/category/channel preferences and activity links.
 - [ ] Actual proof-bound APNs registration/token lifecycle, no fake proof/bypass.
-- [ ] Default-off event reminders.
-- [ ] Shared community/event cards remain unfinished and excluded.
+- [x] Default-off event reminders.
+- [ ] Shared community/event cards: completed backend source `8697481`; implement
+  as a separate bounded native checkpoint, not part of `6c2883b`.
 
 Chat/pin source checkpoint: frozen `bfdd5ef`, explicit capability gates;
 Account > Messages, friends/recent/group invitations, owner revision-bound
@@ -154,5 +155,31 @@ capability-gated private generic activity, global/channel/eight category
 preferences with captured revision/account, explicit conflict retention/discard,
 unavailable Apple push blocked, and actual default-off event-reminder opt-in.
 No automatic RSVP, location or APNs registration is performed. Six focused
-fixtures are prepared and static checks pass; this new source awaits its own
-Mac test run. Actual proof-bound native APNs remains the next separate slice.
+fixtures passed in [42141398919](https://github.com/ErrantActions/-led-backpack/actions/runs/42141398919)
+at `f34c254`: unsigned compilation, 174 executed, zero failures, one exact
+unsigned Keychain skip, including all six notification tests. Actual proof-bound
+native APNs remains the next separate slice.
+
+### Native HTTP-v1 App Attest / Apple push source checkpoint
+
+- [x] Actual DeviceCheck key/attestation/assertion adapter, independent ordered
+  challenge reconstruction, exact bearer/body/query binding, serial assertions,
+  account/origin scope guards and uncertain enrollment rejection.
+- [x] Gated Apple-device metadata/register/revoke and opaque activity resolution;
+  local acknowledged ID scoped to account/origin/attestation key, never first-device
+  guessing. Captured revisions; no blind conflict retry.
+- [x] Explicit OS permission and actual token callbacks; supported server permission
+  states, bounded variable-length token, foreground/token reconciliation for an
+  acknowledged device, logout revocation and remote callback alongside unchanged
+  local disconnect notification presentation.
+- [x] Activity payload only contributes an opaque UUID; authorized server destination
+  opens current feature reads. Phone artwork/playback is not replaced.
+- [ ] Unsigned Mac compilation/mock/codec tests for this separate source checkpoint.
+- [ ] Authorized signed physical App Attest/provider/token/delivery/visual checks.
+- No credentials, capabilities/profiles/entitlements or production flags are
+  provisioned. Missing App Attest/provider flags and unsupported SDK remain blocked.
+- Remaining integration: guest integrity bootstrap/login, fresh-auth key recovery UI,
+  immutable file-stream upload hashing and authenticated SSE integrity. These are
+  not fabricated by an ordinary bearer/header; do not activate enforcement from this
+  checkpoint. Lost enrollment/registration acknowledgments require explicit recovery,
+  not guessed device IDs or replay. Provider acceptance is not delivery.

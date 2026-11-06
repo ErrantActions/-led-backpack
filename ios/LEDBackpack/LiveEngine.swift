@@ -6,9 +6,11 @@ import CoreMotion
 import MediaPlayer
 import UserNotifications
 import BackpackProtocol
+import os
 
 @MainActor
 final class DisconnectAlerts: NSObject, UNUserNotificationCenterDelegate {
+    var nativeAppleActivity: ((UUID) -> Void)?
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
@@ -31,6 +33,17 @@ final class DisconnectAlerts: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void) {
+        defer { completionHandler() }
+        guard response.notification.request.trigger is UNPushNotificationTrigger else { return }
+        guard let payload = response.notification.request.content.userInfo["activity"] as? [String: Any],
+              let raw = payload["id"] as? String, let id = UUID(uuidString: raw) else {
+            Logger(subsystem: "com.errantactions.ledbackpack", category: "native-activity").error("Malformed remote activity ignored; no route trusted.")
+            return
+        }
+        nativeAppleActivity?(id)
     }
 }
 

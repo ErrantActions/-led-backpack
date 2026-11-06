@@ -105,7 +105,8 @@ AASA `webcredentials` association for the real team/bundle ID and
 are prepared; no portal/profile/key changes are performed by this integration.
 Before enabling vault flags, approved Mac compilation/XCTest plus real-device
 Keychain, camera, provider-specific PRF and cross-runtime HPKE tests remain
-required. App Attest policy is separate and is **not** implemented here.
+required. App Attest policy is separate from vault/PRF; the later native integrity
+checkpoint below does not activate that policy or validate Apple device proofs.
 
 Local Windows source-only checks (the repository intentionally ignores this
 local `ios/Tools` directory):
@@ -373,8 +374,9 @@ Account links appear only when the actual server config explicitly advertises
 `socialEnabled`, `avatarsEnabled` or `eventsEnabled`. Missing/false flags are
 unavailable. Source implementation does not prove deployment, native compilation
 or Apple/device validation. Existing guest catalog/offline/BLE/private-vault
-behavior is independent. No App Attest HTTP route/header/bootstrap is invented:
-its separate service remains an unenforced verification foundation.
+behavior is independent. That initial foundation did not invent an App Attest
+HTTP contract. The later HTTP-v1 native checkpoint uses the subsequently frozen
+contract and remains distinct from enforcement/device/provider activation.
 
 Friends/profile supports source-defined profile preferences, paginated friends
 and incoming/outgoing requests, explicit acceptance/decline, removal/blocking,
@@ -547,8 +549,29 @@ and preserve choices on conflict. Eight category/global/channel controls include
 explicit default-off reviewed-event reminders; they do not auto-RSVP or collect
 GPS. Apple push availability is not OS permission/registration/delivery, and an
 unconfigured provider cannot become an enabled success. Six notification tests
-are prepared; this separate new source awaits Mac CI. Proof-bound native APNs
+passed with unsigned compilation in run `42141398919` at `f34c254`: 174 executed,
+zero failures and the exact one unsigned Keychain skip. Proof-bound native APNs
 and real Apple validation remain separate, not implied by these controls.
+
+Account > Apple device alerts is a separate frozen `bfdd5ef` source slice. Actual
+DeviceCheck calls reconstruct HTTP-v1 challenge bytes before attestation/assertion;
+bearer/body/query, account/origin/key, expiry and bounds are checked. No native-looking
+header alone is accepted. Device identity is the local acknowledged registration
+scoped to the attestation key, not the first owned row or a caller's device ID.
+Permission is explicit; token callbacks/foreground changes reconcile only an
+acknowledged device with captured server revision. Lost acknowledgments fail closed
+and require recovery. Remote notification `activity.id` is only an opaque input to
+authenticated proof-bound destination resolution; payload route/type/reference is
+not trusted. Local BLE disconnect notifications and independent phone display remain.
+
+This new slice awaits its separate unsigned Mac checkpoint. Signed physical
+App Attest, APNs capability/profile/provider environment, delivery, visual/lifecycle
+and SDK validation remain unproven and are not provisioned/activated here. Guest
+bootstrap/login, fresh-auth attestation recovery UI, immutable file-stream upload
+hashing and authenticated SSE integrity remain integration blockers before any
+enforcement activation. Ordinary authenticated in-memory requests use official
+proofs when enforcement is advertised; unsupported targets fail rather than
+downgrade. Production flags/keys/models/release stay unchanged.
 
 ### Batch send queue
 

@@ -18,6 +18,7 @@ final class AppModel: ObservableObject {
     let community: CommunityController
     let cloudVault = CloudVaultStore()
     let phoneDisplay = PhoneDisplayController()
+    let applePush = NativeApplePushCoordinator()
     @Published var library: LocalLibrary?
     @Published var startupError: String?
     @Published private(set) var applyingSceneID: UUID?
@@ -41,6 +42,8 @@ final class AppModel: ObservableObject {
         community = CommunityController()
         #endif
         loadLibrary()
+        applePush.bind(community)
+        alerts.nativeAppleActivity = { id in NativeApplePushEvents.shared.tapped(id) }
         link.onReady = { [weak self] in
             guard let self else { return }
             do {
@@ -184,6 +187,7 @@ final class AppModel: ObservableObject {
 @main
 @MainActor
 struct LEDBackpackApp: App {
+    @UIApplicationDelegateAdaptor(NativeApplePushAppDelegate.self) private var nativeDelegate
     @StateObject private var app = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -199,6 +203,7 @@ struct LEDBackpackApp: App {
                         .environmentObject(app.community)
                         .environmentObject(app.cloudVault)
                         .environmentObject(app.phoneDisplay)
+                        .environmentObject(app.applePush)
                 } else {
                     ContentUnavailableView {
                         Label("Library unavailable", systemImage: "externaldrive.badge.exclamationmark")
@@ -217,6 +222,7 @@ struct LEDBackpackApp: App {
                 if value == .background { app.cloudVault.stopWork() }
                 if value == .active, let library = app.library { app.cloudVault.requestSynchronization(library) }
                 if value == .active { Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } } }
+                if value == .active && app.community.nativeApplePushAvailable { app.applePush.refresh() }
             }
             .task {
                 app.phoneDisplay.setForeground(scenePhase == .active)
@@ -224,6 +230,13 @@ struct LEDBackpackApp: App {
             }
             .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in
                 Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
+            }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.applePush.bind(app.community) }
+            .onReceive(NativeApplePushEvents.shared.$activity) { value in
+                if let value { app.applePush.resolve(value); NativeApplePushEvents.shared.clearActivity() }
+            }
+            .onReceive(NativeApplePushEvents.shared.$token.dropFirst()) { value in
+                if value != nil && scenePhase == .active && app.community.nativeApplePushAvailable { app.applePush.refresh() }
             }
         }
     }

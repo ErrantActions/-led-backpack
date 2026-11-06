@@ -53,6 +53,7 @@ struct RootView: View {
     @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var vault: CloudVaultStore
     @EnvironmentObject private var phone: PhoneDisplayController
+    @EnvironmentObject private var apple: NativeApplePushCoordinator
     var body: some View {
         TabView(selection: $app.selectedTab) {
             LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
@@ -75,6 +76,14 @@ struct RootView: View {
         } message: { Text(panel.errorMessage ?? "") }
         .fullScreenCover(isPresented: Binding(get: { phone.presented }, set: { if !$0 { phone.dismiss() } })) {
             PhoneDisplayView()
+        }
+        .sheet(isPresented: Binding(get: { apple.destination != nil && !phone.presented }, set: { if !$0 { apple.clearDestination() } })) {
+            if let destination = apple.destination {
+                NavigationStack {
+                    NativePushDestinationView(destination: destination)
+                        .toolbar { Button("Done") { apple.clearDestination() } }
+                }
+            }
         }
     }
 }
