@@ -145,6 +145,7 @@ struct CommunityConversationView: View {
     @State private var roomInfo = false
     @State private var choosingPin = false
     @State private var choosingReference = false
+    @State private var reporting: NativeChatMessage?
     @State private var reference: ChatReferenceSelection?
     @State private var referencePolicyStale = false
     @State private var referencesVerified = false
@@ -160,7 +161,8 @@ struct CommunityConversationView: View {
                     if more { Button("Load older messages") { load(older: true) }.disabled(session.busy) }
                     ForEach(community.avatarPolicyChanging ? [] : messages) { message in
                         NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client,
-                            referenceEpoch: viewToken ?? "", referencesVerified: referencesVerified) {
+                            referenceEpoch: viewToken ?? "", referencesVerified: referencesVerified,
+                            incident: session.client?.chatReportsEnabled == true && message.senderId != community.user?.id ? { reporting = message } : nil) {
                             deleting = message; deleteScope = session.client?.instanceID
                         }
                     }
@@ -245,6 +247,7 @@ struct CommunityConversationView: View {
         .sheet(isPresented: $choosingReference) {
             if let client = session.client { ChatReferencePicker(client: client, context: context) { reference = $0; choosingReference = false } }
         }
+        .sheet(item: $reporting) { message in MessageIncidentComposeView(message: message, context: context) }
         .confirmationDialog("Delete your sent message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             if let message = deleting {
                 Button("Delete for both accounts", role: .destructive) {
@@ -356,7 +359,7 @@ struct CommunityConversationView: View {
             catch { Logger(subsystem: "com.errantactions.ledbackpack", category: "chat-lifecycle").error("Typing cleanup failed; memory-only indicator expires after its bounded TTL.") }
         }
     }
-    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; typing = []; viewToken = nil; revoked = false }
+    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; reporting = nil; typing = []; viewToken = nil; revoked = false }
 }
 
 @MainActor
@@ -382,6 +385,7 @@ private struct NativeChatBubble: View {
     let client: CommunityFeatureClient?
     let referenceEpoch: String
     let referencesVerified: Bool
+    let incident: (() -> Void)?
     let delete: () -> Void
     @State private var hover = false
     @State private var selected = false
@@ -396,6 +400,7 @@ private struct NativeChatBubble: View {
                     ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch).id("\(reference.fingerprint):\(referenceEpoch)")
                 } else { Label("Shared content unavailable until access is reverified", systemImage: "rectangle.slash").foregroundStyle(.secondary) }
             }
+            if !mine, let incident { Button("Explain an incident", action: incident).font(.caption) }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading).glassPanel(radius: 22)
         .overlay(alignment: .topTrailing) {

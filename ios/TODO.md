@@ -171,6 +171,22 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [ ] Stream opening/late-scope/exact upload-wire focused fixtures in batched Mac run.
 - Enforcement stays OFF; source/mock compilation does not validate Apple proofs,
   entitlements, signed devices, provider environment or production enforcement.
+- Recovery/file/SSE source were validated together after the owner requested batched
+  validation. Run `42158810963` at `7012e79` passed unsigned compilation and
+  **153 focused tests, zero failures, one exact unsigned Keychain skip**; new
+  recovery/file/stream fixture counts are 5/5/3. No broad/editor/phone test reruns.
+
+### Deliberate message incident reporting (`357ecd0`)
+
+- [x] Actual report capability, selected incoming-message action, empty typed
+  explanation and explicit consent. Wire data never auto-copies original text,
+  media, places, event details or neighboring history.
+- [x] Owned bounded reports/revision-bound withdrawal after chat access loss;
+  restricted admin report review only, no private-chat/evidence unlock.
+- [x] Literal explanation text, captured revisions/intent, conflict retention,
+  account/access guards, no automatic block/deletion/punishment or plaintext fallback.
+- [ ] Focused report/auth Mac checkpoint; fixtures prepared, not yet executed.
+- [ ] Physical/visual/real transport/release remain separate and unclaimed.
 
 ### Per-conversation notification mute (`f1005e1`, separate slice)
 
@@ -236,11 +252,11 @@ native APNs remains the next separate slice.
 - [ ] Authorized signed physical App Attest/provider/token/delivery/visual checks.
 - No credentials, capabilities/profiles/entitlements or production flags are
   provisioned. Missing App Attest/provider flags and unsupported SDK remain blocked.
-- Remaining integration: guest integrity bootstrap/login, fresh-auth key recovery UI,
-  immutable file-stream upload hashing and authenticated SSE integrity. These are
-  not fabricated by an ordinary bearer/header; do not activate enforcement from this
-  checkpoint. Lost enrollment/registration acknowledgments require explicit recovery,
-  not guessed device IDs or replay. Provider acceptance is not delivery.
+- The original checkpoint's guest/recovery/file/SSE gaps are now completed source
+  slices with the later focused Mac evidence above. Signed Apple/provider, real
+  account/token/recovery/lifecycle verification still blocks activation. Lost
+  acknowledgments require explicit recovery, not guessed IDs or replay. Provider
+  acceptance is not delivery; none of these checkpoints enables enforcement.
 
 ### Protected shared reference cards: separate `8697481` slice
 

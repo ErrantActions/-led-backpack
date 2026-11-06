@@ -38,6 +38,9 @@ struct CommunityAdminView: View {
                         }.disabled(store.busy)
                         Text("Community administration only. Private GIFs and vault keys are never available here.")
                             .font(.caption).foregroundStyle(.secondary)
+                        if community.config?.chatReportsEnabled == true {
+                            NavigationLink("Deliberately submitted message incidents") { MessageIncidentListView(staff: true) }
+                        }
                     }
                     if store.busy { ProgressView("Contacting catalog…") }
                     if let failure = store.failure { Text(failure).foregroundStyle(.orange).textSelection(.enabled) }

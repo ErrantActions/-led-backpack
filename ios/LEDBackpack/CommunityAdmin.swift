@@ -191,6 +191,27 @@ final class CommunityAdminClient {
     func statistics() async throws -> AdminStatistics {
         try JSONDecoder().decode(AdminStatistics.self, from: await send("admin/stats"))
     }
+    func messageIncidents(page: Int, state: String) async throws -> NativeMessageIncidents {
+        guard community.config?.chatReportsEnabled == true, (1...209).contains(page), ["all", "open", "resolved"].contains(state) else { throw BackpackError.invalid("Message incident review is unavailable.") }
+        let result = try JSONDecoder().decode(NativeMessageIncidents.self, from: await send("admin/message-reports",
+            query: try pagination(page) + [.init(name: "state", value: state)]))
+        guard community.config?.chatReportsEnabled == true else { throw BackpackError.invalid("Incident review capability changed during the read.") }
+        try result.validate(page: page, staff: true); return result
+    }
+    func reviewMessageIncident(_ report: NativeMessageIncident, resolved: Bool) async throws -> NativeMessageIncident {
+        guard community.config?.chatReportsEnabled == true else { throw BackpackError.invalid("Message incident review is unavailable.") }
+        try report.validate(staff: true)
+        struct Body: Encodable { let expectedRevision: Int; let resolved: Bool }
+        struct Result: Decodable { let report: NativeMessageIncident }
+        let result = try JSONDecoder().decode(Result.self, from: await send("admin/message-reports/\(report.id.uuidString.lowercased())",
+            method: "PATCH", body: JSONEncoder().encode(Body(expectedRevision: report.revision, resolved: resolved)))).report
+        try result.validate(staff: true)
+        guard community.config?.chatReportsEnabled == true, result.id == report.id, result.messageId == report.messageId,
+              result.kind == report.kind, result.details == report.details, result.category == report.category,
+              result.reporterId == report.reporterId, result.subjectId == report.subjectId,
+              result.resolved == resolved, result.revision >= report.revision else { throw BackpackError.invalid("Captured incident review was not confirmed.") }
+        return result
+    }
     func accounts(page: Int, query: String, role: String) async throws -> AdminAccountsPage {
         guard query.utf16.count <= 120, ["", "user", "admin", "moderator"].contains(role) else {
             throw BackpackError.invalid("Use an account search of at most 120 characters and a supported role.")

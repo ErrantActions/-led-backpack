@@ -118,6 +118,9 @@ struct CommunityAccountView: View {
             if community.config?.messagingEnabled == true {
                 NavigationLink("Messages") { CommunityMessagesView() }
             }
+            if community.config?.chatReportsEnabled == true {
+                NavigationLink("My message incidents") { MessageIncidentListView() }
+            }
             if community.config?.notificationsEnabled == true {
                 NavigationLink("Private activity") { CommunityActivityView() }
             }

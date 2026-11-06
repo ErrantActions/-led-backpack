@@ -75,6 +75,7 @@ final class CommunityFeatureClient {
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
     var chatReferencesEnabled: Bool { community.config?.chatReferencesEnabled == true }
     var chatNotificationPreferencesEnabled: Bool { community.config?.chatNotificationPreferencesEnabled == true }
+    var chatReportsEnabled: Bool { community.config?.chatReportsEnabled == true }
     var referencePolicyChanging: Bool { community.avatarPolicyChanging }
     var referencePolicyRevision: UUID { community.avatarPolicyRevision }
     var chatLiveEnabled: Bool { community.config?.liveChatEnabled == true && community.config?.chatLiveProtocol == "sse-v1" }

@@ -584,10 +584,12 @@ run `42144043428` at `d51512c`: 182 executed, zero failures and the one exact
 unsigned Keychain skip. It does not verify Apple's cryptographic/device response.
 Signed physical
 App Attest, APNs capability/profile/provider environment, delivery, visual/lifecycle
-and SDK validation remain unproven and are not provisioned/activated here. Guest
-bootstrap/login, fresh-auth attestation recovery UI, immutable file-stream upload
-hashing and authenticated SSE integrity remain integration blockers before any
-enforcement activation. Ordinary authenticated in-memory requests use official
+and SDK validation remain unproven and are not provisioned/activated here. The later
+guest, fresh-auth key recovery, immutable upload snapshot and authenticated SSE
+source slices close the original source gaps, but do not enable enforcement.
+Their focused batch at `7012e79` / `42158810963` passed unsigned compilation and
+153 tests, zero failures and the exact one unsigned Keychain skip, including
+five recovery, five snapshot and three stream tests. Ordinary authenticated requests use official
 proofs when enforcement is advertised; unsupported targets fail rather than
 downgrade. Production flags/keys/models/release stay unchanged.
 
@@ -631,7 +633,22 @@ choice but never silently save against a new revision. Late account/origin/acces
 changes cannot apply a result. Mute suppresses only new message alerts, not messages,
 history, unread counts, typing, memberships, invitations or existing inbox/activity
 links. Backend producer/queued-delivery filtering remains server-owned. This source
-awaits its separate unsigned Mac checkpoint; no provider/enforcement activation occurs.
+passed its separate unsigned Mac checkpoint `42157183297` at `8d7e107`:
+205 executed, zero failures and one exact unsigned Keychain skip, including six
+conversation mute cases. No provider/enforcement activation occurs.
+
+### Deliberate message incident reports
+
+The separate frozen `357ecd0` source adds explicit incoming-message incident
+explanations and owner-only retained report/withdrawal controls. No original
+message text, media, place/event or neighboring history is automatically copied.
+Only a deliberately entered category/explanation, consent and opaque identifiers
+are submitted; literal/script-looking explanation text renders as text. The
+existing original message remains unchanged. Identical retries preserve captured
+bytes; conflicts require explicit review. Owner withdrawal and restricted admin
+review bind displayed revisions, never unlock private chats, auto-block or delete
+messages. Missing `chatReportsEnabled` hides controls. This source awaits its focused
+report/auth Mac checkpoint; provider/production/signing/device/release remain unchanged.
 
 ### Batch send queue
 

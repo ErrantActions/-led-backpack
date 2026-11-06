@@ -57,10 +57,7 @@ jobs:
               -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           else
             TESTS=()
-            for CLASS in CloudVaultCryptoTests CloudVaultProtocolTests CommunityAdminTests CommunityFeatureTests \
-              AIAvatarTests CommunityChatTests ChatReferenceTests ConversationNotificationTests NotificationSettingsTests \
-              NativeIntegrityTests NativeGuestIntegrityTests NativeIntegrityRecoveryTests NativeRequestFileTests \
-              NativeStreamIntegrityTests EventImageReplacementTests CommunityTests; do
+            for CLASS in CommunityAdminTests CommunityFeatureTests CommunityChatTests MessageIncidentReportTests; do
               TESTS+=("-only-testing:LEDBackpackTests/$CLASS")
             done
             xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
