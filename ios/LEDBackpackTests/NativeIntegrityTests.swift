@@ -79,7 +79,7 @@ final class NativeIntegrityTests: XCTestCase {
         XCTAssertTrue(NativeIntegrityBinding.canonicalDigest(digest))
         XCTAssertFalse(NativeIntegrityBinding.canonicalDigest(digest + "="))
         XCTAssertEqual(try NativeIntegrityBinding.enrollmentHash(key),
-            NativeIntegrityBinding.digest(NativeIntegrityBinding.json(["led-backpack.app-integrity.enroll.v1", key])))
+            NativeIntegrityBinding.digest(try NativeIntegrityBinding.json(["led-backpack.app-integrity.enroll.v1", key])))
     }
     func testExactExpiryBoundaryAndWrongPurposeFailBeforeSdk() throws {
         let origin = try CommunityOrigin.parse("https://catalog.example"), value = try fixture()
