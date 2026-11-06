@@ -37,7 +37,7 @@ final class ChatReferenceTests: XCTestCase {
         try await controller.loadConfig()
         return (try CommunityFeatureClient(controller), stub)
     }
-    func testReferenceOnlyIntentBindsExactDisplayedEventRevisionsWithoutGrantFields() throws {
+    func testReferenceOnlyIntentBindsExactDisplayedEventRevisionsWithoutGrantFields() async throws {
         let reference = try ChatReferenceSelection(event: event())
         let intent = try ChatSendIntent(context: .direct(peer: peer, event: nil), text: "", attachmentID: nil, pin: nil, reference: reference)
         let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: intent.data) as? [String: Any])
@@ -45,7 +45,11 @@ final class ChatReferenceTests: XCTestCase {
         XCTAssertEqual(ref["id"] as? String, id.uuidString.lowercased())
         XCTAssertEqual(ref["expectedRevision"] as? Int, 4); XCTAssertEqual(ref["expectedParticipationRevision"] as? Int, 7)
         XCTAssertNil(fields["slot"]); XCTAssertNil(fields["invite"]); XCTAssertNil(fields["rsvp"]); XCTAssertNil(fields["latitude"])
-        XCTAssertEqual(intent.data, intent.data)
+        let response = CommunityResponse(status: 200, data: Data(#"{"message":{"id":"\#(id)","senderId":"\#(id)","text":"","createdAt":1700000000000,"reference":{"kind":"event","available":false}}}"#.utf8))
+        let (client, stub) = try await setup(enabled: true, replies: [response, response])
+        _ = try await client.sendChat(intent); _ = try await client.sendChat(intent)
+        let requests = await stub.history()
+        XCTAssertEqual(requests[2].httpBody, intent.data); XCTAssertEqual(requests[3].httpBody, intent.data)
         XCTAssertThrowsError(try ChatReferenceSelection(event: event(status: "ended")))
     }
     func testCommunitySelectionCannotBecomePrivateCloudOrExclusiveReference() throws {

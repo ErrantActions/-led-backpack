@@ -34,7 +34,7 @@ final class DisconnectAlerts: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
     }
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void) {
         defer { completionHandler() }
         guard response.notification.request.trigger is UNPushNotificationTrigger else { return }
@@ -43,7 +43,7 @@ final class DisconnectAlerts: NSObject, UNUserNotificationCenterDelegate {
             Logger(subsystem: "com.errantactions.ledbackpack", category: "native-activity").error("Malformed remote activity ignored; no route trusted.")
             return
         }
-        nativeAppleActivity?(id)
+        Task { @MainActor [weak self] in self?.nativeAppleActivity?(id) }
     }
 }
 

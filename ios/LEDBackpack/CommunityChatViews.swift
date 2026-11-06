@@ -147,6 +147,7 @@ struct CommunityConversationView: View {
     @State private var choosingReference = false
     @State private var reference: ChatReferenceSelection?
     @State private var referencePolicyStale = false
+    @State private var referencesVerified = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -158,7 +159,8 @@ struct CommunityConversationView: View {
                     if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                     if more { Button("Load older messages") { load(older: true) }.disabled(session.busy) }
                     ForEach(community.avatarPolicyChanging ? [] : messages) { message in
-                        NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client, referenceEpoch: viewToken ?? "") {
+                        NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client,
+                            referenceEpoch: viewToken ?? "", referencesVerified: referencesVerified) {
                             deleting = message; deleteScope = session.client?.instanceID
                         }
                     }
@@ -220,7 +222,7 @@ struct CommunityConversationView: View {
             }
         }
         .onChange(of: community.avatarPolicyChanging) { _, changing in
-            if changing { messages = []; choosingReference = false; reference = nil; referencePolicyStale = intent?.reference != nil }
+            if changing { messages = []; referencesVerified = false; choosingReference = false; reference = nil; referencePolicyStale = intent?.reference != nil }
             else if !session.busy { load(older: false) }
         }
         .onChange(of: shareTyping) { _, _ in scheduleTyping() }
@@ -320,8 +322,12 @@ struct CommunityConversationView: View {
                 var ids = Set(messages.map(\.id))
                 messages += rows.filter { ids.insert($0.id).inserted }
                 messages.sort { ($0.sequence.map(Double.init) ?? $0.createdAt) < ($1.sequence.map(Double.init) ?? $1.createdAt) }
+                referencesVerified = true
             } catch let error as CommunityFailure where [401, 403, 404].contains(error.status) {
                 clear(); revoked = true
+                throw error
+            } catch {
+                referencesVerified = false
                 throw error
             }
         }
@@ -347,7 +353,7 @@ struct CommunityConversationView: View {
             catch { Logger(subsystem: "com.errantactions.ledbackpack", category: "chat-lifecycle").error("Typing cleanup failed; memory-only indicator expires after its bounded TTL.") }
         }
     }
-    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; choosingReference = false; typing = []; viewToken = nil; revoked = false }
+    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; typing = []; viewToken = nil; revoked = false }
 }
 
 @MainActor
@@ -372,6 +378,7 @@ private struct NativeChatBubble: View {
     let mine: Bool
     let client: CommunityFeatureClient?
     let referenceEpoch: String
+    let referencesVerified: Bool
     let delete: () -> Void
     @State private var hover = false
     @State private var selected = false
@@ -382,7 +389,9 @@ private struct NativeChatBubble: View {
             if let attachment = message.attachment, let client { PrivateChatImage(item: attachment, client: client).frame(height: 200) }
             if let pin = message.pin { ChatFixedPinCard(pin: pin) }
             if let reference = message.reference, let client {
-                ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch).id("\(reference.fingerprint):\(referenceEpoch)")
+                if referencesVerified {
+                    ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch).id("\(reference.fingerprint):\(referenceEpoch)")
+                } else { Label("Shared content unavailable until access is reverified", systemImage: "rectangle.slash").foregroundStyle(.secondary) }
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading).glassPanel(radius: 22)

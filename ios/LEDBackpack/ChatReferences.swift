@@ -113,8 +113,14 @@ extension CommunityFeatureClient {
     }
     func referenceMedia(_ raw: String, context: ChatConversation?, event: UUID? = nil) async throws -> Data {
         guard chatReferencesEnabled, !referencePolicyChanging else { throw BackpackError.invalid("Shared media policy/access is changing or unavailable.") }
+        let policy = referencePolicyRevision
         let target = try ChatReferenceMedia.path(raw, context: context, event: event)
-        return try await send(event == nil ? .messaging : .events, target.0, query: target.1, maxBytes: 5_000_000)
+        let bytes = try await send(event == nil ? .messaging : .events, target.0, query: target.1, maxBytes: 5_000_000)
+        try Task.checkCancellation()
+        guard chatReferencesEnabled, !referencePolicyChanging, referencePolicyRevision == policy else {
+            throw BackpackError.invalid("Discarding shared media returned under an older policy.")
+        }
+        return bytes
     }
 }
 @MainActor
