@@ -262,7 +262,9 @@ final class CloudVaultCryptoTests: XCTestCase {
         let message = Data("PUBLIC CONTROL-PROOF FIXTURE".utf8)
         let signature = try await crypto.signControl(message, using: key, info: controlInfo)
         XCTAssertEqual(signature.count, 64)
-        XCTAssertEqual(signature, try hex("425ca8f770d61b80aabab4e7b2776a9b49c4de0ad380c1d314525f38467af44b1dc0224145b3f1467383e1761a6033b6937b5eba9fdf9b33f9cdf9a336a3d80b"))
+        let independentSignature = try hex("425ca8f770d61b80aabab4e7b2776a9b49c4de0ad380c1d314525f38467af44b1dc0224145b3f1467383e1761a6033b6937b5eba9fdf9b33f9cdf9a336a3d80b")
+        try await crypto.verifyControl(independentSignature, message: message, publicKey: publicKey)
+        XCTAssertTrue(fixtureSigner.publicKey.isValidSignature(signature, for: message))
         try await crypto.verifyControl(signature, message: message, publicKey: publicKey)
         await expectFailure(.authenticationFailed) {
             _ = try await crypto.verifyControl(signature, message: Data("different".utf8), publicKey: publicKey)
@@ -338,6 +340,11 @@ final class CloudVaultCryptoTests: XCTestCase {
             for value in scopes { try await cache.remove(scope: value) }
         } catch {
             let original = error
+            #if targetEnvironment(simulator)
+            if let error = original as? CloudVaultCryptoError, case .keychainFailed(let status) = error, status == errSecMissingEntitlement {
+                throw XCTSkip("Unsigned simulator host has no Keychain entitlement. Signed device/host Keychain policy validation remains required.")
+            }
+            #endif
             for value in scopes {
                 do { try await cache.remove(scope: value) }
                 catch { XCTFail("Isolated vault test Keychain cleanup failed.") }

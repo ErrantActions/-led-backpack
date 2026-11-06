@@ -165,7 +165,7 @@ final class BackpackFeatureTests: XCTestCase {
         var pixels = PixelFrame.black(PanelSize(width: 16, height: 16)); pixels.rgb[0] = 255
         let edited = try MediaCodec.encode([pixels], delays: [1])
         try library.add(name: "Edited copy", data: edited, attribution: original.attribution, category: original.category)
-        let copy = try XCTUnwrap(library.state.media.last)
+        let copy = try XCTUnwrap(library.state.media.first(where: { $0.id != original.id }))
         XCTAssertNotEqual(copy.id, original.id)
         XCTAssertNil(copy.cloudSource)
         XCTAssertEqual(copy.attribution, credit)

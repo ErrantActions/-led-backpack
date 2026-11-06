@@ -16,6 +16,12 @@ TestFlight availability or a claim that the product backlog is finished.
   (`27A9275`), Swift 6.4 and simulator SDK 27.1. Compilation failed with exit65:
   a local `state` binding shadowed the vault store property. Tests did not run.
   The member assignment is corrected; another authorized run must verify it.
+- Run `42136200430` at `b998c5e` compiled and executed 149 focused native tests.
+  Overall result failed: nine assertions/failures across copy-fixture selection,
+  signature-byte comparison and unsigned-host Keychain entitlement. MapKit and
+  phone classes passed; this is not an overall validation pass or device proof.
+  Fixture/interop assertions are corrected; only exact unsigned-simulator
+  `errSecMissingEntitlement` skips the signed-host Keychain integration test.
 - [ ] Physical-device/network/provider and visual validations remain separate.
 
 The manual `native-compile.yml` workflow is intentionally separate from
