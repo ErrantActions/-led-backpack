@@ -135,8 +135,8 @@ Frozen native contract read at `bfdd5ef`. This slice is independent of MapKit.
 - [x] Owner notification global/category/channel preferences and activity links.
 - [x] Bounded actual SDK/proof-bound APNs registration/token lifecycle source.
 - [x] Default-off event reminders.
-- [ ] Shared community/event cards: completed backend source `8697481`; implement
-  as a separate bounded native checkpoint, not part of `6c2883b`.
+- [x] Shared community/event cards: frozen backend `8697481`, separate native
+  source/Mac checkpoint, not part of `6c2883b`.
 
 Chat/pin source checkpoint: frozen `bfdd5ef`, explicit capability gates;
 Account > Messages, friends/recent/group invitations, owner revision-bound
@@ -197,6 +197,13 @@ native APNs remains the next separate slice.
 - [x] Direct/room opaque token invalidation, independent five-second reconciliation
   even with live hints, stable message IDs, older-page discard on token changes and
   immediate picker/history/media-policy clearing on mature preference changes.
-- [ ] Mac compilation/focused reference tests for this separate checkpoint.
+- [x] Mac unsigned app/test compilation and all eight reference tests passed in
+  [42146109178](https://github.com/ErrantActions/-led-backpack/actions/runs/42146109178)
+  at `357cba1`: **190 executed, zero failures, one exact unsigned Keychain skip**.
+  Xcode 27.1/build `27A9275`, Swift 6.4, simulator SDK 27.1/iPhone Duo. Source
+  grammar/static checks also passed, but are not the compilation evidence.
+- Failed/uncertain access refresh hides reference metadata until successful
+  revalidation; media rechecks policy after I/O. Normal message identity remains
+  independent of card reconciliation. Native remote activity hops to MainActor.
 - [ ] Authorized native visual/pointer/lifecycle/real transport/revocation validation;
   new source capability remains unavailable on production `6bed90c`.

@@ -586,8 +586,13 @@ the existing current-event review flow. Opaque direct/room tokens invalidate old
 pages; visible cards reconcile every five seconds even with SSE. Normal message IDs
 remain stable; mature preference transitions clear media/history/pickers immediately.
 Exact retry intents retain references, never rebase to a changed event silently.
-This new source awaits its separate Mac reference test checkpoint; production
-`6bed90c` lacks the new capability, and physical/visual/transport tests remain separate.
+Unsigned Mac app/test compilation and all eight reference tests passed in
+[42146109178](https://github.com/ErrantActions/-led-backpack/actions/runs/42146109178)
+at `357cba1`: 190 executed, zero failures and the one exact unsigned Keychain
+skip. Xcode 27.1/build `27A9275`, Swift 6.4, simulator SDK 27.1/iPhone Duo.
+Failed access refresh hides reference metadata until reverified; media policy
+is checked again after I/O. Production `6bed90c` lacks the new capability;
+signed physical Apple/provider, transport/visual/lifecycle checks remain separate.
 
 ### Batch send queue
 
