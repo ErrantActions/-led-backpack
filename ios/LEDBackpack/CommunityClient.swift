@@ -524,7 +524,9 @@ final class CommunityController: ObservableObject {
         guard let token = result.token else { throw BackpackError.invalid("The server did not return a native bearer session.") }
         let saved = CommunitySession(token: token, expiresAt: result.expiresAt, appleUser: appleUser)
         try validateSession(saved)
-        if let origin { try nativeIntegrity.adoptGuestKey(origin: origin, account: result.user.id) }
+        if config?.appIntegrityProtocol == "app-attest-v1", config?.appIntegrityEnforcementEnabled == true, let origin {
+            try nativeIntegrity.adoptGuestKey(origin: origin, account: result.user.id)
+        }
         try vault.save(JSONEncoder().encode(saved), key: sessionKey)
         accountRevision = UUID()
         session = saved; user = result.user; setupError = nil
