@@ -46,15 +46,15 @@ enum NativePushPermission {
         case .ephemeral: throw BackpackError.invalid("Ephemeral push permission is not in the official app/server contract.")
         @unknown default: throw BackpackError.invalid("Unsupported OS push permission state.")
         }
-        enum NativeApplePushRoute {
-            static func valid(_ path: String, method: String) -> Bool {
-                if path == "notifications/apple-devices" { return method == "GET" || method == "POST" }
-                let parts = path.split(separator: "/")
-                guard parts.count == 3, parts[0] == "notifications", let id = UUID(uuidString: String(parts[2])),
-                      id.uuidString.lowercased() == parts[2] else { return false }
-                return parts[1] == "apple-devices" && method == "DELETE" || parts[1] == "apple-activity" && method == "GET"
-            }
-        }
+    }
+}
+enum NativeApplePushRoute {
+    static func valid(_ path: String, method: String) -> Bool {
+        if path == "notifications/apple-devices" { return method == "GET" || method == "POST" }
+        let parts = path.split(separator: "/")
+        guard parts.count == 3, parts[0] == "notifications", let id = UUID(uuidString: String(parts[2])),
+              id.uuidString.lowercased() == parts[2] else { return false }
+        return parts[1] == "apple-devices" && method == "DELETE" || parts[1] == "apple-activity" && method == "GET"
     }
 }
 @MainActor
