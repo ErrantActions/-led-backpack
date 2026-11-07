@@ -32,6 +32,13 @@ existing error type is now module-scoped instead of local to
 `GentlePlanPolicy.validate`; its cases/messages remain unchanged. The next
 actual runner build must verify the correction.
 
+Fifth [Run42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592)
+at `0eb9903` resolved the compiler assertion, then exposed a private-controller
+access in the friend peer-identity capability getter. Build still failed exit65
+after preflight/portable7/7; native test groups remain unexecuted. The unchanged
+getter now lives in its owning client; the controller remains private and
+account/capability/recovery checks remain unchanged. Another build must verify it.
+
 Fourth [Run42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960)
 at `503719a` hit an actual Swift6.4 compiler assertion while resolving
 `OwnedGuestbookPostsView.body`'s `value` binding. Build exited65 after

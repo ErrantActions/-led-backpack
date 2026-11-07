@@ -123,6 +123,7 @@ final class CommunityFeatureClient {
     var eventOptionalCheckpointsAvailable: Bool { community.config?.eventOptionalCheckpointsEnabled == true }
     var eventAdministrator: Bool { community.isAdmin }
     var communityLocationSessionsAvailable: Bool { community.config?.friendSessionsAvailable == true }
+    var friendPeerIdentityAvailable: Bool { community.config?.friendSessionPeerIdentityEnabled == true }
     var nearbyDiscoveryAvailable: Bool { community.config?.nearbyDiscoveryEnabled == true }
     var nearbyRevisionRequired: Bool { community.config?.nearbyDiscoveryControlRevisionEnabled == true }
     var phoneSwapAvailable: Bool { community.config?.gifSwapPresenceEnabled == true }

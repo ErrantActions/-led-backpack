@@ -40,7 +40,6 @@ struct NativeFriendPeerIdentity: Decodable {
 }
 @MainActor
 extension CommunityFeatureClient {
-    var friendPeerIdentityAvailable: Bool { community.config?.friendSessionPeerIdentityEnabled == true }
     func currentAcceptedFriendSession(_ selected: NativeFriendSession) async throws -> NativeFriendSession {
         let list = try await friendSessions()
         guard let current = list.sessions.first(where: { $0.id == selected.id }),

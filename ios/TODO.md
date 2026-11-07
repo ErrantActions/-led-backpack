@@ -53,6 +53,14 @@ assignments unambiguously write `@State value`; loaded/empty/access/pagination
 and withdrawal behavior are retained. No SDK downgrade, disabled assertion
 or successful-build claim; the next actual runner must verify this correction.
 
+Fifth `0eb9903` / [Run42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592)
+resolved that compiler assertion. Preflight/portable7/7 passed; compilation
+exposed `FriendPeerInteraction.swift:43` access to the feature client's private
+controller. App/test build still failed exit65; native XCTest stages skipped.
+The unchanged `friendPeerIdentityAvailable` getter was moved into its owning
+`CommunityFeatureClient` scope; the controller stays private and capability/
+account/recovery checks are unchanged. The next actual build must verify it.
+
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
 The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.
