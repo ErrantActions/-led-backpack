@@ -21,8 +21,12 @@ public struct PanelSize: Equatable, Codable {
 
 public struct Slot: Identifiable, Equatable {
     public let id: Int
-    public let identifier: [UInt8]
-    public var occupied: Bool { identifier.contains { $0 != 0 } }
+    public let metadataKey: [UInt8]
+    public var identifier: [UInt8] { Array(metadataKey.dropFirst(4)) }
+    public var occupied: Bool { metadataKey.contains { $0 != 0 } }
+    public var hasUsableIdentifier: Bool {
+        occupied && !metadataKey.allSatisfy { $0 == 1 } && identifier.contains { $0 != 0 }
+    }
 }
 
 public struct Playback: Equatable, Codable {
@@ -136,7 +140,7 @@ public enum Wire {
             var slots: [Slot] = []
             for offset in stride(from: 0, to: data.count, by: 21) {
                 guard data[offset] < 60 else { throw BackpackError.invalid("Invalid slot identifier.") }
-                slots.append(Slot(id: Int(data[offset]), identifier: Array(data[(offset + 5)..<(offset + 21)])))
+                slots.append(Slot(id: Int(data[offset]), metadataKey: Array(data[(offset + 1)..<(offset + 21)])))
             }
             return .slots(slots)
         case 0x36:

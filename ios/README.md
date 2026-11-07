@@ -3,6 +3,69 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Direct Send & Play, GIF timing/loops and natural eyes - source follow-up
+
+Community/Favorites selection and a local artwork's Send & Play action now open
+one direct preparation screen, without requiring a local library save or a
+manual slot-number form. Separate copies are fitted to the connected panel,
+only empty ordinary slots2–54 are chosen, and every destination is re-read before
+the first destructive upload packet.1–20GIFs/50MB prepared data are bounded.
+No occupied/reserved destination is automatically overwritten. The existing
+advanced queue remains the deliberate manual-overwrite alternative.
+
+The direct sender uses the same known ordered-loop playback command for ONE
+GIF as for a multi-GIF batch, rather than treating slot selection/ATT delivery
+as an animation receipt. It checks stored occupancy and actual reported loop
+mode/list after upload, refreshes inventory, and exposes uncertainty instead of
+claiming physical frames are read back. Time on screen is explicitly written
+with each program, not left at the old short default. Power/brightness are not
+forced. Any interrupted upload can leave its current destination partly changed;
+no automatic resend or rollback. Physical animation/repeat behavior still needs
+the owner's backpack test; source/receipt assertions alone are not proof.
+
+Controls distinguish animation speed/frame delay from Time or GIF loops before
+switching to the next program. Timing patches modify GCE delay bytes (or insert
+an explicit missing control) and repeat metadata in a separate copy; original
+pixels/compressed image streams/credits remain unchanged. The local Adjust GIF
+timing / loops screen can save a new copy and retains source repeats by default;
+the existing GIF Studio still supplies per-frame editing.1total loop removes
+repeat extensions rather than incorrectly encoding0/infinite;Nloops encodeN−1
+repeats. Device display time for loops is calculated from edited frame timing
+and rounded up to whole seconds (≤600s), explicitly not a verified firmware loop
+counter. One-frame sources remain still and are labelled, never fabricated into
+animations. Invalid/overflow timing fails instead of silently clipping pauses.
+
+Natural pixel eyes now use a shared renderer for live output and previews:
+smooth eased glances with fixations/micro-movement, variable fast-close/slow-open
+blinks including occasional double blinks, curved eye masks and moving pupils/
+accent highlights. Existing theme colors/speed are honored; Reduce Motion gives
+stable open eyes. No sensor/radio/background behavior is started by the renderer.
+
+The direct free-slot safety depends on the previously prepared complete20-byte
+slot-record occupancy/equality fix: a nonzero size-like prefix with zero suffix
+must NOT be considered empty. Only that narrow Slot/parser change and two new
+portable tests are included; dirty bitmap/OTA/firmware algorithms and unrelated
+cache/reserved research remain excluded. Existing16-byte identifier API is
+preserved for callers.19new native methods (13GIFTimingAdjustmentTests and
+6NaturalEyesTests) and2portable SlotMetadataTests are prepared, not yet executed.
+The existing community UI regression now checks direct-send availability and
+uses the actual BackButton rail, not an absent standard navbar back button.
+
+Prior source `df0b15e` compiled and passed912unit tests,0failures/2explicit skips
+in run42398734050, but one of2UI regressions failed on that back-button locator;
+the live-public step was skipped. This does not validate the new send/eyes
+snapshot. Exact new/changed sources: `GIFTimingAdjustment.swift`,
+`GIFTimingViews.swift`, `BackpackDirectSend.swift`, `BackpackDirectSendView.swift`,
+`NaturalEyes.swift` (new); `GIFStructure.swift`, `CommunityGallery.swift`,
+`CommunitySelection.swift`, `CommunitySelectionControls.swift`,
+`CommunityFavoritesView.swift`, `MediaLibraryViews.swift`; only eyes-renderer
+call hunks in `LiveEngine.swift`/`LiveTheme.swift`; only Slot/parser hunks in
+`Packages/BackpackProtocol/Sources/BackpackProtocol/Wire.swift`;
+new `LEDBackpackTests/GIFTimingAdjustmentTests.swift`, `NaturalEyesTests.swift`,
+new `Packages/BackpackProtocol/Tests/BackpackProtocolTests/SlotMetadataTests.swift`,
+`LEDBackpackUITests/NavigationTests.swift`, recovery workflow, README and TODO.
+No physical device/firmware/provider/key/enforcement operation was executed.
+
 ### Map-first road routes and checkpoint pins - source follow-up
 
 The route planner now supports named start/destination place pickers, explicit

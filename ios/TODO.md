@@ -4,6 +4,35 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Direct Send & Play / timing / loops / eyes - PURPLE pending validation
+
+- [x] Direct community/Favorites/local-artwork Send & Play, no mandatory library
+  copy/slot form. Fit temporary copies, choose only empty ordinary2–54 slots,
+  re-read each destination before upload, known ordered loop for single/multiple
+  GIFs, occupied-slot and reported loop receipts. No forced power/brightness,
+  silent overwrite/resend/rollback or physical-frame-readback claim.
+- [x] Explicit animation speed/uniform frame timing versus program Time or
+  GIF loops; separate original-preserving copy. Ntotal loops meansN−1repeats,
+  one loop removes the repeat extension; infinite remains0. Device duration
+  derived/rounded to whole seconds, ≤600s; exact device repeat counting unverified.
+  Existing GIF Studio per-frame timing retained; local timed-copy saving added.
+- [x] Same natural eye renderer in live/previews: eased gaze/fixations, subtle
+  micro-movement, varied/double blinks, curved masks/moving pupils/highlights.
+  Theme speed/colors and Reduce Motion honored; no added sensor/radio activity.
+- [x] Narrow complete20-byte Slot occupancy/parser prerequisite incorporated
+  for safe automatic allocation; old16-byte identifier accessor retained.
+  Other independently dirty bitmap/OTA/firmware/cache/reserved source excluded.
+- [x]19NEW native fixture methods +2NEW portable slot tests prepared, unexecuted.
+  Current community UI regression adapted to the real BackButton rail and new
+  direct-send path. Exact source/hunk boundaries recorded in README.
+- [ ] Latest snapshot actual compile/focused/full/UI/public-live validation.
+  Prior df0b15e compiled and912unit tests passed0failures/2skips;1of2UI tests failed
+  on the navbar back locator in42398734050; public-live step skipped. This is
+  not a pass for these newer changes and not a TestFlight update.
+- [ ] Owner physical test: send one known animated GIF via ordered loop at10s,
+  then Time/Loops/speed changes; verify frames/repeats/stored cadence. No physical
+  command/device operation or backend activation executed by this source work.
+
 ## Map-first road routing / checkpoints - source PURPLE, not validated
 
 - [x] Named start/destination pickers, driving/walking MapKit directions,

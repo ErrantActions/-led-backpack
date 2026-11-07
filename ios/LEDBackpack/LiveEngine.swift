@@ -353,16 +353,10 @@ final class LiveEngine: ObservableObject {
             status = "Pixel eyes"
             let theme = activeTheme(for: mode)
             try theme.validate()
-            let blink = Int(now.timeIntervalSince1970 * 3 * theme.animationSpeed) % 17 == 0
-            return try MediaCodec.canvas(size) { context in
-                let w = CGFloat(size.width), h = CGFloat(size.height)
-                context.setFillColor(theme.background.uiColor.cgColor)
-                context.fill(CGRect(x: 0, y: 0, width: w, height: h))
-                context.setFillColor(theme.foreground.uiColor.cgColor)
-                let eyeHeight: CGFloat = blink ? 2 : h * 0.25
-                context.fill(CGRect(x: w * 0.18, y: h * 0.35, width: w * 0.2, height: eyeHeight))
-                context.fill(CGRect(x: w * 0.62, y: h * 0.35, width: w * 0.2, height: eyeHeight))
-            }
+            return try NaturalEyeRenderer.render(size: size, foreground: theme.foreground.rgb,
+                background: theme.background.rgb, accent: theme.accent.rgb,
+                elapsed: max(0, now.timeIntervalSince1970), speed: theme.animationSpeed,
+                reducedMotion: UIAccessibility.isReduceMotionEnabled)
         }
     }
 

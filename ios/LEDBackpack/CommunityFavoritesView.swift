@@ -9,6 +9,7 @@ struct CommunityFavoritesView: View {
     @State private var selection = CommunitySelection()
     @State private var failure: String?
     @State private var showQueue = false
+    @State private var directSend: BackpackSendRequest?
     private var favorites: [SavedMedia] { library.state.media.filter(\.isFavorite) }
     var body: some View {
         ScrollView {
@@ -44,7 +45,11 @@ struct CommunityFavoritesView: View {
                             Button("Send to LED") {
                                 do {
                                     guard selection.ids.allSatisfy({ id in favorites.contains { $0.id == id } }) else { throw BackpackError.invalid("Favorites changed; select again.") }
-                                    try library.enqueue(selection.ids); selection.clear(); showQueue = true; failure = nil
+                                    let chosen = try selection.ids.map { id -> SavedMedia in
+                                        guard let item = favorites.first(where: { $0.id == id }) else { throw BackpackError.invalid("Favorites changed; select again.") }
+                                        return item
+                                    }
+                                    directSend = BackpackSendRequest(sources: chosen.map { .local($0) }); failure = nil
                                 } catch { failure = error.localizedDescription }
                             }
                             Button("Remove favorite", role: .destructive) {
@@ -58,11 +63,12 @@ struct CommunityFavoritesView: View {
                             }
                             Button("Clear") { selection.clear() }
                         }.buttonStyle(.bordered)
-                        Text("Local originals and credits stay intact. Send opens slot review; removing a favorite does not delete artwork.").font(.caption)
+                        Text("Local originals and credits stay intact. Send opens timing and automatic empty-slot preparation; removing a favorite does not delete artwork.").font(.caption)
                     }.padding(16).background(.regularMaterial)
                 }
             }
             .navigationDestination(isPresented: $showQueue) { BatchTransferView() }
+            .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
             .onChange(of: favorites.map(\.id)) { _, ids in
                 for id in selection.ids where !ids.contains(id) { selection.remove(id) }
             }

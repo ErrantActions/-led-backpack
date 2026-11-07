@@ -243,14 +243,10 @@ extension MediaCodec {
     static func demo(mode: LiveMode, size: PanelSize, theme: LiveTheme, phase: Double = 0.35) throws -> PixelFrame {
         try theme.validate()
         if mode == .eyes {
-            return try canvas(size) { context in
-                let w = CGFloat(size.width), h = CGFloat(size.height)
-                context.setFillColor(theme.background.uiColor.cgColor)
-                context.fill(CGRect(x: 0, y: 0, width: w, height: h))
-                context.setFillColor(theme.foreground.uiColor.cgColor)
-                context.fill(CGRect(x: w * 0.18, y: h * 0.35, width: w * 0.2, height: h * 0.25))
-                context.fill(CGRect(x: w * 0.62, y: h * 0.35, width: w * 0.2, height: h * 0.25))
-            }
+            return try NaturalEyeRenderer.render(size: size, foreground: theme.foreground.rgb,
+                background: theme.background.rgb, accent: theme.accent.rgb,
+                elapsed: max(0, phase * 8), speed: theme.animationSpeed,
+                reducedMotion: UIAccessibility.isReduceMotionEnabled)
         }
         let value: String
         let subtitle: String

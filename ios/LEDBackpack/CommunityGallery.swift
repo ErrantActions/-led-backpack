@@ -27,6 +27,7 @@ struct CommunityGallery: View {
     @State private var failure: String?
     @StateObject private var selection = CommunitySelectionStore()
     @State private var showingQueue = false
+    @State private var directSend: BackpackSendRequest?
     @State private var moreTask: Task<Void, Never>?
     @State private var sizes = NativeMatrixFilter()
     private struct Filter: Equatable {
@@ -93,10 +94,14 @@ struct CommunityGallery: View {
                 CommunitySelectionControls(store: selection, favorite: {
                     selection.apply(.favorite, items: items, community: community, library: library)
                 }, send: {
-                    selection.apply(.send, items: items, community: community, library: library)
+                    do {
+                        let chosen = try selection.selection.selected(from: items)
+                        directSend = BackpackSendRequest(sources: chosen.map { .catalog($0) })
+                    } catch { selection.report(error) }
                 }, openQueue: { showingQueue = true })
             }
             .navigationDestination(isPresented: $showingQueue) { BatchTransferView() }
+            .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
         }
     }
     private var controls: some View {
@@ -118,6 +123,7 @@ struct CommunityGallery: View {
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
             Text("No account needed to preview or keep a local copy.").font(.caption).foregroundStyle(.secondary)
             NavigationLink { CommunityFavoritesView() } label: { Label("My Favorites", systemImage: "heart.fill") }
+            Button("Advanced Send queue / manual slot review") { showingQueue = true }
             Text("Tap GIFs to select (up to20), then Favorite or Send to LED. No item page opens.").font(.caption)
             if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
             else { Text("Exact multi-matrix filters are unavailable on this server.").font(.caption) }

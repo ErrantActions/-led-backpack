@@ -134,7 +134,7 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Duo Library - portrait orientation request")
     }
 
-    func testCommunityGridSelectsMultipleFavoritesAndQueuesWithoutDetailOrRadio() throws {
+    func testCommunityGridSelectsMultipleFavoritesAndDirectSendWithoutDetailOrRadio() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture"]
         app.launch()
@@ -157,17 +157,20 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "Select favorite GIF").count, 2)
         XCTAssertFalse(app.staticTexts["Public fixture 1"].exists)
         attach(app, name: "Community selection and image-only Favorites")
-        app.navigationBars["Favorites"].buttons.firstMatch.tap()
+        let favoritesBack = app.buttons["BackButton"]
+        XCTAssertTrue(favoritesBack.waitForExistence(timeout: 5))
+        let backReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in favoritesBack.exists && favoritesBack.isEnabled && favoritesBack.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [backReady], timeout: 10), .completed)
+        favoritesBack.tap()
         XCTAssertTrue(app.navigationBars["Community"].waitForExistence(timeout: 5))
         reveal(first, in: app); first.tap(); reveal(second, in: app); second.tap()
         app.buttons["community-send-selection"].tap()
-        XCTAssertTrue(app.buttons["Open Send queue / review LED slots"].waitForExistence(timeout: 20))
-        app.buttons["Open Send queue / review LED slots"].tap()
-        XCTAssertTrue(app.navigationBars["Send queue"].waitForExistence(timeout: 5))
-        reveal(app.buttons["Review and send 2 GIFs"], in: app)
-        XCTAssertTrue(app.buttons["Review and send 2 GIFs"].exists)
-        XCTAssertFalse(app.buttons["Review and send 2 GIFs"].isEnabled)
-        attach(app, name: "Community selection queue - disconnected hardware controls unavailable")
+        XCTAssertTrue(app.navigationBars["Send & Play"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Connect from the Backpack tab, then retry. This screen does not scan or connect automatically."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Send & Play on backpack"].exists)
+        XCTAssertTrue(app.buttons["Prepare / update send copies"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Prepare / update send copies"].isEnabled)
+        attach(app, name: "Community direct Send & Play - no forced local save or radio scan")
     }
 
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {

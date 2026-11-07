@@ -38,6 +38,7 @@ final class CommunitySelectionStore: ObservableObject {
         catch { failure = error.localizedDescription }
     }
     func clear() { guard !busy else { return }; selection.clear(); failure = nil; message = nil }
+    func report(_ error: Error) { failure = error.localizedDescription }
     func invalidate() {
         epoch = UUID(); task?.cancel(); task = nil; busy = false; selection.clear()
         queueReady = false; failure = nil; message = nil; completed = 0

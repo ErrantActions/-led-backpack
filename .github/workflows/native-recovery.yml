@@ -71,6 +71,7 @@ jobs:
           TESTS=()
           for CLASS in CommunityTests AccountNativeParityTests CatalogManifestTests \
             CommunitySelectionTests EventCreationStepsTests EventRoadRouteTests CloudLibraryTests \
+            GIFTimingAdjustmentTests NaturalEyesTests \
             AdminArtworkTests AutomaticPhoneSessionTests ScopedPhonePreviewTests \
             SoloSourceTests LocalPairingTests FriendArtworkSelectionTests FriendPlaybackTests \
             LocationManagerInitializationTests LocalPixelDocumentTests LocalPixelCodecTests \

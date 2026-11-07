@@ -37,6 +37,8 @@ struct LibraryMediaRow: View {
     @EnvironmentObject private var library: LocalLibrary
     let item: SavedMedia
     let action: (Action) -> Void
+    @State private var directSend: BackpackSendRequest?
+    @State private var editingTiming = false
 
     var body: some View {
         Button { action(.preview) } label: {
@@ -49,7 +51,8 @@ struct LibraryMediaRow: View {
         .contextMenu {
             Button("Edit a copy") { action(.edit) }
             Button("Display on phone") { action(.phone) }
-            Button("Send to backpack") { action(.send) }
+            Button("Send & Play on backpack") { directSend = BackpackSendRequest(sources: [.local(item)]) }
+            Button("Adjust GIF timing / loops") { editingTiming = true }
             Button("Add to send queue") { action(.enqueue) }
             Button("Back up to private cloud") { action(.cloud) }
             Button("Submit to community review") { action(.share) }
@@ -63,6 +66,8 @@ struct LibraryMediaRow: View {
             }
             Button("Delete local copy", role: .destructive) { action(.delete) }
         }
+        .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
+        .sheet(isPresented: $editingTiming) { GIFTimingEditorView(item: item) }
     }
 }
 
