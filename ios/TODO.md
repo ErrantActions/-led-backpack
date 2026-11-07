@@ -26,6 +26,7 @@ fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
 | `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Missing Received renderer, builder complexity and still type-nested PHONE controls. |
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Reached native test compilation; positive event receipt assertions must unwrap nullable `CatalogEvent`. |
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Positive receipt fixture error resolved; chat/event SwiftUI expressions exceed compiler type-check budget. |
+| `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Builder diagnostics cleared; prepared governance fixture calls missing `declineKnownEventRSVP`. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -46,6 +47,12 @@ is named `loadedEvent` rather than shadowing mutable state. Presentation modifie
 order, navigation, sheets, environments, controls, access/consent/cancellation
 and nullable handling are retained. No type erasure or removed controls.
 Another actual runner build must verify the change.
+
+Latest correction: the known-event decline helper already existed locally
+inside `transferEventOwnership`, so view/test callers could not resolve it.
+Its unchanged checked POST/expected-account/cancellation/nullable-receipt body
+now lives at the client extension scope. No new event fetch, metadata grant,
+receipt default, navigation or fixture was introduced. Another build must verify it.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 

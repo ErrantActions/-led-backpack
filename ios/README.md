@@ -22,6 +22,7 @@ were skipped: **0 new native app fixtures executed**, no native green.
 | `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Received renderer/control visibility and recovery builder complexity. |
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Native test compilation: expected positive event receipt must unwrap optional event. |
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Chat/event SwiftUI expression type-check budget exceeded. |
+| `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Governance fixture calls a missing known-event RSVP decline member. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -34,6 +35,10 @@ The latest runner cleared that fixture error but exposed chat/event builder
 complexity. Typed content/form/lifecycle properties now split those expressions;
 the loaded event no longer shadows mutable state. Presentation order and
 authorization/consent remain unchanged; another actual build must verify it.
+The next build cleared those diagnostics and exposed a known-event decline
+helper that was local to ownership transfer. Its unchanged checked/nullable
+implementation is now client-extension scoped; no metadata grant or fake
+receipt was added. Another actual build must verify the correction.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 

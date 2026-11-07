@@ -171,20 +171,20 @@ extension CommunityFeatureClient {
             throw CommunityFailure(status: 403, code: "event_owner_required", message: "Only this event's actual current owner may use owner tools; clear stale management context.")
         }
     }
+    func declineKnownEventRSVP(_ id: UUID) async throws {
+        struct Body: Encodable { let status = "declined" }
+        struct Receipt: Decodable { let event: CatalogEvent?; let declined: Bool }
+        let receipt = try JSONDecoder().decode(Receipt.self, from: await send(.events,
+            "events/\(id.uuidString.lowercased())/rsvp", method: "POST", body: JSONEncoder().encode(Body())))
+        guard receipt.declined, receipt.event == nil || receipt.event?.id == id else {
+            throw BackpackError.invalid("Known RSVP decline was not acknowledged. No event view was requested.")
+        }
+    }
     func transferEventOwnership(_ event: CatalogEvent, target: UUID, formerRole: NativeFormerOwnerRole?) async throws -> NativeEventOwnershipReceipt {
         try checkEventOwner(event)
         guard !event.cancelled, eventOwnershipAuditAvailable, event.organizers.contains(where: { $0.id == target && $0.eventRole == .coorganizer }),
               formerRole == nil || (eventOwnershipAuditAvailable && event.settings?.formerOwnerRoleChoiceEnabled == true) else {
             throw BackpackError.invalid("Choose a current co-organizer and an advertised former-owner role.")
-        }
-        func declineKnownEventRSVP(_ id: UUID) async throws {
-            struct Body: Encodable { let status = "declined" }
-            struct Receipt: Decodable { let event: CatalogEvent?; let declined: Bool }
-            let receipt = try JSONDecoder().decode(Receipt.self, from: await send(.events,
-                "events/\(id.uuidString.lowercased())/rsvp", method: "POST", body: JSONEncoder().encode(Body())))
-            guard receipt.declined, receipt.event == nil || receipt.event?.id == id else {
-                throw BackpackError.invalid("Known RSVP decline was not acknowledged. No event view was requested.")
-            }
         }
         struct Body: Encodable { let userId: String; let expectedRevision: Int; let formerOwnerRole: NativeFormerOwnerRole? }
         let receipt = try JSONDecoder().decode(NativeEventOwnershipReceipt.self, from: await send(.events,
