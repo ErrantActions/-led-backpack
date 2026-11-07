@@ -34,7 +34,8 @@ not backpacks, and current paired calm-color mode is not a completed physical
 tagging game. No authenticated fixed-checkpoint BLE-beacon contract exists;
 an arbitrary nearby phone/backpack is not checkpoint proof.
 
-Six GPSGameEligibilityTests are prepared, not executed; three existing
+Six GPSGameEligibilityTests and one default-off games/SOLO navigation UI test
+are prepared, not executed; three existing
 LocationFoundationTests now supply continuous fresh samples instead of assuming
 widely separated fixes establish dwell. Required acceptance is actual supported
 phone foreground/background/lock/denied/reduced accuracy/OS revoke/drift/
@@ -46,6 +47,8 @@ EventProgressView.swift, EventSocialViews.swift, CommunityEventViews.swift,
 PhoneDisplayViews.swift, LocationFoundationTests.swift, recovery workflow,
 README/TODO; only the primary GPS hub link hunk in independently dirty Views.swift.
 The separate Windows simulator workspace has no native edit/ownership role.
+The native recovery workflow now checks GPS/nearby priority unit groups and
+that default-off navigation before the full suite; its result remains pending.
 
 ### In-flight direct private-cloud send preserved - source only
 

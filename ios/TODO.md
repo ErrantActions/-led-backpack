@@ -34,11 +34,14 @@ progress review (sharing stays off). Existing coordinators/services reused.
 Continuous fresh dwell, monotonic lease, cancellation/epoch guarded old timers,
 scope-bound renewable/one-consumed hint and private manual confirmation are
 actual UI/controller paths; no coordinates or automatic public claims are sent.
-Six NEW GPSGameEligibilityTests prepared, plus three existing sample sequences
+Six NEW GPSGameEligibilityTests and one GPS/SOLO default-off navigation UI
+regression prepared, plus three existing sample sequences
 corrected for continuity. Source colors remain PURPLE, physical GPS/BLE/NI
 acceptance remains unperformed. NI paired calm-color source is NOT a completed
 precise tagging game; genuine checkpoint-beacon binding is absent from contract.
 Exact changed files and acceptance boundaries are in README's matching section.
+The recovery workflow prioritizes these GPS/nearby source checks before its
+full regressions. No GPS/BLE/NI physical success is inferred from that order.
 
 In-flight direct cloud send source is preserved: current owned state/item/
 version/key/download authorization, no mandatory Keep local/publication/server

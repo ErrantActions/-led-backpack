@@ -65,6 +65,24 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath build/Recovery/DerivedData CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/Recovery/compile.log
+      - name: Verify GPS and nearby game priority source
+        run: |
+          set -euo pipefail
+          xcodebuild test-without-building -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build/Recovery/DerivedData \
+            -resultBundlePath build/Recovery/GamePriority.xcresult \
+            -only-testing:LEDBackpackTests/GPSGameEligibilityTests \
+            -only-testing:LEDBackpackTests/LocationFoundationTests \
+            -only-testing:LEDBackpackTests/SoloSourceTests \
+            -only-testing:LEDBackpackTests/LocalPairingTests \
+            -only-testing:LEDBackpackTests/FriendPlaybackTests \
+            -only-testing:LEDBackpackTests/PhoneSwapGameTests \
+            -only-testing:LEDBackpackUITests/NavigationTests/testGPSGamesHubAndSoloAreReachableWithSensingOffUntilConsent \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/Recovery/game-priority.log
       - name: Run consolidated source fixture groups
         run: |
           set -euo pipefail
@@ -123,6 +141,7 @@ jobs:
           path: |
             ios/build/Recovery/*.log
             ios/build/Recovery/Focused.xcresult
+            ios/build/Recovery/GamePriority.xcresult
             ios/build/Recovery/Integrated.xcresult
             ios/build/Recovery/PublicIntegration.xcresult
           if-no-files-found: warn

@@ -173,6 +173,25 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Community direct Send & Play - no forced local save or radio scan")
     }
 
+    func testGPSGamesHubAndSoloAreReachableWithSensingOffUntilConsent() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let games = app.buttons["GPS & nearby games"]
+        XCTAssertTrue(games.waitForExistence(timeout: 20))
+        reveal(games, in: app); XCTAssertTrue(games.isHittable); games.tap()
+        XCTAssertTrue(app.navigationBars["GPS & nearby games"].waitForExistence(timeout: 10))
+        let solo = app.buttons["My local places / adventure / distance milestones"]
+        XCTAssertTrue(solo.waitForExistence(timeout: 5)); solo.tap()
+        XCTAssertTrue(app.navigationBars["SOLO local scenes"].waitForExistence(timeout: 10))
+        let permission = app.buttons["Request When-In-Use location permission deliberately"]
+        reveal(permission, in: app); XCTAssertTrue(permission.exists)
+        XCTAssertFalse(permission.isEnabled)
+        let automation = app.buttons["Capture durable original and arm PHONE"]
+        XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
+        attach(app, name: "GPS games entry and explicit default-off SOLO consents")
+    }
+
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })
