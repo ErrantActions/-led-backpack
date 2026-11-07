@@ -42,6 +42,17 @@ skipped. The existing `.changed`/`.denied`/`.unavailable` error type was moved
 from `GentlePlanPolicy.validate` to module scope, preserving its messages and
 validation behavior. No fallback was added; the next actual build must verify it.
 
+Fourth `503719a` / [Run42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960)
+again passed preflight/portable7/7, but Apple Swift6.4 asserted internally while
+type-checking `OwnedGuestbookPostsView.body`'s local `value` binding
+(`EventSocialViews.swift:657`, TypeCheckDecl.cpp:2766). This is an actual
+compiler crash, not an ordinary source diagnostic or native test failure.
+Unsigned build exited65; iOS XCTest stages skipped. A minimal source binding/
+builder clarification renamed the loaded-page binding to `ownedPage`, so callback
+assignments unambiguously write `@State value`; loaded/empty/access/pagination
+and withdrawal behavior are retained. No SDK downgrade, disabled assertion
+or successful-build claim; the next actual runner must verify this correction.
+
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
 The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.

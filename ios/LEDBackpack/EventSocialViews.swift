@@ -654,9 +654,9 @@ struct OwnedGuestbookPostsView: View {
             Text("Only your typed submissions/receipts. No event details, author roster or gallery access is restored. Server-managed encryption is not E2EE; posts expire after 90 days.").font(.caption)
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             Button("Reload my submissions", action: load).disabled(session.busy)
-            if let value {
-                if value.posts.isEmpty { Text("No owned submissions on this page.") }
-                ForEach(value.posts) { post in
+            if let ownedPage = value {
+                if ownedPage.posts.isEmpty { Text("No owned submissions on this page.") }
+                ForEach(ownedPage.posts) { post in
                     VStack(alignment: .leading) {
                         Text("\(post.reaction.rawValue) / \(post.state)")
                         Text(verbatim: post.text)
@@ -673,7 +673,7 @@ struct OwnedGuestbookPostsView: View {
                 }
                 HStack {
                     Button("Previous") { page -= 1; load() }.disabled(page == 1)
-                    Button("Next") { page += 1; load() }.disabled(!value.hasMore || page >= 1000)
+                    Button("Next") { page += 1; load() }.disabled(!ownedPage.hasMore || page >= 1000)
                 }.disabled(session.busy)
             }
         }.navigationTitle("My guestbook receipts").modernScene()

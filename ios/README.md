@@ -32,6 +32,14 @@ existing error type is now module-scoped instead of local to
 `GentlePlanPolicy.validate`; its cases/messages remain unchanged. The next
 actual runner build must verify the correction.
 
+Fourth [Run42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960)
+at `503719a` hit an actual Swift6.4 compiler assertion while resolving
+`OwnedGuestbookPostsView.body`'s `value` binding. Build exited65 after
+preflight/portable7/7; native test stages were skipped. A minimal source
+clarification renamed the loaded-page binding to `ownedPage`, avoiding shadowed
+state writes in withdrawal callbacks without changing SDK or UX. Another
+actual runner build must verify the correction.
+
 ## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
 
 Owner clarification: the intended Mac execution path is the existing GitHub
