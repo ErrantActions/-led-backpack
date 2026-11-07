@@ -5,47 +5,30 @@ backpacks. No vendor login, cloud database or account subscription is required.
 
 ## Actual recovery build - failed, not native green
 
-The isolated APP snapshot `797d538` was published on `native-recovery`.
-[Run42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261)
-verified Xcode27.1/simulator SDK27.1/iPhone Duo on macOS27.0.1 and passed
-**7 portable protocol tests** against committed Wire source. Independent dirty
-firmware/Wire/GIF hardware changes were deliberately excluded and preserved.
+The selectively published APP branch is `native-recovery`. Executed toolchain:
+Xcode27.1/build27A9275, Apple Swift6.4, simulator SDK27.1/iPhone Duo,
+macOS27.0.1. Independent dirty firmware/Wire/GIF hardware work is excluded.
+Each completed run below passed **7 portable protocol tests** against committed
+Wire, then failed app/test compilation with exit65. Both native XCTest stages
+were skipped: **0 new native app fixtures executed**, no native green.
 
-Actual unsigned app/test compilation failed with exit65: two local-scope
-`private` declarations in `EventRoutePlannerView.swift` (209and361). Fixes and
-another actual runner build are required. Both iOS XCTest stages were skipped;
-**0 new native app fixtures executed**. Portable tests and a running workflow
-are not a successful app build, native integration or beta-readiness claim.
+| Published source | Actual run | Compilation failure |
+|---|---|---|
+| `797d538` | [42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261) | Route helpers declared in local scopes. |
+| `c18bcdb` | [42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373) | Event cover type declared inside gallery ViewBuilder. |
+| `defc74f` | [42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797) | Event-social error type not visible to client/views. |
+| `503719a` | [42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960) | Swift compiler assertion on guestbook binding/state shadowing. |
+| `0eb9903` | [42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592) | Friend capability getter accesses private controller from another file. |
+| `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Received renderer/control visibility and recovery builder complexity. |
 
-Follow-up [Run42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373)
-at `c18bcdb` fixed the route scopes but compilation exposed another local
-declaration inside `EventGalleryViews`' ViewBuilder. Compilation still failed
-exit65; iOS test groups remain unexecuted. `EventAuthorizedCoverView` is now
-module-scoped rather than declared inside the gallery ViewBuilder; a new actual
-runner build must verify the correction.
-
-Third [Run42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797)
-at `defc74f` verified Xcode27.1/build27A9275 and portable7/7, but app/test
-compilation still failed: event social source cannot see
-`NativeEventSocialContextFailure`. Native XCTest stages remain skipped; the
-existing error type is now module-scoped instead of local to
-`GentlePlanPolicy.validate`; its cases/messages remain unchanged. The next
-actual runner build must verify the correction.
-
-Fifth [Run42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592)
-at `0eb9903` resolved the compiler assertion, then exposed a private-controller
-access in the friend peer-identity capability getter. Build still failed exit65
-after preflight/portable7/7; native test groups remain unexecuted. The unchanged
-getter now lives in its owning client; the controller remains private and
-account/capability/recovery checks remain unchanged. Another build must verify it.
-
-Fourth [Run42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960)
-at `503719a` hit an actual Swift6.4 compiler assertion while resolving
-`OwnedGuestbookPostsView.body`'s `value` binding. Build exited65 after
-preflight/portable7/7; native test stages were skipped. A minimal source
-clarification renamed the loaded-page binding to `ownedPage`, avoiding shadowed
-state writes in withdrawal callbacks without changing SDK or UX. Another
-actual runner build must verify the correction.
+The earlier route/cover/error/getter scopes and guestbook binding were corrected
+without changing their intended checks/bodies or SDK. The sixth build exposed
+that the earlier PHONE-control correction still left type nesting; controls are
+now actually module-scoped. The Received renderer is now private module scope,
+accessible to both existing callers; the potentially cascading builder remains
+unchanged until the next actual compiler result.
+The next actual runner must verify these fixes; logs remain retained. Neither
+portable7/7 nor a running workflow establishes native integration/beta readiness.
 
 ## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
 
@@ -62,8 +45,8 @@ never ordinary branch pushes. It uses the existing `xcode-27` runner, compiles
 unsigned, executes all18source fixture groups together and then full unit/UI
 regressions. Each stage stops on failure and retains provenance/logs/result
 bundles. No signing, provider activation or deployment is included. Its initial
-workflow/ignore-allowlist-only commit `2b19e7f` was pushed successfully; current
-native source is not yet published or validated. The dedicated branch trigger
+workflow/ignore-allowlist-only commit `2b19e7f` was pushed successfully; the reviewed
+native snapshot is published but has not passed app/test compilation. The dedicated branch trigger
 uses authorized Git push without requiring a new API token or provider key.
 Local YAML/permission/trigger checks, all6Bash syntax checks,18selector-file
 checks and result-retention checks passed for the initial manual workflow.

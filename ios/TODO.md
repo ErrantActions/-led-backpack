@@ -9,65 +9,41 @@ availability or that the product backlog is finished.
 Owner unpaused narrow native publication/unsigned GitHub validation. The reviewed
 APP snapshot `797d538` was pushed on `native-recovery`, leaving independent
 firmware/Wire/full20-key/reserved-slot/GIF hardware work dirty and unstaged.
-[Run42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261)
-executed on `xcode-27`: macOS27.0.1, Xcode27.1, simulator SDK27.1 and the actual
-iOS27.1 iPhone Duo simulator. Portable committed `BackpackProtocol` tests:
-**7 executed,0failures**. This does not test the independent dirty Wire changes.
-Actual Swift toolchain: Apple Swift6.4 (`swiftlang-6.4.0.34.1`,
-`clang-2100.3.34.1`), swift-driver1.168.6.
+Executed toolchain: `xcode-27`, macOS27.0.1, Xcode27.1/build27A9275,
+simulator SDK27.1/iPhone Duo, Apple Swift6.4 (`swiftlang-6.4.0.34.1`,
+`clang-2100.3.34.1`), swift-driver1.168.6. Each completed run below executed
+**7 portable tests,0failures** against committed Wire, then **FAILED app/test
+compilation, exit65**. Both iOS XCTest stages were skipped: **0 native app
+fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
 
-Unsigned app/test `build-for-testing` **FAILED, exit65** with actual
-`EventRoutePlannerView.swift` diagnostics at209and361: `private` declarations
-were in local scope. These source defects are being corrected, then the runner
-must rerun. Consolidated and full iOS XCTest stages were skipped: **0 native
-app fixture methods executed** in this run. No app compilation/pass or global
-completion claim follows from portable7/7. Logs were retained by the workflow.
-Signing/providers/live-service/device/physical integration remain separate gates.
-This actual executed failure supersedes earlier blanket "all validation
-unexecuted" statements only for this exact published snapshot/checkpoint.
+| Source | Actual run | Compiler evidence / correction |
+|---|---|---|
+| `797d538` | [42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261) | Route helper local scopes; moved into owning view type. |
+| `c18bcdb` | [42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373) | Cover type inside ViewBuilder; moved to module scope. |
+| `defc74f` | [42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797) | Event-social context error visibility; existing type moved to module scope. |
+| `503719a` | [42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960) | Actual TypeCheckDecl.cpp:2766 assertion on guestbook `value`; named binding removes state shadowing. |
+| `0eb9903` | [42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592) | Private controller access; unchanged capability getter moved into owning client. |
+| `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Missing Received renderer, builder complexity and still type-nested PHONE controls. |
 
-Follow-up `c18bcdb` / [Run42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373)
-corrected both route helper scopes, passed preflight/portable protocol again,
-then exposed `EventGalleryViews.swift:107` local-declaration/ViewBuilder error.
-App/test compilation still **FAILED, exit65**; both iOS XCTest stages skipped.
-`EventAuthorizedCoverView` was moved from the gallery ViewBuilder to module
-scope, preserving its body/state and restoring cross-file visibility. Another
-actual runner build must verify that source correction; no pass is inferred.
-
-Third `defc74f` / [Run42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797)
-verified Xcode27.1/build27A9275 and portable7/7, then compilation exposed missing
-`NativeEventSocialContextFailure` visibility in event social client/model/views
-(5diagnostics). App/test compilation again failed exit65; iOS XCTest stages
-skipped. The existing `.changed`/`.denied`/`.unavailable` error type was moved
-from `GentlePlanPolicy.validate` to module scope, preserving its messages and
-validation behavior. No fallback was added; the next actual build must verify it.
-
-Fourth `503719a` / [Run42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960)
-again passed preflight/portable7/7, but Apple Swift6.4 asserted internally while
-type-checking `OwnedGuestbookPostsView.body`'s local `value` binding
-(`EventSocialViews.swift:657`, TypeCheckDecl.cpp:2766). This is an actual
-compiler crash, not an ordinary source diagnostic or native test failure.
-Unsigned build exited65; iOS XCTest stages skipped. A minimal source binding/
-builder clarification renamed the loaded-page binding to `ownedPage`, so callback
-assignments unambiguously write `@State value`; loaded/empty/access/pagination
-and withdrawal behavior are retained. No SDK downgrade, disabled assertion
-or successful-build claim; the next actual runner must verify this correction.
-
-Fifth `0eb9903` / [Run42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592)
-resolved that compiler assertion. Preflight/portable7/7 passed; compilation
-exposed `FriendPeerInteraction.swift:43` access to the feature client's private
-controller. App/test build still failed exit65; native XCTest stages skipped.
-The unchanged `friendPeerIdentityAvailable` getter was moved into its owning
-`CommunityFeatureClient` scope; the controller stays private and capability/
-account/recovery checks are unchanged. The next actual build must verify it.
+Current correction: PHONE controls are now actually module-scoped; the earlier
+function-scope correction had not removed type nesting. `ReceivedSwapPixels`
+is now private module scope rather than nested in one preview. Its pixel/
+playback behavior is unchanged; the reported builder complexity may cascade
+from that missing type, so the existing builder remains unchanged pending the
+next actual compiler result. Preserve checks/behavior; no SDK downgrade
+or silent fallback. Another real runner build must verify the corrections.
+Logs are retained. Signing/provider/live/physical integration gates remain
+separate. These executed failures supersede earlier blanket "all validation
+unexecuted" statements only for the exact published snapshots above.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
 The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.
 The original errored session/history remains retained; the backend parent owns
 only `C:\code\led-backpack-catalog`. The initial worktree inventory had162dirty
-entries. No reset/copy/delete/stage/commit/push, backend edit, workflow change,
-provider/key/signing/deployment or device operation was performed here.
+entries. The initial recovery reconciliation, before unpause/publication above,
+performed no reset/copy/delete/stage/commit/push, backend edit, workflow change,
+provider/key/signing/deployment or device operation.
 
 Reconciled the current guide's entire P0-P11 roadmap and34-family inventory
 against the table below, retained navigation/controller/request entry points,

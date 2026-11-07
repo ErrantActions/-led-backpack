@@ -248,38 +248,38 @@ private struct ReceivedSwapPreview: View {
                 .onChange(of: reduced) { _, reduced in if reduced { play = false } }
         }
     }
+}
 
-    @MainActor
-    private struct ReceivedSwapPixels: View {
-        let data: Data
-        let play: Bool
-        var fullSize = false
-        @State private var decoded: GIFPreview?
-        @State private var failure: String?
-        @State private var start = Date()
-        var body: some View {
-            Group {
-                if let decoded {
-                    TimelineView(.animation(paused: !play)) { context in
-                        let elapsed = max(0, context.date.timeIntervalSince(start))
-                        let finished = decoded.cycles.map { elapsed >= decoded.duration * Double($0) } ?? false
-                        let index = !play ? 0 : finished ? decoded.frames.count - 1 : decoded.frameIndex(at: elapsed)
-                        Image(uiImage: decoded.frames[index]).interpolation(.none).resizable().scaledToFit()
-                    }
-                } else if let failure { Text(failure).font(.caption).foregroundStyle(.orange) }
-                else { ProgressView() }
-            }.background(.black)
-            .task {
-                do {
-                    let worker = Task.detached {
-                        if fullSize { return try GIFPreviewDecoder.phoneDisplay(data) }
-                        return try GIFPreviewDecoder.thumbnail(data)
-                    }
-                    let result = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
-                    try Task.checkCancellation(); decoded = result; start = Date()
-                } catch { if !Task.isCancelled { failure = error.localizedDescription } }
-            }
-            .onDisappear { decoded = nil }
+@MainActor
+private struct ReceivedSwapPixels: View {
+    let data: Data
+    let play: Bool
+    var fullSize = false
+    @State private var decoded: GIFPreview?
+    @State private var failure: String?
+    @State private var start = Date()
+    var body: some View {
+        Group {
+            if let decoded {
+                TimelineView(.animation(paused: !play)) { context in
+                    let elapsed = max(0, context.date.timeIntervalSince(start))
+                    let finished = decoded.cycles.map { elapsed >= decoded.duration * Double($0) } ?? false
+                    let index = !play ? 0 : finished ? decoded.frames.count - 1 : decoded.frameIndex(at: elapsed)
+                    Image(uiImage: decoded.frames[index]).interpolation(.none).resizable().scaledToFit()
+                }
+            } else if let failure { Text(failure).font(.caption).foregroundStyle(.orange) }
+            else { ProgressView() }
+        }.background(.black)
+        .task {
+            do {
+                let worker = Task.detached {
+                    if fullSize { return try GIFPreviewDecoder.phoneDisplay(data) }
+                    return try GIFPreviewDecoder.thumbnail(data)
+                }
+                let result = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                try Task.checkCancellation(); decoded = result; start = Date()
+            } catch { if !Task.isCancelled { failure = error.localizedDescription } }
         }
+        .onDisappear { decoded = nil }
     }
 }

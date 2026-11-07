@@ -55,22 +55,6 @@ final class AutomaticPhoneSession: ObservableObject {
         }
     }
 
-    @MainActor
-    struct ScopedPhoneCanvasControls: View {
-        @ObservedObject var session: AutomaticPhoneSession
-        let stop: @MainActor () -> Void
-        let restore: @MainActor () async -> Void
-        var body: some View {
-            if session.running || session.busy || session.hasRecovery {
-                VStack {
-                    Text(session.status).font(.caption)
-                    if let error = session.failure { Text(error).font(.caption).foregroundStyle(.orange) }
-                    Button("Stop automatic PHONE / retain recovery", role: .destructive, action: stop)
-                    Button("Restore initial PHONE original") { Task { await restore() } }
-                }
-            }
-        }
-    }
     func check() throws {
         try Task.checkCancellation()
         guard running, let phone, let targets, let scope, currentScope?() == scope,
@@ -131,5 +115,22 @@ final class AutomaticPhoneSession: ObservableObject {
                 originalSHA256: retained.originalSHA256, ownerScope: scope)
             status = "Initial PHONE original restored and acknowledged; durable copy retained"; failure = nil
         } catch { failure = error.localizedDescription }
+    }
+}
+
+@MainActor
+struct ScopedPhoneCanvasControls: View {
+    @ObservedObject var session: AutomaticPhoneSession
+    let stop: @MainActor () -> Void
+    let restore: @MainActor () async -> Void
+    var body: some View {
+        if session.running || session.busy || session.hasRecovery {
+            VStack {
+                Text(session.status).font(.caption)
+                if let error = session.failure { Text(error).font(.caption).foregroundStyle(.orange) }
+                Button("Stop automatic PHONE / retain recovery", role: .destructive, action: stop)
+                Button("Restore initial PHONE original") { Task { await restore() } }
+            }
+        }
     }
 }
