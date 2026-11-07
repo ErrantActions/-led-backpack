@@ -9,6 +9,7 @@
 !/.github/workflows/ios.yml
 !/.github/workflows/testflight.yml
 !/.github/workflows/native-compile.yml
+!/.github/workflows/native-recovery.yml
 /ios/Tools/
 *.xapk
 *.apk
