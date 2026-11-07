@@ -138,6 +138,14 @@ claim is made from that green step. Workflow now uses documented
 `TEST_RUNNER_` forwarding; real1method/0skip execution must verify it.
 The later safe-assertion51cea87 checkpoint remains under actual validation.
 
+That safe-assertion run completed with unit889/0failures/2skips but a UI reveal
+failure: the control overscrolled to y=-17 outside the actual viewport. The
+helper now uses bounded slow drags proportional to measured control/viewport
+distance instead of large reversing swipes; centered-but-not-ready controls use
+a bounded expectation. Whole-control containment and hittability are still
+required, with geometry preserved in failures. No production UI/control removed.
+The forwarded-public8a22fa7 checkpoint remains active; live proof is pending.
+
 Next integration source prepared:1 `NativePublicIntegrationTests` method uses
 the actual native HTTP/config/catalog/current-access/manifest/hash adapter
 against the approved live HTTPS origin, with a guest-only vault that forbids

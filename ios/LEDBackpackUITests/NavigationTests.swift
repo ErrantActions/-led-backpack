@@ -176,11 +176,27 @@ final class NavigationTests: XCTestCase {
         if tabs.exists && tabs.frame.intersects(visible) {
             visible.size.height = max(0, tabs.frame.minY - visible.minY)
         }
-        for _ in 0..<5 {
+        for _ in 0..<8 {
             if element.exists {
                 if element.isHittable && visible.contains(element.frame) { return }
-                if element.frame.minY < visible.minY { container.swipeDown() }
-                else { container.swipeUp() }
+                let distance = min(visible.height * 0.45,
+                    max(-visible.height * 0.45, visible.midY - element.frame.midY))
+                if abs(distance) < 1 {
+                    let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                        element.isHittable && visible.contains(element.frame)
+                    }, object: nil)
+                    if XCTWaiter.wait(for: [ready], timeout: 1) == .completed { return }
+                    continue
+                }
+                let startY = distance > 0 ? visible.minY + visible.height * 0.25 :
+                    visible.minY + visible.height * 0.75
+                let origin = app.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: visible.midX - app.frame.minX,
+                    dy: startY - app.frame.minY))
+                let end = origin.withOffset(CGVector(dx: visible.midX - app.frame.minX,
+                    dy: startY + distance - app.frame.minY))
+                start.press(forDuration: 0.1, thenDragTo: end,
+                    withVelocity: .slow, thenHoldForDuration: 0.2)
             } else {
                 container.swipeUp()
             }

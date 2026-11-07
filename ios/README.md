@@ -87,6 +87,10 @@ public opt-in method. The dedicated public step incorrectly skipped too because
 plain shell environment was not forwarded into XCTest. `TEST_RUNNER_` forwarding
 is now wired; no live-native integration pass is claimed until1method/0skip
 actually executes. Physical/signing/provider and broader acceptance remain gated.
+The safe-assertion follow-up passed unit889/0failures but exposed intermittent
+UI overscroll (control above the viewport). Bounded slow geometry-based drags
+now replace reversing full swipes; containment/hittability assertions remain.
+Actual repeat UI/live verification is still pending.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 
