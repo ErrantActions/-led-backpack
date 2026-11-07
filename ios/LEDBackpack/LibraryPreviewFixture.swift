@@ -20,6 +20,26 @@ private actor LibraryPreviewTransport: CommunityTransport {
             "token":"ui-preview-only-not-a-real-session","expiresAt":"2099-01-01T00:00:00.000Z"}
             """.utf8))
         }
+        if request.httpMethod == "GET" {
+            let ids = ["cccccccc-1234-4567-89ab-abcdefabcdef", "dddddddd-1234-4567-89ab-abcdefabcdef"]
+            let gif = Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
+            let items: [[String: Any]] = ids.enumerated().map { index, id in
+                ["id":id,"title":"Public fixture \(index + 1)","category":"pixel-art","tags":[],
+                 "displayAttribution":"Generated test artwork","license":"original","pageUrl":"https://catalog.example/items/\(id)",
+                 "gifUrl":"https://catalog.example/media/\(id)/original.gif","previewUrl":"https://catalog.example/media/\(id)/preview.png",
+                 "width":1,"height":1,"frameCount":1,"byteSize":gif.count,"variants":[],
+                 "uploader":["id":LibraryPreviewFixture.owner,"displayName":"Fixture author"],"likeCount":0]
+            }
+            if path == "/api/v1/items" {
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: ["items":items,"page":1,"limit":24,"total":2]))
+            }
+            if let index = ids.firstIndex(where: { path == "/api/v1/items/\($0)" }) {
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: ["item":items[index]]))
+            }
+            if ids.contains(where: { path == "/media/\($0)/original.gif" || path == "/media/\($0)/preview.png" }) {
+                return .init(status: 200, data: gif)
+            }
+        }
         guard request.value(forHTTPHeaderField: "Authorization") == "Bearer ui-preview-only-not-a-real-session" else {
             throw BackpackError.invalid("This UI preview only accepts its generated test account, never real credentials.")
         }

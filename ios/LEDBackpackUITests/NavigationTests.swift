@@ -134,6 +134,42 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Duo Library - portrait orientation request")
     }
 
+    func testCommunityGridSelectsMultipleFavoritesAndQueuesWithoutDetailOrRadio() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Discover GIFs"].waitForExistence(timeout: 20))
+        app.buttons["Discover GIFs"].tap()
+        XCTAssertTrue(app.navigationBars["Community"].waitForExistence(timeout: 10))
+        let first = app.buttons["community-gif-cccccccc-1234-4567-89ab-abcdefabcdef"]
+        let second = app.buttons["community-gif-dddddddd-1234-4567-89ab-abcdefabcdef"]
+        reveal(first, in: app); XCTAssertTrue(first.waitForExistence(timeout: 10)); first.tap()
+        XCTAssertFalse(app.navigationBars["Community GIF"].exists)
+        reveal(second, in: app); second.tap()
+        XCTAssertTrue(app.staticTexts["2 selected"].exists)
+        XCTAssertFalse(app.staticTexts["Public fixture 1"].exists)
+        XCTAssertFalse(app.staticTexts["Fixture author"].exists)
+        app.buttons["community-favorite-selection"].tap()
+        let saved = app.staticTexts["2 GIFs added to your local Favorites. Credits retained; no public likes/cloud upload."]
+        XCTAssertTrue(saved.waitForExistence(timeout: 20))
+        reveal(app.buttons["My Favorites"], in: app); app.buttons["My Favorites"].tap()
+        XCTAssertTrue(app.navigationBars["Favorites"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(identifier: "Select favorite GIF").count, 2)
+        XCTAssertFalse(app.staticTexts["Public fixture 1"].exists)
+        attach(app, name: "Community selection and image-only Favorites")
+        app.navigationBars["Favorites"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Community"].waitForExistence(timeout: 5))
+        reveal(first, in: app); first.tap(); reveal(second, in: app); second.tap()
+        app.buttons["community-send-selection"].tap()
+        XCTAssertTrue(app.buttons["Open Send queue / review LED slots"].waitForExistence(timeout: 20))
+        app.buttons["Open Send queue / review LED slots"].tap()
+        XCTAssertTrue(app.navigationBars["Send queue"].waitForExistence(timeout: 5))
+        reveal(app.buttons["Review and send 2 GIFs"], in: app)
+        XCTAssertTrue(app.buttons["Review and send 2 GIFs"].exists)
+        XCTAssertFalse(app.buttons["Review and send 2 GIFs"].isEnabled)
+        attach(app, name: "Community selection queue - disconnected hardware controls unavailable")
+    }
+
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })

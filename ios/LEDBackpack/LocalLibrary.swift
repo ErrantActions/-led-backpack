@@ -191,7 +191,7 @@ final class LocalLibrary: ObservableObject {
 
     @discardableResult
     func saveCatalogGIF(_ data: Data, item: CommunityItem, origin: CommunityOrigin, accountID: UUID?,
-        assetURL: URL) throws -> SavedMedia {
+        assetURL: URL, favorite: Bool = false, queued: Bool = false) throws -> SavedMedia {
         guard origin.contains(assetURL), assetURL.path.hasPrefix("/media/") else {
             throw BackpackError.invalid("The GIF source does not belong to this catalog.")
         }
@@ -199,10 +199,20 @@ final class LocalLibrary: ObservableObject {
             itemID: item.id, assetURL: assetURL.absoluteString)
         if let existing = state.media.first(where: { $0.cloudSource == source }) {
             _ = try self.data(existing)
-            return existing
+            guard favorite || queued else { return existing }
+            var value = state
+            guard let index = value.media.firstIndex(where: { $0.id == existing.id }) else { throw BackpackError.invalid("The selected library copy changed.") }
+            if favorite { value.media[index].favorite = true }
+            if queued {
+                value.transferQueue = (value.transferQueue ?? []) + [QueuedMedia(mediaID: existing.id)]
+                try validateQueue(value.transferQueue ?? [], media: value.media)
+            }
+            try commit(value)
+            return value.media[index]
         }
         let category = CommunityCategory(rawValue: item.category)?.label ?? item.category
-        return try store(name: item.title, data: data, attribution: item.credit, category: category, cloudSource: source)
+        return try store(name: item.title, data: data, attribution: item.credit, category: category, cloudSource: source,
+            favorite: favorite, queued: queued)
     }
 
     func connectCloudCopy(mediaID: UUID, itemID: UUID, origin: CommunityOrigin, accountID: UUID) throws {
@@ -218,7 +228,7 @@ final class LocalLibrary: ObservableObject {
     }
 
     private func store(name: String, data: Data, attribution: Attribution?, category: String?,
-        cloudSource: MediaCloudSource?) throws -> SavedMedia {
+        cloudSource: MediaCloudSource?, favorite: Bool = false, queued: Bool = false) throws -> SavedMedia {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               state.media.count < 100, data.count <= 5_000_000 else {
             throw BackpackError.invalid("Provide a name; the library allows 100 items up to 5 MB each.")
@@ -231,9 +241,12 @@ final class LocalLibrary: ObservableObject {
         var item = SavedMedia(name: String(name.prefix(100)), attribution: attribution)
         item.category = normalized
         item.cloudSource = cloudSource
+        item.favorite = favorite
+        var value = state; value.media.insert(item, at: 0)
+        if queued { value.transferQueue = (value.transferQueue ?? []) + [QueuedMedia(mediaID: item.id)] }
+        try validateQueue(value.transferQueue ?? [], media: value.media)
         let url = folder.appendingPathComponent(item.filename)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        var value = state; value.media.insert(item, at: 0)
         do { try commit(value) }
         catch {
             do { try FileManager.default.removeItem(at: url) }

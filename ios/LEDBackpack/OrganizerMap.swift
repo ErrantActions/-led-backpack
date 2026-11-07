@@ -207,10 +207,15 @@ struct OrganizerPlaceSearchView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             TextField("Search a fixed place or address", text: $query).submitLabel(.search).onSubmit { search.search(query) }
+                .autocorrectionDisabled()
             Button("Search Apple Maps") { search.search(query) }.disabled(search.busy)
             if search.busy { ProgressView() }
             if let failure = search.failure { Text(failure).font(.caption).foregroundStyle(.orange) }
-            ForEach(search.places) { place in Button(place.name) { choose(place); search.cancel() } }
+            ForEach(search.places) { place in
+                Button { choose(place); search.cancel() } label: {
+                    Label(place.name, systemImage: "mappin.and.ellipse").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
+                }
+            }
         }.onDisappear { search.cancel() }
     }
 }
@@ -265,7 +270,7 @@ struct FixedVenueMapEditor: View {
                     value: Binding(get: { venue?.radiusMeters ?? 100 }, set: { venue?.radiusMeters = $0 }), in: 1...100000, step: 5)
             }
             if enabled {
-                Text("Numeric fixed venue — no imagery/search permission required").font(.caption)
+                DisclosureGroup("Numeric venue alternative — no map/search required") {
                 TextField("Typed venue name", text: $numericLabel)
                 TextField("Decimal latitude (−90…90)", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
                 TextField("Decimal longitude (−180…180)", text: $numericLongitude).keyboardType(.numbersAndPunctuation)
@@ -282,6 +287,7 @@ struct FixedVenueMapEditor: View {
                         let value = CatalogEventLocation(label: numericLabel, latitude: point.latitude, longitude: point.longitude, radiusMeters: radius)
                         try value.validate(); venue = value; fit = UUID(); failure = nil
                     } catch { failure = error.localizedDescription }
+                }
                 }
             }
             if let failure { Text(failure).font(.caption).foregroundStyle(.orange) }

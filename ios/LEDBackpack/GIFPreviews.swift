@@ -173,21 +173,22 @@ struct GIFThumbnail: View {
     @Environment(\.scenePhase) private var scenePhase
     let key: String
     let cache: Bool
+    let animationAllowed: Bool
     let load: @MainActor () async throws -> Data
     @State private var preview: GIFPreview?
     @State private var failure: String?
     @State private var visible = false
-    init(key: String, cache: Bool = true, load: @escaping @MainActor () async throws -> Data) {
-        self.key = key; self.cache = cache; self.load = load
+    init(key: String, cache: Bool = true, animationAllowed: Bool = true, load: @escaping @MainActor () async throws -> Data) {
+        self.key = key; self.cache = cache; self.animationAllowed = animationAllowed; self.load = load
     }
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Color.black
             if let preview {
                 TimelineView(.animation(minimumInterval: 0.02,
-                    paused: !visible || scenePhase != .active || preview.duration == 0)) { context in
+                    paused: !animationAllowed || !visible || scenePhase != .active || preview.duration == 0)) { context in
                     GIFPreviewImage(preview: preview,
-                        index: preview.frameIndex(at: context.date.timeIntervalSinceReferenceDate))
+                        index: animationAllowed ? preview.frameIndex(at: context.date.timeIntervalSinceReferenceDate) : 0)
                 }.accessibilityHidden(true)
             } else if let failure {
                 VStack(spacing: 5) {
@@ -205,7 +206,9 @@ struct GIFThumbnail: View {
             do {
                 let bytes = try await load()
                 try Task.checkCancellation()
-                let image = try GIFPreviewDecoder.thumbnail(bytes)
+                let worker = Task.detached { try GIFPreviewDecoder.thumbnail(bytes) }
+                let image = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                try Task.checkCancellation()
                 if cache { GIFPreviewCache.images.setObject(image, forKey: key as NSString, cost: image.cost) }
                 preview = image
             } catch {

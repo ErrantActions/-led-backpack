@@ -11,7 +11,10 @@ enum CommunityCategory: String, CaseIterable, Identifiable {
 struct CommunityGallery: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var panel: PanelController
+    @EnvironmentObject private var library: LocalLibrary
+    @Environment(\.scenePhase) private var phase
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reducedMotion
     let choose: (Data, Attribution, String?, String) -> Void
     @State private var query = ""
     @State private var appliedQuery = ""
@@ -22,7 +25,8 @@ struct CommunityGallery: View {
     @State private var total = 0
     @State private var loading = false
     @State private var failure: String?
-    @State private var selected: CommunityItem?
+    @StateObject private var selection = CommunitySelectionStore()
+    @State private var showingQueue = false
     @State private var moreTask: Task<Void, Never>?
     @State private var sizes = NativeMatrixFilter()
     private struct Filter: Equatable {
@@ -82,13 +86,17 @@ struct CommunityGallery: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search GIFs")
             .onSubmit(of: .search) { appliedQuery = query; reload = UUID() }
             .toolbar { Button("Done") { dismiss() } }
-            .task(id: filter) { moreTask?.cancel(); selected = nil; await load(reset: true) }
-            .onDisappear { moreTask?.cancel() }
-            .sheet(item: $selected) { item in
-                CommunityDetail(item: item, choose: choose) { id in
-                    items.removeAll { $0.uploader.id == id }
-                }
+            .task(id: filter) { moreTask?.cancel(); selection.invalidate(); await load(reset: true) }
+            .onDisappear { moreTask?.cancel(); selection.cancel() }
+            .onChange(of: phase) { _, state in if state != .active { selection.cancel() } }
+            .safeAreaInset(edge: .bottom) {
+                CommunitySelectionControls(store: selection, favorite: {
+                    selection.apply(.favorite, items: items, community: community, library: library)
+                }, send: {
+                    selection.apply(.send, items: items, community: community, library: library)
+                }, openQueue: { showingQueue = true })
             }
+            .navigationDestination(isPresented: $showingQueue) { BatchTransferView() }
         }
     }
     private var controls: some View {
@@ -109,6 +117,8 @@ struct CommunityGallery: View {
             }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
             Text("No account needed to preview or keep a local copy.").font(.caption).foregroundStyle(.secondary)
+            NavigationLink { CommunityFavoritesView() } label: { Label("My Favorites", systemImage: "heart.fill") }
+            Text("Tap GIFs to select (up to20), then Favorite or Send to LED. No item page opens.").font(.caption)
             if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
             else { Text("Exact multi-matrix filters are unavailable on this server.").font(.caption) }
         }
@@ -116,16 +126,25 @@ struct CommunityGallery: View {
     private var results: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 14)], spacing: 14) {
             ForEach(items) { item in
-                Button { selected = item } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        GIFThumbnail(key: item.previewUrl.absoluteString, cache: false) {
-                            try await community.download(item.previewUrl)
-                        }.frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 12))
-                        Text(item.title).font(.subheadline.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
-                        Text("native:\(item.width)x\(item.height) / \(item.frameCount) frames")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }.padding(10).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 16))
+                let animated = community.user?.mediaPreferences?.permitsAnimation(reducedMotion: reducedMotion, manual: false) ?? !reducedMotion
+                let url = animated ? item.gifUrl : item.previewUrl
+                let selected = selection.selection.ids.contains(item.id)
+                Button { selection.toggle(item.id) } label: {
+                    GIFThumbnail(key: url.absoluteString, cache: false, animationAllowed: animated) {
+                        try await community.download(url)
+                    }.aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(alignment: .topTrailing) {
+                            if selected {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.white, .cyan)
+                                    .font(.title2).padding(8).accessibilityHidden(true)
+                            }
+                        }
+                        .overlay { RoundedRectangle(cornerRadius: 12).stroke(selected ? Color.cyan : .clear, lineWidth: 3) }
                 }.buttonStyle(.plain)
+                    .accessibilityLabel("Select community GIF")
+                    .accessibilityIdentifier("community-gif-\(item.id.uuidString.lowercased())")
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .disabled(selection.busy)
             }
         }
     }

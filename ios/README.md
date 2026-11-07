@@ -3,6 +3,58 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+Community browsing now shows an image-only GIF grid: no visible titles,
+uploader names or dimension/frame captions on tiles. Credits remain in the
+saved attribution instead of opening a detail page on tap. Reduce Motion and saved motion/
+data-saving settings use still previews instead of automatically loading GIFs.
+Thumbnail decoding runs off-main. This follow-up is source-only and not part
+of uploaded TestFlight build8; native validation/release remains pending.
+
+### Community selection and guided event creation follow-up
+
+Community tile taps now select/deselect up to20 GIFs in explicit tap order,
+without opening a per-GIF page. Favorite reuses current authorized original/
+manifest downloads and saves credited copies in the local Favorites list;
+Send to LED saves originals and queues them, then offers the existing explicit
+panel/slot/overwrite/compatibility confirmation screen. No slot is written by
+the gallery, no account/public like/cloud publication is required, and originals
+are not rewritten to hardware size. Partial cancellation/failure states state
+exactly how many copies were completed; remaining selections are not replayed.
+Selection is invalidated on filter/account/policy changes. Batches are bounded
+to20 selections/50MB with60queue and100local-library limits. Favorite and queue
+metadata are atomically committed together for each accepted library copy.
+The image-only My Favorites screen permits multi-select queueing/removal of
+favorite flags without deleting originals or credits.
+
+Events now have a prominent Create event action and four guided steps:
+Basics → Time → Venue → Review. Explicit times, valid timezone, venue review,
+current permissions/revisions and exact pre-save confirmation are preserved.
+New events suggest the device timezone, but displayed suggested start/end times
+still need deliberate approval. Venue map/search has selectable pin-labelled
+results and a collapsed numeric alternative. Editing coordinates/radius/name
+invalidates venue approval. After creation, the next-step screen links directly
+to the existing map/numeric planner for start/finish gates, intermediate game/
+ride checkpoints and route guides, and to the event's participant/invite tools.
+No new gate wire type, GPS route tracker, automatic RSVP/grant or stale retry.
+
+**16 new regression methods prepared, not yet executed:**10
+`CommunitySelectionTests`,5 `EventCreationStepsTests`,1 new native UI
+`NavigationTests` method. The DEBUG-only public fixture is generated locally,
+with no server/provider/radio operation; it checks image-only multi-select,
+Favorites and disconnected Send queue. The real native recovery workflow is
+queued for compilation/focused/full/UI/public-adapter validation of this exact
+source; this follow-up is NOT part of uploaded build8 until a new release.
+
+Exact files: `LEDBackpack/CommunityGallery.swift`, `GIFPreviews.swift`,
+`LocalLibrary.swift`, new `CommunitySelection.swift`,
+`CommunitySelectionControls.swift`, `CommunityFavoritesView.swift`,
+`CommunityEventViews.swift`, `OrganizerMap.swift`, `EventRoutePlannerView.swift`,
+new `EventCreationSteps.swift`, `LibraryPreviewFixture.swift`;
+new `LEDBackpackTests/CommunitySelectionTests.swift`, `EventCreationStepsTests.swift`,
+`LEDBackpackUITests/NavigationTests.swift`, `README.md`, `TODO.md`,
+`../.github/workflows/native-recovery.yml`. Independent dirty firmware/GIF/
+reserved55–59/full20-key source remains excluded from publication/validation.
+
 ## Verified native checkpoint - 2026-11-07
 
 Source `30ee227`, branch `native-recovery`:

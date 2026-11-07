@@ -28,6 +28,8 @@ struct CommunityEventsView: View {
     @State private var events: [TimedCatalogEvent] = []
     @State private var offset = 0
     @State private var creating = false
+    @State private var createdEvent: CatalogEvent?
+    @State private var showCreated = false
     var body: some View {
         List {
             if community.signedIn {
@@ -39,6 +41,11 @@ struct CommunityEventsView: View {
             }
             if community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
                 session.client?.accountID == community.user?.id {
+                Section {
+                    Button { createdEvent = nil; showCreated = false; creating = true } label: { Label("Create event", systemImage: "plus.circle.fill").font(.headline) }
+                        .disabled(session.busy)
+                    Text("Basics → Time → Venue → Review. Add gates and route/checkpoints after the event is saved.").font(.caption)
+                }
                 Picker("Events", selection: $list) { ForEach(CatalogEventList.allCases) { Text($0.rawValue).tag($0) } }
                     .disabled(session.busy)
                 if session.busy { ProgressView() }
@@ -61,14 +68,13 @@ struct CommunityEventsView: View {
                     Button("Next") { offset += 50; load() }.disabled(events.count < 50 || offset >= 100000 || session.busy)
                 }
                 Button("Refresh events", action: load).disabled(session.busy)
-                Button("Create event") { creating = true }.disabled(session.busy)
                 Text("Private event links do not grant an invitation. Venues are fixed organizer coordinates, not participant GPS.")
                     .font(.caption).foregroundStyle(.secondary)
             } else { Text(session.failure ?? "Events are not enabled by this server.") }
         }
         .modernScene().navigationTitle("Events")
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.eventsEnabled == true)") {
-            events = []; offset = 0; session.bind(community)
+            createdEvent = nil; showCreated = false; events = []; offset = 0; session.bind(community)
             if community.config?.eventsEnabled == true { load() }
         }
         .onChange(of: list) { _, _ in offset = 0; load() }
@@ -93,7 +99,12 @@ struct CommunityEventsView: View {
         }
         .onChange(of: session.denied) { _, value in if value { events = []; creating = false } }
         .onDisappear { if !creating { session.clear(); events = [] } }
-        .sheet(isPresented: $creating, onDismiss: load) { CommunityEventEditor(original: nil) { creating = false } }
+        .sheet(isPresented: $creating, onDismiss: { load(); showCreated = createdEvent != nil }) {
+            CommunityEventEditor(original: nil, created: { createdEvent = $0 }, saved: { creating = false })
+        }
+        .navigationDestination(isPresented: $showCreated) {
+            if let createdEvent { EventCreationNextSteps(event: createdEvent) }
+        }
     }
     private func load() {
         events = []
@@ -453,6 +464,8 @@ struct CommunityEventEditor: View {
     @StateObject private var session = CommunityFeatureSession()
     let original: CatalogEvent?
     let saved: () -> Void
+    var created: ((CatalogEvent) -> Void)? = nil
+    @State private var step = EventCreationStep.basics
     @State private var loaded = false
     @State private var title = ""
     @State private var description = ""
@@ -473,11 +486,24 @@ struct CommunityEventEditor: View {
     @State private var editingAuthorized = false
     @State private var initialRevision: UUID?
     @State private var initialAccount: UUID?
+    init(original: CatalogEvent?, created: ((CatalogEvent) -> Void)? = nil, saved: @escaping () -> Void) {
+        self.original = original; self.created = created; self.saved = saved
+    }
     var body: some View {
         NavigationStack {
             Form {
                 if community.config?.eventsEnabled == true && !session.denied &&
                     session.client?.accountID == community.user?.id {
+                    Section {
+                        Text("Step \(step.rawValue + 1) of4: \(step.title)").font(.headline)
+                        HStack {
+                            ForEach(EventCreationStep.allCases) { value in
+                                Text(value.title).font(.caption).foregroundStyle(step == value ? .primary : .secondary)
+                                if value != .review { Image(systemName: "chevron.right").font(.caption2) }
+                            }
+                        }
+                    }
+                    if step == .basics {
                     TextField("Event title", text: $title)
                     TextField("Description", text: $description, axis: .vertical)
                     if community.config?.eventTemplatesEnabled == true {
@@ -498,6 +524,8 @@ struct CommunityEventEditor: View {
                     }
                     if visibility != "private" { Text("Public and unlisted links expose the venue; unlisted is not confidential.").font(.caption) }
                     Stepper("Capacity \(capacity)", value: $capacity, in: 1...10000)
+                    }
+                    if step == .time {
                     Picker("Event timezone", selection: $zone) {
                         ForEach(Array(Set(TimeZone.knownTimeZoneIdentifiers + ["UTC"])).sorted(), id: \.self) { Text($0).tag($0) }
                     }
@@ -510,12 +538,27 @@ struct CommunityEventEditor: View {
                         Button("Explicitly choose displayed end time") { endEdited = true }
                         Text("New schedules require deliberate start/end selection; displayed suggestions are never silently saved.").font(.caption)
                     }
+                    }
                     if let acknowledgement { Text(acknowledgement).foregroundStyle(.orange) }
+                    if step == .venue {
                     Section("Fixed organizer-authored venue") {
                         FixedVenueMapEditor(venue: $venue, enabled: community.config?.eventsEnabled == true && editingAuthorized && !requiresReload)
                         Toggle("I reviewed these fixed venue coordinates", isOn: $venueConfirmed)
                         Text("No device GPS or participant coordinates are requested. Changes may require going participants to review again.")
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                    }
+                    if step == .review {
+                        Section("Review before creation") {
+                            LabeledContent("Title", value: title)
+                            LabeledContent("Type", value: kind == "group-ride" ? "Group ride" : "Meetup")
+                            LabeledContent("Visibility", value: visibility)
+                            LabeledContent("Capacity", value: String(capacity))
+                            LabeledContent("Timezone", value: zone)
+                            Text("Start: \(CatalogEventTime.wire(start))\nEnd: \(CatalogEventTime.wire(end))").font(.caption)
+                            if let venue { Text("Venue: \(venue.label)\n\(venue.latitude), \(venue.longitude) · \(venue.radiusMeters)m").font(.caption) }
+                            Text("Next, add start/finish gates, route guides and ride/game checkpoints using the existing planner. Creating this event does not automatically RSVP, enable sensors, invite friends or publish progress.").font(.caption)
+                        }
                     }
                     if let failure = session.failure {
                         Text(failure).foregroundStyle(.orange)
@@ -523,6 +566,19 @@ struct CommunityEventEditor: View {
                             .font(.caption)
                     }
                     if session.busy { ProgressView() }
+                    Section {
+                        HStack {
+                            Button("Back") { review = nil; step = EventCreationStep(rawValue: step.rawValue - 1) ?? .basics }
+                                .disabled(step == .basics || session.busy)
+                            Spacer()
+                            if step != .review {
+                                Button("Next: \(EventCreationStep(rawValue: step.rawValue + 1)?.title ?? "")") {
+                                    review = nil; step = EventCreationStep(rawValue: step.rawValue + 1) ?? .review
+                                }.disabled(!canAdvance || session.busy || !editingAuthorized || requiresReload)
+                            }
+                        }
+                    }
+                    if step == .review {
                     Button(original == nil ? "Review new event" : "Review event update") {
                         do {
                             guard let input = definitionInput, let client = session.client else { throw BackpackError.invalid("Choose explicit times, venue and current access first.") }
@@ -530,6 +586,7 @@ struct CommunityEventEditor: View {
                         } catch { session.run { _ in throw error } }
                     }.disabled(session.busy || !editingAuthorized || requiresReload || !venueConfirmed || venue == nil ||
                         (original == nil && (!startEdited || !endEdited)) || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
                 } else { Text(session.failure ?? "Events are unavailable.") }
             }
             .modernScene().navigationTitle(original == nil ? "Create event" : "Edit event")
@@ -538,6 +595,7 @@ struct CommunityEventEditor: View {
             .task {
                 guard !loaded else { return }
                 loaded = true; initialRevision = community.accountRevision; initialAccount = community.user?.id; session.bind(community)
+                if original == nil { zone = TimeZone.current.identifier }
                 if let original {
                     title = original.title; description = original.description; zone = original.timezone
                     visibility = original.visibility; capacity = original.capacity; venue = original.location; kind = original.kind ?? "meetup"
@@ -562,6 +620,10 @@ struct CommunityEventEditor: View {
             .onChange(of: community.user?.id) { _, value in if initialAccount != value { session.clear(); dismiss() } }
             .onChange(of: inputFingerprint) { _, _ in review = nil }
             .onChange(of: venueConfirmed) { _, _ in review = nil }
+            .onChange(of: venue?.latitude) { _, _ in venueConfirmed = false }
+            .onChange(of: venue?.longitude) { _, _ in venueConfirmed = false }
+            .onChange(of: venue?.radiusMeters) { _, _ in venueConfirmed = false }
+            .onChange(of: venue?.label) { _, _ in venueConfirmed = false }
             .onChange(of: community.config?.eventsEnabled) { _, enabled in if enabled != true { review = nil; venue = nil; session.clear(); dismiss() } }
             .onChange(of: community.config?.unlistedEventsEnabled) { _, _ in review = nil; unlistedConsent = false }
             .onChange(of: session.denied) { _, denied in if denied { review = nil; venue = nil; dismiss() } }
@@ -590,11 +652,11 @@ struct CommunityEventEditor: View {
                     guard captured.matches(definitionInput), venueConfirmed else { review = nil; return }
                     session.run(expected: captured.scope) { client in
                         do {
-                            _ = try await client.saveEvent(captured.input, original: original)
+                            let stored = try await client.saveEvent(captured.input, original: original)
                             try session.checked(client)
                             let unchanged = captured.matches(definitionInput)
                             review = nil
-                            if unchanged { dismiss(); saved() }
+                            if unchanged { if original == nil { created?(stored) }; dismiss(); saved() }
                             else {
                                 requiresReload = true
                                 acknowledgement = "Captured save acknowledged. New edits remain local and were NOT saved or overwritten. Close, explicitly reload the event and review before another save."
@@ -618,6 +680,10 @@ struct CommunityEventEditor: View {
             timezone: zone, visibility: visibility, capacity: capacity, location: venue, expectedRevision: original?.revision,
             kind: community.config?.eventTemplatesEnabled == true ? kind : nil,
             unlistedLinkConsent: visibility == "unlisted" && original?.visibility != "unlisted" && unlistedConsent ? true : nil)
+    }
+    private var canAdvance: Bool {
+        step.canAdvance(title: title, startChosen: original != nil || startEdited, endChosen: original != nil || endEdited,
+            start: start, end: end, zone: zone, venue: venue, venueConfirmed: venueConfirmed)
     }
     private var inputFingerprint: Data? {
         guard let input = definitionInput else { return nil }

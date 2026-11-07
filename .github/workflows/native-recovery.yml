@@ -70,6 +70,7 @@ jobs:
           set -euo pipefail
           TESTS=()
           for CLASS in CommunityTests AccountNativeParityTests CatalogManifestTests \
+            CommunitySelectionTests EventCreationStepsTests CloudLibraryTests \
             AdminArtworkTests AutomaticPhoneSessionTests ScopedPhonePreviewTests \
             SoloSourceTests LocalPairingTests FriendArtworkSelectionTests FriendPlaybackTests \
             LocationManagerInitializationTests LocalPixelDocumentTests LocalPixelCodecTests \

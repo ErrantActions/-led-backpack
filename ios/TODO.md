@@ -4,6 +4,35 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Owner UX follow-up: community selection / event wizard - source PURPLE
+
+- [x] Image-only community GIF grid; taps select/deselect multiple items, not
+  detail pages. Explicit tap order,20selection/50MB per batch, current original/
+  manifest/size/decode/account/policy checks before local save. Credits preserved.
+- [x] Favorite saves local offline credited copies and flags them; image-only
+  My Favorites permits selection/removing favorite flags/queueing. No automatic
+  public like/publication/cloud upload or source rewrite. Send to LED queues
+  originals then exposes existing explicit connected-panel/slot/overwrite/
+  compatibility confirmation, never writes slots from a grid tap.
+- [x] Per-copy atomic favorite/queue state, explicit partial-result errors and
+  cancellation, no replay. Existing local-copy identity reuse preserves prior
+  favorites; queue capacity failure creates no orphan new item/false favorite.
+- [x] Prominent Create event plus Basics/Time/Venue/Review steps; exact
+  permissions/revisions/material-change review and explicit time/venue approval
+  retained. Clear map-search pin choices, collapsed numeric venue fallback,
+  coordinate/radius/name changes invalidate confirmation.
+- [x] Post-create next steps: existing planner for start/finish gates, optional/
+  ordered ride/game checkpoints and route guides; participant/invite tools.
+  No new wire gate type, participant GPS history, auto RSVP/grant or stale retry.
+- [x]16NEW prepared regression methods:10 CommunitySelectionTests,
+  5 EventCreationStepsTests,1 NavigationTests UI regression. Source currently
+  unexecuted; real Xcode recovery workflow compilation/full/UI evidence pending.
+- [ ] Not included in TestFlight build8; updated source needs actual validation
+  then a new signed release. Do not reuse the old30ee227 pass for changed code.
+- Exact changed files recorded in README's matching section. Publish only this
+  bounded UX slice, leaving dirty independent firmware/GIF/full20-key/reserved
+  55–59 changes unstaged and outside validation.
+
 ## TestFlight signed upload checkpoint - 2026-11-07
 
 Owner explicitly authorized internal TestFlight. Release `eead26d` on main

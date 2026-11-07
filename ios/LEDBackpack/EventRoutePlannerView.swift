@@ -3,8 +3,8 @@ import MapKit
 import BackpackProtocol
 
 private enum PlannerTapMode: String, CaseIterable, Identifiable {
-    case select = "Move selected point", start = "Add start", checkpoint = "Add checkpoint"
-    case finish = "Add finish", geometry = "Draw guide point", radius = "Set selected circle edge"
+    case select = "Move selected point", start = "Add start gate", checkpoint = "Add checkpoint"
+    case finish = "Add finish gate", geometry = "Draw route guide point", radius = "Set selected circle edge"
     var id: String { rawValue }
 }
 private enum PlannerArtworkTarget: Identifiable {
