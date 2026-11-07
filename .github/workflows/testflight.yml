@@ -29,14 +29,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PASSED_SHA=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ios.yml/runs?branch=main&status=success&per_page=20" --jq '.workflow_runs | map(select(.event == "push" or .event == "workflow_dispatch")) | .[0].head_sha // empty')
+          set -euo pipefail
+          PASSED_SHA=""
+          for WORKFLOW in native-recovery.yml ios.yml; do
+            while read -r CANDIDATE; do
+              [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]] || continue
+              git fetch --no-tags --depth=1 origin "$CANDIDATE"
+              if git diff --quiet "$CANDIDATE" "$GITHUB_SHA" -- \
+                ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements \
+                .github/workflows/ios.yml .github/workflows/native-recovery.yml; then
+                PASSED_SHA="$CANDIDATE"
+                break
+              fi
+            done < <(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$WORKFLOW/runs?status=success&per_page=20" --jq '.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch") | .head_sha')
+            [[ -z "$PASSED_SHA" ]] || break
+          done
           if [[ ! "$PASSED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::No successful native CI run on main. Run LED Backpack iOS first."
+            echo "::error::No successful native validation matches this exact release source and validation inputs."
             exit 1
           fi
           git fetch --no-tags --depth=1 origin "$PASSED_SHA"
           if ! git diff --quiet "$PASSED_SHA" "$GITHUB_SHA" -- \
-            ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements .github/workflows/ios.yml; then
+            ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements .github/workflows/ios.yml .github/workflows/native-recovery.yml; then
             echo "::error::App source or native validation inputs changed. Wait for LED Backpack iOS to pass before uploading."
             exit 1
           fi

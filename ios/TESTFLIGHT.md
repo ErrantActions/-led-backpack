@@ -7,10 +7,13 @@ generate credentials, or upload anything by itself.
 The workflow is manual, main-branch-only, environment-protected, and requires
 an explicit upload confirmation. It does not submit an App Store release or
 request external beta distribution. First get a passing regular
-**LED Backpack iOS** workflow.
+**LED Backpack iOS** or **Consolidated native recovery validation** workflow
+whose complete app/test/package/project/privacy/entitlement and validation inputs
+match the release commit exactly. A recovery-branch pass is eligible only after
+that exact source is promoted to main; uncommitted firmware research is excluded.
 
  A lightweight Linux gate reuses
-a successful main-branch push/manual CI run only when the app, tests, protocol
+a successful push/manual CI run only when the app, tests, protocol
 package, project, Info.plist and native CI workflow are unchanged. Documentation
 and signing-only changes do not rebuild the simulator app. TestFlight still
 creates the required signed device archive, but never repeats simulator tests.
@@ -166,8 +169,9 @@ afterward; don't send its contents here.
 
 Add the **environment variable** `IOS_NON_EXEMPT_ENCRYPTION` with an explicitly
 reviewed value of `true` or `false`. Review Apple's export-compliance questions:
-the current app uses standard OS HTTPS/BLE/Keychain functionality rather than
-custom cryptography, but the Account Holder must determine the appropriate
+the current app also uses CryptoKit authenticated peer encryption and private
+vault cryptography. Do not rely on the older HTTPS-only description. The
+Account Holder must determine the appropriate
 answer and any required documentation. There is deliberately no silent default.
 The workflow writes that reviewed value into a temporary archive Info.plist,
 not into committed source.
