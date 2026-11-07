@@ -102,49 +102,6 @@ private struct EventGalleryContent: View {
                 } catch { session.run { _ in throw error } }
                 importContext = nil; importDraft = nil
             }
-
-            @MainActor
-            struct EventAuthorizedCoverView: View {
-                @EnvironmentObject private var community: CommunityController
-                @Environment(\.scenePhase) private var phase
-                @StateObject private var session = CommunityFeatureSession()
-                let event: CatalogEvent
-                @State private var bytes: Data?
-                @State private var alt = ""
-                var body: some View {
-                    Group {
-                        if let bytes, let image = UIImage(data: bytes) {
-                            Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220).accessibilityLabel(alt)
-                        }
-                    }
-                    .task(id: "\(event.id):\(event.revision):\(community.accountRevision):\(community.avatarPolicyRevision):\(phase)") {
-                        bytes = nil; alt = ""; session.bind(community)
-                        guard phase == .active, event.moderation?.held != true else { return }
-                        load()
-                        while !Task.isCancelled {
-                            do { try await Task.sleep(for: .seconds(30)) } catch { return }
-                            if !session.busy && !session.denied { load() }
-                        }
-                    }
-                    .onChange(of: session.denied) { _, denied in if denied { bytes = nil; alt = "" } }
-                    .onDisappear { bytes = nil; alt = ""; session.clear() }
-                }
-                private func load() {
-                    bytes = nil; alt = ""
-                    let policy = community.avatarPolicyRevision
-                    session.run { client in
-                        let current = try await client.event(event.id)
-                        guard current.revision == event.revision, current.access.role == event.access.role, current.moderation?.held != true else { return }
-                        let gallery = try await client.eventImages(event.id)
-                        guard let id = gallery.coverAssetId, let asset = gallery.assets.first(where: { $0.id == id }),
-                              current.visibility == "private" || asset.approved else { return }
-                        let data = try await client.eventImage(asset, event: event.id)
-                        try session.checked(client)
-                        guard phase == .active, policy == community.avatarPolicyRevision else { return }
-                        bytes = data; alt = asset.alt
-                    }
-                }
-            }
             .sheet(item: $store.intent) { intent in
                 NavigationStack {
                     Form {
@@ -200,5 +157,48 @@ private struct EventGalleryContent: View {
                 Button("Review exact full order / first-image cover") { store.review(.order(store.order)) }
             }
         }.padding(16).glassPanel().disabled(store.conflict || store.acknowledged)
+    }
+}
+
+@MainActor
+struct EventAuthorizedCoverView: View {
+    @EnvironmentObject private var community: CommunityController
+    @Environment(\.scenePhase) private var phase
+    @StateObject private var session = CommunityFeatureSession()
+    let event: CatalogEvent
+    @State private var bytes: Data?
+    @State private var alt = ""
+    var body: some View {
+        Group {
+            if let bytes, let image = UIImage(data: bytes) {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220).accessibilityLabel(alt)
+            }
+        }
+        .task(id: "\(event.id):\(event.revision):\(community.accountRevision):\(community.avatarPolicyRevision):\(phase)") {
+            bytes = nil; alt = ""; session.bind(community)
+            guard phase == .active, event.moderation?.held != true else { return }
+            load()
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(30)) } catch { return }
+                if !session.busy && !session.denied { load() }
+            }
+        }
+        .onChange(of: session.denied) { _, denied in if denied { bytes = nil; alt = "" } }
+        .onDisappear { bytes = nil; alt = ""; session.clear() }
+    }
+    private func load() {
+        bytes = nil; alt = ""
+        let policy = community.avatarPolicyRevision
+        session.run { client in
+            let current = try await client.event(event.id)
+            guard current.revision == event.revision, current.access.role == event.access.role, current.moderation?.held != true else { return }
+            let gallery = try await client.eventImages(event.id)
+            guard let id = gallery.coverAssetId, let asset = gallery.assets.first(where: { $0.id == id }),
+                  current.visibility == "private" || asset.approved else { return }
+            let data = try await client.eventImage(asset, event: event.id)
+            try session.checked(client)
+            guard phase == .active, policy == community.avatarPolicyRevision else { return }
+            bytes = data; alt = asset.alt
+        }
     }
 }

@@ -13,6 +13,8 @@ firmware/Wire/full20-key/reserved-slot/GIF hardware work dirty and unstaged.
 executed on `xcode-27`: macOS27.0.1, Xcode27.1, simulator SDK27.1 and the actual
 iOS27.1 iPhone Duo simulator. Portable committed `BackpackProtocol` tests:
 **7 executed,0failures**. This does not test the independent dirty Wire changes.
+Actual Swift toolchain: Apple Swift6.4 (`swiftlang-6.4.0.34.1`,
+`clang-2100.3.34.1`), swift-driver1.168.6.
 
 Unsigned app/test `build-for-testing` **FAILED, exit65** with actual
 `EventRoutePlannerView.swift` diagnostics at209and361: `private` declarations
@@ -23,6 +25,14 @@ completion claim follows from portable7/7. Logs were retained by the workflow.
 Signing/providers/live-service/device/physical integration remain separate gates.
 This actual executed failure supersedes earlier blanket "all validation
 unexecuted" statements only for this exact published snapshot/checkpoint.
+
+Follow-up `c18bcdb` / [Run42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373)
+corrected both route helper scopes, passed preflight/portable protocol again,
+then exposed `EventGalleryViews.swift:107` local-declaration/ViewBuilder error.
+App/test compilation still **FAILED, exit65**; both iOS XCTest stages skipped.
+`EventAuthorizedCoverView` was moved from the gallery ViewBuilder to module
+scope, preserving its body/state and restoring cross-file visibility. Another
+actual runner build must verify that source correction; no pass is inferred.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 

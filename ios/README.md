@@ -17,6 +17,13 @@ another actual runner build are required. Both iOS XCTest stages were skipped;
 **0 new native app fixtures executed**. Portable tests and a running workflow
 are not a successful app build, native integration or beta-readiness claim.
 
+Follow-up [Run42344704373](https://github.com/ErrantActions/-led-backpack/actions/runs/42344704373)
+at `c18bcdb` fixed the route scopes but compilation exposed another local
+declaration inside `EventGalleryViews`' ViewBuilder. Compilation still failed
+exit65; iOS test groups remain unexecuted. `EventAuthorizedCoverView` is now
+module-scoped rather than declared inside the gallery ViewBuilder; a new actual
+runner build must verify the correction.
+
 ## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
 
 Owner clarification: the intended Mac execution path is the existing GitHub
