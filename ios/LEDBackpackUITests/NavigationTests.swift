@@ -192,6 +192,21 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "GPS games entry and explicit default-off SOLO consents")
     }
 
+    func testSocialTabGroupsFeaturesWithoutGrantingGuestPrivateAccess() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let social = app.tabBars.buttons["Social"]
+        XCTAssertTrue(social.waitForExistence(timeout: 20)); social.tap()
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Community GIF gallery"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Sign in for friends, events and messaging"].exists)
+        assertNoVisibleEntryForms(app)
+        let friends = app.buttons["Friends / requests / profile"]
+        reveal(friends, in: app); XCTAssertTrue(friends.exists); XCTAssertFalse(friends.isEnabled)
+        attach(app, name: "Social tab - grouped features, private capabilities sign-in gated")
+    }
+
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })

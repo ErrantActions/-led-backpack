@@ -2,7 +2,7 @@ import SwiftUI
 import AuthenticationServices
 import BackpackProtocol
 
-enum AppTab: Hashable { case backpack, library, create, live }
+enum AppTab: Hashable { case backpack, library, create, live, social }
 
 @MainActor
 final class AppModel: ObservableObject {

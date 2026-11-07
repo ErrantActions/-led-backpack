@@ -3,6 +3,27 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Social tab navigation follow-up - source only
+
+A fifth Social tab groups community browsing/Favorites, friends/requests/QR/
+nearby discovery/profile/device cards, events/creation/routes/GPS hunts and
+playlists, messages/requests/activity/reminders, phone swap/Met/received recovery/
+offline paired play, and owned incident/block/admin review controls.
+Account settings retain account/security/cloud/device management and offer
+Open Social instead of hiding personal social navigation inside the account.
+Library/GPS shortcuts remain shortcuts, not a separate permission model.
+
+Each destination retains current resource/role/account checks; disabled rows
+say Sign in or Unavailable and do not synthesize capability flags. Guest
+community/local Favorites/offline pairing remain possible. Entering Social
+fetches public config only, never starts GPS/BLE/NI/peer consent. Swap game and
+keyless peer withdrawal remain independent of friends/messaging availability.
+Seven SocialTabTests and one native Social navigation method are prepared,
+unexecuted. Changed files: new SocialTabView.swift and SocialTabTests.swift,
+CommunityAccounts.swift, NavigationTests.swift, native-recovery workflow,
+README/TODO; only AppTab.social and RootView's fifth tab hunks from independently
+dirty LEDBackpackApp.swift/Views.swift. No new backend/provider/device operation.
+
 ### GPS gameplay P0: same-screen hunt confirmation - source follow-up
 
 Library now has a prominent GPS & nearby games hub; event detail/hunt tools link

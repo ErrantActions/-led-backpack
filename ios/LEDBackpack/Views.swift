@@ -58,6 +58,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $app.selectedTab) {
             LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
+            SocialTabView().tabItem { Label("Social", systemImage: "person.2") }.tag(AppTab.social)
             DeviceView().tabItem { Label("Backpack", systemImage: "backpack") }.tag(AppTab.backpack)
             CreateView().tabItem { Label("Create", systemImage: "paintbrush.pointed") }.tag(AppTab.create)
             LiveView().tabItem { Label("Live", systemImage: "waveform.path") }.tag(AppTab.live)

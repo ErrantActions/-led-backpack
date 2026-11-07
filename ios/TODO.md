@@ -4,6 +4,22 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Social tab - source PURPLE, validation pending
+
+- [x] Real fifth Social tab grouping personal social/community/events/messages/
+  activity/games/peer and safety/report functions. Account/security/cloud and
+  firmware management remain account tools; Open Social redirects to the tab.
+- [x] Current per-feature sign-in/capability/role/resource gates retained.
+  Missing flags remain Unavailable; browsing never enables sensors/discovery/
+  game consent. Guest community/local Favorites/offline paired modes retained.
+  Independent swap consent/keyless receipt withdrawal do not require friends/
+  messaging flags. Nested destinations retain their own source permissions.
+- [x]7new gating/tab fixtures +1native Social navigation regression prepared,
+  not executed. Exact scoped files/hunks in README; independent firmware/UI/
+  application lifecycle edits remain unstaged and preserved.
+- [ ] Actual compile/focused/full/UI/public integration and a later signed beta
+  update. This navigation change is not in uploaded build8 or prior test proof.
+
 ## Current owner priority - GPS/Bluetooth gameplay P0, 2026-11-07
 
 Prioritize reachable/playable event hunts/checkpoints/co-op and own local

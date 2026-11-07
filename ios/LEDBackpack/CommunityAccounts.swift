@@ -44,6 +44,8 @@ struct CommunitySettingsView: View {
 @MainActor
 struct CommunityAccountView: View {
     @EnvironmentObject private var community: CommunityController
+    @EnvironmentObject private var app: AppModel
+    @Environment(\.dismiss) private var dismiss
     @State private var linkingApple = false
     @State private var email = ""
     @State private var password = ""
@@ -109,38 +111,7 @@ struct CommunityAccountView: View {
             NavigationLink("My devices / unverified tags") { AccountDevicesView() }
             NavigationLink("Firmware library (no flashing)") { FirmwareLibraryView() }
             NavigationLink("Opt-in generic model research") { DeviceResearchView() }
-            NavigationLink("Blocked accounts") { CommunityBlocksView() }
-            if community.config?.socialEnabled == true {
-                NavigationLink("Friends & profile") { CommunitySocialView() }
-                NavigationLink("Private event badges (check availability)") { EventAwardListView() }
-            }
-            if community.config?.avatarsEnabled == true {
-                NavigationLink("Profile avatar") { CommunityAvatarView() }
-            }
-            if community.config?.eventsEnabled == true {
-                NavigationLink("Events") { CommunityEventsView() }
-            }
-            if community.config?.eventReportsEnabled == true {
-                NavigationLink("My event reports / withdrawal") { OwnEventReportsView() }
-            }
-            if community.config?.messagingEnabled == true {
-                NavigationLink("Messages") { CommunityMessagesView() }
-            }
-            if community.config?.chatReportsEnabled == true {
-                NavigationLink("My message incidents") { MessageIncidentListView() }
-            }
-            if community.config?.peerIncidentReportsEnabled == true || community.config?.peerIncidentWithdrawalEnabled == true {
-                NavigationLink("My private peer incidents / withdrawal receipts") { PeerIncidentOwnerView() }
-            }
-            if community.config?.notificationsEnabled == true {
-                NavigationLink("Private activity") { CommunityActivityView() }
-            }
-            if community.config?.notificationPreferencesEnabled == true {
-                NavigationLink("Notification settings") { CommunityNotificationSettingsView() }
-            }
-            if community.config?.applePushEnabled == true {
-                NavigationLink("Apple device alerts") { NativeApplePushView() }
-            }
+            Button("Open Social — friends, events, messages & games") { app.selectedTab = .social; dismiss() }
             if community.config?.appIntegrityProtocol == "app-attest-v1" {
                 NavigationLink("App key recovery") { NativeIntegrityRecoveryView() }
             }
