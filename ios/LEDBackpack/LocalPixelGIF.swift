@@ -41,7 +41,6 @@ enum LocalPixelGIF {
             }
             throw BackpackError.invalid("GIF image data has no terminator.")
         }
-        var repeats: Int?
         func checkExtensions(from start: Int, to end: Int) throws {
             var cursor = start
             while cursor < end {
@@ -53,24 +52,6 @@ enum LocalPixelGIF {
                 }
                 let extensionEnd = try blocksEnd(cursor + 2)
                 guard extensionEnd <= end else { throw BackpackError.invalid("GIF extension overlaps an image descriptor.") }
-                if bytes[cursor + 1] == 0xFF, bytes[cursor + 2] == 11 {
-                    let identifier = String(bytes: bytes[cursor + 3..<cursor + 14], encoding: .ascii)
-                    if identifier == "NETSCAPE2.0" || identifier == "ANIMEXTS1.0" {
-                        var block = cursor + 14
-                        while block < extensionEnd, bytes[block] != 0 {
-                            let length = Int(bytes[block])
-                            if bytes[block + 1] == 1 {
-                                guard length == 3 else { throw BackpackError.invalid("GIF loop extension has an invalid repeat block.") }
-                                let value = word(block + 2)
-                                guard repeats == nil || repeats == value else {
-                                    throw BackpackError.invalid("GIF contains conflicting repeat extensions; no loop behavior was guessed.")
-                                }
-                                repeats = value
-                            }
-                            block += length + 1
-                        }
-                    }
-                }
                 cursor = extensionEnd
             }
         }
@@ -166,7 +147,7 @@ enum LocalPixelGIF {
         guard tail < bytes.count, bytes[tail] == 0x3B else { throw BackpackError.invalid("Unexpected trailing GIF block.") }
         try checkExtensions(from: cursor, to: tail)
         let artwork = LocalPixelArtwork(width: width, height: height, frames: frames,
-            repeats: repeats, attribution: attribution)
+            repeats: structure.repeats, attribution: attribution)
         try artwork.validate()
         return artwork
     }

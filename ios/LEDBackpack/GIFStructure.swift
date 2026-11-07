@@ -11,6 +11,7 @@ struct GIFStructure {
         var previewDelay: Double { Double(max(1, delayCentiseconds ?? 10)) / 100 }
     }
     let frames: [Frame]
+    let repeats: Int?
     static func isGIF(_ data: Data) -> Bool {
         ["GIF87a", "GIF89a"].contains(String(data: data.prefix(6), encoding: .ascii) ?? "")
     }
@@ -33,6 +34,7 @@ struct GIFStructure {
         var offset = 13 + tableBytes(bytes[10]), control: Int?
         guard offset <= bytes.count else { throw BackpackError.invalid("Truncated GIF global palette.") }
         var frames: [Frame] = []
+        var repeats: Int?
         while offset < bytes.count {
             switch bytes[offset] {
             case 0x21:
@@ -44,7 +46,26 @@ struct GIFStructure {
                     }
                     control = offset; offset += 8
                 } else {
-                    offset = try endOfBlocks(offset + 2)
+                    let extensionEnd = try endOfBlocks(offset + 2)
+                    if label == 0xFF, bytes[offset + 2] == 11 {
+                        let identifier = String(bytes: bytes[offset + 3..<offset + 14], encoding: .ascii)
+                        if identifier == "NETSCAPE2.0" || identifier == "ANIMEXTS1.0" {
+                            var block = offset + 14
+                            while block < extensionEnd, bytes[block] != 0 {
+                                let length = Int(bytes[block])
+                                if bytes[block + 1] == 1 {
+                                    guard length == 3 else { throw BackpackError.invalid("GIF loop extension has an invalid repeat block.") }
+                                    let value = Wire.u16(bytes, block + 2)
+                                    guard repeats == nil || repeats == value else {
+                                        throw BackpackError.invalid("GIF contains conflicting repeat extensions; no loop behavior was guessed.")
+                                    }
+                                    repeats = value
+                                }
+                                block += length + 1
+                            }
+                        }
+                    }
+                    offset = extensionEnd
                     if label == 1 { control = nil }
                 }
             case 0x2C:
@@ -61,7 +82,7 @@ struct GIFStructure {
                 control = nil; offset = end
             case 0x3B:
                 guard !frames.isEmpty else { throw BackpackError.invalid("GIF has no image frames.") }
-                return GIFStructure(frames: frames)
+                return GIFStructure(frames: frames, repeats: repeats)
             default: throw BackpackError.invalid("Unsupported or damaged GIF block.")
             }
         }

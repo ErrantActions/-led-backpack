@@ -26,6 +26,7 @@ Full regressions were skipped; no overall test/native green.
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Chat/event SwiftUI expression type-check budget exceeded. |
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Governance fixture calls a missing known-event RSVP decline member. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | App/unit/UI bundles compiled;449consolidated tests,20failures; full regression skipped. |
+| `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests,1failure; full regression skipped. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -51,6 +52,13 @@ alpha/dimensions/authored state rather than nondeterministic metadata byte order
 These fixes add no new methods or weaken production checks; rerun required.
 Completed logs were retrieved after live-log access returned404 while running.
 This is not overall native/test/beta readiness.
+The corrected snapshot executed449tests with1failure (0unexpected), resolving
+19earlier failures. Exact timing now passes, but absent GIF loop metadata was
+incorrectly interpreted using ImageIO's synthesized loop0. The shared recorded-
+loop parser now supplies phone and native pixel decoding with exact recorded
+metadata; thumbnails keep existing policy and malformed/conflicting loop blocks
+fail explicitly. Missing/finite/forever assertions are strengthened rather than
+waived; another actual runner must verify the correction.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 

@@ -111,6 +111,7 @@ final class FriendArtworkSelectionTests: XCTestCase {
         let preview = try XCTUnwrap(selection.preview)
         XCTAssertEqual(preview.frames.count, 2)
         XCTAssertEqual(preview.duration, 0.15, accuracy: 0.000001)
+        XCTAssertEqual(preview.cycles, 1)
         XCTAssertFalse(selection.playing)
         XCTAssertEqual(selection.position(at: 0.02).index, 0)
         XCTAssertEqual(selection.position(at: 0.04).index, 1)

@@ -118,10 +118,7 @@ enum GIFPreviewDecoder {
         }
         var cycles: Int?
         if phone {
-            let properties = CGImageSourceCopyProperties(source, nil) as? [String: Any] ?? [:]
-            let gif = properties[kCGImagePropertyGIFDictionary as String] as? [String: Any]
-            if let repeats = gif?[kCGImagePropertyGIFLoopCount as String] as? Int {
-                guard (0...65535).contains(repeats) else { throw BackpackError.invalid("Unsupported GIF repeat count.") }
+            if let repeats = structure?.repeats {
                 cycles = repeats == 0 ? nil : repeats + 1
             } else { cycles = 1 }
         }

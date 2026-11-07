@@ -143,6 +143,11 @@ final class PhoneOfflineTests: XCTestCase {
         try await phone.show(gif([17]))
         XCTAssertEqual(phone.preview?.frames.count, 1); XCTAssertEqual(phone.preview?.cycles, 1)
         XCTAssertFalse(phone.animated)
+        let once = try GIFPreviewDecoder.phoneDisplay(gif([3, 12]))
+        XCTAssertEqual(once.frames.count, 2); XCTAssertEqual(once.cycles, 1)
+        XCTAssertEqual(once.duration, 0.15, accuracy: 0.000001)
+        let finite = try GIFPreviewDecoder.phoneDisplay(gif([3, 12], repeats: 2))
+        XCTAssertEqual(finite.cycles, 3)
         let forever = try GIFPreviewDecoder.phoneDisplay(gif(repeats: 0))
         XCTAssertNil(forever.cycles); XCTAssertEqual(forever.frameEnds[0], 0.01, accuracy: 0.0001)
     }

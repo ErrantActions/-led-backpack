@@ -29,6 +29,7 @@ tested by portable7/7.
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Positive receipt fixture error resolved; chat/event SwiftUI expressions exceed compiler type-check budget. |
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Builder diagnostics cleared; prepared governance fixture calls missing `declineKnownEventRSVP`. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | Unsigned app/unit/UI bundles compiled;449consolidated tests executed,20failures (18unexpected); full regression skipped. |
+| `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests executed,1failure (0unexpected); full regression skipped. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -77,6 +78,16 @@ regressions), friend playback24/24, SOLO12/12, local pairing12/12 and lazy
 location4/4. These are exact simulator unit milestones, not UI/live/physical
 coverage. The running-job log API returned404; completed logs were retrieved
 successfully after completion, so no counts were invented from missing logs.
+
+The corrected `257fb97` snapshot compiled and executed **449tests with1failure,
+0unexpected**:19prior failures resolved. The remaining friend preview test
+confirmed exact2frames/0.15seconds but exposed a real source-repeat bug:
+ImageIO synthesizes loop0 for absent loop metadata. Shared bounded recorded-loop
+parsing now gives absent1cycle, explicit0forever and finiteN=N+1. Native pixel
+decoding reuses the same validated metadata; malformed/conflicting recognized
+NETSCAPE/ANIMEXTS loop blocks fail explicitly. Thumbnail cycling remains
+unchanged. Existing friend/phone tests are strengthened for exact missing/
+finite/forever behavior; another real runner must verify it. No fake pass.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
