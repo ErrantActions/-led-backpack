@@ -397,6 +397,10 @@ struct LibraryView: View {
                 Spacer()
                 Button { gallery = true } label: { Label("Commons", systemImage: "globe") }.font(.caption.weight(.semibold))
             }
+            NavigationLink { GPSGamesView() } label: {
+                Label("GPS & nearby games", systemImage: "location.circle.fill")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }.buttonStyle(AuroraPrimaryButton())
             if !community.signedIn {
                 Text("Browse and save GIFs freely. Sign in only when you want cloud storage or community actions.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -407,10 +411,6 @@ struct LibraryView: View {
     }
 
     private var libraryArtwork: some View {
-            NavigationLink { GPSGamesView() } label: {
-                Label("GPS & nearby games", systemImage: "location.circle.fill")
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(AuroraPrimaryButton())
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("In your rotation").font(.title3.weight(.semibold))
