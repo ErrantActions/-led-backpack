@@ -5,20 +5,22 @@ import BackpackProtocol
 @testable import LEDBackpack
 
 private actor FeatureTransport: CommunityTransport {
+    private enum FixtureError: Error { case unexpectedRequest }
     private var replies: [CommunityResponse]
     private var requests: [URLRequest] = []
     private var budgets: [Int] = []
     private var pending: CheckedContinuation<CommunityResponse, Error>?
-    private var notification: CheckedContinuation<Void, Never>?
-    private var waiting = false
-    init(_ replies: [CommunityResponse]) { self.replies = replies }
+    private let onSuspendedRequest: (@Sendable () -> Void)?
+    init(_ replies: [CommunityResponse], onSuspendedRequest: (@Sendable () -> Void)? = nil) {
+        self.replies = replies; self.onSuspendedRequest = onSuspendedRequest
+    }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         requests.append(request); budgets.append(maxBytes)
         if !replies.isEmpty { return replies.removeFirst() }
-        waiting = true; notification?.resume(); notification = nil
+        guard let onSuspendedRequest, pending == nil else { throw FixtureError.unexpectedRequest }
+        onSuspendedRequest()
         return try await withCheckedThrowingContinuation { pending = $0 }
     }
-    func waitForRequest() async { if waiting { return }; await withCheckedContinuation { notification = $0 } }
     func finish(_ response: CommunityResponse) { pending?.resume(returning: response); pending = nil }
     func history() -> [URLRequest] { requests }
     func limits() -> [Int] { budgets }
@@ -154,16 +156,25 @@ final class CommunityFeatureTests: XCTestCase {
 
     func testEventOrganizerWritesAreScopedAndRevisionCheckedWithoutPrivateRouteOverwrite() async throws {
         let current = try decodedEvent(event(role: "owner"))
-        let transport = FeatureTransport([login, config(), response("{\"event\":\(event(role: "owner"))}")])
+        let savedEvent = event(role: "owner")
+            .replacingOccurrences(of: #""revision":3"#, with: #""revision":4"#)
+            .replacingOccurrences(of: #""description":"Fixed venue""#, with: #""description":"""#)
+        let transport = FeatureTransport([login, config(),
+            response("{\"event\":\(event(role: "owner"))}"), response("{\"event\":\(savedEvent)}")])
         let community = try await controller(transport)
         let client = try CommunityFeatureClient(community)
         let input = CatalogEventInput(title: "Test event", description: "", startsAtISO: current.startsAtISO,
             endsAtISO: current.endsAtISO, timezone: "UTC", visibility: "private", capacity: 50,
             location: current.location, expectedRevision: 3)
-        _ = try await client.saveEvent(input, original: current)
+        let saved = try await client.saveEvent(input, original: current)
+        XCTAssertEqual(saved.revision, 4); XCTAssertEqual(saved.description, input.description)
         let requests = await transport.history()
-        XCTAssertEqual(requests[2].httpMethod, "PATCH")
-        let data = try body(requests[2])
+        XCTAssertEqual(requests.count, 4)
+        XCTAssertEqual(requests[2].httpMethod, "GET")
+        XCTAssertEqual(requests[2].url?.path, "/api/v1/events/\(eventID.uuidString.lowercased())")
+        XCTAssertEqual(requests[3].httpMethod, "PATCH")
+        XCTAssertEqual(requests[3].url, requests[2].url)
+        let data = try body(requests[3])
         XCTAssertEqual(data["expectedRevision"] as? Int, 3)
         XCTAssertNotNil(data["startsAtISO"] as? String)
         XCTAssertNil(data["startsAt"])
@@ -172,7 +183,7 @@ final class CommunityFeatureTests: XCTestCase {
         do { _ = try await client.cancelEvent(decodedEvent()); XCTFail("Non-owner cannot cancel") }
         catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
         let after = await transport.history()
-        XCTAssertEqual(after.count, 3)
+        XCTAssertEqual(after.count, 4)
     }
 
     func testSourceConflictIsSurfacedWithoutRetryingOrChangingTheDraft() async throws {
@@ -210,7 +221,7 @@ final class CommunityFeatureTests: XCTestCase {
         let current = try decodedEvent(event(role: "owner"))
         try await client.organize(current, target: peer, action: .invite)
         do { try await client.organize(current, target: peer, action: .invite); XCTFail("Automatic RSVP must be rejected") }
-        catch { XCTAssertTrue(error.localizedDescription.contains("automatically RSVP")) }
+        catch { XCTAssertEqual(error.localizedDescription, "Invitation was not confirmed without automatic RSVP.") }
         let requests = await transport.history()
         XCTAssertEqual(requests[2].url?.path, "/api/v1/events/\(eventID.uuidString.lowercased())/invitations")
         XCTAssertEqual(Set(try body(requests[2]).keys), Set(["userId"]))
@@ -234,11 +245,12 @@ final class CommunityFeatureTests: XCTestCase {
     }
 
     func testInflightEventResponseIsDiscardedOnAccountOrOriginChange() async throws {
-        let transport = FeatureTransport([login, config()])
+        let suspended = expectation(description: "Event request awaits the explicitly suspended fixture response")
+        let transport = FeatureTransport([login, config()], onSuspendedRequest: { suspended.fulfill() })
         let community = try await controller(transport)
         let client = try CommunityFeatureClient(community)
         let loading = Task { try await client.event(eventID) }
-        await transport.waitForRequest()
+        await fulfillment(of: [suspended], timeout: 5)
         community.configure("https://another.example")
         await transport.finish(response("{\"event\":\(event())}"))
         do { _ = try await loading.value; XCTFail("Old-account data must not be accepted") }

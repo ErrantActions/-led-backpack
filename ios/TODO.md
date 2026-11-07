@@ -30,7 +30,7 @@ tested by portable7/7.
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Builder diagnostics cleared; prepared governance fixture calls missing `declineKnownEventRSVP`. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | Unsigned app/unit/UI bundles compiled;449consolidated tests executed,20failures (18unexpected); full regression skipped. |
 | `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests executed,1failure (0unexpected); full regression skipped. |
-| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled; consolidated18group step succeeded; full native unit/UI regressions running. |
+| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled;449consolidated tests/0failures; full regression cancelled at60min limit after one assertion and organizer-test hang. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -90,10 +90,22 @@ NETSCAPE/ANIMEXTS loop blocks fail explicitly. Thumbnail cycling remains
 unchanged. Existing friend/phone tests are strengthened for exact missing/
 finite/forever behavior; another real runner must verify it. No fake pass.
 
-The recorded-loop correction now passed actual unsigned compilation AND the
-consolidated18group XCTest step at `61adcd1`. Full native unit/UI regressions
-are executing; exact final totals/skips and overall outcome still require
-completed logs/results. No full-suite, live-integration or device claim yet.
+The recorded-loop correction passed actual unsigned compilation AND
+**449consolidated tests,0failures** at `61adcd1`. Full regression was cancelled
+at the60minute job limit. Completed logs identify an invitation-role assertion
+and a never-completed organizer-write fixture in `CommunityFeatureTests`.
+Fixture roots corrected: the organizer script now includes current-access GET
+before revision-bound PATCH; unscripted requests fail fast instead of
+suspending forever. Intentional account-change suspension uses a5second XCTest
+expectation. Invitation rejection checks current exact wording. Revision3→4/
+no-private-route-overwrite assertions and production checks remain unchanged.
+**3 existing tests updated,0new/0executed here**. Partial full-run output includes an explicit signed-Keychain
+skip; there is no complete full-suite total/pass. Logs/results were retained.
+
+The separately queued `3ebfc50` run42352475392 is now active after the prior
+cancellation, with per-test timeout support verified by actual runner preflight.
+It includes the one opt-in public integration method, whose Swift compilation/
+runtime result is still pending. No full-suite/live/physical/beta claim.
 
 Next integration source prepared:1 `NativePublicIntegrationTests` method uses
 the actual native HTTP/config/catalog/current-access/manifest/hash adapter

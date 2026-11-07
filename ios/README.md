@@ -27,7 +27,7 @@ Full regressions were skipped; no overall test/native green.
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Governance fixture calls a missing known-event RSVP decline member. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | App/unit/UI bundles compiled;449consolidated tests,20failures; full regression skipped. |
 | `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests,1failure; full regression skipped. |
-| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled; consolidated group step succeeded; full regressions running. |
+| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled;449consolidated/0failures; full regression cancelled at job limit. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -60,9 +60,14 @@ loop parser now supplies phone and native pixel decoding with exact recorded
 metadata; thumbnails keep existing policy and malformed/conflicting loop blocks
 fail explicitly. Missing/finite/forever assertions are strengthened rather than
 waived; another actual runner must verify the correction.
-That source correction now passed the actual consolidated test step. Full unit/
-UI regressions are running; exact final totals/skips and overall result remain
-pending. No live/physical/beta readiness is inferred.
+That source correction passed **449consolidated tests/0failures**. Full regression
+hit the60minute job limit after an invitation-role assertion and organizer-write
+test hang. Fixtures now script GET-before-PATCH revalidation and fail unscripted
+requests immediately; intentional suspension is bounded by5seconds and rejection
+wording is current. Production access/revision checks remain unchanged.
+Partial output includes the signed-
+Keychain prerequisite skip, not a completed full-suite result. The queued
+read-only/time-bounded checkpoint is now active; no live/physical/beta readiness.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 
