@@ -10,15 +10,15 @@ enum GentlePlanPolicy {
               colors.allSatisfy({ $0.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil }) else {
             throw BackpackError.invalid("Use 1–4 #RRGGBB colors and a 2–60 second gentle period.")
         }
-        enum NativeEventSocialContextFailure: LocalizedError {
-            case changed, denied, unavailable
-            var errorDescription: String? {
-                switch self {
-                case .changed: return "Event/review revisions changed. Reload deliberately; no stale action was retried."
-                case .denied: return "Current event role, participation review, cancellation or moderation does not permit this action."
-                case .unavailable: return "This server/event has not enabled this capability. Nothing was activated."
-                }
-            }
+    }
+}
+enum NativeEventSocialContextFailure: LocalizedError {
+    case changed, denied, unavailable
+    var errorDescription: String? {
+        switch self {
+        case .changed: return "Event/review revisions changed. Reload deliberately; no stale action was retried."
+        case .denied: return "Current event role, participation review, cancellation or moderation does not permit this action."
+        case .unavailable: return "This server/event has not enabled this capability. Nothing was activated."
         }
     }
 }

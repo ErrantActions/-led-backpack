@@ -24,6 +24,14 @@ exit65; iOS test groups remain unexecuted. `EventAuthorizedCoverView` is now
 module-scoped rather than declared inside the gallery ViewBuilder; a new actual
 runner build must verify the correction.
 
+Third [Run42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797)
+at `defc74f` verified Xcode27.1/build27A9275 and portable7/7, but app/test
+compilation still failed: event social source cannot see
+`NativeEventSocialContextFailure`. Native XCTest stages remain skipped; the
+existing error type is now module-scoped instead of local to
+`GentlePlanPolicy.validate`; its cases/messages remain unchanged. The next
+actual runner build must verify the correction.
+
 ## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
 
 Owner clarification: the intended Mac execution path is the existing GitHub

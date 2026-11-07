@@ -34,6 +34,14 @@ App/test compilation still **FAILED, exit65**; both iOS XCTest stages skipped.
 scope, preserving its body/state and restoring cross-file visibility. Another
 actual runner build must verify that source correction; no pass is inferred.
 
+Third `defc74f` / [Run42345149797](https://github.com/ErrantActions/-led-backpack/actions/runs/42345149797)
+verified Xcode27.1/build27A9275 and portable7/7, then compilation exposed missing
+`NativeEventSocialContextFailure` visibility in event social client/model/views
+(5diagnostics). App/test compilation again failed exit65; iOS XCTest stages
+skipped. The existing `.changed`/`.denied`/`.unavailable` error type was moved
+from `GentlePlanPolicy.validate` to module scope, preserving its messages and
+validation behavior. No fallback was added; the next actual build must verify it.
+
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
 The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.
