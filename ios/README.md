@@ -3,6 +3,36 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+## Verified native checkpoint - 2026-11-07
+
+Source `30ee227`, branch `native-recovery`:
+[Run42360855629](https://github.com/ErrantActions/-led-backpack/actions/runs/42360855629)
+**PASSED** unsigned app/unit/UI compilation on Xcode27.1/build27A9275,
+Swift6.4, simulator SDK27.1/iPhone Duo, macOS27.0.1.
+
+- Portable protocol:7tests/0failures (committed Wire only).
+- Consolidated source groups:449tests/0failures.
+- Full unit suite:889tests/0failures/2explicit skips.
+- Native UI regression:1test/0failures.
+- Actual public native-client live integration:1test/0failures/**0skips**.
+
+Unit skips are unsigned signed-Keychain integration and the separately enabled
+live method. `TEST_RUNNER_` forwarding made the live GET/config/catalog/current-
+access/manifest/hash method actually execute in its own step; a green skipped
+step is not integration evidence. No accounts/backend mutations were performed.
+
+All34source families/P0-P11scope and remaining gates are reconciled in
+[TODO.md](TODO.md#current-verified-native-milestone---2026-11-07).
+This is a precise simulator/source/public-integration milestone, NOT full
+VoiceOver/Dynamic Type/memory/device/privileged-service acceptance, physical
+BLE/NI/hardware recovery, signed Keychain/PRF/App Attest/APNs, TestFlight or
+provider/key/enforcement/deployment readiness. Disabled backend features remain
+gated; ComfyUI stays deferred. Independent dirty firmware/GIF/full20-key/
+reserved55..59 work was excluded and preserved.
+
+The older recovery/failure narrative below is history; the result above
+supersedes its pending/unexecuted labels only within this exact verified scope.
+
 ## Actual recovery build - compilation passed / consolidated tests failed
 
 The selectively published APP branch is `native-recovery`. Executed toolchain:

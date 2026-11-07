@@ -4,6 +4,67 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Current verified native milestone - 2026-11-07
+
+**Verified source:** `30ee227` on `native-recovery`.
+[Run42360855629](https://github.com/ErrantActions/-led-backpack/actions/runs/42360855629)
+completed **SUCCESS** on Xcode27.1/build27A9275, Apple Swift6.4,
+simulator SDK27.1/iPhone Duo and macOS27.0.1.
+
+| Executed checkpoint | Actual result |
+|---|---|
+| Portable committed protocol | 7tests,0failures; independent dirty Wire is excluded. |
+| Unsigned app/unit/UI-bundle compilation | Passed. |
+| Consolidated18source groups | 449tests,0failures. |
+| Full native unit suite | 889tests,0failures,2explicit skips. |
+| Native UI regression | 1test,0failures; actual whole-control reveal, import/navigation and orientation fixtures. |
+| Real public native-client integration | 1test,0failures,0skips; approved live guest GET/config/catalog/current access/manifest/hash adapter. |
+
+Unit skips: signed-host Keychain integration is unavailable to the unsigned
+simulator, and the live public method is intentionally enabled only in its
+separate step. That live method ACTUALLY executed after `TEST_RUNNER_` forwarding;
+do not conflate its ordinary unit skip with its successful live1/0/0result.
+No deduplicated global percentage or physical/beta-readiness claim.
+
+### P0-P11 acceptance reconciliation
+
+- **P0:**34source families mapped and retained; replacement ownership/history
+  preserved. Independently owned firmware/GIF/full20-key/reserved55..59 changes
+  remain outside this published/tested snapshot.
+- **P1:** compiled shared request/capability/account/exact-byte/current-access/
+  cancellation source and full regressions pass; actual public adapter verified.
+  Real signed App Attest/Keychain and private-service integration remain gated.
+- **P2/P3:** offline editor/library/PHONE/recovery, selected descriptor integrity,
+  profile/upload/account/vault source compiled and unit-regressed. Authored
+  original/source timing/repeat/pixel assertions remain exact. Unknown hardware
+  originals/transport, actual Apple/PRF/vault/account-device flows are not proven.
+- **P4/P5:** social/chat/inbox/outbox and event/organizer/gallery/progress/award
+  source/fixtures compiled and regressed, including null/deadline/revision/
+  current-access boundaries. Disabled private services and actual location/
+  MapKit/accessibility/lifecycle acceptance are not inferred from unit fixtures.
+- **P6/P7:** explicit main PHONE/isolated player/one-shot schedule ownership and
+  real admin artwork/bulk/ZIP source compiled and unit-regressed. Fixed source
+  leases and documented ZIP contract limits remain. Longer/unattended/hardware
+  playback and live privileged artwork/admin acceptance are not claimed.
+- **P8/P9:** local SOLO and manually compared local pair/NI/crypto source and
+  deterministic tests pass. Physical sensing, two-phone radio/NI/restore,
+  permission/restart behavior and ranging/safety claims still need owner evidence.
+- **P10:** the precise unsigned compile/consolidated/full-unit/UI/public-live
+  milestone above is GREEN. It does not replace signed Keychain/PRF/App Attest,
+  device crypto, full VoiceOver/Dynamic Type/memory-pressure or physical proof.
+- **P11:** BLOCKED/external, not silently completed: signing/TestFlight/APNs/
+  credentials/providers/keys/enforcement, disabled messaging/playlists/report
+  creation/cloud/redraw activation, deployment and physical device/hardware
+  operations need their separate owner gates. ComfyUI remains deferred.
+
+No concrete independently actionable missing native source was established
+beyond the compiler/runtime bugs fixed and verified above. Remaining roadmap
+work is the specifically unexecuted acceptance/activation/device scope, not
+permission to manufacture capabilities or declare the entire backlog finished.
+The following recovery/failure history is retained; this verified checkpoint
+supersedes its old blanket "unexecuted", "running" and "failed" qualifications
+only for the exact source/result/scope above.
+
 ## Actual isolated runner checkpoint - 2026-11-07, build passed / tests failed
 
 Owner unpaused narrow native publication/unsigned GitHub validation. The reviewed
