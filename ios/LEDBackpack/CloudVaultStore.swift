@@ -295,6 +295,35 @@ final class CloudVaultStore: ObservableObject {
         }
         return result
     }
+    func authorizeForBackpack(_ item: CloudVaultItem) async throws {
+        let client = try connection()
+        guard syncing, !locked, let state, state.enabled, !state.deleting,
+              state.generation == item.generation, state.keyId == item.keyId, state.mode == item.mode else {
+            throw BackpackError.invalid("Private cloud is paused, locked, deleted or changed. No cached plaintext send is authorized.")
+        }
+        try item.validate(client.scope, generation: state.generation, keyID: item.keyId, mode: state.mode)
+        let currentState = try await client.state()
+        try checked(client)
+        guard currentState.enabled, !currentState.deleting, currentState.generation == item.generation,
+              currentState.keyId == item.keyId, currentState.mode == item.mode else {
+            throw BackpackError.invalid("Current private cloud no longer authorizes this selected item/key/generation.")
+        }
+        let current = try await client.item(item.id)
+        try current.validate(client.scope, generation: item.generation, keyID: item.keyId, mode: item.mode)
+        try checked(client)
+        guard item.matches(current), syncing, !locked,
+              self.state?.generation == state.generation, self.state?.keyId == state.keyId else {
+            throw BackpackError.invalid("Selected private GIF changed or was paused during authorization; reload explicitly.")
+        }
+    }
+    func downloadForBackpack(_ item: CloudVaultItem) async throws -> CloudPlainItem {
+        try await authorizeForBackpack(item)
+        let copy = try await download(item)
+        let worker = Task.detached { try CommunityUpload.validateGIF(copy.data) }
+        try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+        try await authorizeForBackpack(item)
+        return copy
+    }
     func keepOffline(_ item: CloudVaultItem, library: LocalLibrary) async throws {
         let client = try connection()
         let copy = try await download(item)

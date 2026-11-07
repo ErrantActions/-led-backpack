@@ -150,6 +150,7 @@ struct CloudArtworkDetail: View {
     @State private var deleting = false
     @State private var busy = false
     @State private var shared = false
+    @State private var directSend: BackpackSendRequest?
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -174,6 +175,9 @@ struct CloudArtworkDetail: View {
                     }.buttonStyle(.borderedProminent).disabled(bytes == nil || saved)
                     Text("Local and cloud copies are independent. Removing a local copy does not delete the cloud GIF. Saving preserves credits and does not publish private artwork.")
                         .font(.caption).foregroundStyle(.secondary)
+                    Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.legacyCloud(cloud)]) }
+                        .buttonStyle(.borderedProminent).disabled(bytes == nil || busy)
+                    Text("Temporarily reads only this current owned GIF; keeping a permanent local copy is optional. Sending to the physical display does not publish it to the community.").font(.caption)
                     if cloud.visibility == "private" && !shared {
                         Button("Share with the community") { sharing = true }.disabled(busy)
                     }
@@ -211,6 +215,7 @@ struct CloudArtworkDetail: View {
             }
             .onChange(of: community.accountRevision) { _, _ in bytes = nil; dismiss() }
             .onDisappear { bytes = nil; loadedOwner = nil; loadedOrigin = nil }
+            .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
             .confirmationDialog("Share this GIF for review? This confirms your right to publish and permits the server's optional AI review. It does not publish until approved.", isPresented: $sharing) {
                 Button("I have sharing rights; submit") {
                     guard !busy else { return }

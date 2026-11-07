@@ -6,6 +6,7 @@ struct BackpackDirectSendView: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var library: LocalLibrary
+    @EnvironmentObject private var vault: CloudVaultStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     @StateObject private var store = BackpackDirectSendStore()
@@ -15,6 +16,9 @@ struct BackpackDirectSendView: View {
             Form {
                 Section("Send & Play \(request.sources.count) GIF(s)") {
                     Text("No mandatory library save or slot-number form. We choose only empty ordinary slots2–54, fit separate copies to the panel and start their ordered loop—even for one GIF. Sources remain unchanged.").font(.caption)
+                    if request.usesVault {
+                        Text("This explicitly selected private cloud GIF will be temporarily downloaded/unlocked for your visible backpack display. No cloud scan/publication/friendship/peer-sharing grant or permanent local copy is created; server keys are never app credentials.").font(.caption)
+                    }
                     if !panel.link.connected { Text("Connect from the Backpack tab, then retry. This screen does not scan or connect automatically.").foregroundStyle(.orange) }
                     GIFTimingControls(timing: $options.timing).disabled(store.busy)
                     Picker("Switch to next GIF after", selection: $options.limit) {
@@ -26,7 +30,7 @@ struct BackpackDirectSendView: View {
                         Stepper("\(options.totalLoops) total loops per GIF", value: $options.totalLoops, in: 1...100).disabled(store.busy)
                         Text("Loop count is encoded in the send copy; program time is derived from its frame timing and rounded up to whole seconds. Device repeat handling/counting is not verified.").font(.caption)
                     }
-                    Button("Prepare / update send copies") { store.prepare(request, options: options, community: community, panel: panel, library: library) }
+                    Button("Prepare / update send copies") { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
                         .disabled(store.busy || !panel.link.connected || panel.hasDisplayOwner)
                     if store.busy { ProgressView() }
                     Text(store.status).font(.caption)
@@ -37,7 +41,7 @@ struct BackpackDirectSendView: View {
                 }
                 ForEach(Array(store.warnings.enumerated()), id: \.offset) { _, note in Text(note).font(.caption).foregroundStyle(.orange) }
                 if store.plan != nil && !store.playbackConfirmed {
-                    Button("Send & Play on backpack") { store.send(options: options, confirmed: true, community: community, panel: panel) }
+                    Button("Send & Play on backpack") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
                         .buttonStyle(.borderedProminent).disabled(store.busy)
                     Text("This button approves the displayed empty destinations and prepared timing. No occupied-slot overwrite is permitted.").font(.caption)
                 }
@@ -47,12 +51,19 @@ struct BackpackDirectSendView: View {
             }.navigationTitle("Send & Play")
                 .toolbar { Button("Done") { if store.sending { store.stop() }; dismiss() } }
                 .interactiveDismissDisabled(store.sending)
-                .task { store.prepare(request, options: options, community: community, panel: panel, library: library) }
+                .task { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
                 .onChange(of: options) { _, _ in store.invalidate() }
                 .onChange(of: phase) { _, value in if value != .active { store.stop() } }
                 .onChange(of: community.accountRevision) { _, _ in store.stop() }
                 .onChange(of: community.avatarPolicyRevision) { _, _ in store.stop() }
                 .onChange(of: panel.link.connected) { _, connected in if !connected { store.stop() } }
+                .onChange(of: vault.syncing) { _, syncing in if request.usesVault && !syncing { store.stop() } }
+                .onChange(of: vault.locked) { _, locked in if request.usesVault && locked { store.stop() } }
+                .onChange(of: vault.state?.keyId) { _, _ in if request.usesVault { store.stop() } }
+                .onChange(of: vault.state?.generation) { _, _ in if request.usesVault { store.stop() } }
+                .onChange(of: vault.state?.mode) { _, _ in if request.usesVault { store.stop() } }
+                .onChange(of: vault.state?.deleting) { _, deleting in if request.usesVault && deleting == true { store.stop() } }
+                .onChange(of: vault.available) { _, available in if request.usesVault && !available { store.stop() } }
                 .onDisappear { if store.busy { store.stop() } }
         }
     }

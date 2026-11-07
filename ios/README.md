@@ -3,6 +3,22 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### In-flight direct private-cloud send preserved - source only
+
+Owner-private cloud rows/details now have Send & Play without requiring Keep
+local. Only the explicitly selected item is temporarily read through the
+existing managed/user-held client and unlock state; no server key is an app
+credential. Owned state/item generation/key/version/metadata/hash/URL are checked
+before/after download and before upload/playback. Legacy owned items use current
+owner/detail/manifest checks, not another account's library scan/public fallback.
+Pause/lock/delete/account/policy changes clear temporary send state. No permanent
+local copy/publication or hidden cloud re-enablement occurs.
+Six CloudBackpackSourceTests are prepared, unexecuted. Changes in
+CloudVaultProtocol/Store/Views, CloudLibrary, CloudBackpackSource,
+BackpackDirectSend/its view and recovery test selector are preserved pending
+validation. OWNER PRIORITY now switches to GPS/Bluetooth games; this slice is
+not being expanded or labelled validated/beta-ready.
+
 ### Direct Send & Play, GIF timing/loops and natural eyes - source follow-up
 
 Community/Favorites selection and a local artwork's Send & Play action now open

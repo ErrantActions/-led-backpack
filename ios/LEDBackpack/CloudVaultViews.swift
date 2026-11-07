@@ -199,6 +199,7 @@ struct CloudVaultPasswordView: View {
 struct CloudVaultArtworkRow: View {
     @EnvironmentObject private var vault: CloudVaultStore
     let item: CloudVaultItem
+    @State private var directSend: BackpackSendRequest?
     var body: some View {
         NavigationLink {
             CloudVaultArtworkDetail(item: item)
@@ -213,6 +214,11 @@ struct CloudVaultArtworkRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 19))
         }.buttonStyle(.plain)
             .accessibilityLabel("Preview \(vault.titles[item.id] ?? "Encrypted private artwork")")
+            .contextMenu {
+                Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.vault(item)]) }
+                    .disabled(vault.locked || vault.busy || !vault.syncing)
+            }
+            .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
     }
 }
 
@@ -226,6 +232,7 @@ struct CloudVaultArtworkDetail: View {
     @State private var bytes: Data?
     @State private var failure: String?
     @State private var deleting = false
+    @State private var directSend: BackpackSendRequest?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -234,6 +241,9 @@ struct CloudVaultArtworkDetail: View {
                 NavigationLink("Private cloud settings / unlock") { CloudVaultSettingsView() }
                 Button("Keep on this iPhone") { vault.run { try await vault.keepOffline(item, library: library) } }
                     .disabled(bytes == nil || library.state.media.count >= 100 || vault.busy)
+                Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.vault(item)]) }
+                    .buttonStyle(.borderedProminent).disabled(vault.locked || vault.busy || !vault.syncing)
+                Text("Downloads only this authorized GIF into bounded temporary memory; no Keep local step, new library copy, publication or server key is needed.").font(.caption)
                 Text("The 100-item local capacity never deletes or truncates cloud items. Removing cloud copies never deletes local files.").font(.caption)
                 Button("Delete this private cloud copy", role: .destructive) { deleting = true }.disabled(vault.locked || vault.busy)
                 if let failure = failure ?? vault.failure { Text(failure).foregroundStyle(.orange) }
@@ -251,6 +261,7 @@ struct CloudVaultArtworkDetail: View {
         .onChange(of: vault.state?.keyId) { _, _ in bytes = nil; dismiss() }
         .onChange(of: community.accountRevision) { _, _ in bytes = nil; dismiss() }
         .onDisappear { bytes = nil }
+        .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
         .confirmationDialog("Delete only this cloud copy? Local files remain.", isPresented: $deleting) {
             Button("Delete cloud copy", role: .destructive) { vault.run { try await vault.deleteItem(item); dismiss() } }
         }

@@ -234,6 +234,13 @@ struct CloudVaultItem: Codable, Identifiable, Sendable {
     let metadataHash: String
     let updatedAt: String
     let downloadUrl: URL
+    func matches(_ other: CloudVaultItem) -> Bool {
+        id == other.id && accountId == other.accountId && origin == other.origin &&
+        keyId == other.keyId && mode == other.mode && generation == other.generation &&
+        version == other.version && byteSize == other.byteSize && encrypted == other.encrypted &&
+        metadata == other.metadata && dataHash == other.dataHash && metadataHash == other.metadataHash &&
+        updatedAt == other.updatedAt && downloadUrl == other.downloadUrl && legacyItemId == other.legacyItemId
+    }
     func validate(_ scope: CloudVaultScope, generation: Int, keyID: String, mode: CloudEncryptionMode) throws {
         try scope.validate(account: accountId, origin: origin)
         try CloudVaultWire.id(id); try CloudVaultWire.id(keyId)

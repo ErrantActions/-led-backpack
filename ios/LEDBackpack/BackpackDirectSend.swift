@@ -4,16 +4,28 @@ import BackpackProtocol
 enum BackpackSendSource {
     case catalog(CommunityItem)
     case local(SavedMedia)
-    var id: UUID {
-        switch self { case .catalog(let item): return item.id; case .local(let item): return item.id }
+    case vault(CloudVaultItem)
+    case legacyCloud(CommunityCloudItem)
+    var id: String {
+        switch self {
+        case .catalog(let item): return "catalog:" + item.id.uuidString.lowercased()
+        case .local(let item): return "local:" + item.id.uuidString.lowercased()
+        case .vault(let item): return "vault:\(item.accountId):\(item.generation):\(item.id):\(item.version)"
+        case .legacyCloud(let item): return "legacy-cloud:" + item.id.uuidString.lowercased()
+        }
     }
     var title: String {
-        switch self { case .catalog: return "Selected community GIF"; case .local(let item): return item.name }
+        switch self {
+        case .catalog: return "Selected community GIF"
+        case .local(let item): return item.name
+        case .vault, .legacyCloud: return "Selected private cloud GIF"
+        }
     }
 }
 struct BackpackSendRequest: Identifiable {
     let id = UUID()
     let sources: [BackpackSendSource]
+    var usesVault: Bool { sources.contains { if case .vault = $0 { return true }; return false } }
 }
 @MainActor
 final class BackpackDirectSendStore: ObservableObject {
@@ -33,18 +45,20 @@ final class BackpackDirectSendStore: ObservableObject {
     private var epoch = UUID()
     private var capturedAccount: UUID?
     private var capturedPolicy: UUID?
+    private var preparedSources: [BackpackSendSource] = []
     func invalidate() {
         guard !sending else { return }
         epoch = UUID(); task?.cancel(); task = nil; busy = false
-        payloads = []; durations = []; preparedOptions = nil; plan = nil; preview = nil; warnings = []; failure = nil; playbackConfirmed = false
+        payloads = []; preparedSources = []; durations = []; preparedOptions = nil; plan = nil; preview = nil; warnings = []; failure = nil; playbackConfirmed = false
     }
     func stop() {
         epoch = UUID(); task?.cancel(); task = nil; busy = false; sending = false
-        payloads = []; preview = nil; plan = nil; preparedOptions = nil
+        payloads = []; preparedSources = []; durations = []; capturedAccount = nil; capturedPolicy = nil
+        preview = nil; plan = nil; preparedOptions = nil
         status = "Stopped after\(completed) uploaded GIF(s). Inspect backpack storage/playback before retrying; no automatic resend or rollback."
     }
     func prepare(_ request: BackpackSendRequest, options: BackpackSendOptions,
-        community: CommunityController, panel: PanelController, library: LocalLibrary) {
+        community: CommunityController, panel: PanelController, library: LocalLibrary, vault: CloudVaultStore) {
         guard !sending else { return }
         invalidate()
         do { try options.validate() } catch { failure = error.localizedDescription; return }
@@ -70,6 +84,10 @@ final class BackpackDirectSendStore: ObservableObject {
                         let url = try library.phoneOriginalURL(item)
                         let worker = Task.detached { try PhoneDisplayFileReader.read(url) }
                         original = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                    case .vault(let item):
+                        original = try await vault.downloadForBackpack(item).data
+                    case .legacyCloud(let item):
+                        original = try await community.downloadLegacyBackpackGIF(item)
                     }
                     let worker = Task.detached { try options.timing.applying(to: original) }
                     let timed = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
@@ -103,7 +121,7 @@ final class BackpackDirectSendStore: ObservableObject {
                 let previewWorker = Task.detached { try GIFPreviewDecoder.thumbnail(first) }
                 let image = try await withTaskCancellationHandler { try await previewWorker.value } onCancel: { previewWorker.cancel() }
                 try context(stamp, account: account, policy: policy, community: community)
-                payloads = prepared; durations = displayTimes; plan = proposed; preview = image; warnings = notes
+                payloads = prepared; preparedSources = request.sources; durations = displayTimes; plan = proposed; preview = image; warnings = notes
                 preparedOptions = options; capturedAccount = account; capturedPolicy = policy
                 status = "Ready: \(prepared.count)GIF(s), auto-fit to\(size.width)×\(size.height), empty slots\(proposed.slots.map(String.init).joined(separator: ", ")). Sources unchanged."
             } catch { if epoch == stamp && !Task.isCancelled { failure = error.localizedDescription } }
@@ -114,11 +132,12 @@ final class BackpackDirectSendStore: ObservableObject {
         guard epoch == stamp, community.accountRevision == account, community.avatarPolicyRevision == policy,
               !community.avatarPolicyChanging, UIApplication.shared.applicationState == .active else { throw CancellationError() }
     }
-    func send(options: BackpackSendOptions, confirmed: Bool, community: CommunityController, panel: PanelController) {
+    func send(options: BackpackSendOptions, confirmed: Bool, community: CommunityController, panel: PanelController, vault: CloudVaultStore) {
         guard !busy, !sending, !playbackConfirmed, confirmed, let plan, preparedOptions == options, payloads.count == plan.slots.count,
               durations.count == payloads.count,
+              preparedSources.count == payloads.count,
               let account = capturedAccount, let policy = capturedPolicy else { failure = "Prepare current settings and explicitly confirm Send & Play first."; return }
-        let stamp = epoch, bytes = payloads, displayTimes = durations
+        let stamp = epoch, bytes = payloads, displayTimes = durations, sources = preparedSources
         busy = true; sending = true; failure = nil; completed = 0; playbackConfirmed = false
         task = Task {
             var ownership: UUID?
@@ -136,6 +155,12 @@ final class BackpackDirectSendStore: ObservableObject {
                 let token = try panel.beginBatch(); ownership = token
                 try await panel.transaction(batch: token) {
                     for index in bytes.indices {
+                        try context(stamp, account: account, policy: policy, community: community)
+                        switch sources[index] {
+                        case .vault(let item): try await vault.authorizeForBackpack(item)
+                        case .legacyCloud(let item): try await community.authorizeLegacyBackpackGIF(item)
+                        case .catalog, .local: break
+                        }
                         try context(stamp, account: account, policy: policy, community: community)
                         guard panel.link.selectedID == plan.inventory.deviceID, panel.identity?.serial == plan.inventory.serial,
                               panel.size == plan.size else { throw BackpackError.invalid("The connected backpack changed before sending.") }
@@ -155,6 +180,14 @@ final class BackpackDirectSendStore: ObservableObject {
                         try context(stamp, account: account, policy: policy, community: community)
                         guard stored.occupied else { throw BackpackError.invalid("Upload acknowledged but destination is not reported occupied. Do not resend automatically.") }
                         completed += 1
+                    }
+                    try context(stamp, account: account, policy: policy, community: community)
+                    for source in sources {
+                        switch source {
+                        case .vault(let item): try await vault.authorizeForBackpack(item)
+                        case .legacyCloud(let item): try await community.authorizeLegacyBackpackGIF(item)
+                        case .catalog, .local: break
+                        }
                     }
                     try context(stamp, account: account, policy: policy, community: community)
                     // Use the ordered-loop path for one GIF too; slot selection alone is not an animation receipt.

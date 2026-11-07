@@ -4,6 +4,48 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Current owner priority - GPS/Bluetooth gameplay P0, 2026-11-07
+
+Prioritize reachable/playable event hunts/checkpoints/co-op and own local
+adventure/milestones, with foreground GPS quality/dwell/hysteresis, explicit
+private/manual confirmation and stop/expiry/revocation. GPS is broad fixed-target
+eligibility only, NEVER precise peer tagging. Actual purpose-bound BLE tokens/
+authenticated exchange remain required for peer interactions; RSSI is rough,
+not meters. Supported NI is phone-to-phone coarse close-range confirmation,
+not backpack tracking/proximity certification; uncertain/unsupported needs an
+explicit nearby/manual choice. No coordinates/route/encounter timelines or
+automatic public claims, badges/progress uploads, chase/traffic incentives.
+Keep PHONE recovery before any automatic replacement and hardware recovery
+unavailable until actual originals/association/transport support are reliable.
+
+Latest native send/eyes source94778b4 compiled, portable tests9/0 and full
+native units931/0/2explicit skips in42401381843. Its UI stage failed on a snapshot
+query in the community regression; no overall/UI/public-live pass or new beta
+is claimed. Source user requests remain recorded, not dropped.
+Current missing gameplay edge: event local GPS hint and manual hunt collection
+are separate screens, requiring repeated target selection. Next bounded source
+step connects fresh, scope-bound local GPS eligibility to an explicit PRIVATE
+hunt confirmation in the same gameplay view, reusing existing coordinators/
+collection APIs. No beacon/checkpoint identity contract is invented.
+
+In-flight direct cloud send source is preserved: current owned state/item/
+version/key/download authorization, no mandatory Keep local/publication/server
+key use, temporary memory clear on pause/lock/account changes.6new fixtures
+prepared/unexecuted; no further cloud polish before gameplay. This atomic source
+checkpoint does not authorize or claim new provider/CI/device operations.
+
+### Current backend activation handoff, not native proof
+
+Backend owner reports healthy services-enable image with source6f29669 and
+protected distinct SOCIAL/CLOUD keys, backup/restart/owner-denial/live acceptance.
+Managed cloud, messaging/groups/events/live media/pins/references/requests,
+private playlists, event/peer report creation, guestbook/display planning are
+now enabled. Native user consent/permissions remain separate; actual runtime
+config is authoritative, not hardcoded flags. No server keys are native secrets.
+User-held enrollment/adoption, APNs, AI redraw and App Attest enforcement/readiness
+remain false until actual requisite signed/device/provider evidence; build8
+upload is not that evidence. Local meetup/time sourcef670bed is not yet deployed.
+
 ## Direct Send & Play / timing / loops / eyes - PURPLE pending validation
 
 - [x] Direct community/Favorites/local-artwork Send & Play, no mandatory library
