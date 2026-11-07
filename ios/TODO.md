@@ -4,17 +4,18 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
-## Actual isolated runner checkpoint - 2026-11-07, FAILED compilation
+## Actual isolated runner checkpoint - 2026-11-07, build passed / tests failed
 
 Owner unpaused narrow native publication/unsigned GitHub validation. The reviewed
 APP snapshot `797d538` was pushed on `native-recovery`, leaving independent
 firmware/Wire/full20-key/reserved-slot/GIF hardware work dirty and unstaged.
 Executed toolchain: `xcode-27`, macOS27.0.1, Xcode27.1/build27A9275,
 simulator SDK27.1/iPhone Duo, Apple Swift6.4 (`swiftlang-6.4.0.34.1`,
-`clang-2100.3.34.1`), swift-driver1.168.6. Each completed run below executed
+`clang-2100.3.34.1`), swift-driver1.168.6. The first nine completed runs executed
 **7 portable tests,0failures** against committed Wire, then **FAILED app/test
 compilation, exit65**. Both iOS XCTest stages were skipped: **0 native app
-fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
+fixture methods executed in those failed runs**. Independent dirty Wire is not
+tested by portable7/7.
 
 | Source | Actual run | Compiler evidence / correction |
 |---|---|---|
@@ -27,6 +28,7 @@ fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Reached native test compilation; positive event receipt assertions must unwrap nullable `CatalogEvent`. |
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Positive receipt fixture error resolved; chat/event SwiftUI expressions exceed compiler type-check budget. |
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Builder diagnostics cleared; prepared governance fixture calls missing `declineKnownEventRSVP`. |
+| `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | Unsigned app/unit/UI bundles compiled;449consolidated tests executed,20failures (18unexpected); full regression skipped. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -53,6 +55,28 @@ inside `transferEventOwnership`, so view/test callers could not resolve it.
 Its unchanged checked POST/expected-account/cancellation/nullable-receipt body
 now lives at the client extension scope. No new event fetch, metadata grant,
 receipt default, navigation or fixture was introduced. Another build must verify it.
+
+The tenth run verifies **successful actual unsigned `build-for-testing` of app,
+unit and UI bundles** at `feb2a6f`, then executed **449consolidated tests with
+20failures (18unexpected)**. No skip-method entries were recorded. Full
+regressions were skipped after failure; no overall native/test/beta green.
+
+Failures:6Automatic PHONE fixtures dropped their weakly bound target owners;
+1friend timing fixture used the preserved legacy hardware encoder instead of
+exact source delays;12pixel-store fixtures used runner working-directory `/`;
+1pixel export assertion assumed deterministic PNG attribution-JSON byte order.
+Corrections preserve production ownership/storage/encoding: retain fixture
+owners through teardown, author explicit3/12cs source GIF, use isolated owned
+Application Support fixtures, and assert exact decoded RGBA/alpha/dimensions/
+PNG/frame shape plus authored state rather than unreliable encoded byte order.
+No new methods or removed assertions; another actual run must verify the fixes.
+
+Executed passing source groups include artwork24/24, catalog manifest30/30,
+account parity70/70, chat source52/52, CommunityTests34/34 (including5recovery
+regressions), friend playback24/24, SOLO12/12, local pairing12/12 and lazy
+location4/4. These are exact simulator unit milestones, not UI/live/physical
+coverage. The running-job log API returned404; completed logs were retrieved
+successfully after completion, so no counts were invented from missing logs.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 

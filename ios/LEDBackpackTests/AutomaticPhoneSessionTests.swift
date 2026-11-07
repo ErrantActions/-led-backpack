@@ -17,6 +17,14 @@ final class AutomaticPhoneSessionTests: XCTestCase {
         phone.setForeground(true); phone.setVisible(true); try await phone.show(gif(1))
         let targets = DisplayTargetSelection(), session = AutomaticPhoneSession(repository: repository)
         session.bind(phone: phone, targets: targets)
+        // Match AppModel ownership when a test ignores tuple members.
+        addTeardownBlock {
+            await MainActor.run {
+                session.stop()
+                phone.setVisible(false)
+                XCTAssertNil(targets.phonePeerOwner)
+            }
+        }
         return (session, phone, targets, repository)
     }
     func testSessionCapturesRealOriginalBeforeAnyReplacement() async throws {

@@ -191,10 +191,29 @@ final class LocalPixelCodecTests: XCTestCase {
         XCTAssertEqual(structure.frames.last?.delayCentiseconds, 120)
     }
     func testPreviewBrightnessAndBlackFloorNeverMutateAuthoredPixelsOrExport() throws {
-        let art = try LocalPixelFixtures.artwork()
+        var art = try LocalPixelFixtures.artwork()
+        art.frames[0].rgba.replaceSubrange(0..<4, with: [0,0,0,128])
+        art.frames[0].centiseconds = 12000; art.repeats = 3
+        let authored = art
         let before = try LocalPixelCodec.png(art, frame: 0)
-        _ = try LocalPixelPreviewRenderer.render(frame: art.frames[0], width: art.width, height: art.height, brightness: 0.3, blackFloor: 0.1)
-        XCTAssertEqual(try LocalPixelCodec.png(art, frame: 0), before)
+        let preview = try LocalPixelPreviewRenderer.render(frame: art.frames[0], width: art.width, height: art.height, brightness: 0.3, blackFloor: 0.1)
+        XCTAssertEqual(art, authored)
+        XCTAssertEqual(preview.image.width, art.width); XCTAssertEqual(preview.image.height, art.height)
+        let previewBytes = try XCTUnwrap(preview.image.dataProvider?.data)
+        XCTAssertEqual(Array(previewBytes as Data), [
+            8,8,8,128, 8,77,77,255, 77,8,8,255,
+            8,77,77,255, 77,8,8,255, 8,77,77,255
+        ])
+        let after = try LocalPixelCodec.png(art, frame: 0)
+        for exported in [before, after] {
+            let source = try XCTUnwrap(CGImageSourceCreateWithData(exported as CFData, nil))
+            XCTAssertEqual(CGImageSourceGetType(source) as String?, UTType.png.identifier)
+            XCTAssertEqual(CGImageSourceGetCount(source), 1)
+            let decoded = try LocalPixelFixtures.decodedPixels(exported)
+            XCTAssertEqual(decoded.width, authored.width); XCTAssertEqual(decoded.height, authored.height)
+            XCTAssertEqual(decoded.rgba, authored.frames[0].rgba)
+        }
+        XCTAssertEqual(art, authored)
         XCTAssertThrowsError(try LocalPixelPreviewRenderer.render(frame: art.frames[0], width: art.width, height: art.height, brightness: .infinity, blackFloor: 0))
     }
     func testCancelledWorkerDoesNotReturnACompletedDecode() async throws {

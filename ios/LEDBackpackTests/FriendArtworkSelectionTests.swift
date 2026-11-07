@@ -10,9 +10,14 @@ final class FriendArtworkSelectionTests: XCTestCase {
     private let owner = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
     private let peer = UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!
     private let sessionID = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!
-    private func gif(_ color: UInt8 = 0) -> Data {
-        Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,color,0,0,255,255,255,
-            33,249,4,0,3,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
+    private func gif(_ color: UInt8 = 0, delays: [UInt16] = [3]) -> Data {
+        var bytes = Array("GIF89a".utf8) + [1,0,1,0,128,0,0,color,0,0,255,255,255]
+        for (index, delay) in delays.enumerated() {
+            let pixel: UInt8 = index.isMultiple(of: 2) ? 68 : 76
+            bytes += [33,249,4,0,UInt8(truncatingIfNeeded: delay),UInt8(delay >> 8),0,0,
+                44,0,0,0,0,1,0,1,0,0,2,2,pixel,1,0]
+        }
+        return Data(bytes + [59])
     }
     private func phone() -> PhoneDisplayController {
         let value = PhoneDisplayController(idleTimer: FriendSelectionIdle(), brightness: FriendSelectionBrightness())
@@ -101,10 +106,11 @@ final class FriendArtworkSelectionTests: XCTestCase {
     }
     func testPreviewStartsPausedHonorsSourceTimingAndStopsWithoutAutoResume() async throws {
         let selection = FriendArtworkSelection()
-        let frame = PixelFrame.black(PanelSize(width: 1, height: 1))
-        var other = frame; other.rgb = [255,0,0]
-        let data = try MediaCodec.encode([frame,other], delays: [0.03,0.12], loopCount: nil)
+        let data = gif(delays: [3,12])
         _ = await select(selection, data)
+        let preview = try XCTUnwrap(selection.preview)
+        XCTAssertEqual(preview.frames.count, 2)
+        XCTAssertEqual(preview.duration, 0.15, accuracy: 0.000001)
         XCTAssertFalse(selection.playing)
         XCTAssertEqual(selection.position(at: 0.02).index, 0)
         XCTAssertEqual(selection.position(at: 0.04).index, 1)

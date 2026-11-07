@@ -3,14 +3,16 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
-## Actual recovery build - failed, not native green
+## Actual recovery build - compilation passed / consolidated tests failed
 
 The selectively published APP branch is `native-recovery`. Executed toolchain:
 Xcode27.1/build27A9275, Apple Swift6.4, simulator SDK27.1/iPhone Duo,
 macOS27.0.1. Independent dirty firmware/Wire/GIF hardware work is excluded.
-Each completed run below passed **7 portable protocol tests** against committed
-Wire, then failed app/test compilation with exit65. Both native XCTest stages
-were skipped: **0 new native app fixtures executed**, no native green.
+The first nine completed runs passed **7 portable protocol tests** against
+committed Wire, then failed compilation with exit65; their native test stages
+were skipped. The tenth run now passed actual unsigned app/unit/UI-bundle
+compilation, then executed449consolidated tests with20failures (18unexpected).
+Full regressions were skipped; no overall test/native green.
 
 | Published source | Actual run | Compilation failure |
 |---|---|---|
@@ -23,6 +25,7 @@ were skipped: **0 new native app fixtures executed**, no native green.
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Native test compilation: expected positive event receipt must unwrap optional event. |
 | `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Chat/event SwiftUI expression type-check budget exceeded. |
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Governance fixture calls a missing known-event RSVP decline member. |
+| `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | App/unit/UI bundles compiled;449consolidated tests,20failures; full regression skipped. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -39,6 +42,15 @@ The next build cleared those diagnostics and exposed a known-event decline
 helper that was local to ownership transfer. Its unchanged checked/nullable
 implementation is now client-extension scoped; no metadata grant or fake
 receipt was added. Another actual build must verify the correction.
+That correction is now included in the successful unsigned `feb2a6f` build.
+The18groups completed with449executed/20failures; no skip-method entries were
+recorded. Runtime fixture corrections retain weakly bound owners for their
+proper lifetime, encode exact source timing without changing hardware GIF
+work, use owned isolated writable directories, and verify decoded PNG pixels/
+alpha/dimensions/authored state rather than nondeterministic metadata byte order.
+These fixes add no new methods or weaken production checks; rerun required.
+Completed logs were retrieved after live-log access returned404 while running.
+This is not overall native/test/beta readiness.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 
@@ -58,7 +70,8 @@ unsigned, executes all18source fixture groups together and then full unit/UI
 regressions. Each stage stops on failure and retains provenance/logs/result
 bundles. No signing, provider activation or deployment is included. Its initial
 workflow/ignore-allowlist-only commit `2b19e7f` was pushed successfully; the reviewed
-native snapshot is published but has not passed app/test compilation. The dedicated branch trigger
+native snapshot is published and now passed unsigned app/test compilation;
+XCTest and broader acceptance remain pending. The dedicated branch trigger
 uses authorized Git push without requiring a new API token or provider key.
 Local YAML/permission/trigger checks, all6Bash syntax checks,18selector-file
 checks and result-retention checks passed for the initial manual workflow.

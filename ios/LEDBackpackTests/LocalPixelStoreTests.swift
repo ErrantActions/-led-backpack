@@ -5,8 +5,9 @@ import Combine
 @MainActor
 final class LocalPixelStoreTests: XCTestCase {
     private func root() throws -> URL {
-        let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
-            .appendingPathComponent("LocalPixelFixture-\(UUID().uuidString)", isDirectory: true)
+        let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+            appropriateFor: nil, create: true)
+        let url = base.appendingPathComponent("LocalPixelFixture-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
         addTeardownBlock { try FileManager.default.removeItem(at: url) }
         return url
