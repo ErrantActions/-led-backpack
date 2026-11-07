@@ -204,6 +204,8 @@ struct EventLocalEligibilityView: View {
     @State private var event: CatalogEvent?
     @State private var checkpointID: UUID?
     @State private var consent = false
+    @State private var progressCheckpointID: UUID?
+    @State private var showingProgress = false
     var body: some View {
         Form {
             Text("Foreground-only, local checkpoint hint").font(.headline)
@@ -234,14 +236,28 @@ struct EventLocalEligibilityView: View {
                 }.disabled(!consent || checkpointID == nil || session.busy)
             }
             Button("Stop local sensing", role: .destructive) { local.stop(); consent = false }
+            if let hint = local.hint, hint.scope.eventID == eventID, hint.scope.accountRevision == community.accountRevision {
+                Button("Review this selected checkpoint / sharing stays off") {
+                    do {
+                        try hint.require(hint.scope, uptime: ProcessInfo.processInfo.systemUptime)
+                        _ = try local.consumeHint(hint.scope)
+                        progressCheckpointID = hint.scope.checkpointID
+                        local.stop("Selected checkpoint passed to explicit review — no GPS proof or upload"); consent = false
+                        showingProgress = true
+                    } catch { session.run { _ in throw error } }
+                }
+            }
             NavigationLink("Manual self-reported checkpoint choice") { EventProgressView(eventID: eventID) }
             Text("5s freshness, usable <=25m accuracy, 10s dwell inside confidence bounds, hysteresis reset and 60s cooldown. The configured radius is never enlarged. Manual fallback is always separate and uncertified.").font(.caption)
         }.modernScene().navigationTitle("Local checkpoint eligibility")
+        .navigationDestination(isPresented: $showingProgress) {
+            EventProgressView(eventID: eventID, initialCheckpointID: progressCheckpointID)
+        }
         .task(id: community.accountRevision) { session.bind(community); load() }
         .onChange(of: checkpointID) { _, _ in local.stop("Checkpoint changed"); consent = false }
         .onChange(of: consent) { _, enabled in if !enabled { local.stop("Consent withdrawn") } }
-        .onChange(of: phase) { _, value in if value != .active { local.stop("Background"); consent = false; event = nil; session.clear() } }
-        .onChange(of: community.accountRevision) { _, _ in local.stop("Account changed"); consent = false; event = nil; session.clear() }
+        .onChange(of: phase) { _, value in if value != .active { local.stop("Background"); consent = false; event = nil; progressCheckpointID = nil; showingProgress = false; session.clear() } }
+        .onChange(of: community.accountRevision) { _, _ in local.stop("Account changed"); consent = false; event = nil; progressCheckpointID = nil; showingProgress = false; session.clear() }
         .onDisappear { local.stop("Page closed"); consent = false; session.clear() }
     }
     private func load() {

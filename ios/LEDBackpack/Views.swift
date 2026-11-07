@@ -407,6 +407,10 @@ struct LibraryView: View {
     }
 
     private var libraryArtwork: some View {
+            NavigationLink { GPSGamesView() } label: {
+                Label("GPS & nearby games", systemImage: "location.circle.fill")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }.buttonStyle(AuroraPrimaryButton())
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("In your rotation").font(.title3.weight(.semibold))

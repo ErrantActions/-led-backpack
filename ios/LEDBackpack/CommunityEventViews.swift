@@ -213,6 +213,8 @@ struct CommunityEventDetailView: View {
                             .disabled(community.config?.eventTeamsEnabled != true || event.settings?.eventTeamsEnabled != true || event.moderation?.held == true)
                         NavigationLink("Any-order hunt / separate cooperative consent") { EventSocialView(eventID: event.id, surface: .collection) }
                             .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.moderation?.held == true)
+                        NavigationLink("Play GPS checkpoint hunt") { EventGPSHuntView(eventID: event.id) }
+                            .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.route?.published != true || event.moderation?.held == true)
                         NavigationLink("Consented guestbook / moderation") { EventSocialView(eventID: event.id, surface: .guestbook) }
                             .disabled(community.config?.eventGuestbookAvailable != true || event.settings?.eventGuestbookAvailable != true || event.moderation?.held == true)
                         NavigationLink("Show / rest-stop plan (paused source preview)") { EventSocialView(eventID: event.id, surface: .display) }

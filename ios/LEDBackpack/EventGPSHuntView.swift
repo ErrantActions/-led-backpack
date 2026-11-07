@@ -1,0 +1,205 @@
+import SwiftUI
+import BackpackProtocol
+
+@MainActor
+struct EventGPSHuntView: View {
+    let eventID: UUID
+    @StateObject private var model: NativeEventSocialStore
+    init(eventID: UUID) {
+        self.eventID = eventID
+        _model = StateObject(wrappedValue: NativeEventSocialStore(eventID: eventID, surface: .collection))
+    }
+    var body: some View { EventGPSHuntContent(eventID: eventID, model: model) }
+}
+@MainActor
+private struct EventGPSHuntContent: View {
+    let eventID: UUID
+    @ObservedObject var model: NativeEventSocialStore
+    @EnvironmentObject private var community: CommunityController
+    @EnvironmentObject private var gps: ForegroundCheckpointLocation
+    @Environment(\.scenePhase) private var phase
+    @State private var checkpointID: UUID?
+    @State private var gpsConsent = false
+    @State private var joinConsent = false
+    @State private var cooperativeConsent = false
+    @State private var stationary = false
+    @State private var busy = false
+    @State private var failure: String?
+    @State private var notice: String?
+    @State private var confirming: UUID?
+    @State private var epoch = UUID()
+    @State private var work: Task<Void, Never>?
+    private var targets: [EventRouteCheckpoint] {
+        guard let event = model.event, let collection = model.collection else { return [] }
+        return event.route?.checkpoints.filter { collection.permitsManualCollection($0.id, event: event) } ?? []
+    }
+    private var selected: EventRouteCheckpoint? { targets.first { $0.id == checkpointID } }
+    private var expectedScope: ForegroundLocationScope? {
+        guard let event = model.event, let participation = event.participationRevision, let selected else { return nil }
+        return .init(accountRevision: community.accountRevision, eventID: event.id, eventRevision: event.revision,
+            participationRevision: participation, checkpointID: selected.id)
+    }
+    var body: some View {
+        List {
+            intro
+            consentSection
+            gameplay
+            if let failure = failure ?? model.failure { Text(failure).foregroundStyle(.orange) }
+            if let notice { Text(notice).font(.caption) }
+            if busy || model.busy { ProgressView() }
+            Section("Separate choices") {
+                NavigationLink("Review event / RSVP / current route") { CommunityEventDetailView(id: eventID) }
+                NavigationLink("Manual hunt / cooperative choices (no GPS proof)") { EventSocialView(eventID: eventID, surface: .collection) }
+                NavigationLink("Nearby peer games use Bluetooth, not checkpoint GPS") { PhoneDisplayLibraryView() }
+                Button("Reload current hunt") { stopGPS(); checkpointID = nil; model.bind(community); model.load() }.disabled(busy || model.busy)
+                Button("Stop GPS only", role: .destructive) { stopGPS() }
+                Button("Withdraw my hunt/cooperative consent", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
+            }
+        }.navigationTitle("GPS checkpoint hunt").modernScene()
+        .task(id: community.accountRevision) { stopGPS(); checkpointID = nil; model.bind(community); model.load() }
+        .task(id: "\(phase):\(community.accountRevision)") {
+            guard phase == .active else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                if gps.sensing && !busy && !model.busy { await revalidateSensing() }
+            }
+        }
+        .onChange(of: checkpointID) { _, _ in stopGPS(); stationary = false; if !model.busy { confirming = nil } }
+        .onChange(of: targets.map(\.id)) { _, ids in if let checkpointID, !ids.contains(checkpointID) { self.checkpointID = nil } }
+        .onChange(of: gpsConsent) { _, value in if !value { stopGPS() } }
+        .onChange(of: model.busy) { _, value in
+            if !value, confirming != nil {
+                notice = model.failure == nil ? "Private self-collection acknowledged. Not GPS-certified attendance; no public progress was submitted." :
+                    "Confirmation outcome not verified. Reload your private hunt before another deliberate action; no automatic retry."
+                confirming = nil
+            }
+        }
+        .onChange(of: model.needsReload) { _, value in if value { gps.stop("Current hunt context requires reload") } }
+        .onChange(of: phase) { _, value in if value != .active { stopGPS(); model.clear(); checkpointID = nil } }
+        .onDisappear { stopGPS(); model.clear() }
+    }
+    private var intro: some View {
+        Section("Play the current public event hunt") {
+            Text("Choose a remaining fixed checkpoint, explicitly start foreground GPS, dwell within its confidence bounds, then confirm privately while stopped.").font(.headline)
+            Text("GPS supplies only a broad local hint. It never decides precise peer tagging. Coordinates/samples/routes are discarded, not sent or saved. No automatic check-in, badge/progress upload or certified arrival.").font(.caption)
+            Text("Bluetooth peer interactions require their own observed tokens, authenticated keys and game/session consent; RSSI is rough. Optional NI measures phones, not backpack positions. No friend map, chasing or traffic incentives.").font(.caption)
+        }
+    }
+    @ViewBuilder private var consentSection: some View {
+        if let collection = model.collection {
+            Section("Private hunt participation") {
+                Text(collection.ownEnabled ? "Your current hunt opt-in is active." : "Join this hunt deliberately before playing.")
+                Text(collection.ownCompleted ? "All selected private targets collected; finish may be available." : "Select a remaining private target below.")
+                Text(collection.cooperativeReached ? "Cooperative boolean goal reached." : "Cooperative boolean goal not reached or unavailable.").font(.caption)
+                Text(collection.ownCooperativeConsent ? "You separately opted into the cooperative completion boolean." : "Your cooperative completion contribution is off.").font(.caption)
+                if !collection.ownEnabled {
+                    Toggle("I join this private hunt", isOn: $joinConsent)
+                    Toggle("Separately include my completion in the cooperative boolean", isOn: $cooperativeConsent)
+                    Button("Join with these separate choices") {
+                        model.consent = joinConsent; model.cooperativeConsent = cooperativeConsent
+                        model.joinCollection(); joinConsent = false; cooperativeConsent = false
+                    }.disabled(!joinConsent || model.busy || !collection.plan.enabled)
+                }
+            }
+        }
+    }
+    @ViewBuilder private var gameplay: some View {
+        if let collection = model.collection, collection.ownEnabled, let event = model.event {
+            Section("Current target and local GPS") {
+                Picker("Remaining checkpoint", selection: $checkpointID) {
+                    Text("Choose target").tag(Optional<UUID>.none)
+                    ForEach(targets) { Text($0.title).tag(Optional($0.id)) }
+                }.disabled(busy || model.busy)
+                if targets.isEmpty { Text("No remaining eligible target. Reload current hunt/event state.") }
+                Toggle("I consent to foreground GPS for this selected checkpoint", isOn: $gpsConsent)
+                    .disabled(busy || model.busy || selected == nil)
+                Button("Request When In Use permission") { gps.requestWhenInUse(consent: gpsConsent) }
+                    .disabled(!gpsConsent || phase != .active)
+                Button("Start GPS for this target (at most60s)") { startGPS(event, collection: collection) }
+                    .disabled(!gpsConsent || selected == nil || busy || model.busy || model.needsReload)
+                Label(gps.status, systemImage: gps.sensing ? "location.fill" : "location.slash")
+                Text(gps.eligibility.rawValue).font(.headline)
+                Toggle("I am stopped / on foot and can safely confirm", isOn: $stationary)
+                Button("Confirm this target privately") { confirmGPS(event, collection: collection) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!stationary || busy || model.busy || model.needsReload || !hasCurrentHint)
+                Text("Needs current going RSVP/review/actual event window, published route, private hunt opt-in and fresh≤5s/full-accuracy≤25m fixes with10s continuous dwell. Denied/reduced/stale/uncertain GPS stays manual; nothing silently restarts.").font(.caption)
+                Text("This game HUD does not replace selected PHONE artwork or write a backpack slot. Existing SOLO/peer automatic PHONE scenes require their durable original first.").font(.caption)
+            }
+        }
+    }
+    private var hasCurrentHint: Bool {
+        guard let scope = expectedScope, let hint = gps.hint else { return false }
+        return (try? hint.require(scope, uptime: ProcessInfo.processInfo.systemUptime)) != nil
+    }
+    private func stopGPS() {
+        epoch = UUID(); work?.cancel(); work = nil; busy = false; gpsConsent = false
+        gps.stop("GPS game stopped — no automatic restart")
+    }
+    private func fresh(_ event: CatalogEvent, collection: NativeEventCollection) async throws -> (CatalogEvent, NativeEventCollection) {
+        guard let client = model.client else { throw BackpackError.invalid("Reload the current hunt account first.") }
+        let context = try NativeEventSocialContext(event)
+        let current = try await client.currentSocialEvent(context, surface: .collection)
+        let snapshot = try await client.eventCollection(current)
+        try snapshot.plan.validate(event: current)
+        guard snapshot.ownEnabled, snapshot.revision == collection.revision,
+              snapshot.optinRevision == collection.optinRevision, snapshot.plan == collection.plan else {
+            throw BackpackError.invalid("Hunt plan or current own opt-in changed. Stop and reload; no stale GPS confirmation.")
+        }
+        return (current,snapshot)
+    }
+    private func startGPS(_ event: CatalogEvent, collection: NativeEventCollection) {
+        guard let checkpoint = selected, gpsConsent, !busy else { return }
+        let stamp = UUID(); epoch = stamp; busy = true; failure = nil
+        gps.stop("Checking current hunt before GPS start")
+        work = Task {
+            defer { if epoch == stamp { busy = false } }
+            do {
+                let (current,snapshot) = try await fresh(event, collection: collection)
+                guard epoch == stamp, phase == .active, gpsConsent, checkpointID == checkpoint.id,
+                      snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
+                try gps.start(event: current, checkpoint: checkpoint, accountRevision: community.accountRevision,
+                    consent: gpsConsent, foreground: phase == .active, capability: model.client?.collectionsAvailable == true)
+            } catch { if epoch == stamp && !Task.isCancelled { handleFailure(error) } }
+        }
+    }
+    private func confirmGPS(_ event: CatalogEvent, collection: NativeEventCollection) {
+        guard !busy, stationary, let checkpoint = selected, let expected = expectedScope, let hintID = gps.hint?.id else { return }
+        let stamp = UUID(); epoch = stamp; busy = true; failure = nil
+        work = Task {
+            defer { if epoch == stamp { busy = false } }
+            do {
+                let (current,snapshot) = try await fresh(event, collection: collection)
+                guard epoch == stamp, phase == .active, stationary, checkpointID == checkpoint.id,
+                      gps.hint?.id == hintID, snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
+                _ = try gps.consumeHint(expected)
+                gps.stop("Local target hint consumed — awaiting explicit private claim receipt")
+                gpsConsent = false; confirming = checkpoint.id; model.consent = true
+                model.collect(checkpoint.id)
+                notice = "Private confirmation requested; this is a self-report, not a GPS proof or public progress post."
+            } catch { if epoch == stamp && !Task.isCancelled { handleFailure(error) } }
+        }
+    }
+    private func revalidateSensing() async {
+        let stamp = epoch
+        guard let event = model.event, let collection = model.collection else { stopGPS(); return }
+        do {
+            let (current,snapshot) = try await fresh(event, collection: collection)
+            if let checkpointID, !snapshot.permitsManualCollection(checkpointID, event: current) {
+                throw BackpackError.invalid("This target was already collected or is no longer permitted. Reload the remaining hunt.")
+            }
+        }
+        catch { if epoch == stamp { handleFailure(error) } }
+    }
+    private func handleFailure(_ error: Error) {
+        stopGPS()
+        if let failure = error as? CommunityFailure, [401,403,404,410].contains(failure.status) { model.clear(); checkpointID = nil }
+        if let failure = error as? NativeEventSocialContextFailure {
+            switch failure {
+            case .denied, .unavailable: model.clear(); checkpointID = nil
+            case .changed: break
+            }
+        }
+        failure = error.localizedDescription
+    }
+}

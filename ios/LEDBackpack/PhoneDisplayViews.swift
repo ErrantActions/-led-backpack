@@ -23,6 +23,7 @@ struct PhoneDisplayLibraryView: View {
                 NavigationLink("Recovery first / Received swaps (local only)") { SwapRecoveryView() }
                 NavigationLink("Offline pixel & GIF studio (local only)") { LocalPixelStudioView() }
                 NavigationLink("SOLO places / journey / daylight / local event scenes") { SoloScenesView() }
+                NavigationLink("GPS & nearby games") { GPSGamesView() }
                 NavigationLink("Automatic PHONE GIF swap game (separate consent)") { PhoneSwapGameView() }
                 NavigationLink("Offline paired calm colors / optional NI (separate consent)") { LocalPairedGameView() }
                 if recovery.journal?.needsRecovery == true {

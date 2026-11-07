@@ -73,6 +73,7 @@ jobs:
             CommunitySelectionTests EventCreationStepsTests EventRoadRouteTests CloudLibraryTests \
             GIFTimingAdjustmentTests NaturalEyesTests \
             CloudBackpackSourceTests \
+            GPSGameEligibilityTests LocationFoundationTests \
             AdminArtworkTests AutomaticPhoneSessionTests ScopedPhonePreviewTests \
             SoloSourceTests LocalPairingTests FriendArtworkSelectionTests FriendPlaybackTests \
             LocationManagerInitializationTests LocalPixelDocumentTests LocalPixelCodecTests \

@@ -8,6 +8,8 @@ struct EventProgressView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var session = CommunityFeatureSession()
     let eventID: UUID
+    var initialCheckpointID: UUID? = nil
+    @State private var didSeedInitial = false
     @State private var event: CatalogEvent?
     @State private var board: EventSharedProgressBoard?
     @State private var clock: CatalogEventClock?
@@ -114,6 +116,12 @@ struct EventProgressView: View {
                 let current = try await client.event(eventID)
                 try session.checked(client)
                 choice.update(current); event = current; clock = try CatalogEventClock(serverTime: current.serverTime)
+                if !didSeedInitial, let initialCheckpointID {
+                    guard current.route?.checkpoints.contains(where: { $0.id == initialCheckpointID }) == true else {
+                        throw BackpackError.invalid("The selected GPS checkpoint is no longer in the current fixed plan. Choose/review again.")
+                    }
+                    choice.checkpointID = initialCheckpointID; choice.share = false; didSeedInitial = true
+                }
                 guard current.access.member, current.access.canViewProgress, current.requiresReconfirmation != true,
                       client.progressDeadlinesEnabled(current) else {
                     choice.clear(); return
@@ -141,5 +149,5 @@ struct EventProgressView: View {
             } catch { choice.clear(); board = nil; pending = nil; notice = "Claim not confirmed. Refresh current board before any new deliberate claim; no retry is queued."; throw error }
         }, success: load)
     }
-    private func clear() { event = nil; board = nil; clock = nil; choice.clear(); pending = nil; withdrawing = false; localCheckpoint = nil; notice = nil }
+    private func clear() { event = nil; board = nil; clock = nil; choice.clear(); didSeedInitial = false; pending = nil; withdrawing = false; localCheckpoint = nil; notice = nil }
 }

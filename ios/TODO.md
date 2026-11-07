@@ -28,6 +28,18 @@ step connects fresh, scope-bound local GPS eligibility to an explicit PRIVATE
 hunt confirmation in the same gameplay view, reusing existing coordinators/
 collection APIs. No beacon/checkpoint identity contract is invented.
 
+**Now source-wired, awaiting actual validation:** prominent Library GPS hub,
+same-screen private GPS hunt and selected route-checkpoint handoff to explicit
+progress review (sharing stays off). Existing coordinators/services reused.
+Continuous fresh dwell, monotonic lease, cancellation/epoch guarded old timers,
+scope-bound renewable/one-consumed hint and private manual confirmation are
+actual UI/controller paths; no coordinates or automatic public claims are sent.
+Six NEW GPSGameEligibilityTests prepared, plus three existing sample sequences
+corrected for continuity. Source colors remain PURPLE, physical GPS/BLE/NI
+acceptance remains unperformed. NI paired calm-color source is NOT a completed
+precise tagging game; genuine checkpoint-beacon binding is absent from contract.
+Exact changed files and acceptance boundaries are in README's matching section.
+
 In-flight direct cloud send source is preserved: current owned state/item/
 version/key/download authorization, no mandatory Keep local/publication/server
 key use, temporary memory clear on pause/lock/account changes.6new fixtures

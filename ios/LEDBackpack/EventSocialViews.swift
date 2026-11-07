@@ -368,6 +368,8 @@ struct EventSocialView: View {
                 Text(snapshot.ownCompleted ? "Your selected targets are self-collected." : "Your private hunt is incomplete or not opted in.")
                 Text(snapshot.cooperativeReached ? "Server's cooperative goal boolean: reached." : "Server's cooperative goal boolean: not reached or disabled.")
                 Text("No exact contributor counts, identities, arrivals or GPS. Private badges do not share progress. Finish requires all selected targets.").font(.caption)
+                NavigationLink("Play GPS checkpoint hunt — private confirmation") { EventGPSHuntView(eventID: event.id) }
+                    .disabled(!snapshot.plan.enabled || event.route?.published != true)
                 Toggle("I explicitly opt in to this private any-order collection", isOn: $model.consent)
                 Toggle("Separately include my completion in the cooperative boolean", isOn: $model.cooperativeConsent)
                 Button("Save these separate consent choices") { model.joinCollection() }

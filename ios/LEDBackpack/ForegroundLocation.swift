@@ -6,15 +6,19 @@ enum CheckpointEligibility: String { case manual = "Manual fallback", outside = 
 struct LocalCheckpointEvaluator {
     private var entered: TimeInterval?
     private var lastEligible: TimeInterval?
-    mutating func reset() { entered = nil; lastEligible = nil }
-    mutating func discardSample() { entered = nil }
+    private var previous: TimeInterval?
+    mutating func reset() { entered = nil; lastEligible = nil; previous = nil }
+    mutating func discardSample() { entered = nil; previous = nil }
     mutating func evaluate(distance: Double, accuracy: Double, age: Double, radius: Double,
         now: TimeInterval, dwell: TimeInterval = 10, cooldown: TimeInterval = 60) -> CheckpointEligibility {
         guard distance.isFinite, distance >= 0, accuracy.isFinite, accuracy > 0, accuracy <= 25,
               age.isFinite, (0...5).contains(age), radius.isFinite, radius >= 1, now.isFinite,
               dwell.isFinite, dwell >= 10, cooldown.isFinite, cooldown >= 60 else {
-            entered = nil; return .manual
+            entered = nil; previous = nil; return .manual
         }
+        if let previous, now < previous { entered = nil; self.previous = nil; return .manual }
+        if let previous, now - previous > 5 { entered = nil }
+        previous = now
         // Confidence bounds never enlarge the organizer's radius.
         if distance + accuracy > radius { entered = nil; return .outside }
         if let lastEligible, now - lastEligible < cooldown { return .cooldown }
@@ -33,20 +37,35 @@ struct ForegroundLocationScope: Equatable {
     let participationRevision: Int
     let checkpointID: UUID
 }
+struct LocalCheckpointHint: Equatable {
+    let id: UUID
+    let scope: ForegroundLocationScope
+    let observedUptime: TimeInterval
+    let validUntilUptime: TimeInterval
+    func require(_ expected: ForegroundLocationScope, uptime: TimeInterval) throws {
+        guard scope == expected, uptime.isFinite, uptime >= 0, observedUptime.isFinite,
+              observedUptime <= uptime, validUntilUptime.isFinite,
+              validUntilUptime <= observedUptime + 5, uptime < validUntilUptime else {
+            throw BackpackError.invalid("A fresh local GPS hint for this exact account/event/participation/checkpoint is required. No stale or wrong-target confirmation.")
+        }
+    }
+}
 @MainActor
 final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var status = "Local sensing off"
     @Published private(set) var sensing = false
     @Published private(set) var eligibility = CheckpointEligibility.manual
+    @Published private(set) var hint: LocalCheckpointHint?
     private var manager: CLLocationManager?
     private var lastAuthorization: CLAuthorizationStatus?
     private var lastAccuracy: CLAccuracyAuthorization?
     private var scope: ForegroundLocationScope?
     private var fixed: EventRouteCheckpoint?
-    private var deadline: Date?
+    private var deadlineUptime: TimeInterval?
     private var evaluator = LocalCheckpointEvaluator()
     private var expiry: Task<Void, Never>?
     private var stale: Task<Void, Never>?
+    private var epoch = UUID()
     var stoppedForPermissionChange: (() -> Void)?
     var hasInitializedLocationManager: Bool { manager != nil }
     private func activatedLocationManager() -> CLLocationManager {
@@ -95,18 +114,22 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         fixed = checkpoint
         // Short lease requires a fresh authorized event read before any explicit restart.
         let lease = min(60, end.timeIntervalSince(server))
-        deadline = Date().addingTimeInterval(lease)
-        manager.desiredAccuracy = kCLLocationAccuracyBest; manager.distanceFilter = 3
+        deadlineUptime = ProcessInfo.processInfo.systemUptime + lease
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
         sensing = true; status = "Foreground local sensing active — coordinates discarded, nothing shared"
         manager.startUpdatingLocation()
+        let stamp = epoch
         expiry = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(lease)) } catch { return }
+            guard !Task.isCancelled, self?.epoch == stamp else { return }
             self?.stop("Local lease/event deadline ended — explicit refresh/start required")
         }
     }
     func stop(_ reason: String = "Local sensing off") {
+        epoch = UUID()
         manager?.stopUpdatingLocation(); expiry?.cancel(); stale?.cancel()
-        expiry = nil; stale = nil; scope = nil; fixed = nil; deadline = nil
+        expiry = nil; stale = nil; scope = nil; fixed = nil; deadlineUptime = nil; hint = nil
         evaluator.reset(); eligibility = .manual; sensing = false; status = reason
     }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -123,18 +146,40 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard sensing, scope != nil, let fixed, let deadline, Date() < deadline, let sample = locations.last else {
+        let uptime = ProcessInfo.processInfo.systemUptime
+        guard manager === self.manager, sensing, let scope, let fixed, let deadlineUptime,
+              uptime < deadlineUptime, let sample = locations.last else {
             if sensing { stop("Local sensing context/lease unavailable") }; return
         }
         let target = CLLocation(latitude: fixed.latitude, longitude: fixed.longitude)
-        eligibility = evaluator.evaluate(distance: sample.distance(from: target), accuracy: sample.horizontalAccuracy,
-            age: Date().timeIntervalSince(sample.timestamp), radius: fixed.radiusMeters,
-            now: ProcessInfo.processInfo.systemUptime)
+        let distance = sample.distance(from: target), age = Date().timeIntervalSince(sample.timestamp)
+        let evaluated = evaluator.evaluate(distance: distance, accuracy: sample.horizontalAccuracy,
+            age: age, radius: fixed.radiusMeters, now: uptime)
+        if evaluated == .eligible {
+            hint = LocalCheckpointHint(id: UUID(), scope: scope, observedUptime: uptime, validUntilUptime: min(deadlineUptime, uptime + 5))
+        } else if evaluated == .manual || evaluated == .outside {
+            hint = nil
+        } else if let previous = hint {
+            if previous.scope == scope, previous.validUntilUptime > uptime,
+               distance + sample.horizontalAccuracy <= fixed.radiusMeters {
+                hint = LocalCheckpointHint(id: previous.id, scope: scope, observedUptime: uptime, validUntilUptime: min(deadlineUptime, uptime + 5))
+            } else { hint = nil }
+        }
+        eligibility = hint == nil ? evaluated : .eligible
         stale?.cancel()
+        let stamp = epoch
         stale = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
-            self?.evaluator.discardSample(); self?.eligibility = .manual
+            guard !Task.isCancelled, self?.epoch == stamp else { return }
+            self?.evaluator.discardSample(); self?.hint = nil; self?.eligibility = .manual
+            self?.status = "GPS fix stale — manual fallback, no confirmed arrival"
         }
+    }
+    func consumeHint(_ expected: ForegroundLocationScope) throws -> UUID {
+        guard sensing, let hint else { throw BackpackError.invalid("A current local GPS hint is unavailable; use the separately labelled manual choice.") }
+        try hint.require(expected, uptime: ProcessInfo.processInfo.systemUptime)
+        self.hint = nil; eligibility = .cooldown
+        return hint.id
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         stop("Location unavailable — manual fallback")

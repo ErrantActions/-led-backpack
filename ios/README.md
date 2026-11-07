@@ -3,6 +3,50 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### GPS gameplay P0: same-screen hunt confirmation - source follow-up
+
+Library now has a prominent GPS & nearby games hub; event detail/hunt tools link
+to the actual GPS checkpoint hunt. It reuses NativeEventSocialStore and
+ForegroundCheckpointLocation, not a second protocol/sensor model. Current
+going/review/published public hunt/own opt-in, event/participation/plan/opt-in
+revisions and the actual server window are checked before sensing and private
+confirmation. Broad local GPS needs fresh≤5s/full-accuracy≤25m confidence bounds
+and continuous10s dwell; observation gaps/backward time reset eligibility.
+Stationary targets now request recurring fixes with no distance filter, within
+the existing60s foreground lease.
+
+Eligible hints are ephemeral, exact-account/event/participation/checkpoint bound,
+freshly renewed only while valid inside-radius observations continue, consumed
+once and cleared on drift/stale/stop/expiry/account/OS changes. Expiry callbacks
+are cancellation/epoch guarded so old timers cannot clear a new session.
+The same hunt screen offers an explicit PRIVATE self-collection button while
+stopped; no coordinates/GPS proof/public progress/automatic badge post is sent.
+Co-op remains a separately chosen boolean contribution, no hidden counts or
+participant locations. Ride/checkpoint eligibility also carries the selected
+checkpoint into explicit progress review with sharing OFF, not automatic claim.
+The HUD does not replace global PHONE artwork; existing SOLO/peer automatic
+display still requires first-original recovery.
+
+BLE peer games remain independent: observed short-lived purpose token, current
+resolved key/account/session, encrypted transcript/readiness/recovery. GPS does
+not precisely tag a peer; RSSI is rough. Optional NI measures supported phones,
+not backpacks, and current paired calm-color mode is not a completed physical
+tagging game. No authenticated fixed-checkpoint BLE-beacon contract exists;
+an arbitrary nearby phone/backpack is not checkpoint proof.
+
+Six GPSGameEligibilityTests are prepared, not executed; three existing
+LocationFoundationTests now supply continuous fresh samples instead of assuming
+widely separated fixes establish dwell. Required acceptance is actual supported
+phone foreground/background/lock/denied/reduced accuracy/OS revoke/drift/
+cooldown/stop/restore and two-phone BLE/NI/key/token/ready behavior, separately
+from compilation/simulator/source flags. No device/provider operation occurred.
+Changed files: new GPSGamesView.swift, EventGPSHuntView.swift,
+GPSGameEligibilityTests.swift; ForegroundLocation.swift, LocationFeatureViews.swift,
+EventProgressView.swift, EventSocialViews.swift, CommunityEventViews.swift,
+PhoneDisplayViews.swift, LocationFoundationTests.swift, recovery workflow,
+README/TODO; only the primary GPS hub link hunk in independently dirty Views.swift.
+The separate Windows simulator workspace has no native edit/ownership role.
+
 ### In-flight direct private-cloud send preserved - source only
 
 Owner-private cloud rows/details now have Send & Play without requiring Keep

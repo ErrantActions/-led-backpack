@@ -5,6 +5,7 @@ final class LocationFoundationTests: XCTestCase {
     func testFreshAccurateSamplesRequireDwellAndExplicitManualAction() {
         var evaluator = LocalCheckpointEvaluator()
         XCTAssertEqual(evaluator.evaluate(distance: 10, accuracy: 3, age: 1, radius: 30, now: 0), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(distance: 10, accuracy: 3, age: 1, radius: 30, now: 5), .dwelling)
         XCTAssertEqual(evaluator.evaluate(distance: 10, accuracy: 3, age: 1, radius: 30, now: 9.99), .dwelling)
         XCTAssertEqual(evaluator.evaluate(distance: 10, accuracy: 3, age: 1, radius: 30, now: 10), .eligible)
         XCTAssertEqual(evaluator.evaluate(distance: 10, accuracy: 3, age: 1, radius: 30, now: 11), .cooldown)
@@ -19,6 +20,7 @@ final class LocationFoundationTests: XCTestCase {
         var evaluator = LocalCheckpointEvaluator()
         XCTAssertEqual(evaluator.evaluate(distance: 26, accuracy: 3, age: 0, radius: 30, now: 0), .outside)
         XCTAssertEqual(evaluator.evaluate(distance: 24, accuracy: 3, age: 0, radius: 30, now: 1), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(distance: 26, accuracy: 3, age: 0, radius: 30, now: 6), .dwelling)
         XCTAssertEqual(evaluator.evaluate(distance: 26, accuracy: 3, age: 0, radius: 30, now: 11), .eligible)
         evaluator.reset()
         XCTAssertEqual(evaluator.evaluate(distance: 29, accuracy: 3, age: 0, radius: 30, now: 12), .outside)
@@ -28,6 +30,7 @@ final class LocationFoundationTests: XCTestCase {
         _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 20, now: 0)
         XCTAssertEqual(evaluator.evaluate(distance: 30, accuracy: 1, age: 0, radius: 20, now: 9), .outside)
         XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 20, now: 10), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 20, now: 15), .dwelling)
         XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 20, now: 20), .eligible)
         evaluator.discardSample()
         XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 20, now: 21), .cooldown)
