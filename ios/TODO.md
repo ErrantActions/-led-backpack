@@ -120,6 +120,12 @@ inset and records geometry on failure. These changes require actual rerun.
 The `2430cfc` fixture-only checkpoint42355063368 is active; public integration
 has not executed because preceding full regressions still failed.
 
+Deadline fixture robustness additionally replaces unsafe request-history indexing/
+body force unwraps with exact invitation-POST selection and `XCTUnwrap`, retaining
+request counts and captured/legacy deadline assertions. A missing scripted request
+now fails normally instead of crashing the test process.3existing methods
+updated,0new; actual rerun remains required.
+
 Next integration source prepared:1 `NativePublicIntegrationTests` method uses
 the actual native HTTP/config/catalog/current-access/manifest/hash adapter
 against the approved live HTTPS origin, with a guest-only vault that forbids

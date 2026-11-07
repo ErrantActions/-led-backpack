@@ -73,9 +73,13 @@ final class EventDeadlinePolicyTests: XCTestCase {
         let receipt = try await client.invite(event(), target: peer, expiresAtISO: nil)
         XCTAssertEqual(receipt.deadline, .legacy)
         let requests = await transport.history()
-        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: requests[2].httpBody!) as? [String: String])
-        XCTAssertEqual(body, ["userId":peer.uuidString.lowercased()])
         XCTAssertEqual(requests.count, 3)
+        let request = try XCTUnwrap(requests.first {
+            $0.httpMethod == "POST" && $0.url?.path == "/api/v1/events/\(eventID.uuidString.lowercased())/invitations"
+        })
+        let data = try XCTUnwrap(request.httpBody)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: String])
+        XCTAssertEqual(body, ["userId":peer.uuidString.lowercased()])
     }
     func testServerReceiptKeepsActualDefaultRatherThanComputingLocalSevenDays() async throws {
         let expiry = "2026-11-13T12:00:00.500Z"
@@ -116,8 +120,13 @@ final class EventDeadlinePolicyTests: XCTestCase {
         await transport.setLateChange { controller.configure("https://different.example") }
         do { _ = try await client.invite(event(), target: peer, expiresAtISO: expiry); XCTFail("Late account/origin result") } catch {}
         let requests = await transport.history()
-        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: requests[2].httpBody!) as? [String: String])
-        XCTAssertEqual(body["expiresAtISO"], expiry); XCTAssertEqual(requests.count, 3)
+        XCTAssertEqual(requests.count, 3)
+        let request = try XCTUnwrap(requests.first {
+            $0.httpMethod == "POST" && $0.url?.path == "/api/v1/events/\(eventID.uuidString.lowercased())/invitations"
+        })
+        let data = try XCTUnwrap(request.httpBody)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: String])
+        XCTAssertEqual(body["expiresAtISO"], expiry)
     }
     func testConflictCannotRenewOrAutomaticallyResendCapturedInvitation() async throws {
         let (_, client, transport) = try await setup([response(#"{"error":{"code":"event_review_required","message":"Review current event"}}"#, status: 409)])
@@ -125,7 +134,11 @@ final class EventDeadlinePolicyTests: XCTestCase {
         do { _ = try await client.invite(current, target: peer, expiresAtISO: nil); XCTFail("Conflict") }
         catch let failure as CommunityFailure { XCTAssertEqual(failure.status, 409) }
         let requests = await transport.history()
-        XCTAssertEqual(requests[2].httpBody, intent.data); XCTAssertEqual(requests.count, 3)
+        XCTAssertEqual(requests.count, 3)
+        let request = try XCTUnwrap(requests.first {
+            $0.httpMethod == "POST" && $0.url?.path == "/api/v1/events/\(eventID.uuidString.lowercased())/invitations"
+        })
+        XCTAssertEqual(try XCTUnwrap(request.httpBody), intent.data)
     }
     func testSharedProgressDeadlineIsRetentionNotArrivalAndNeverExtendsLocally() throws {
         let expiry = "2026-11-09T12:00:00.000Z"

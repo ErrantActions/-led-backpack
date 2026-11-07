@@ -76,6 +76,8 @@ guard queued decode before it can cancel newer work, encode explicit loop
 fixtures and use actual UI viewport geometry. A new phone supersession
 regression is prepared. Exact rerun results, full totals and the public live
 step remain pending; no waived tests or completion claim.
+Deadline request-history assertions are also made safe while retaining exact
+POST/body/count/deadline checks, so fixture regressions fail rather than crash.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 
