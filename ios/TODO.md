@@ -126,6 +126,18 @@ request counts and captured/legacy deadline assertions. A missing scripted reque
 now fails normally instead of crashing the test process.3existing methods
 updated,0new; actual rerun remains required.
 
+**First full native milestone:88dbb9a /
+[Run42357495220](https://github.com/ErrantActions/-led-backpack/actions/runs/42357495220)
+completed SUCCESS:** actual unsigned compilation, consolidated449/0failures,
+full native unit889/0failures/2skips and UI1/0failures. Unit skips are the exact
+unsigned signed-Keychain prerequisite and the deliberately separate public
+integration opt-in. This is simulator/source evidence, not physical/beta proof.
+The dedicated public integration step ALSO skipped its1method: ordinary shell
+environment was not forwarded into the XCTest runner. No live-native GET/hash
+claim is made from that green step. Workflow now uses documented
+`TEST_RUNNER_` forwarding; real1method/0skip execution must verify it.
+The later safe-assertion51cea87 checkpoint remains under actual validation.
+
 Next integration source prepared:1 `NativePublicIntegrationTests` method uses
 the actual native HTTP/config/catalog/current-access/manifest/hash adapter
 against the approved live HTTPS origin, with a guest-only vault that forbids

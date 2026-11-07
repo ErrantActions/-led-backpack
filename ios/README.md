@@ -78,6 +78,15 @@ regression is prepared. Exact rerun results, full totals and the public live
 step remain pending; no waived tests or completion claim.
 Deadline request-history assertions are also made safe while retaining exact
 POST/body/count/deadline checks, so fixture regressions fail rather than crash.
+
+**Actual full native pass at88dbb9a /
+[Run42357495220](https://github.com/ErrantActions/-led-backpack/actions/runs/42357495220):**
+unsigned app/unit/UI compilation; consolidated449/0failures; unit889/0failures/
+2skips; UI1/0failures. Skips: unsigned signed-Keychain integration and the separate
+public opt-in method. The dedicated public step incorrectly skipped too because
+plain shell environment was not forwarded into XCTest. `TEST_RUNNER_` forwarding
+is now wired; no live-native integration pass is claimed until1method/0skip
+actually executes. Physical/signing/provider and broader acceptance remain gated.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 

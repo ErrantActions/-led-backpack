@@ -99,7 +99,7 @@ jobs:
             2>&1 | tee build/Recovery/integrated.log
       - name: Verify read-only live public native integration
         env:
-          NATIVE_PUBLIC_INTEGRATION: "1"
+          TEST_RUNNER_NATIVE_PUBLIC_INTEGRATION: "1"
         run: |
           set -euo pipefail
           xcodebuild test-without-building -project LEDBackpack.xcodeproj -scheme LEDBackpack \
