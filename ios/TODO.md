@@ -4,6 +4,23 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## TestFlight signed upload checkpoint - 2026-11-07
+
+Owner explicitly authorized internal TestFlight. Release `eead26d` on main
+matches all protected native source/validation inputs at verified `30ee227`;
+dirty independent firmware/Wire/full20-key/reserved55–59 research is excluded.
+The exact-source gate and signed device archive/export/upload passed in
+[run42394340634 attempt2](https://github.com/ErrantActions/-led-backpack/actions/runs/42394340634):
+**version0.1.0 build8 uploaded successfully**. Temporary signing cleanup passed.
+Attempt1 failed before upload on missing Associated Domains; only this app's
+required capability/profile was updated, preserving the certificate/API key.
+
+App Store Connect was inspected and build8 is **Processing**, not yet claimed
+available to testers. Internal-group assignment/Apple processing, actual device
+installation/radio/NI/restore, optional disabled-service/provider activation and
+external-beta/App Store submission remain distinct. No new native tests were
+executed for this signing-only release; exact prior validation was reused.
+
 ## Current verified native milestone - 2026-11-07
 
 **Verified source:** `30ee227` on `native-recovery`.

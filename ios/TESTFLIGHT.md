@@ -4,6 +4,29 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified upload - 2026-11-07
+
+Version **0.1.0 build8** was signed, archived and successfully uploaded in
+[run42394340634, attempt2](https://github.com/ErrantActions/-led-backpack/actions/runs/42394340634).
+Release `eead26d` preserves the exact native inputs verified at `30ee227` in
+the consolidated recovery run; independent dirty firmware/Wire/reserved-slot
+research was excluded. The release gate passed without repeating simulator
+tests. Temporary signing files/keychain/profile were cleaned successfully.
+
+Attempt1 failed before upload because the old distribution profile lacked
+Associated Domains. The owner-authorized App ID capability was enabled and
+the existing App Store profile regenerated with the same distribution
+certificate. Its app/team/certificate/expiry/distribution/Apple-login/Associated
+Domains were verified before replacing only the profile environment secret.
+No certificate/API-key rotation or feature removal was performed.
+
+App Store Connect visibly lists build8 as **Processing** after upload.
+This is not yet internal-group availability, physical device acceptance,
+external beta approval or an App Store release. Apple processing/group
+assignment remains a separate checkpoint. The existing OS-provided-encryption
+declaration was retained after owner review of Apple's documentation table.
+No encryption documentation was fabricated or uploaded.
+
 The workflow is manual, main-branch-only, environment-protected, and requires
 an explicit upload confirmation. It does not submit an App Store release or
 request external beta distribution. First get a passing regular
@@ -32,9 +55,11 @@ In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/re
 
 1. Register an explicit App ID for **`com.errantactions.ledbackpack`**.
 2. Use the same Apple Developer team that will sign the build.
-3. This implementation does not need push-notification, iCloud, associated
-   domain, or CloudKit entitlements. Native Apple login requires **Sign in with
+3. The current committed app requires **Associated Domains** for its
+   `webcredentials:led.errantactions.com` passkey association and **Sign in with
    Apple** on this App ID and the committed `LEDBackpack.entitlements`.
+   Enable both and regenerate this app's distribution profile when changed.
+   These settings do not themselves activate APNs, iCloud or CloudKit.
    Bluetooth/location background modes and privacy strings are in Info.plist.
 
 In [App Store Connect](https://appstoreconnect.apple.com/apps):
@@ -195,8 +220,9 @@ The workflow:
 - Cleans up the task's keychain/profile/private temporary files even on failure.
 - Does not publish the signed IPA or signing assets as public Actions artifacts.
 
-The first configured signing/upload run is still unverified until real
-credentials and the Apple app record exist.
+The configured signed upload is now verified as recorded above. Each newer
+build still requires a matching current profile, unused build number and
+exact validated-source gate.
 
 ## 7. Add the build to internal testing
 
