@@ -27,6 +27,7 @@ Full regressions were skipped; no overall test/native green.
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Governance fixture calls a missing known-event RSVP decline member. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | App/unit/UI bundles compiled;449consolidated tests,20failures; full regression skipped. |
 | `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests,1failure; full regression skipped. |
+| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled; consolidated group step succeeded; full regressions running. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -59,6 +60,9 @@ loop parser now supplies phone and native pixel decoding with exact recorded
 metadata; thumbnails keep existing policy and malformed/conflicting loop blocks
 fail explicitly. Missing/finite/forever assertions are strengthened rather than
 waived; another actual runner must verify the correction.
+That source correction now passed the actual consolidated test step. Full unit/
+UI regressions are running; exact final totals/skips and overall result remain
+pending. No live/physical/beta readiness is inferred.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 
@@ -85,6 +89,19 @@ Local YAML/permission/trigger checks, all6Bash syntax checks,18selector-file
 checks and result-retention checks passed for the initial manual workflow.
 The isolated branch trigger's local YAML/Bash/selector checks also passed.
 This is workflow syntax/wiring evidence only, not executed native tests.
+
+One explicit [read-only live native integration fixture](LEDBackpackTests/NativePublicIntegrationTests.swift)
+is prepared for actual guest config/catalog/current-access/manifest/hash calls
+through the native adapter. It runs only in its enabled workflow step after full
+regressions, not ordinary unit runs; no accounts, mutations, providers or device
+operations. Missing live capability/signing prerequisites fail the enabled step.
+It is not yet compiled/executed and does not prove private-feature integration.
+Recorded results must distinguish its ordinary opt-in skip from its live result.
+
+Per-test timeouts are enabled; the next preflight checks runner support:
+focused60/120s,
+full600/900s and public120/300s default/maximum. They bound stalled tests and
+preserve named failures/results, not replace performance measurements.
 
 The native publication checkpoint is a selectively staged APP snapshot, not a
 claim to validate every remaining dirty firmware edit. Independent Wire/full20-

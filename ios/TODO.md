@@ -30,6 +30,7 @@ tested by portable7/7.
 | `142d0db` | [42347472381](https://github.com/ErrantActions/-led-backpack/actions/runs/42347472381) | Builder diagnostics cleared; prepared governance fixture calls missing `declineKnownEventRSVP`. |
 | `feb2a6f` | [42347922942](https://github.com/ErrantActions/-led-backpack/actions/runs/42347922942) | Unsigned app/unit/UI bundles compiled;449consolidated tests executed,20failures (18unexpected); full regression skipped. |
 | `257fb97` | [42348958929](https://github.com/ErrantActions/-led-backpack/actions/runs/42348958929) | Compiled;449consolidated tests executed,1failure (0unexpected); full regression skipped. |
+| `61adcd1` | [42350257799](https://github.com/ErrantActions/-led-backpack/actions/runs/42350257799) | Compiled; consolidated18group step succeeded; full native unit/UI regressions running. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -88,6 +89,27 @@ decoding reuses the same validated metadata; malformed/conflicting recognized
 NETSCAPE/ANIMEXTS loop blocks fail explicitly. Thumbnail cycling remains
 unchanged. Existing friend/phone tests are strengthened for exact missing/
 finite/forever behavior; another real runner must verify it. No fake pass.
+
+The recorded-loop correction now passed actual unsigned compilation AND the
+consolidated18group XCTest step at `61adcd1`. Full native unit/UI regressions
+are executing; exact final totals/skips and overall outcome still require
+completed logs/results. No full-suite, live-integration or device claim yet.
+
+Next integration source prepared:1 `NativePublicIntegrationTests` method uses
+the actual native HTTP/config/catalog/current-access/manifest/hash adapter
+against the approved live HTTPS origin, with a guest-only vault that forbids
+credential/receipt writes. It performs only public GETs, no accounts/mutations/
+providers/devices. Normal unit runs explicitly skip this opt-in live method;
+the dedicated workflow step enables it after full regressions and must execute
+it successfully (missing capability/signing prerequisites fail that step).
+Its Swift/runtime verification is pending. Current private/live operator gates
+remain unchanged; this does not certify other feature families.
+
+Workflow now enables documented per-test timeout allowances; the next run will
+check support through pinned `xcodebuild -help`: focused60/120seconds, full600/900seconds,
+public integration120/300seconds (default/maximum). Timeouts produce named test
+failures, not successes or precise performance measurements. Local YAML/Bash/step-order/artifact wiring is checked separately from actual
+native execution.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
