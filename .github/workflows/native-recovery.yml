@@ -35,6 +35,7 @@ jobs:
             echo "DEVELOPER_DIR=$XCODE" >> "$GITHUB_ENV"
             sw_vers
             xcodebuild -version | grep -Fx "Xcode 27.1"
+            xcodebuild -version
             swift --version
             xcodebuild -showsdks
             SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)

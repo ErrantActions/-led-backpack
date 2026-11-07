@@ -4,6 +4,26 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Actual isolated runner checkpoint - 2026-11-07, FAILED compilation
+
+Owner unpaused narrow native publication/unsigned GitHub validation. The reviewed
+APP snapshot `797d538` was pushed on `native-recovery`, leaving independent
+firmware/Wire/full20-key/reserved-slot/GIF hardware work dirty and unstaged.
+[Run42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261)
+executed on `xcode-27`: macOS27.0.1, Xcode27.1, simulator SDK27.1 and the actual
+iOS27.1 iPhone Duo simulator. Portable committed `BackpackProtocol` tests:
+**7 executed,0failures**. This does not test the independent dirty Wire changes.
+
+Unsigned app/test `build-for-testing` **FAILED, exit65** with actual
+`EventRoutePlannerView.swift` diagnostics at209and361: `private` declarations
+were in local scope. These source defects are being corrected, then the runner
+must rerun. Consolidated and full iOS XCTest stages were skipped: **0 native
+app fixture methods executed** in this run. No app compilation/pass or global
+completion claim follows from portable7/7. Logs were retained by the workflow.
+Signing/providers/live-service/device/physical integration remain separate gates.
+This actual executed failure supersedes earlier blanket "all validation
+unexecuted" statements only for this exact published snapshot/checkpoint.
+
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
 The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.

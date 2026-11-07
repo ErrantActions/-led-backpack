@@ -47,6 +47,11 @@ private struct EventRoutePlannerContent: View {
     @State private var numericLongitude = ""
     private var editable: Bool { !store.readOnly && !store.conflict && !store.saving && !session.denied }
     private var structureEditable: Bool { editable && !store.structureLocked }
+    private var routeFingerprint: Data? {
+        guard let draft = store.draft else { return nil }
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        return try? encoder.encode(draft.body.normalized())
+    }
     private var pins: [OrganizerMapPin] {
         guard let draft = store.draft else { return [] }
         let venue = draft.original.location
@@ -206,11 +211,6 @@ private struct EventRoutePlannerContent: View {
                 Button("Reload reviewed revision \(reloadRevision)", role: .destructive) {
                     store.reloadDiscardingDraft(reviewedRevision: reloadRevision); fit = UUID()
                 }
-                private var routeFingerprint: Data? {
-                    guard let draft = store.draft else { return nil }
-                    let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
-                    return try? encoder.encode(draft.body.normalized())
-                }
             } message: { Text("Only the version you reviewed is loaded. A newer unseen revision requires another review.") }
         }
     }
@@ -343,6 +343,11 @@ private struct EventRoutePlannerContent: View {
             try work(&value); store.draft = value; localFailure = nil
         } catch { localFailure = error.localizedDescription }
     }
+    private func addNumeric(_ kind: EventCheckpointKind) {
+        edit(structural: true) {
+            try $0.addCheckpoint(kind, at: NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude))
+        }
+    }
     private func apply(_ point: EventCoordinate) {
         edit(structural: true) { value in
             try point.validate()
@@ -357,11 +362,6 @@ private struct EventRoutePlannerContent: View {
             case .radius:
                 guard let index = value.checkpoints.firstIndex(where: { "c:\($0.id)" == selected }) else {
                     throw BackpackError.invalid("Select a checkpoint pin before placing its circle edge.")
-                }
-                private func addNumeric(_ kind: EventCheckpointKind) {
-                    edit(structural: true) {
-                        try $0.addCheckpoint(kind, at: NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude))
-                    }
                 }
                 let center = value.checkpoints[index].point
                 let radius = MKMapPoint(CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude))

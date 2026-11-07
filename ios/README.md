@@ -3,6 +3,20 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+## Actual recovery build - failed, not native green
+
+The isolated APP snapshot `797d538` was published on `native-recovery`.
+[Run42344369261](https://github.com/ErrantActions/-led-backpack/actions/runs/42344369261)
+verified Xcode27.1/simulator SDK27.1/iPhone Duo on macOS27.0.1 and passed
+**7 portable protocol tests** against committed Wire source. Independent dirty
+firmware/Wire/GIF hardware changes were deliberately excluded and preserved.
+
+Actual unsigned app/test compilation failed with exit65: two local-scope
+`private` declarations in `EventRoutePlannerView.swift` (209and361). Fixes and
+another actual runner build are required. Both iOS XCTest stages were skipped;
+**0 new native app fixtures executed**. Portable tests and a running workflow
+are not a successful app build, native integration or beta-readiness claim.
+
 ## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
 
 Owner clarification: the intended Mac execution path is the existing GitHub
