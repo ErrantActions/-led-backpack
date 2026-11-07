@@ -79,7 +79,9 @@ private struct EventRoutePlannerContent: View {
             }
     }
     var body: some View {
-        NavigationStack {
+        NavigationStack { presentedPlanner }
+    }
+    private var plannerScroll: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     AuroraHeading(eyebrow: "Organizer studio", title: "Shape the", accent: "experience.")
@@ -156,6 +158,9 @@ private struct EventRoutePlannerContent: View {
                     } else { Text(session.failure ?? "This server/event has not enabled owner route planning.") }
                 }.padding(20).frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
+    }
+    private var configuredPlanner: some View {
+            plannerScroll
             .modernScene().navigationTitle("Plan event")
             .toolbar { Button("Close") { dismiss() }.disabled(store.saving) }
             .interactiveDismissDisabled(store.saving)
@@ -186,6 +191,9 @@ private struct EventRoutePlannerContent: View {
             .onChange(of: store.structureLocked) { _, locked in if locked { road.cancel(); endpointChoice = nil } }
             .onChange(of: session.failure) { _, value in if value != nil { saveReview = nil } }
             .onChange(of: routeFingerprint) { _, _ in saveReview = nil }
+    }
+    private var presentedPlanner: some View {
+            configuredPlanner
             .onChange(of: community.accountRevision) { _, _ in road.clear(); store.clear(); dismiss() }
             .onChange(of: community.user?.id) { _, id in if id != session.client?.accountID { store.clear(); dismiss() } }
             .onChange(of: community.config?.eventsEnabled) { _, value in
@@ -250,7 +258,6 @@ private struct EventRoutePlannerContent: View {
                     store.reloadDiscardingDraft(reviewedRevision: reloadRevision); fit = UUID()
                 }
             } message: { Text("Only the version you reviewed is loaded. A newer unseen revision requires another review.") }
-        }
     }
     private func overview(_ draft: EventRouteDraft) -> some View {
         VStack(alignment: .leading, spacing: 8) {
