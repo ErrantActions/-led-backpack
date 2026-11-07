@@ -490,7 +490,9 @@ struct CommunityEventEditor: View {
         self.original = original; self.created = created; self.saved = saved
     }
     var body: some View {
-        NavigationStack {
+        NavigationStack { editorLifecycle }
+    }
+    private var wizardForm: some View {
             Form {
                 if community.config?.eventsEnabled == true && !session.denied &&
                     session.client?.accountID == community.user?.id {
@@ -589,6 +591,9 @@ struct CommunityEventEditor: View {
                     }
                 } else { Text(session.failure ?? "Events are unavailable.") }
             }
+    }
+    private var initializedEditor: some View {
+            wizardForm
             .modernScene().navigationTitle(original == nil ? "Create event" : "Edit event")
             .toolbar { Button("Cancel") { dismiss() }.disabled(session.busy) }
             .interactiveDismissDisabled(session.busy)
@@ -616,6 +621,9 @@ struct CommunityEventEditor: View {
                     try session.checked(client); editingAuthorized = true
                 }
             }
+    }
+    private var editorLifecycle: some View {
+            initializedEditor
             .onChange(of: community.accountRevision) { _, value in if initialRevision != value { session.clear(); dismiss() } }
             .onChange(of: community.user?.id) { _, value in if initialAccount != value { session.clear(); dismiss() } }
             .onChange(of: inputFingerprint) { _, _ in review = nil }
@@ -628,23 +636,7 @@ struct CommunityEventEditor: View {
             .onChange(of: community.config?.unlistedEventsEnabled) { _, _ in review = nil; unlistedConsent = false }
             .onChange(of: session.denied) { _, denied in if denied { review = nil; venue = nil; dismiss() } }
             .task(id: "\(community.accountRevision):\(original?.id.uuidString ?? "")") {
-                guard let original else { return }
-                while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(30)) } catch { return }
-                    if !session.busy && !session.denied && !requiresReload {
-                        session.run { client in
-                            let current = try await client.event(original.id)
-                            guard current.access.canManage, current.access.role == original.access.role else {
-                                review = nil; editingAuthorized = false; venue = nil
-                                throw CommunityFailure(status: 403, code: "event_access_changed", message: "Organizer access changed; clear private editing context.")
-                            }
-                            if current.revision != original.revision {
-                                review = nil; requiresReload = true
-                                throw CommunityFailure(status: 409, code: "event_revision_conflict", message: "Event changed; draft retained, review invalidated. Explicitly reload.")
-                            }
-                        }
-                    }
-                }
+                await monitorOwnerAccess()
             }
             .onDisappear { if review == nil { session.clear() } }
             .sheet(item: $review) { captured in
@@ -666,6 +658,24 @@ struct CommunityEventEditor: View {
                             if let failure = error as? CommunityFailure, failure.status == 409 { requiresReload = true }
                             throw error
                         }
+                    }
+                }
+            }
+    }
+    private func monitorOwnerAccess() async {
+        guard let original else { return }
+        while !Task.isCancelled {
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            if !session.busy && !session.denied && !requiresReload {
+                session.run { client in
+                    let current = try await client.event(original.id)
+                    guard current.access.canManage, current.access.role == original.access.role else {
+                        review = nil; editingAuthorized = false; venue = nil
+                        throw CommunityFailure(status: 403, code: "event_access_changed", message: "Organizer access changed; clear private editing context.")
+                    }
+                    if current.revision != original.revision {
+                        review = nil; requiresReload = true
+                        throw CommunityFailure(status: 409, code: "event_revision_conflict", message: "Event changed; draft retained, review invalidated. Explicitly reload.")
                     }
                 }
             }

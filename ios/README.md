@@ -3,6 +3,47 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Map-first road routes and checkpoint pins - source follow-up
+
+The route planner now supports named start/destination place pickers, explicit
+driving or walking directions via MapKit, route shaping handles and checkpoint
+pins projected onto the blue route. Choose Add draggable route handle, tap the
+route, then drag its ↔ marker; directions recalculate through the ordered handles.
+Dragging a start/finish also recalculates an already generated route. Normal
+creation requires no latitude/longitude entry; numeric/manual tools remain
+collapsed as optional fallback, not a required step.
+
+Apple Maps consent discloses viewports/searches and selected endpoint/shaping
+coordinates. No device/participant GPS, identity/account token/private event text
+is supplied. At most8 shaping points/9legs and12,000 transient polyline points
+are accepted. Saved route geometry uses a documented10m simplification tolerance,
+preserves endpoints/corners and must fit the existing200-point API limit. Routes
+that cannot fit fail without truncation or invented backend fields. Directions
+failure/cancellation/account/endpoint/draft/role/structure changes preserve the
+prior draft; pending route changes block saving.
+
+Checkpoints are placed within100m of a tapped road-line point and snapped onto
+that line; off-route taps fail explicitly. Rerouting does not silently move
+previously defined checkpoints: any >100m from the new line must be moved/removed
+before review/save. Map directions are organizer preview geometry, not live
+navigation, GPS attendance or safe-routing certification. Gate/checkpoint naming,
+ordering/optional-stage/structural locks/artwork and exact save review use existing
+API semantics.8new `EventRoadRouteTests` methods are prepared; no actual MapKit
+directions/radio/sensor/device operation was executed here.
+
+The first UX compile run42397694385 failed on a SwiftUI type-check time budget
+in the expanded event editor;0native fixture methods executed. The editor form,
+initialization/lifecycle and owner-monitor task are now separated into bounded
+expressions without changing access/review behavior. Another actual runner pass
+is required before any update is released. No old build8/30ee227 pass validates
+this route/selection/wizard follow-up.
+
+Additional changed files: new `LEDBackpack/EventRoadRoute.swift`,
+`EventRoutePlannerView.swift`, `EventRouteDraft.swift`, `EventCreationSteps.swift`,
+`CommunityEventViews.swift`; new `LEDBackpackTests/EventRoadRouteTests.swift`,
+native-recovery workflow, README and TODO. Independent dirty firmware/source
+remains unstaged and excluded from this update.
+
 Community browsing now shows an image-only GIF grid: no visible titles,
 uploader names or dimension/frame captions on tiles. Credits remain in the
 saved attribution instead of opening a detail page on tap. Reduce Motion and saved motion/

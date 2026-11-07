@@ -4,6 +4,29 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Map-first road routing / checkpoints - source PURPLE, not validated
+
+- [x] Named start/destination pickers, driving/walking MapKit directions,
+  ordered draggable shaping handles, route recalculation and tap-to-drop/
+  drag checkpoint pins on the blue route. Numeric/manual geometry remains an
+  optional collapsed fallback, never a normal required latitude/longitude form.
+- [x] Existing endpoint IDs/credits/checkpoint order/optional stages/structure
+  locks and exact route revision/review semantics preserved. No backend gate
+  type/navigation service/participant location or new grant invented.
+- [x] Explicit Maps consent, bounded8shaping points/9legs/12ktransient polyline,
+  saved10m-tolerance simplified route at most200points; reject complex routes
+  rather than silently truncate. Changed context cancels/rejects late directions.
+  Pending route edits/off-route checkpoints block saving; rerouting never
+  silently relocates an existing checkpoint.
+- [x]8new geometry/loop/projection/bounds/cold-cancel regression methods prepared
+  in EventRoadRouteTests, not executed; prior16UX regressions remain unexecuted.
+- [ ] Actual compile/tests/MapKit gestures/directions/visual/accessibility/road/
+  device acceptance. First run42397694385 failed compilation (SwiftUI type-check
+  expression budget); no native tests ran. Form/lifecycle/task expressions split
+  in source; a new runner pass must verify the fix before a new TestFlight build.
+- Exact extra files in README's matching section. No firmware/receiver/sensor/
+  radio/signing/provider/backend operation or dirty independent-source change.
+
 ## Owner UX follow-up: community selection / event wizard - source PURPLE
 
 - [x] Image-only community GIF grid; taps select/deselect multiple items, not

@@ -3,8 +3,8 @@ import MapKit
 import BackpackProtocol
 
 private enum PlannerTapMode: String, CaseIterable, Identifiable {
-    case select = "Move selected point", start = "Add start gate", checkpoint = "Add checkpoint"
-    case finish = "Add finish gate", geometry = "Draw route guide point", radius = "Set selected circle edge"
+    case select = "Move selected point", start = "Set start gate", checkpoint = "Drop checkpoint on route"
+    case finish = "Set finish gate", shape = "Add draggable route handle", geometry = "Manual guide point", radius = "Set selected circle edge"
     var id: String { rawValue }
 }
 private enum PlannerArtworkTarget: Identifiable {
@@ -45,6 +45,15 @@ private struct EventRoutePlannerContent: View {
     @State private var loaded = false
     @State private var numericLatitude = ""
     @State private var numericLongitude = ""
+    @StateObject private var road = EventRoadRouteStore()
+    @State private var roadMode = EventRoadMode.driving
+    @State private var endpointChoice: EventCheckpointKind?
+    @State private var offRouteCheckpoints: Set<UUID> = []
+    private var endpoints: [EventCoordinate] {
+        guard let draft = store.draft else { return [] }
+        return [draft.checkpoints.first(where: { $0.kind == .start })?.point,
+                draft.checkpoints.first(where: { $0.kind == .finish })?.point].compactMap { $0 }
+    }
     private var editable: Bool { !store.readOnly && !store.conflict && !store.saving && !session.denied }
     private var structureEditable: Bool { editable && !store.structureLocked }
     private var routeFingerprint: Data? {
@@ -60,9 +69,13 @@ private struct EventRoutePlannerContent: View {
             + draft.checkpoints.map { OrganizerMapPin(id: "c:\($0.id)", title: $0.title,
                 symbol: $0.kind == .start ? "S" : $0.kind == .finish ? "F" : String($0.order + 1),
                 point: $0.point, radius: $0.radiusMeters, draggable: structureEditable) }
-            + draft.geometry.enumerated().map { index, value in
+            + (road.result == nil ? draft.geometry.enumerated().map { index, value in
                 OrganizerMapPin(id: "g:\(value.id)", title: "Guide point \(index + 1)", symbol: "R",
                     point: value.point, radius: 0, draggable: structureEditable)
+            } : [])
+            + road.waypoints.enumerated().map { index, value in
+                OrganizerMapPin(id: "via:\(value.id)", title: "Drag route handle \(index + 1)", symbol: "↔",
+                    point: value.point, radius: 0, draggable: structureEditable && !road.busy)
             }
     }
     var body: some View {
@@ -105,7 +118,7 @@ private struct EventRoutePlannerContent: View {
                             }.font(.caption).padding(16).glassPanel()
                         }
                         mapPanel(draft)
-                        VStack(alignment: .leading, spacing: 10) {
+                        DisclosureGroup("Advanced numeric fixed points (optional)") {
                             Text("Numeric fixed points (no maps/search needed)").font(.headline)
                             TextField("Explicit decimal latitude", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
                             TextField("Explicit decimal longitude", text: $numericLongitude).keyboardType(.numbersAndPunctuation)
@@ -126,7 +139,7 @@ private struct EventRoutePlannerContent: View {
                             }
                         }.padding(16).glassPanel().disabled(!structureEditable)
                         checkpointPanel(draft)
-                        geometryPanel(draft)
+                        DisclosureGroup("Advanced manual route geometry") { geometryPanel(draft) }
                         rewardsPanel(draft)
                         VStack(alignment: .leading, spacing: 14) {
                             Toggle("Publish checkpoint plan", isOn: Binding(get: { store.draft?.published ?? false },
@@ -136,7 +149,7 @@ private struct EventRoutePlannerContent: View {
                             Button("Review and save route") {
                                 do { saveReview = try NativeEventRouteReview(draft) } catch { localFailure = error.localizedDescription }
                             }.buttonStyle(AuroraPrimaryButton())
-                                .disabled(!editable || session.busy || store.loadingArtwork || (store.structureLocked && !draft.fixedGeometryMatchesOriginal))
+                                .disabled(!editable || session.busy || road.busy || road.needsRegeneration || !offRouteCheckpoints.isEmpty || store.loadingArtwork || (store.structureLocked && !draft.fixedGeometryMatchesOriginal))
                             Button("Refresh permissions / compare revision") { store.refreshPermission() }.disabled(session.busy)
                             Button("Refresh artwork availability") { store.resolveArtwork() }.disabled(session.busy)
                         }.padding(18).glassPanel()
@@ -158,17 +171,42 @@ private struct EventRoutePlannerContent: View {
                 }
             }
             .onChange(of: session.busy) { _, busy in if !busy { store.operationEnded() } }
-            .onChange(of: session.denied) { _, denied in if denied { store.clear(); artworkTarget = nil; reviewingServer = nil; imagery = false } }
-            .onChange(of: store.readOnly) { _, value in if value { artworkTarget = nil; reviewingServer = nil; imagery = false; saveReview = nil } }
-            .onChange(of: store.conflict) { _, value in if value { saveReview = nil; artworkTarget = nil } }
+            .onChange(of: session.denied) { _, denied in if denied { road.clear(); store.clear(); artworkTarget = nil; reviewingServer = nil; imagery = false } }
+            .onChange(of: store.readOnly) { _, value in if value { road.clear(); artworkTarget = nil; reviewingServer = nil; imagery = false; saveReview = nil } }
+            .onChange(of: store.conflict) { _, value in if value { road.cancel(); saveReview = nil; artworkTarget = nil } }
+            .onChange(of: endpoints) { _, _ in
+                let regenerate = road.result != nil || road.needsRegeneration
+                road.endpointsChanged()
+                if regenerate && imagery && phase == .active && structureEditable { generateRoadRoute() }
+            }
+            .onChange(of: store.draft?.checkpoints.map(\.id)) { _, ids in offRouteCheckpoints.formIntersection(Set(ids ?? [])) }
+            .onChange(of: roadMode) { _, _ in road.endpointsChanged() }
+            .onChange(of: imagery) { _, value in if !value { road.cancel(); endpointChoice = nil } }
+            .onChange(of: phase) { _, value in if value != .active { road.cancel(); endpointChoice = nil; imagery = false; saveReview = nil } }
+            .onChange(of: store.structureLocked) { _, locked in if locked { road.cancel(); endpointChoice = nil } }
             .onChange(of: session.failure) { _, value in if value != nil { saveReview = nil } }
             .onChange(of: routeFingerprint) { _, _ in saveReview = nil }
-            .onChange(of: community.accountRevision) { _, _ in store.clear(); dismiss() }
+            .onChange(of: community.accountRevision) { _, _ in road.clear(); store.clear(); dismiss() }
             .onChange(of: community.user?.id) { _, id in if id != session.client?.accountID { store.clear(); dismiss() } }
             .onChange(of: community.config?.eventsEnabled) { _, value in
                 if value != true { artworkTarget = nil; store.clear(); imagery = false; dismiss() }
             }
-            .onDisappear { if artworkTarget == nil && reviewingServer == nil && saveReview == nil { store.clear() } }
+            .onDisappear { road.cancel(); if artworkTarget == nil && reviewingServer == nil && saveReview == nil && endpointChoice == nil { store.clear() } }
+            .sheet(isPresented: Binding(get: { endpointChoice != nil }, set: { if !$0 { endpointChoice = nil } })) {
+                NavigationStack {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(endpointChoice == .start ? "Choose start location" : "Choose destination").font(.title2.bold())
+                        Text("Only this typed place search is sent to Apple. No device location, account, event URL or participant position is supplied.").font(.caption)
+                        OrganizerPlaceSearchView { place in
+                            guard let kind = endpointChoice, structureEditable, imagery, phase == .active else { endpointChoice = nil; return }
+                            edit(structural: true) { try $0.setEndpoint(kind, at: place.point, name: place.name) }
+                            endpointChoice = nil; fit = UUID()
+                        }
+                        Spacer()
+                    }.padding(20).navigationTitle("Find a place")
+                        .toolbar { Button("Cancel") { endpointChoice = nil } }
+                }
+            }
             .sheet(item: $artworkTarget) { target in
                 if let client = session.client, let event = store.draft?.original {
                     RouteArtworkPicker(client: client, event: event) { choice in
@@ -226,22 +264,83 @@ private struct EventRoutePlannerContent: View {
     }
     private func mapPanel(_ draft: EventRouteDraft) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Use Apple Maps and place search for this page", isOn: $imagery)
-            Text("Maps/search may contact Apple for visible maps and typed places. This app supplies no account token, event URL or participant location.")
+            Toggle("Enable Apple Maps, place search and route directions", isOn: $imagery)
+            Text("Apple receives map viewports, typed place searches and chosen start/destination/shaping coordinates for directions. No account token, private event text, participant/device location or GPS track is supplied.")
                 .font(.caption).foregroundStyle(.secondary)
             if imagery && phase == .active {
+                roadControls(draft)
                 Picker("Map action", selection: $mode) { ForEach(PlannerTapMode.allCases) { Text($0.rawValue).tag($0) } }
-                    .disabled(!structureEditable)
+                    .disabled(!structureEditable || road.busy)
                 OrganizerPlaceSearchView { place in apply(place.point) }.disabled(!structureEditable)
-                OrganizerMap(pins: pins, geometry: draft.geometry.map(\.point), editable: structureEditable,
+                OrganizerMap(pins: pins, geometry: road.result?.full ?? draft.geometry.map(\.point), editable: structureEditable && !road.busy,
                     fit: fit, reducedMotion: reducedMotion, tap: apply, moved: move, selected: { selected = $0 },
                     failed: { localFailure = $0 })
                     .frame(height: 390).clipShape(RoundedRectangle(cornerRadius: 24))
                 Button("Show whole plan") { fit = UUID() }
-                Text("Choose an action, then tap the map. Select/drag pins to edit fixed points; named search results provide a no-map-touch alternative.")
+                Text("Choose start and destination, Generate route, then choose Drop checkpoint and tap the blue line. To reshape: choose Add draggable route handle, tap the line and drag its handle to the road you want; the route recalculates. Start/finish pins can also be dragged. No latitude/longitude entry is required.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }.padding(18).glassPanel()
+    }
+    private func roadControls(_ draft: EventRouteDraft) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button { endpointChoice = .start } label: {
+                    Label(draft.checkpoints.first(where: { $0.kind == .start })?.title ?? "Choose start location", systemImage: "mappin.circle")
+                }
+                Button { endpointChoice = .finish } label: {
+                    Label(draft.checkpoints.first(where: { $0.kind == .finish })?.title ?? "Choose destination", systemImage: "flag.checkered")
+                }
+            }.buttonStyle(.bordered).disabled(!structureEditable || road.busy)
+            Picker("Road route type", selection: $roadMode) {
+                Text("Driving / group ride").tag(EventRoadMode.driving)
+                Text("Walking / checkpoint game").tag(EventRoadMode.walking)
+            }.disabled(!structureEditable || road.busy)
+            Button(road.result == nil ? "Generate road route" : "Recalculate edited route") { generateRoadRoute() }
+                .buttonStyle(.borderedProminent).disabled(!structureEditable || road.busy || endpoints.count != 2)
+            if road.busy { ProgressView("Finding roads through your selected places"); Button("Cancel directions") { road.cancel() } }
+            if let failure = road.failure { Text(failure).foregroundStyle(.orange) }
+            if road.needsRegeneration { Text("Route edit is not yet applied. Recalculate before saving; the previous saved draft geometry remains intact.").font(.caption).foregroundStyle(.orange) }
+            if let route = road.result {
+                Text(String(format: "Route preview %.1f km · about %.0f minutes", route.meters / 1000, route.seconds / 60)).font(.caption)
+                Text("Route preview only—not safe-routing certification, live navigation or a participant track. Saved geometry is simplified within10m and must fit the service's200-point limit; longer complex routes fail explicitly instead of truncating.").font(.caption)
+                Button("Drop checkpoint pins along this route") { mode = .checkpoint }.disabled(road.busy || road.needsRegeneration)
+                Button("Reshape route: tap line to add a draggable handle") { mode = .shape }.disabled(road.busy || road.needsRegeneration)
+                ForEach(Array(road.waypoints.enumerated()), id: \.element.id) { index, waypoint in
+                    HStack {
+                        Text("Route handle \(index + 1): drag its ↔ pin to change roads").font(.caption)
+                        Button("Remove") { road.removeShapingPoint(waypoint.id); generateRoadRoute() }.disabled(road.busy || !structureEditable)
+                    }
+                }
+            }
+            if !offRouteCheckpoints.isEmpty {
+                Text("\(offRouteCheckpoints.count) checkpoint(s) are outside the recalculated route. Drag their pins onto the blue route or remove them before saving; they were not silently moved.").font(.caption).foregroundStyle(.orange)
+            }
+        }
+    }
+    private func generateRoadRoute() {
+        guard structureEditable, imagery, phase == .active, let draft = store.draft,
+              let start = draft.checkpoints.first(where: { $0.kind == .start })?.point,
+              let end = draft.checkpoints.first(where: { $0.kind == .finish })?.point else {
+            localFailure = "Choose both start and destination with current owner access and explicit Maps consent."; return
+        }
+        let captured = routeFingerprint, account = community.accountRevision, revision = draft.original.revision
+        road.generate(start: start, end: end, mode: roadMode, authorized: {
+            guard structureEditable, imagery, phase == .active, community.accountRevision == account,
+                  store.draft?.original.revision == revision, routeFingerprint == captured else {
+                throw BackpackError.invalid("Route/account/permission changed during directions. Previous draft retained.")
+            }
+        }, apply: { route in
+            guard var current = store.draft, structureEditable, routeFingerprint == captured else { throw CancellationError() }
+            var offRoute: Set<UUID> = []
+            for checkpoint in current.checkpoints where checkpoint.kind == .checkpoint {
+                if try EventRoadGeometry.nearest(checkpoint.point, to: route.full).distance > 100 { offRoute.insert(checkpoint.id) }
+            }
+            current.geometry = route.saved.map { EventGeometryPoint(point: $0) }
+            try current.body.validate()
+            store.draft = current; offRouteCheckpoints = offRoute; fit = UUID(); localFailure = nil
+            mode = .checkpoint; saveReview = nil
+        })
     }
     private func checkpointPanel(_ draft: EventRouteDraft) -> some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -349,11 +448,22 @@ private struct EventRoutePlannerContent: View {
         }
     }
     private func apply(_ point: EventCoordinate) {
+        if mode == .shape {
+            do { try road.addShapingPoint(point); localFailure = nil }
+            catch { localFailure = error.localizedDescription }
+            return
+        }
         edit(structural: true) { value in
             try point.validate()
             switch mode {
-            case .start, .checkpoint, .finish:
-                try value.addCheckpoint(mode == .start ? .start : mode == .finish ? .finish : .checkpoint, at: point)
+            case .start, .finish:
+                try value.setEndpoint(mode == .start ? .start : .finish, at: point, name: nil)
+            case .checkpoint:
+                guard !road.needsRegeneration else { throw BackpackError.invalid("Recalculate the changed route before placing checkpoints.") }
+                let projected = try EventRoadGeometry.nearest(point, to: road.result?.full ?? value.geometry.map(\.point))
+                guard projected.distance <= 100 else { throw BackpackError.invalid("Tap the route itself to drop a checkpoint pin.") }
+                try value.addCheckpoint(.checkpoint, at: projected.point)
+            case .shape: break
             case .geometry:
                 guard value.geometry.count < 200 else { throw BackpackError.invalid("Use at most 200 guide points.") }
                 value.geometry.append(EventGeometryPoint(point: point))
@@ -371,7 +481,26 @@ private struct EventRoutePlannerContent: View {
             }
         }
     }
-    private func move(_ key: String, _ point: EventCoordinate) { edit(structural: true) { value in try movePoint(key, to: point, in: &value) } }
+    private func move(_ key: String, _ point: EventCoordinate) {
+        if key.hasPrefix("via:"), let id = UUID(uuidString: String(key.dropFirst(4))) {
+            do { try road.moveShapingPoint(id, to: point); generateRoadRoute() }
+            catch { localFailure = error.localizedDescription }
+            return
+        }
+        let endpoint = store.draft?.checkpoints.first(where: { "c:\($0.id)" == key })?.kind
+        edit(structural: true) { value in
+            let target: EventCoordinate
+            if endpoint == .checkpoint {
+                let projected = try EventRoadGeometry.nearest(point, to: road.result?.full ?? value.geometry.map(\.point))
+                guard projected.distance <= 100 else { throw BackpackError.invalid("Drag a checkpoint onto the current route.") }
+                target = projected.point
+            } else { target = point }
+            try movePoint(key, to: target, in: &value)
+        }
+        if endpoint == .checkpoint, localFailure == nil, let id = store.draft?.checkpoints.first(where: { "c:\($0.id)" == key })?.id {
+            offRouteCheckpoints.remove(id)
+        }
+    }
     private func movePoint(_ key: String, to point: EventCoordinate, in value: inout EventRouteDraft) throws {
         try point.validate()
         if let index = value.checkpoints.firstIndex(where: { "c:\($0.id)" == key }) { value.checkpoints[index].point = point }

@@ -173,6 +173,17 @@ struct EventRouteDraft {
         else { checkpoints.insert(item, at: checkpoints.firstIndex(where: { $0.kind == .finish }) ?? checkpoints.count) }
         normalizeOrder()
     }
+    mutating func setEndpoint(_ kind: EventCheckpointKind, at point: EventCoordinate, name: String?) throws {
+        guard kind == .start || kind == .finish else { throw BackpackError.invalid("Choose start or destination.") }
+        try point.validate()
+        if let index = checkpoints.firstIndex(where: { $0.kind == kind }) {
+            checkpoints[index].point = point
+            if let name { checkpoints[index].title = String(name.prefix(160)) }
+        } else {
+            try addCheckpoint(kind, at: point)
+            if let name, let index = checkpoints.firstIndex(where: { $0.kind == kind }) { checkpoints[index].title = String(name.prefix(160)) }
+        }
+    }
     mutating func moveCheckpoint(_ id: UUID, by offset: Int) throws {
         guard let index = checkpoints.firstIndex(where: { $0.id == id }), checkpoints[index].kind == .checkpoint,
               abs(offset) == 1, checkpoints.indices.contains(index + offset), checkpoints[index + offset].kind == .checkpoint else {

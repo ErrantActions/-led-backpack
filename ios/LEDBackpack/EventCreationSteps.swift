@@ -28,9 +28,9 @@ struct EventCreationNextSteps: View {
             Section("Shape the experience") {
                 NavigationLink("Place start/finish gates and ride/game checkpoints") {
                     EventRoutePlannerView(original: event, saved: { routeSaved = true })
-                }.disabled(!event.access.canManage || event.cancelled)
+                }.disabled(!event.access.canManageRoute || event.cancelled)
                 if routeSaved { Text("Route save acknowledged. Open the event to review its current plan and participation rules.").font(.caption) }
-                Text("Use map search or tap/drag pins, choose start/intermediate/finish, set radius and order, then review the exact plan. Guide lines are organizer-authored geometry, not navigation or saved participant tracks.").font(.caption)
+                Text("Pick start and destination, generate a driving/walking road route, drag shaping handles to choose different roads, then tap the route to drop checkpoints. Review the exact plan before saving. Route previews are not live navigation, safety certification or saved participant tracks.").font(.caption)
                 NavigationLink("Open event / invite friends / manage participants") { CommunityEventDetailView(id: event.id) }
             }
         }.navigationTitle("Next: gates & checkpoints")
