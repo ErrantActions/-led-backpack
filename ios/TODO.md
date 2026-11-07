@@ -24,13 +24,16 @@ fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
 | `503719a` | [42345466960](https://github.com/ErrantActions/-led-backpack/actions/runs/42345466960) | Actual TypeCheckDecl.cpp:2766 assertion on guestbook `value`; named binding removes state shadowing. |
 | `0eb9903` | [42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592) | Private controller access; unchanged capability getter moved into owning client. |
 | `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Missing Received renderer, builder complexity and still type-nested PHONE controls. |
+| `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Reached native test compilation; positive event receipt assertions must unwrap nullable `CatalogEvent`. |
 
-Current correction: PHONE controls are now actually module-scoped; the earlier
-function-scope correction had not removed type nesting. `ReceivedSwapPixels`
-is now private module scope rather than nested in one preview. Its pixel/
-playback behavior is unchanged; the reported builder complexity may cascade
-from that missing type, so the existing builder remains unchanged pending the
-next actual compiler result. Preserve checks/behavior; no SDK downgrade
+The shared-control/Received-renderer visibility corrections removed the earlier
+reported app errors without changing the recovery builder. The latest build
+reached native test compilation and exposed two old positive RSVP receipt
+assertions that assume nonnullable events. The existing test now explicitly
+`XCTUnwrap`s its expected positive receipt; production null/access-loss behavior
+and existing nullable/held-decline coverage are unchanged. **1 existing test
+updated,0new fixtures,0executed**; another actual build must verify it.
+Preserve checks/behavior; no SDK downgrade
 or silent fallback. Another real runner build must verify the corrections.
 Logs are retained. Signing/provider/live/physical integration gates remain
 separate. These executed failures supersede earlier blanket "all validation
