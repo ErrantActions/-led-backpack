@@ -151,7 +151,7 @@ struct CommunityEventDetailView: View {
         let scope: UUID
         let work: @MainActor (CommunityFeatureClient) async throws -> Void
     }
-    var body: some View {
+    private var eventForm: some View {
         Form {
             if community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
                 session.client?.accountID == community.user?.id {
@@ -167,8 +167,8 @@ struct CommunityEventDetailView: View {
                         }
                     }.disabled(session.busy)
                 }
-                if let value {
-                    let event = value.event
+                if let loadedEvent = value {
+                    let event = loadedEvent.event
                     if event.moderation?.held == true {
                         Label("Held: normal participation, progress, media and conversation access withdrawn.", systemImage: "lock")
                         Text("Organizers may correct the definition. Release requires fresh participation review and never restores shared progress.").font(.caption)
@@ -179,7 +179,7 @@ struct CommunityEventDetailView: View {
                         Text(event.startsAtISO).font(.caption)
                         Text("Until \(event.endsAtISO) / \(event.timezone)").font(.caption)
                         Text("Status: \(event.status.rawValue)")
-                        if event.rsvpStatus == .going { EventCountdownView(value: value) }
+                        if event.rsvpStatus == .going { EventCountdownView(value: loadedEvent) }
                         LabeledContent("Your RSVP", value: event.rsvpStatus?.rawValue ?? "None")
                         LabeledContent("Visibility", value: event.visibility)
                         LabeledContent("Capacity", value: String(event.capacity))
@@ -322,6 +322,9 @@ struct CommunityEventDetailView: View {
                 }
             } else { Text(session.failure ?? "This event feature is unavailable.") }
         }
+    }
+    private var eventLifecycle: some View {
+        eventForm
         .modernScene().navigationTitle("Event")
         .navigationDestination(item: $chatSelection) { item in CommunityConversationView(context: item.context, title: item.title) }
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.eventsEnabled == true)") {
@@ -358,6 +361,9 @@ struct CommunityEventDetailView: View {
             if state == .active && !editing { value = nil; pending = nil; load() }
         }
         .onDisappear { if !editing { session.clear(); value = nil }; pending = nil; target = "" }
+    }
+    var body: some View {
+        eventLifecycle
         .sheet(item: $editingEvent, onDismiss: load) { original in
             CommunityEventEditor(original: original) { editingEvent = nil }
         }

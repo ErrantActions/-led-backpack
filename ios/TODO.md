@@ -25,6 +25,7 @@ fixture methods executed**. Independent dirty Wire is not tested by portable7/7.
 | `0eb9903` | [42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592) | Private controller access; unchanged capability getter moved into owning client. |
 | `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Missing Received renderer, builder complexity and still type-nested PHONE controls. |
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Reached native test compilation; positive event receipt assertions must unwrap nullable `CatalogEvent`. |
+| `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Positive receipt fixture error resolved; chat/event SwiftUI expressions exceed compiler type-check budget. |
 
 The shared-control/Received-renderer visibility corrections removed the earlier
 reported app errors without changing the recovery builder. The latest build
@@ -38,6 +39,13 @@ or silent fallback. Another real runner build must verify the corrections.
 Logs are retained. Signing/provider/live/physical integration gates remain
 separate. These executed failures supersede earlier blanket "all validation
 unexecuted" statements only for the exact published snapshots above.
+
+Current source correction: typed chat content/lifecycle and event form/lifecycle
+properties split the reported builder expressions. The event snapshot binding
+is named `loadedEvent` rather than shadowing mutable state. Presentation modifier
+order, navigation, sheets, environments, controls, access/consent/cancellation
+and nullable handling are retained. No type erasure or removed controls.
+Another actual runner build must verify the change.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 

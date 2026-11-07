@@ -21,6 +21,7 @@ were skipped: **0 new native app fixtures executed**, no native green.
 | `0eb9903` | [42345826592](https://github.com/ErrantActions/-led-backpack/actions/runs/42345826592) | Friend capability getter accesses private controller from another file. |
 | `989c42e` | [42346143892](https://github.com/ErrantActions/-led-backpack/actions/runs/42346143892) | Received renderer/control visibility and recovery builder complexity. |
 | `39b54bd` | [42346607753](https://github.com/ErrantActions/-led-backpack/actions/runs/42346607753) | Native test compilation: expected positive event receipt must unwrap optional event. |
+| `517c05d` | [42347029754](https://github.com/ErrantActions/-led-backpack/actions/runs/42347029754) | Chat/event SwiftUI expression type-check budget exceeded. |
 
 The earlier route/cover/error/getter scopes and guestbook binding were corrected
 without changing their intended checks/bodies or SDK. The sixth build exposed
@@ -29,6 +30,10 @@ now actually module-scoped. The next build removed those errors and reached
 test compilation. The existing positive RSVP test now explicitly unwraps the
 expected event; nullable production access-loss receipts remain unchanged.
 One existing test updated, no new fixture or executed-test count inferred.
+The latest runner cleared that fixture error but exposed chat/event builder
+complexity. Typed content/form/lifecycle properties now split those expressions;
+the loaded event no longer shadows mutable state. Presentation order and
+authorization/consent remain unchanged; another actual build must verify it.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 

@@ -162,7 +162,7 @@ struct CommunityConversationView: View {
     @State private var reference: ChatReferenceSelection?
     @State private var referencePolicyStale = false
     @State private var referencesVerified = false
-    var body: some View {
+    private var conversationContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if revoked || session.denied || community.config?.messagingEnabled != true {
@@ -196,6 +196,9 @@ struct CommunityConversationView: View {
                 }
             }.padding(20)
         }
+    }
+    private var conversationLifecycle: some View {
+        conversationContent
         .modernScene().navigationTitle(revoked || session.denied ? "Messages" : room?.title ?? title)
         .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatMediaEnabled == true):\(community.config?.chatPinsEnabled == true):\(community.config?.directMessageRetentionDays.map(String.init) ?? "missing"):\(community.config?.directMessageRecovery ?? "missing")") {
             clear(); session.clear()
@@ -261,6 +264,9 @@ struct CommunityConversationView: View {
         .onChange(of: community.config?.eventChatsEnabled) { _, _ in stopTyping(); clear(); session.clear(); if phase == .active { session.bind(community); load(older: false) } }
         .onChange(of: session.denied) { _, denied in if denied { clear(); revoked = true } }
         .onDisappear { stopTyping(); session.clear(); clear() }
+    }
+    var body: some View {
+        conversationLifecycle
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image, .gif]) { result in
             session.run(expected: importScope, { client in
                 let bytes = try PhoneDisplayFileReader.read(result.get())
