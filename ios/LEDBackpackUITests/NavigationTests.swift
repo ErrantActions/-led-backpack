@@ -160,18 +160,34 @@ final class NavigationTests: XCTestCase {
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        let visible = app.windows.firstMatch.frame.insetBy(dx: 0, dy: 80)
+        let window = app.windows.firstMatch.frame
+        let scroll = app.scrollViews.allElementsBoundByIndex.first {
+            $0.isHittable && $0.frame.intersects(window)
+        }
+        let container = scroll ?? app
+        var visible = scroll?.frame.intersection(window) ?? window
+        let navigation = app.navigationBars.firstMatch
+        if navigation.exists && navigation.frame.intersects(visible) {
+            let top = max(visible.minY, navigation.frame.maxY)
+            visible = CGRect(x: visible.minX, y: top, width: visible.width,
+                height: max(0, visible.maxY - top))
+        }
+        let tabs = app.tabBars.firstMatch
+        if tabs.exists && tabs.frame.intersects(visible) {
+            visible.size.height = max(0, tabs.frame.minY - visible.minY)
+        }
         for _ in 0..<5 {
             if element.exists {
                 if element.isHittable && visible.contains(element.frame) { return }
-                if element.frame.minY < visible.minY { app.swipeDown() }
-                else { app.swipeUp() }
+                if element.frame.minY < visible.minY { container.swipeDown() }
+                else { container.swipeUp() }
             } else {
-                app.swipeUp()
+                container.swipeUp()
             }
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        XCTAssertTrue(element.isHittable && visible.contains(element.frame), "Reveal the entire control before interacting.")
+        XCTAssertTrue(element.isHittable && visible.contains(element.frame),
+            "Reveal the entire control before interacting. Hittable=\(element.isHittable), control=\(element.frame), viewport=\(visible)")
     }
 
     private func returnToHeader(_ app: XCUIApplication) {

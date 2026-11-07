@@ -354,6 +354,8 @@ final class PhoneDisplayController: ObservableObject {
             let stamp = UUID(); generation = stamp; loading = true
             decodeTask = Task {
                 do {
+                    try Task.checkCancellation()
+                    guard generation == stamp, presented, visible, foreground else { return }
                     let decoded = try await decode(data)
                     try Task.checkCancellation()
                     guard generation == stamp, presented, visible, foreground else { return }

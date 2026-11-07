@@ -68,6 +68,14 @@ wording is current. Production access/revision checks remain unchanged.
 Partial output includes the signed-
 Keychain prerequisite skip, not a completed full-suite result. The queued
 read-only/time-bounded checkpoint is now active; no live/physical/beta readiness.
+
+The bounded checkpoint subsequently failed full regression and identified the
+organizer timeout plus incomplete event fixtures, phone decode supersession and
+UI reveal assertions. Corrections preserve production event/access constraints,
+guard queued decode before it can cancel newer work, encode explicit loop
+fixtures and use actual UI viewport geometry. A new phone supersession
+regression is prepared. Exact rerun results, full totals and the public live
+step remain pending; no waived tests or completion claim.
 The next actual runner must verify these fixes; logs remain retained. Neither
 portable7/7 nor a running workflow establishes native integration/beta readiness.
 

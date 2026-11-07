@@ -107,6 +107,19 @@ cancellation, with per-test timeout support verified by actual runner preflight.
 It includes the one opt-in public integration method, whose Swift compilation/
 runtime result is still pending. No full-suite/live/physical/beta claim.
 
+That bounded run subsequently failed full regression, naming the old organizer
+timeout instead of consuming the job limit. It exposed additional incomplete
+event-award/deadline fixtures,3phone tests and1UI reveal assertion. The event
+fixtures now satisfy the required fixed-location and unique start/finish
+contract; production constraints and existing assertions are retained.
+Phone source correction prevents a cancelled queued rehydration from cancelling
+a newer explicit decode; a new regression covers show/restore supersession.
+Finite-loop fixtures now author their recorded extension explicitly. UI reveal
+uses actual scroll/window/navigation/tab bounds rather than an arbitrary80px
+inset and records geometry on failure. These changes require actual rerun.
+The `2430cfc` fixture-only checkpoint42355063368 is active; public integration
+has not executed because preceding full regressions still failed.
+
 Next integration source prepared:1 `NativePublicIntegrationTests` method uses
 the actual native HTTP/config/catalog/current-access/manifest/hash adapter
 against the approved live HTTPS origin, with a guest-only vault that forbids

@@ -18,8 +18,14 @@ final class PhoneDisplayTests: XCTestCase {
     private func gif(animated: Bool = true, loops: Int = 0) throws -> Data {
         let black = PixelFrame.black(size)
         var red = black; red.rgb[0] = 255
-        return try MediaCodec.encode(animated ? [black, red] : [red],
-            delays: animated ? [0.04, 0.12] : [1], loopCount: loops)
+        var data = try MediaCodec.encode(animated ? [black, red] : [red],
+            delays: animated ? [0.04, 0.12] : [1], loopCount: nil)
+        let flags = data[10]
+        let paletteBytes = flags & 0x80 == 0 ? 0 : 3 * (1 << (Int(flags & 7) + 1))
+        let application = [UInt8(0x21),0xFF,11] + Array("NETSCAPE2.0".utf8) +
+            [3,1] + Wire.le16(loops) + [0]
+        data.insert(contentsOf: application, at: 13 + paletteBytes)
+        return data
     }
     private func activate(_ phone: PhoneDisplayController) {
         phone.open(); phone.setForeground(true); phone.setVisible(true)
@@ -121,6 +127,28 @@ final class PhoneDisplayTests: XCTestCase {
         phone.setVisible(false)
         phone.setVisible(true)
         XCTAssertFalse(phone.isPlaying)
+    }
+
+    func testQueuedRehydrationCannotCancelANewerExplicitSelection() async throws {
+        for restoring in [false, true] {
+            let phone = PhoneDisplayController(idleTimer: FakePhoneIdleTimer())
+            activate(phone)
+            try await phone.show(gif())
+            phone.setVisible(false)
+            phone.setVisible(true)
+            let replacement = try gif(animated: false)
+            if restoring {
+                try await phone.restore(PhoneDisplaySnapshot(data: replacement, mediaID: nil, elapsed: 0,
+                    wantsPlayback: false, motionOverride: false, keepAwake: false))
+            } else {
+                try await phone.show(replacement)
+            }
+            XCTAssertEqual(phone.data, replacement)
+            XCTAssertEqual(phone.preview?.frames.count, 1)
+            XCTAssertFalse(phone.isPlaying)
+            XCTAssertNil(phone.failure)
+            phone.dismiss()
+        }
     }
 
     func testIdleTimerLeaseRestoresPriorFalseAndPriorTrueExactly() {
