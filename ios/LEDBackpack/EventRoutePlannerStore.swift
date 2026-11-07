@@ -19,7 +19,8 @@ extension EventRouteReward {
 
 @MainActor
 final class EventRoutePlannerStore: ObservableObject {
-    @Published var draft: EventRouteDraft?
+    @Published var draft: EventRouteDraft? { didSet { draftGeneration = UUID() } }
+    private var draftGeneration = UUID()
     @Published private(set) var choices: [RouteArtworkReference: RouteArtworkChoice] = [:]
     @Published private(set) var unavailable: Set<RouteArtworkReference> = []
     @Published private(set) var latest: CatalogEvent?
@@ -84,6 +85,7 @@ final class EventRoutePlannerStore: ObservableObject {
         guard let draft else { return }
         loadingArtwork = true
         let references = Set(draft.checkpoints.compactMap(\.artwork) + draft.rewards.compactMap(\.artwork))
+        let generation = draftGeneration
         session.run(expected: scope, { client in
             defer { self.loadingArtwork = false }
             let current = try await self.readCurrent(client, id: draft.original.id)
@@ -110,13 +112,15 @@ final class EventRoutePlannerStore: ObservableObject {
                 }
             }
             try self.session.checked(client)
+            guard generation == self.draftGeneration, !self.readOnly, !self.conflict else { return }
             self.choices = resolved; self.unavailable = missing; self.loadingArtwork = false
         }, success: {})
     }
-    func save(done: @escaping () -> Void) {
-        guard let draft, !readOnly, !conflict else {
+    func save(captured: NativeEventRouteReview, done: @escaping () -> Void) {
+        guard captured.matches(draft), !readOnly, !conflict else {
             report(BackpackError.invalid("Review current permissions and explicitly reload a changed event before saving.")); return
         }
+        let draft = captured.draft
         let references = Set(draft.checkpoints.compactMap(\.artwork) + draft.rewards.compactMap(\.artwork))
         guard !loadingArtwork, references.allSatisfy({ choices[$0] != nil && !unavailable.contains($0) }) else {
             report(BackpackError.invalid("Replace or remove unavailable artwork before saving. Sources are never substituted.")); return
@@ -137,6 +141,11 @@ final class EventRoutePlannerStore: ObservableObject {
                     guard client.exclusiveRouteEnabled(current) else { throw BackpackError.invalid("Protected artwork references are no longer available.") }
                 }
                 _ = try await client.saveRoute(draft)
+                try self.session.checked(client)
+                if !captured.matches(self.draft) {
+                    self.conflict = true; self.latest = nil
+                    throw BackpackError.invalid("Captured route acknowledged. New edits remain local; explicitly reload before another save.")
+                }
             } catch let error as CommunityFailure where error.status == 409 {
                 if error.code == "event_route_locked" { self.structureLocked = true }
                 else { self.conflict = true; self.latest = nil }

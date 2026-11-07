@@ -1,7 +1,7 @@
 import Foundation
 import BackpackProtocol
 
-enum ChatConversation: Hashable {
+enum ChatConversation: Hashable, Codable {
     case direct(peer: UUID, event: UUID?)
     case room(UUID)
     var query: [URLQueryItem] {
@@ -89,6 +89,9 @@ struct DirectChatPage: Decodable {
     let hasMore: Bool
     let nextBefore: DirectChatCursor?
     let viewToken: String?
+    let encryption: String?
+    let retentionDays: Int?
+    let recovery: String?
 }
 struct RoomChatPage: Decodable {
     let chat: NativeChatRoom
@@ -118,6 +121,10 @@ struct ChatSendIntent {
     let pin: ChatPin?
     let reference: ChatReferenceSelection?
     init(context: ChatConversation, text: String, attachmentID: UUID?, pin: ChatPin?, reference: ChatReferenceSelection? = nil, clientID: UUID = UUID()) throws {
+        try reference?.validate()
+        if case .room = context, reference?.inviteRecipient == true {
+            throw BackpackError.invalid("A room reference never implicitly invites or forwards an event invitation.")
+        }
         let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard content.utf16.count <= 4000, !content.isEmpty || attachmentID != nil || pin != nil || reference != nil else {
             throw BackpackError.invalid("Write a message or explicitly attach media/place before sending.")

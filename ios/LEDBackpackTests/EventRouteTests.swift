@@ -218,7 +218,8 @@ final class EventRouteTests: XCTestCase {
         await settle(store.session) { store.bind(community, event: current) }
         try store.draft?.addCheckpoint(.checkpoint, at: EventCoordinate(latitude: 40, longitude: -90))
         let ids = store.draft?.checkpoints.map(\.id)
-        await settle(store.session) { store.save(done: { XCTFail("Conflicted draft must not save") }) }
+        let captured = try NativeEventRouteReview(XCTUnwrap(store.draft))
+        await settle(store.session) { store.save(captured: captured, done: { XCTFail("Conflicted draft must not save") }) }
         XCTAssertTrue(store.conflict)
         XCTAssertEqual(store.draft?.original.revision, 3)
         XCTAssertEqual(store.draft?.checkpoints.map(\.id), ids)
@@ -235,7 +236,8 @@ final class EventRouteTests: XCTestCase {
         let current = try event()
         await settle(store.session) { store.bind(community, event: current) }
         try store.draft?.addCheckpoint(.checkpoint, at: EventCoordinate(latitude: 40, longitude: -90))
-        await settle(store.session) { store.save(done: { XCTFail("Locked write must fail") }) }
+        let captured = try NativeEventRouteReview(XCTUnwrap(store.draft))
+        await settle(store.session) { store.save(captured: captured, done: { XCTFail("Locked write must fail") }) }
         XCTAssertTrue(store.structureLocked)
         XCTAssertEqual(store.draft?.checkpoints.count, 1)
         try store.draft?.restoreFixedGeometryKeepingArtwork()
@@ -249,7 +251,8 @@ final class EventRouteTests: XCTestCase {
         let community = try await controller(transport)
         let client = try CommunityFeatureClient(community)
         let current = try JSONDecoder().decode(CatalogEvent.self, from: Data(json(review: true).utf8))
-        let result = try await client.rsvp(current, status: .going)
+        let receipt = try await client.rsvp(current, status: .going)
+        let result = try XCTUnwrap(receipt)
         XCTAssertEqual(result.requiresReconfirmation, false)
         let requests = await transport.history()
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(requests[2].httpBody)) as? [String: Any])
@@ -265,7 +268,8 @@ final class EventRouteTests: XCTestCase {
         let community = try await controller(transport)
         let client = try CommunityFeatureClient(community)
         let current = try JSONDecoder().decode(CatalogEvent.self, from: Data(json(cancelled: true).utf8))
-        let result = try await client.rsvp(current, status: .declined)
+        let receipt = try await client.rsvp(current, status: .declined)
+        let result = try XCTUnwrap(receipt)
         XCTAssertEqual(result.rsvpStatus, .declined)
         XCTAssertTrue(result.cancelled)
     }
@@ -281,7 +285,8 @@ final class EventRouteTests: XCTestCase {
         XCTAssertEqual(store.draft?.checkpoints.first?.exclusiveGifId, artID)
         XCTAssertNil(store.draft?.checkpoints.first?.gifItemId)
         XCTAssertTrue(store.artworkLabel(.exclusive(artID)).contains("Unavailable"))
-        await settle(store.session) { store.save(done: { XCTFail("Unrepaired artwork must not save") }) }
+        let captured = try NativeEventRouteReview(XCTUnwrap(store.draft))
+        await settle(store.session) { store.save(captured: captured, done: { XCTFail("Unrepaired artwork must not save") }) }
         let requests = await transport.history()
         XCTAssertFalse(requests.contains { $0.httpMethod == "PATCH" })
         XCTAssertFalse(requests.contains { $0.url?.path == "/api/v1/items/\(artID.uuidString.lowercased())" })

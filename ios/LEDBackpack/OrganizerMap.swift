@@ -225,6 +225,10 @@ struct FixedVenueMapEditor: View {
     @State private var radiusMode = false
     @State private var fit = UUID()
     @State private var failure: String?
+    @State private var numericLatitude = ""
+    @State private var numericLongitude = ""
+    @State private var numericLabel = ""
+    @State private var numericRadius = ""
     private var pins: [OrganizerMapPin] {
         venue.map { [OrganizerMapPin(id: "venue", title: $0.label, symbol: "V",
             point: EventCoordinate(latitude: $0.latitude, longitude: $0.longitude), radius: $0.radiusMeters)] } ?? []
@@ -259,6 +263,26 @@ struct FixedVenueMapEditor: View {
                 TextField("Venue name", text: Binding(get: { venue?.label ?? "" }, set: { venue?.label = $0 }))
                 Stepper("Activation radius \(Int(venue?.radiusMeters ?? 100))m",
                     value: Binding(get: { venue?.radiusMeters ?? 100 }, set: { venue?.radiusMeters = $0 }), in: 1...100000, step: 5)
+            }
+            if enabled {
+                Text("Numeric fixed venue — no imagery/search permission required").font(.caption)
+                TextField("Typed venue name", text: $numericLabel)
+                TextField("Decimal latitude (−90…90)", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
+                TextField("Decimal longitude (−180…180)", text: $numericLongitude).keyboardType(.numbersAndPunctuation)
+                TextField("Explicit radius in meters (1…100000)", text: $numericRadius).keyboardType(.decimalPad)
+                Button("Copy current fixed venue into numeric controls") {
+                    guard let venue else { return }
+                    numericLabel = venue.label; numericLatitude = String(venue.latitude)
+                    numericLongitude = String(venue.longitude); numericRadius = String(venue.radiusMeters)
+                }.disabled(venue == nil)
+                Button("Apply explicitly typed fixed venue") {
+                    do {
+                        let point = try NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude)
+                        guard let radius = Double(numericRadius) else { throw BackpackError.invalid("Enter an explicit radius.") }
+                        let value = CatalogEventLocation(label: numericLabel, latitude: point.latitude, longitude: point.longitude, radiusMeters: radius)
+                        try value.validate(); venue = value; fit = UUID(); failure = nil
+                    } catch { failure = error.localizedDescription }
+                }
             }
             if let failure { Text(failure).font(.caption).foregroundStyle(.orange) }
         }

@@ -1,6 +1,8 @@
 name: Consolidated native recovery validation
 on:
   workflow_dispatch:
+  push:
+    branches: [native-recovery]
 permissions:
   contents: read
 concurrency:

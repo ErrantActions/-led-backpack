@@ -18,7 +18,17 @@ final class AppModel: ObservableObject {
     let community: CommunityController
     let cloudVault = CloudVaultStore()
     let phoneDisplay = PhoneDisplayController()
+    let phoneOriginals = PhoneArtworkLibrary()
+    let displayTargets = DisplayTargetSelection()
+    let swapRecovery = SwapRecoveryStore()
+    let phoneSwapGame = PhoneSwapGame()
+    let friendPhoneInteractions = FriendPhoneInteractionStore()
+    let scopedGlobalPhone = ScopedGlobalPhone()
+    let localPairedGame = LocalPairedGame()
     let applePush = NativeApplePushCoordinator()
+    let checkpointLocation = ForegroundCheckpointLocation()
+    let nearbyDiscovery = NearbyDiscoveryCoordinator()
+    let soloScenes = SoloSceneController()
     @Published var library: LocalLibrary?
     @Published var startupError: String?
     @Published private(set) var applyingSceneID: UUID?
@@ -43,6 +53,58 @@ final class AppModel: ObservableObject {
         #endif
         loadLibrary()
         applePush.bind(community)
+        phoneSwapGame.bind(phone: phoneDisplay, targets: displayTargets, community: community)
+        friendPhoneInteractions.bind(phone: phoneDisplay, targets: displayTargets, community: community)
+        scopedGlobalPhone.bind(phone: phoneDisplay, targets: displayTargets, community: community)
+        localPairedGame.bind(phone: phoneDisplay, targets: displayTargets)
+        soloScenes.bind(phone: phoneDisplay, targets: displayTargets)
+        phoneDisplay.manualPresentationWillChange = { [weak self] in
+            self?.soloScenes.policyChanged()
+            if self?.scopedGlobalPhone.arming == true || self?.scopedGlobalPhone.session.running == true || self?.scopedGlobalPhone.session.busy == true { self?.scopedGlobalPhone.stop("Manual PHONE presentation changed") }
+            if self?.localPairedGame.arming == true || self?.localPairedGame.session.running == true || self?.localPairedGame.session.busy == true { self?.localPairedGame.stop("Manual PHONE presentation changed") }
+        }
+        phoneDisplay.manualSelectionWillChange = { [weak self] in
+            if self?.localPairedGame.arming == true || self?.localPairedGame.session.running == true || self?.localPairedGame.session.busy == true { self?.localPairedGame.stop("Manual PHONE choice/visibility changed — local recovery retained") }
+            if self?.scopedGlobalPhone.arming == true || self?.scopedGlobalPhone.session.running == true || self?.scopedGlobalPhone.session.busy == true { self?.scopedGlobalPhone.stop("Manual PHONE selection/visibility changed — scoped recovery retained") }
+            self?.soloScenes.manualPhoneChange()
+            if self?.phoneSwapGame.enabled == true || self?.phoneSwapGame.busy == true { self?.phoneSwapGame.stop(reason: "Manual phone change/close — original recovery retained; no overwrite") }
+            if self?.friendPhoneInteractions.engine?.enabled == true || self?.friendPhoneInteractions.engine?.busy == true {
+                self?.friendPhoneInteractions.stop("Manual phone change/close — original retained, no overwrite")
+            }
+        }
+        phoneDisplay.peerPlaybackPolicyChanged = { [weak self] in
+            if self?.localPairedGame.arming == true || self?.localPairedGame.session.running == true || self?.localPairedGame.session.busy == true { self?.localPairedGame.stop("PHONE playback policy changed — no paired resume") }
+            if self?.scopedGlobalPhone.arming == true || self?.scopedGlobalPhone.session.running == true || self?.scopedGlobalPhone.session.busy == true { self?.scopedGlobalPhone.stop("PHONE playback policy changed — explicit rearm required") }
+            self?.soloScenes.policyChanged()
+            if self?.friendPhoneInteractions.engine?.enabled == true || self?.friendPhoneInteractions.engine?.busy == true {
+                self?.friendPhoneInteractions.stop("Phone play/motion/data-saving policy changed — no silent resume")
+            }
+        }
+        community.stopPhoneSwapGame = { [weak self] in
+            self?.phoneSwapGame.stop(reason: "Account/friend permission changed")
+            self?.friendPhoneInteractions.stop("Account/friend permission changed")
+        }
+        community.stopLocalLocationFeatures = { [weak self] in
+            self?.soloScenes.stop("Global Stop all / local location context changed — no restart")
+            self?.checkpointLocation.stop("Account/friend/permission changed — no restart")
+            self?.live.suspendLocationFeatures()
+            self?.nearbyDiscovery.stop("Account/friend/location controls changed")
+            self?.phoneSwapGame.stop(reason: "Global location/friend controls stopped")
+            self?.scopedGlobalPhone.stop("Global Stop all")
+            self?.localPairedGame.stop("Global Stop all")
+            self?.friendPhoneInteractions.stop("Global friend/location controls stopped — no restart")
+        }
+        checkpointLocation.stoppedForPermissionChange = { [weak self] in
+            guard let self, self.community.signedIn else { return }
+            let controller = self.community
+            do {
+                let client = try CommunityFeatureClient(controller)
+                Task {
+                    do { _ = try await client.stopAllServiceLocation() }
+                    catch { controller.reportLocationStopFailure(error) }
+                }
+            } catch { controller.reportLocationStopFailure(error) }
+        }
         alerts.nativeAppleActivity = { id in NativeApplePushEvents.shared.tapped(id) }
         link.onReady = { [weak self] in
             guard let self else { return }
@@ -203,7 +265,16 @@ struct LEDBackpackApp: App {
                         .environmentObject(app.community)
                         .environmentObject(app.cloudVault)
                         .environmentObject(app.phoneDisplay)
+                        .environmentObject(app.phoneOriginals).environmentObject(app.displayTargets)
+                        .environmentObject(app.swapRecovery)
+                        .environmentObject(app.phoneSwapGame)
+                        .environmentObject(app.friendPhoneInteractions)
+                        .environmentObject(app.scopedGlobalPhone)
+                        .environmentObject(app.localPairedGame)
                         .environmentObject(app.applePush)
+                        .environmentObject(app.checkpointLocation)
+                        .environmentObject(app.nearbyDiscovery)
+                        .environmentObject(app.soloScenes)
                 } else {
                     ContentUnavailableView {
                         Label("Library unavailable", systemImage: "externaldrive.badge.exclamationmark")
@@ -217,14 +288,22 @@ struct LEDBackpackApp: App {
             .preferredColorScheme(.dark)
             .tint(.cyan)
             .onChange(of: scenePhase) { _, value in
+                app.soloScenes.setForeground(value == .active)
                 app.setBackground(value == .background)
                 app.phoneDisplay.setForeground(value == .active)
+                if value != .active { app.checkpointLocation.stop("Foreground left — no automatic restart") }
+                if value != .active { app.nearbyDiscovery.stop("Foreground left — no automatic restart") }
+                if value != .active { app.phoneSwapGame.stop(reason: "Background stopped game; recovery retained") }
+                if value != .active { app.scopedGlobalPhone.stop("Foreground left — scoped PHONE stopped") }
+                if value != .active { app.localPairedGame.stop("Foreground left — paired PHONE/radio/NI stopped") }
+                if value != .active { app.friendPhoneInteractions.stop("Foreground left — friend radio/key/playback stopped; recovery retained") }
                 if value == .background { app.cloudVault.stopWork() }
                 if value == .active, let library = app.library { app.cloudVault.requestSynchronization(library) }
                 if value == .active { Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } } }
                 if value == .active && app.community.nativeApplePushAvailable { app.applePush.refresh() }
             }
             .task {
+                app.soloScenes.setForeground(scenePhase == .active)
                 app.phoneDisplay.setForeground(scenePhase == .active)
                 do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) }
             }
@@ -232,7 +311,27 @@ struct LEDBackpackApp: App {
                 Task { do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) } }
             }
             .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.applePush.bind(app.community) }
+            .onReceive(app.community.$user) { user in
+                app.phoneDisplay.setViewerAutomaticPlaybackAllowed(
+                    user?.mediaPreferences?.permitsAnimation(reducedMotion: false, manual: false) ?? true)
+            }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.checkpointLocation.stop("Account changed — no restart") }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.nearbyDiscovery.stop("Account changed — no restart") }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.phoneSwapGame.stop(reason: "Account changed — game off") }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.friendPhoneInteractions.accountChanged() }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.scopedGlobalPhone.stop("Account changed — scoped PHONE stopped") }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.localPairedGame.stop("Account context changed — local pair stopped") }
+            .onReceive(app.community.$accountRevision.dropFirst()) { _ in app.soloScenes.stop("Account changed — account-free authoring retained, automation off") }
             .onReceive(app.community.$nativeIntegrityRevision.dropFirst()) { _ in app.applePush.bind(app.community) }
+            .onReceive(app.displayTargets.$target.dropFirst()) { value in
+                app.soloScenes.stop("Display target context changed — no automatic restart or hardware fallback")
+                if value != .phone {
+                    app.scopedGlobalPhone.stop("Target changed — no scoped hardware playback")
+                    app.localPairedGame.stop("Target changed — paired hardware recovery unsupported")
+                    app.phoneSwapGame.stop(reason: "Phone target left — no hardware exchange")
+                    app.friendPhoneInteractions.stop("Phone target left — no hardware friend scene")
+                }
+            }
             .onReceive(NativeApplePushEvents.shared.$activity) { value in
                 if let value { app.applePush.resolve(value); NativeApplePushEvents.shared.clearActivity() }
             }

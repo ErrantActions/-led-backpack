@@ -28,7 +28,10 @@ struct EventImageReplacementIntent {
     let previousCover: UUID?
     let data: Data
     let contentType: String
-    init(eventID: UUID, asset: NativeEventImage, gallery: NativeEventImages, bytes: Data, caption: String, alt: String, permission: Bool) throws {
+    let eventRevision: Int?
+    let eventRole: CatalogEventRole?
+    init(eventID: UUID, asset: NativeEventImage, gallery: NativeEventImages, bytes: Data, caption: String, alt: String, permission: Bool,
+         eventContext: CatalogEvent? = nil) throws {
         try gallery.validate()
         let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines), alt = alt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard gallery.canReorder, gallery.assets.contains(where: { $0.id == asset.id && $0.revision == asset.revision }),
@@ -47,6 +50,7 @@ struct EventImageReplacementIntent {
         body.append(bytes); body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         self.eventID = eventID; previousID = asset.id; expectedIDs = gallery.assets.map(\.id); previousCover = gallery.coverAssetId
         data = body; contentType = "multipart/form-data; boundary=\(boundary)"
+        eventRevision = eventContext?.revision; eventRole = eventContext?.access.role
     }
     static func raster(_ bytes: Data) throws -> NativeAvatarInput.Kind {
         guard (1...5_000_000).contains(bytes.count),
@@ -83,7 +87,7 @@ extension CommunityFeatureClient {
         for asset in value.assets { _ = try eventImagePath(asset, event: id) }
         return value
     }
-    private func eventImagePath(_ asset: NativeEventImage, event: UUID) throws -> String {
+    func eventImagePath(_ asset: NativeEventImage, event: UUID) throws -> String {
         let expected = "/api/v1/events/\(event.uuidString.lowercased())/assets/\(asset.id.uuidString.lowercased())/image.png"
         guard origin.contains(asset.url), asset.url.path == expected, asset.url.query == nil, asset.url.fragment == nil,
               let parts = URLComponents(url: asset.url, resolvingAgainstBaseURL: false), !parts.percentEncodedPath.contains("%") else {
@@ -92,11 +96,22 @@ extension CommunityFeatureClient {
         return String(expected.dropFirst("/api/v1/".count))
     }
     func eventImage(_ asset: NativeEventImage, event: UUID) async throws -> Data {
-        try await send(.events, eventImagePath(asset, event: event), maxBytes: 5_000_000)
+        let before = try await self.event(event)
+        guard before.moderation?.held != true else { throw CommunityFailure(status: 403, code: "event_withdrawn", message: "Held event media is unavailable.") }
+        let bytes = try await send(.events, eventImagePath(asset, event: event), maxBytes: 5_000_000)
+        let after = try await self.event(event)
+        guard after.revision == before.revision, after.access.role == before.access.role, after.moderation?.held != true else {
+            throw CommunityFailure(status: 403, code: "event_access_changed", message: "Event media context changed; drop the late image.")
+        }
+        return bytes
     }
     func replaceEventImage(_ intent: EventImageReplacementIntent) async throws -> NativeEventImage {
         let current = try await event(intent.eventID)
-        guard current.access.canManage, !current.cancelled else { throw BackpackError.invalid("Current event organizer access is required; no admin bypass.") }
+        guard current.access.canManage, !current.cancelled, current.moderation?.held != true,
+              intent.eventRevision == nil || intent.eventRevision == current.revision,
+              intent.eventRevision == nil || intent.eventRole == current.access.role else {
+            throw CommunityFailure(status: 403, code: "event_access_changed", message: "Current event organizer access/revision is required; clear stale replacement requests.")
+        }
         struct Receipt: Decodable { let asset: NativeEventImage; let replacedAssetId: UUID }
         let result = try JSONDecoder().decode(Receipt.self, from: await send(.events,
             "events/\(intent.eventID.uuidString.lowercased())/assets/\(intent.previousID.uuidString.lowercased())/replace",
@@ -113,6 +128,7 @@ extension CommunityFeatureClient {
 struct EventImageReplacementView: View {
     @EnvironmentObject private var community: CommunityController
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     @StateObject private var session = CommunityFeatureSession()
     let event: CatalogEvent
     @State private var gallery: NativeEventImages?
@@ -130,6 +146,11 @@ struct EventImageReplacementView: View {
     @State private var confirming = false
     @State private var cancelDraft = false
     @State private var notice: String?
+    @State private var currentEvent: CatalogEvent?
+    @State private var importScope: UUID?
+    @State private var importAsset: UUID?
+    @State private var stagedPreview: Data?
+    @State private var reviewIntent: EventImageReplacementIntent?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -150,7 +171,7 @@ struct EventImageReplacementView: View {
                             Text("Revision \(item.revision)\(gallery.coverAssetId == item.id ? " · Cover" : "") · \(item.approved ? "Approved" : "Unapproved")").font(.caption)
                             Button("Select this image for replacement") {
                                 asset = item; captured = gallery; caption = item.caption; alt = item.alt
-                                permission = false; bytes = nil; selectedName = nil; intent = nil; acknowledged = nil; notice = nil
+                                permission = false; bytes = nil; selectedName = nil; intent = nil; acknowledged = nil; notice = nil; stagedPreview = nil; reviewIntent = nil
                             }.disabled(asset != nil || session.busy)
                         }.padding(16).glassPanel()
                     }
@@ -162,8 +183,16 @@ struct EventImageReplacementView: View {
                         TextField("Caption", text: $caption, axis: .vertical)
                         TextField("Required accessible description", text: $alt, axis: .vertical)
                         Toggle("I have permission to use the replacement image", isOn: $permission)
-                        Button("Choose replacement PNG / JPEG / WebP") { importing = true }
-                        Button("Review replacement") { confirming = true }.disabled(bytes == nil || !permission || !authorized)
+                        if let stagedPreview, let image = UIImage(data: stagedPreview) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 240) }
+                        Button("Choose replacement PNG / JPEG / WebP") { importScope = session.client?.instanceID; importAsset = asset.id; importing = true }
+                        Button("Review replacement") {
+                            do {
+                                guard let bytes else { throw BackpackError.invalid("Choose a replacement still first.") }
+                                reviewIntent = try EventImageReplacementIntent(eventID: event.id, asset: asset, gallery: captured,
+                                    bytes: bytes, caption: caption, alt: alt, permission: permission, eventContext: currentEvent)
+                                confirming = true
+                            } catch { notice = error.localizedDescription }
+                        }.disabled(bytes == nil || !permission || !authorized)
                         if acknowledged != nil { Button("Verify acknowledged replacement (do not resubmit)") { verifyReceipt() } }
                         Text("Refresh never changes the captured revision/order or selected bytes. A conflict retains this draft; explicitly cancel/reload before choosing a new target. No automatic rebase/retry.").font(.caption)
                     }.padding(16).glassPanel().disabled(session.busy)
@@ -182,17 +211,26 @@ struct EventImageReplacementView: View {
         }.modernScene().navigationTitle("Replace event image")
         .task { session.bind(community); refresh() }
         .onChange(of: community.accountRevision) { _, _ in discard(); session.clear(); dismiss() }
-        .onDisappear { session.clear() }
+        .onChange(of: community.avatarPolicyRevision) { _, _ in gallery = nil; authorized = false; discard(); session.clear(); dismiss() }
+        .onChange(of: phase) { _, state in
+            if state == .background { gallery = nil; currentEvent = nil; authorized = false; discard(); session.clear(); dismiss() }
+        }
+        .onChange(of: session.denied) { _, denied in if denied { gallery = nil; currentEvent = nil; authorized = false; discard() } }
+        .onChange(of: caption) { _, _ in reviewIntent = nil; confirming = false }
+        .onChange(of: alt) { _, _ in reviewIntent = nil; confirming = false }
+        .onChange(of: permission) { _, _ in reviewIntent = nil; confirming = false }
+        .onDisappear { if !importing { gallery = nil; authorized = false; session.clear() } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.png, .jpeg, .webP]) { result in
             do {
-                let file = try result.get(), value = try PhoneDisplayFileReader.read(file)
-                _ = try EventImageReplacementIntent.raster(value)
-                bytes = value; selectedName = file.lastPathComponent
+                guard authorized, importScope == session.client?.instanceID, importAsset == asset?.id else { throw CancellationError() }
+                let file = try result.get(), raster = try NativeEventRaster.read(file)
+                bytes = raster.bytes; stagedPreview = raster.preview; selectedName = file.lastPathComponent
+                reviewIntent = nil; confirming = false
             } catch { notice = error.localizedDescription }
         }
         .confirmationDialog("Replace captured image at the displayed revision/order?", isPresented: $confirming) {
             Button("Replace / reset public approval", role: .destructive) { replace() }
-        } message: { Text("The previous image URL is retired only after an atomic accepted replacement. Current revision/order conflicts retain your selected file and descriptions.") }
+        } message: { Text("Caption: \(caption)\nAlt: \(alt)\nCaptured asset revision \(asset?.revision ?? 0), exact \(captured?.assets.count ?? 0)-image order, explicit permission true. Previous URL retires; cover/order retained, approval resets. Conflicts retain file/descriptions.") }
         .confirmationDialog("Discard this replacement draft?", isPresented: $cancelDraft) {
             Button("Discard and reload", role: .destructive) { discard(); refresh() }
         }
@@ -201,15 +239,23 @@ struct EventImageReplacementView: View {
         session.run { client in
             do {
                 let current = try await client.event(event.id), images = try await client.eventImages(event.id)
-                try session.checked(client); authorized = current.access.canManage && !current.cancelled && images.canReorder
+                try session.checked(client); authorized = current.access.canManage && !current.cancelled && images.canReorder && current.moderation?.held != true
+                if !authorized || (currentEvent != nil && (currentEvent?.revision != current.revision || currentEvent?.access.role != current.access.role)) {
+                    gallery = nil; discard()
+                }
+                currentEvent = current
                 gallery = images
-            } catch { authorized = false; throw error }
+            } catch {
+                authorized = false; gallery = nil; currentEvent = nil
+                if let failure = error as? CommunityFailure, [403, 404].contains(failure.status) { discard() }
+                throw error
+            }
         }
     }
     private func replace() {
         session.run { client in
             guard authorized, acknowledged == nil, let captured, let asset, let bytes else { throw BackpackError.invalid("Current access and an explicit captured draft/file are required.") }
-            if intent == nil { intent = try EventImageReplacementIntent(eventID: event.id, asset: asset, gallery: captured, bytes: bytes, caption: caption, alt: alt, permission: permission) }
+            if intent == nil { intent = reviewIntent }
             guard let intent else { throw BackpackError.invalid("Replacement intent is unavailable.") }
             let receipt = try await client.replaceEventImage(intent)
             try session.checked(client); acknowledged = receipt
@@ -224,5 +270,5 @@ struct EventImageReplacementView: View {
             try session.checked(client); discard(); gallery = current; notice = "Verified acknowledged replacement."
         }
     }
-    private func discard() { asset = nil; captured = nil; bytes = nil; selectedName = nil; caption = ""; alt = ""; permission = false; intent = nil; acknowledged = nil }
+    private func discard() { asset = nil; captured = nil; bytes = nil; selectedName = nil; caption = ""; alt = ""; permission = false; intent = nil; acknowledged = nil; stagedPreview = nil; reviewIntent = nil; importScope = nil; importAsset = nil; importing = false }
 }

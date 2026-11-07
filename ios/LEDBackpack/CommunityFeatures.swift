@@ -3,7 +3,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import BackpackProtocol
 
-enum CommunityFeature: Equatable { case social, avatars, events, messaging, notifications }
+enum CommunityFeature: Equatable { case social, avatars, events, messaging, notifications, peerIncidents, eventGovernance, playlists, eventGuestbook }
 
 struct SocialPerson: Decodable, Identifiable {
     let id: UUID
@@ -15,18 +15,27 @@ struct SocialPerson: Decodable, Identifiable {
     var mutualLocationFeaturesAllowed: Bool?
     var avatarMature: Bool?
     var avatarMasked: Bool?
+    var eventBadges: [NativeProfileEventBadge]? = nil
 }
 struct SocialPreferences: Decodable {
     let profile: SocialPerson
     let discoverable, allowRequests, messagingEnabled: Bool
     let encryption: String
+    var accountAwardsEnabled: Bool? = nil
+    var friendSessionsAvailable: Bool? = nil
+    var socialLocationGlobalStopEnabled: Bool? = nil
+    var locationControlsRevision: Int? = nil
 }
 struct SocialFriendRequest: Decodable, Identifiable {
     let id, senderId, recipientId: UUID
     let status: String
     let createdAt, updatedAt: Double
 }
-struct SocialFriendsPage: Decodable { let friends: [SocialPerson]; let page, limit: Int }
+struct SocialFriendsPage: Decodable {
+    let friends: [SocialPerson]
+    let page, limit: Int
+    var locationControlsRevision: Int? = nil
+}
 struct SocialRequestsPage: Decodable {
     let inbound, outbound: [SocialFriendRequest]
     let page, limit: Int
@@ -53,6 +62,7 @@ struct OwnedAvatarState: Decodable {
     let avatar: SocialAvatar?
     var uploadsEnabled: Bool?
     var approvalMode: String?
+    var cropsEnabled: Bool?
 }
 
 @MainActor
@@ -60,6 +70,8 @@ final class CommunityFeatureClient {
     let instanceID = UUID()
     let origin: CommunityOrigin
     let accountID, revision: UUID
+    private let role: String
+    private let chatAccessRevision: UUID
     private let community: CommunityController
     func chatEventsRequest(_ context: ChatConversation) throws -> (CommunityOrigin, URLRequest) {
         try check(.messaging)
@@ -74,6 +86,15 @@ final class CommunityFeatureClient {
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
     var chatReferencesEnabled: Bool { community.config?.chatReferencesEnabled == true }
+    var chatPlaylistReferencesEnabled: Bool { chatReferencesEnabled && community.config?.chatPlaylistReferencesEnabled == true }
+    var messageRequestsEnabled: Bool { community.config?.messagingEnabled == true && community.config?.chatMessageRequestsEnabled == true }
+    var retainedChatRecoveryEnabled: Bool {
+        community.config?.directMessageRetentionDays == 30 && community.config?.directMessageRecovery == "retained-history-only"
+    }
+    func communityChatPermissionChanged() { community.invalidateChatAccess() }
+    var chatScope: String {
+        "\(revision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(messageRequestsEnabled):\(chatReferencesEnabled):\(chatPlaylistReferencesEnabled):\(chatMediaEnabled):\(chatPinsEnabled):\(groupsEnabled):\(eventChatsEnabled):\(retainedChatRecoveryEnabled):\(community.avatarPolicyRevision)"
+    }
     var chatNotificationPreferencesEnabled: Bool { community.config?.chatNotificationPreferencesEnabled == true }
     var chatReportsEnabled: Bool { community.config?.chatReportsEnabled == true }
     var referencePolicyChanging: Bool { community.avatarPolicyChanging }
@@ -87,7 +108,37 @@ final class CommunityFeatureClient {
             community.config?.avatarApprovalMode == "ai"
     }
     var plannerEnabled: Bool { community.config?.eventsEnabled == true }
+    var playlistsAvailable: Bool { community.config?.playlistsEnabled == true }
+    var teamPalettesAvailable: Bool { community.config?.eventTeamsEnabled == true }
+    var collectionsAvailable: Bool { community.config?.eventCollectionsEnabled == true }
+    var displayPlansAvailable: Bool { community.config?.eventDisplayPlanningEnabled == true }
+    var guestbookAvailable: Bool { community.config?.eventGuestbookAvailable == true }
+    var recapsAvailable: Bool { community.config?.eventRecapsEnabled == true }
+    var unlistedEventsAvailable: Bool { community.config?.unlistedEventsEnabled == true }
+    var eventReportsAvailable: Bool { community.config?.eventReportsEnabled == true }
+    var eventModerationAvailable: Bool {
+        community.config?.eventModerationEnabled ?? (community.config?.eventReportsEnabled == true)
+    }
+    var eventOwnershipAuditAvailable: Bool { community.config?.eventOwnershipAuditEnabled == true }
+    var eventOptionalCheckpointsAvailable: Bool { community.config?.eventOptionalCheckpointsEnabled == true }
+    var eventAdministrator: Bool { community.isAdmin }
+    var communityLocationSessionsAvailable: Bool { community.config?.friendSessionsAvailable == true }
+    var nearbyDiscoveryAvailable: Bool { community.config?.nearbyDiscoveryEnabled == true }
+    var nearbyRevisionRequired: Bool { community.config?.nearbyDiscoveryControlRevisionEnabled == true }
+    var phoneSwapAvailable: Bool { community.config?.gifSwapPresenceEnabled == true }
+    var peerReportsAvailable: Bool { community.config?.peerIncidentReportsEnabled == true }
+    var peerWithdrawalAvailable: Bool { community.config?.peerIncidentWithdrawalEnabled == true }
+    var communityGlobalLocationStopAvailable: Bool { community.config?.socialLocationGlobalStopEnabled == true }
     var participationReviewEnabled: Bool { community.config?.eventParticipationReviewEnabled == true }
+    func invitationDeadlinesEnabled(_ event: CatalogEvent) -> Bool {
+        community.config?.eventsEnabled == true && community.config?.expiringEventInvitationsEnabled == true &&
+            event.settings?.expiringInvitationsEnabled == true
+    }
+    func progressDeadlinesEnabled(_ event: CatalogEvent) -> Bool {
+        community.config?.eventsEnabled == true && community.config?.eventProgressExpiryEnabled == true &&
+            event.settings?.sharedProgressExpiryEnabled == true &&
+            event.settings?.sharedProgressRetentionSeconds == EventDeadlinePolicy.sharedRetentionSeconds
+    }
     func exclusiveRouteEnabled(_ event: CatalogEvent) -> Bool {
         community.config?.eventExclusiveGifsEnabled == true && community.config?.eventExclusiveRouteArtworkEnabled == true &&
             event.settings?.exclusiveArtworkReferences == true
@@ -118,11 +169,12 @@ final class CommunityFeatureClient {
             throw BackpackError.invalid("Sign in and refresh your account first.")
         }
         self.community = community; self.origin = origin; accountID = id; revision = community.accountRevision
+        role = community.user?.role ?? ""; chatAccessRevision = community.chatAccessRevision
     }
     func check(_ feature: CommunityFeature? = nil) throws {
         try community.checkAccountSession()
         guard community.signedIn, community.origin == origin, community.user?.id == accountID,
-              community.accountRevision == revision else {
+              community.accountRevision == revision, community.user?.role == role else {
             throw BackpackError.invalid("Account or catalog changed. Reopen this feature.")
         }
         let enabled: Bool
@@ -130,8 +182,12 @@ final class CommunityFeatureClient {
         case .some(.social): enabled = community.config?.socialEnabled == true
         case .some(.avatars): enabled = community.config?.avatarsEnabled == true
         case .some(.events): enabled = community.config?.eventsEnabled == true
-        case .some(.messaging): enabled = community.config?.messagingEnabled == true
+        case .some(.messaging): enabled = community.config?.messagingEnabled == true && community.chatAccessRevision == chatAccessRevision
         case .some(.notifications): enabled = community.config?.notificationsEnabled == true || community.config?.notificationPreferencesEnabled == true || chatNotificationPreferencesEnabled
+        case .some(.peerIncidents): enabled = peerReportsAvailable || peerWithdrawalAvailable
+        case .some(.eventGovernance): enabled = eventReportsAvailable || eventModerationAvailable
+        case .some(.playlists): enabled = playlistsAvailable
+        case .some(.eventGuestbook): enabled = guestbookAvailable
         case .none: enabled = true
         }
         guard enabled else { throw BackpackError.invalid("This server has not enabled this feature.") }
@@ -139,20 +195,39 @@ final class CommunityFeatureClient {
     func send(_ feature: CommunityFeature, _ path: String, method: String = "GET", body: Data? = nil,
         query: [URLQueryItem] = [], contentType: String = "application/json", maxBytes: Int = 2_000_000) async throws -> Data {
         try check(feature)
+        let capturedChatScope = chatScope
         let automatedAvatarWrite = feature == .avatars && method == "POST" &&
             (path == "social/avatar" || path == "social/avatar/retry")
         if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Automatic avatar uploads/screening became unavailable.") }
+        if feature == .peerIncidents {
+            guard path == "social/peer-reports" || path.hasPrefix("social/peer-reports/") else {
+                throw BackpackError.invalid("Peer receipt capability does not grant another social/profile endpoint.")
+            }
+            if feature == .eventGovernance {
+                let cases = path == "social/event-reports" || path.hasPrefix("social/event-reports/") ||
+                    path == "admin/event-reports" || path.hasPrefix("admin/event-reports/")
+                let holds = path == "admin/event-moderation" || path.hasPrefix("admin/event-moderation/")
+                guard (cases && eventReportsAvailable) || (holds && eventModerationAvailable),
+                      !path.hasPrefix("admin/") || eventAdministrator else {
+                    throw BackpackError.invalid("Current event report/moderation authority is unavailable.")
+                }
+            }
+        }
         guard !path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }),
               !path.contains("\\"), !path.contains("?"), !path.contains("#"),
               path.utf8.allSatisfy({ (33...126).contains($0) }),
-              (feature == .events ? path == "events" || path.hasPrefix("events/") :
+              (feature == .playlists ? path == "playlists" || path.hasPrefix("playlists/") || path.hasPrefix("playlist-shares/") :
+                  feature == .eventGuestbook ? path == "social/guestbook-posts" || path.hasPrefix("events/") :
+                  feature == .eventGovernance ? path.hasPrefix("social/event-reports") || path.hasPrefix("admin/event-") :
+                  feature == .events ? path == "events" || path.hasPrefix("events/") :
                   feature == .notifications ? path == "notifications" || path.hasPrefix("notifications/") : path.hasPrefix("social/")) else {
             throw BackpackError.invalid("Invalid feature request path.")
         }
         let result = try await community.request(path, method: method, body: body, query: query,
             contentType: contentType, maxBytes: maxBytes, expectedAccountRevision: revision,
-            expectedAccountID: feature == .messaging || feature == .notifications ? accountID : nil)
+            expectedAccountID: method != "GET" || feature == .messaging || feature == .notifications || feature == .peerIncidents || feature == .eventGovernance || feature == .playlists || feature == .eventGuestbook ? accountID : nil)
         try Task.checkCancellation(); try check(feature)
+        if feature == .messaging, chatScope != capturedChatScope { throw BackpackError.invalid("Chat capability or role changed during I/O. Reload current access.") }
         if automatedAvatarWrite && !automaticAvatarUploads { throw BackpackError.invalid("Avatar screening availability changed during the request. Refresh before retrying.") }
         return result.data
     }
@@ -218,16 +293,21 @@ final class CommunityFeatureClient {
         }
     }
     func unfriend(_ id: UUID) async throws {
+        community.invalidateChatAccess()
+        community.stopPhoneSwapGame?()
+        community.stopLocalLocationFeatures?()
         struct Result: Decodable { let removed: Bool }
         let result = try JSONDecoder().decode(Result.self, from: await send(.social, "social/friends/\(id.uuidString.lowercased())", method: "DELETE"))
         guard result.removed else { throw BackpackError.invalid("Friend removal was not confirmed.") }
+        community.invalidateChatAccess()
     }
-    func futureLocation(_ id: UUID, enabled: Bool) async throws {
-        struct Body: Encodable { let enabled: Bool }
+    func futureLocation(_ id: UUID, enabled: Bool, expectedControlsRevision: Int? = nil) async throws {
+        community.stopLocalLocationFeatures?()
+        struct Body: Encodable { let enabled: Bool; let expectedControlsRevision: Int? }
         struct Result: Decodable { let friend: SocialPerson }
         let result = try JSONDecoder().decode(Result.self, from: await send(.social,
             "social/friends/\(id.uuidString.lowercased())/location-permission", method: "PATCH",
-            body: JSONEncoder().encode(Body(enabled: enabled))))
+            body: JSONEncoder().encode(Body(enabled: enabled, expectedControlsRevision: expectedControlsRevision))))
         guard result.friend.id == id, result.friend.locationFeaturesAllowed == enabled else {
             throw BackpackError.invalid("Future-feature consent was not confirmed.")
         }
@@ -254,6 +334,8 @@ final class CommunityFeatureClient {
         }
     }
     func block(_ id: UUID) async throws {
+        community.stopPhoneSwapGame?()
+        community.stopLocalLocationFeatures?()
         try check(.social); try await community.block(id, expectedRevision: revision); try check(.social)
     }
     func avatar() async throws -> SocialAvatar? {
@@ -273,7 +355,7 @@ final class CommunityFeatureClient {
             throw BackpackError.invalid("Avatar removal was not confirmed.")
         }
     }
-    func uploadAvatar(_ data: Data, publicConsent: Bool, expectedVersion: UUID? = nil) async throws {
+    func uploadAvatar(_ data: Data, publicConsent: Bool, expectedVersion: UUID? = nil, crop: NativeAvatarCrop? = nil) async throws {
         guard publicConsent else { throw BackpackError.invalid("Explicitly consent to public-profile avatar review before uploading.") }
         guard automaticAvatarUploads else { throw BackpackError.invalid("Automatic avatar uploads are not enabled/configured on this server.") }
         let state = try await ownedAvatar()
@@ -281,15 +363,25 @@ final class CommunityFeatureClient {
             throw BackpackError.invalid("Avatar availability/version changed. Refresh before selecting a replacement.")
         }
         let kind = try NativeAvatarInput.kind(data)
+        if let crop {
+            guard community.config?.avatarCropsEnabled == true, state.cropsEnabled == true else {
+                throw BackpackError.invalid("Avatar cropping is unavailable on this server.")
+            }
+            try crop.validate()
+        }
         let boundary = "LEDBackpack-\(UUID().uuidString)"
         guard data.range(of: Data(boundary.utf8)) == nil else { throw BackpackError.invalid("Avatar upload boundary collision. Try again.") }
-        var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"metadata\"\r\n\r\n{\"public\":true}\r\n".utf8)
+        struct Metadata: Encodable { let `public`: Bool; let crop: NativeAvatarCrop? }
+        let metadata = try JSONEncoder().encode(Metadata(public: true, crop: crop))
+        var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"metadata\"\r\n\r\n".utf8)
+        body.append(metadata); body.append(Data("\r\n".utf8))
         body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"avatar.\(kind.extensionName)\"\r\nContent-Type: \(kind.mime)\r\n\r\n".utf8))
         body.append(data); body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         struct Result: Decodable { let avatar: SocialAvatar }
         let value = try JSONDecoder().decode(Result.self, from: await send(.avatars, "social/avatar", method: "POST",
             body: body, contentType: "multipart/form-data; boundary=\(boundary)")).avatar
         guard value.approvalMode == "ai" else { throw BackpackError.invalid("The server did not confirm automatic avatar screening.") }
+        guard crop == nil || community.config?.avatarCropsEnabled == true else { throw BackpackError.invalid("Crop capability changed. Reload the current avatar before another action.") }
         try validate(value)
     }
     func retryAvatar(expectedVersion: UUID) async throws {
@@ -337,6 +429,10 @@ final class CommunityFeatureClient {
         }
     }
     func validate(_ person: SocialPerson) throws {
+        if let badges = person.eventBadges {
+            guard badges.count <= 12, Set(badges.map(\.id)).count == badges.count else { throw BackpackError.invalid("Invalid bounded authorized profile badges.") }
+            for badge in badges { try badge.validate() }
+        }
         guard (person.avatarUrl == nil) == (person.avatarPreviewUrl == nil) else { throw BackpackError.invalid("Incomplete avatar metadata.") }
         for url in [person.avatarUrl, person.avatarPreviewUrl].compactMap({ $0 }) {
             guard try avatarPath(url)[4] == person.id.uuidString.lowercased() else { throw BackpackError.invalid("Avatar profile mismatch.") }
@@ -346,6 +442,9 @@ final class CommunityFeatureClient {
         }
     }
     func resolvedAvatarURL(_ value: URL) throws -> URL {
+        try Self.resolvedAvatarURL(value, origin: origin)
+    }
+    static func resolvedAvatarURL(_ value: URL, origin: CommunityOrigin) throws -> URL {
         guard let components = URLComponents(url: value, resolvingAgainstBaseURL: false),
               value.baseURL == nil, value.query == nil, value.fragment == nil,
               !value.relativeString.contains("\\"),

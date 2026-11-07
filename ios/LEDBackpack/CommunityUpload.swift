@@ -53,6 +53,12 @@ struct CommunitySubmission: Decodable, Identifiable {
     let aiState: String
     let aiError: String?
     let visibility: String
+    var width: Int? = nil
+    var height: Int? = nil
+}
+struct CommunityUploadPage: Decodable {
+    let items: [CommunitySubmission]
+    let page, limit, total: Int
 }
 
 enum CommunityUpload {
@@ -197,20 +203,29 @@ struct CommunityUploadsView: View {
     @State private var failure: String?
     @State private var selected: CommunitySubmission?
     @State private var sharing: CommunitySubmission?
+    @State private var sizes = NativeMatrixFilter()
+    @State private var number = 1
+    @State private var total = 0
+    @State private var operation: Task<Void, Never>?
     private struct Account: Equatable {
         let origin: CommunityOrigin?
         let id: UUID?
         let signedIn: Bool
+        let revision, policy: UUID
+        let sizes: NativeMatrixFilter
     }
-    private var account: Account { Account(origin: community.origin, id: community.user?.id, signedIn: community.signedIn) }
+    private var account: Account { Account(origin: community.origin, id: community.user?.id, signedIn: community.signedIn,
+        revision: community.accountRevision, policy: community.avatarPolicyRevision, sizes: sizes) }
     var body: some View {
         List {
             if !community.signedIn { NavigationLink("Sign in") { CommunityAccountView() } }
             else {
+                if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
                 Button("Refresh uploads") { refresh() }.disabled(busy)
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.title).font(.headline)
+                        if let width = item.width, let height = item.height { Text("native:\(width)x\(height) — exact original").font(.caption) }
                         Text("Visibility: \(item.visibility) / status: \(item.status) / AI: \(item.aiState)").font(.caption)
                         if !item.moderationReason.isEmpty { Text(item.moderationReason).font(.caption) }
                         if let error = item.aiError { Text(error).font(.caption).foregroundStyle(.orange) }
@@ -228,24 +243,33 @@ struct CommunityUploadsView: View {
                     }
                 }
                 if items.isEmpty && !busy && failure == nil { Text("No uploads yet. Share a GIF from Library > Actions.") }
+                HStack {
+                    Button("Previous") { number = max(1, number - 1); refresh() }.disabled(busy || number == 1)
+                    Text("Page \(number)")
+                    Button("Next") { number += 1; refresh() }.disabled(busy || number * 24 >= total)
+                }
             }
             if busy { ProgressView() }
             if let failure { Text(failure).foregroundStyle(.orange) }
         }
         .modernScene().navigationTitle("My uploads")
-        .task(id: account) { items = []; if community.signedIn { refresh() } }
-        .onDisappear { items = [] }
+        .task(id: account) { operation?.cancel(); items = []; selected = nil; sharing = nil; number = 1; total = 0; busy = false; if community.signedIn { refresh() } }
+        .onDisappear { operation?.cancel(); items = []; selected = nil; sharing = nil }
         .confirmationDialog(sharingWarning, isPresented: Binding(
             get: { sharing != nil }, set: { if !$0 { sharing = nil } })) {
             Button("I have sharing rights; submit for review") {
                 guard let sharing, !busy else { return }
                 self.sharing = nil; busy = true; failure = nil
-                Task {
-                    defer { busy = false }
+                let stamp = account
+                operation = Task {
+                    defer { if stamp == account { busy = false } }
                     do {
-                        let updated = try await community.submitUpload(sharing.id, sharingAttested: true)
+                        guard account == stamp else { return }
+                        let updated = try await community.submitUpload(sharing.id, sharingAttested: true, expectedRevision: stamp.revision)
+                        try Task.checkCancellation()
+                        guard account == stamp else { return }
                         if let index = items.firstIndex(where: { $0.id == updated.id }) { items[index] = updated }
-                    } catch { failure = error.localizedDescription }
+                    } catch { if account == stamp { failure = error.localizedDescription } }
                 }
             }
         }
@@ -254,12 +278,16 @@ struct CommunityUploadsView: View {
             Button("Delete server upload", role: .destructive) {
                 guard let selected else { return }
                 self.selected = nil; busy = true; failure = nil
-                Task {
-                    defer { busy = false }
+                let stamp = account
+                operation = Task {
+                    defer { if stamp == account { busy = false } }
                     do {
-                        try await community.deleteUpload(selected.id)
+                        guard account == stamp else { return }
+                        try await community.deleteUpload(selected.id, expectedRevision: stamp.revision)
+                        try Task.checkCancellation()
+                        guard account == stamp else { return }
                         items.removeAll { $0.id == selected.id }
-                    } catch { failure = error.localizedDescription }
+                    } catch { if account == stamp { failure = error.localizedDescription } }
                 }
             }
         }
@@ -267,13 +295,21 @@ struct CommunityUploadsView: View {
     private func refresh() {
         guard !busy else { return }
         busy = true; failure = nil
-        Task {
-            defer { busy = false }
+        let stamp = account
+        let requestedPage = number
+        items = []
+        operation = Task {
+            defer { if stamp == account { busy = false } }
             do {
                 try await community.loadConfig()
-                items = try await community.myUploads()
+                try Task.checkCancellation()
+                guard stamp == account else { return }
+                let result = try await community.myUploadPage(page: requestedPage, sizes: stamp.sizes)
+                try Task.checkCancellation()
+                guard stamp == account else { return }
+                items = result.items; total = result.total
             }
-            catch { failure = error.localizedDescription }
+            catch { if stamp == account && !Task.isCancelled { failure = error.localizedDescription } }
         }
     }
     private var sharingWarning: String {

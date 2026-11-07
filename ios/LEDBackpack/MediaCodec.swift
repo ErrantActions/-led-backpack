@@ -19,7 +19,7 @@ struct PixelFrame: Equatable {
         PixelFrame(size: size, rgb: Array(repeating: 0, count: size.width * size.height * 3))
     }
 
-    @MainActor func image() throws -> UIImage {
+    func cgImage() throws -> CGImage {
         var rgba: [UInt8] = []
         rgba.reserveCapacity(size.width * size.height * 4)
         for offset in stride(from: 0, to: rgb.count, by: 3) {
@@ -32,8 +32,9 @@ struct PixelFrame: Equatable {
                   provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else {
             throw BackpackError.invalid("Could not allocate a preview image.")
         }
-        return UIImage(cgImage: image)
+        return image
     }
+    @MainActor func image() throws -> UIImage { UIImage(cgImage: try cgImage()) }
 }
 
 @MainActor
@@ -144,9 +145,9 @@ enum MediaCodec {
             height: min(size.height - y, max(1, Int((height * ratio).rounded(.up)))))
     }
 
-    static func encode(_ frames: [PixelFrame], delays: [Double], loopCount: Int = 0) throws -> Data {
+    nonisolated static func encode(_ frames: [PixelFrame], delays: [Double], loopCount: Int? = 0) throws -> Data {
         guard !frames.isEmpty, frames.count <= 120, frames.count == delays.count,
-              frames.allSatisfy({ $0.size == frames[0].size }), (0...65535).contains(loopCount),
+              frames.allSatisfy({ $0.size == frames[0].size }), (loopCount == nil || (0...65535).contains(loopCount ?? -1)),
               delays.allSatisfy({ $0.isFinite && (0.02...10).contains($0) }) else {
             throw BackpackError.invalid("Invalid animation frames or timings.")
         }
@@ -154,10 +155,12 @@ enum MediaCodec {
         guard let destination = CGImageDestinationCreateWithData(data, UTType.gif.identifier as CFString, frames.count, nil) else {
             throw BackpackError.invalid("GIF encoder is unavailable.")
         }
-        CGImageDestinationSetProperties(destination, [kCGImagePropertyGIFDictionary:
-            [kCGImagePropertyGIFLoopCount: loopCount]] as CFDictionary)
+        if let loopCount {
+            CGImageDestinationSetProperties(destination, [kCGImagePropertyGIFDictionary:
+                [kCGImagePropertyGIFLoopCount: loopCount]] as CFDictionary)
+        }
         for (index, frame) in frames.enumerated() {
-            guard let image = try frame.image().cgImage else { throw BackpackError.invalid("Could not encode frame.") }
+            let image = try frame.cgImage()
             CGImageDestinationAddImage(destination, image, [kCGImagePropertyGIFDictionary:
                 [kCGImagePropertyGIFDelayTime: max(0.02, delays[index])]] as CFDictionary)
         }

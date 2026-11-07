@@ -12,6 +12,7 @@ struct CommunityUser: Codable, Equatable {
     let verified: Bool
     let authMethods: CommunityAuthMethods?
     var allowMature: Bool? = nil
+    var mediaPreferences: ViewerMediaPreferences? = nil
 }
 
 struct CommunityAuthMethods: Codable, Equatable {
@@ -36,12 +37,28 @@ struct CommunityConfig: Decodable {
     var avatarsEnabled: Bool? = nil
     var avatarUploadsEnabled: Bool? = nil
     var avatarApprovalMode: String? = nil
+    var avatarCropsEnabled: Bool? = nil
+    var viewerMediaPreferencesEnabled: Bool? = nil
+    var nativeSizeFiltersEnabled: Bool? = nil
+    var catalogDownloadManifestEnabled: Bool? = nil
+    var unverifiedDeviceTagsEnabled: Bool? = nil
+    var firmwareCatalogEnabled: Bool? = nil
+    var firmwareMaxUploadBytes: Int? = nil
+    var deviceResearchEnabled: Bool? = nil
+    var adminBulkModerationEnabled: Bool? = nil
+    var uploadAbuseMonitoringEnabled: Bool? = nil
+    var artworkToolsEnabled: Bool? = nil
+    var aiArtworkRedrawEnabled: Bool? = nil
     var messagingEnabled: Bool? = nil
     var groupChatsEnabled: Bool? = nil
     var eventChatsEnabled: Bool? = nil
     var chatMediaEnabled: Bool? = nil
     var chatPinsEnabled: Bool? = nil
     var chatReferencesEnabled: Bool? = nil
+    var chatPlaylistReferencesEnabled: Bool? = nil
+    var chatMessageRequestsEnabled: Bool? = nil
+    var directMessageRetentionDays: Int? = nil
+    var directMessageRecovery: String? = nil
     var chatNotificationPreferencesEnabled: Bool? = nil
     var chatReportsEnabled: Bool? = nil
     var liveChatEnabled: Bool? = nil
@@ -54,11 +71,32 @@ struct CommunityConfig: Decodable {
     var appIntegrityEnforcementEnabled: Bool? = nil
     var appIntegrityEnforcementReady: Bool? = nil
     var eventsEnabled: Bool? = nil
+    var unlistedEventsEnabled: Bool? = nil
+    var eventOwnershipAuditEnabled: Bool? = nil
+    var eventOptionalCheckpointsEnabled: Bool? = nil
+    var eventReportsEnabled: Bool? = nil
+    var eventModerationEnabled: Bool? = nil
+    var friendSessionsAvailable: Bool? = nil
+    var friendSessionPeerIdentityEnabled: Bool? = nil
+    var nearbyDiscoveryEnabled: Bool? = nil
+    var nearbyDiscoveryControlRevisionEnabled: Bool? = nil
+    var gifSwapPresenceEnabled: Bool? = nil
+    var peerIncidentReportsEnabled: Bool? = nil
+    var peerIncidentWithdrawalEnabled: Bool? = nil
+    var socialLocationGlobalStopEnabled: Bool? = nil
+    var expiringEventInvitationsEnabled: Bool? = nil
+    var eventProgressExpiryEnabled: Bool? = nil
     var eventTemplatesEnabled: Bool? = nil
     var eventParticipationReviewEnabled: Bool? = nil
     var eventMapPlanningEnabled: Bool? = nil
     var eventExclusiveGifsEnabled: Bool? = nil
     var eventExclusiveRouteArtworkEnabled: Bool? = nil
+    var eventTeamsEnabled: Bool? = nil
+    var eventCollectionsEnabled: Bool? = nil
+    var eventDisplayPlanningEnabled: Bool? = nil
+    var eventGuestbookAvailable: Bool? = nil
+    var eventRecapsEnabled: Bool? = nil
+    var playlistsEnabled: Bool? = nil
     var allowsNativeSignup: Bool { accountDeletionRetainsSharedGifs == false }
 }
 struct CommunitySession: Codable {
@@ -102,10 +140,18 @@ struct CommunityItem: Decodable, Identifiable {
     let height: Int
     let frameCount: Int
     let byteSize: Int
+    var originalByteSize: Int? = nil
     let uploader: Uploader
     let likeCount: Int
     let variants: [Variant]
-    struct Uploader: Decodable { let id: UUID?; let displayName: String }
+    struct Uploader: Decodable {
+        let id: UUID?; let displayName: String
+        var avatarUrl: URL? = nil
+        var avatarPreviewUrl: URL? = nil
+        var avatarAnimated: Bool? = nil
+        var avatarMature: Bool? = nil
+        var avatarMasked: Bool? = nil
+    }
     struct Variant: Decodable {
         let width: Int
         let height: Int
@@ -271,16 +317,27 @@ struct CommunityKeychain: CommunityVault {
 final class CommunityController: ObservableObject {
     @Published private(set) var origin: CommunityOrigin?
     @Published private(set) var user: CommunityUser?
+    func applyViewerPreferences(_ value: ViewerMediaPreferences) {
+        user?.mediaPreferences = value
+        avatarPolicyRevision = UUID()
+    }
     @Published private(set) var config: CommunityConfig?
     @Published private(set) var deletion: CommunityDeletion?
     @Published private(set) var setupError: String?
     @Published private(set) var accountRevision = UUID()
+    @Published private(set) var chatAccessRevision = UUID()
+    func invalidateChatAccess() { chatAccessRevision = UUID() }
     @Published private(set) var avatarPolicyRevision = UUID()
     @Published private(set) var avatarPolicyChanging = false
     @Published private(set) var nativeIntegrityRevision = UUID()
     private var session: CommunitySession?
     private let nativeIntegrity: NativeAppIntegrity
     var nativePushCleanup: (() async throws -> Void)?
+    var stopLocalLocationFeatures: (() -> Void)?
+    var stopPhoneSwapGame: (() -> Void)?
+    func reportLocationStopFailure(_ error: Error) {
+        setupError = "Local location work stopped, but service session revocation is unconfirmed: \(error.localizedDescription). Reload and explicitly Stop all."
+    }
     var nativeApplePushAvailable: Bool {
         config?.applePushEnabled == true && config?.appIntegrityProtocol == "app-attest-v1" &&
             config?.appIntegrityEnforcementEnabled == true && nativeIntegrity.supported
@@ -433,6 +490,8 @@ final class CommunityController: ObservableObject {
                 if next == nil { setupError = nil }
                 return
             }
+            stopPhoneSwapGame?()
+            stopLocalLocationFeatures?()
             accountRevision = UUID()
             origin = next; session = nil; user = nil; config = nil; deletion = nil; setupError = nil
             transport = next.map(factory)
@@ -506,12 +565,13 @@ final class CommunityController: ObservableObject {
         query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false,
         contentType: String = "application/json", communityUpload: Bool = false,
         bodyFile: URL? = nil, maxBytes: Int = 2_000_000, expectedAccountRevision: UUID? = nil,
-        expectedAccountID: UUID? = nil) async throws -> CommunityResponse {
+        expectedAccountID: UUID? = nil, deviceTag: String? = nil) async throws -> CommunityResponse {
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("The account changed before this request. Refresh first.")
         }
         guard expectedAccountID == nil || expectedAccountID == user?.id else { throw BackpackError.invalid("The displayed account changed before this request.") }
-        guard (1...5_000_000).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog response budget.") }
+        let firmwareDownload = method == "GET" && (path.hasPrefix("firmware/") || path.hasPrefix("admin/firmware/")) && path.hasSuffix("/download")
+        guard (1...(firmwareDownload ? 16 * 1024 * 1024 : 5_000_000)).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog response budget.") }
         guard let origin, let transport else { throw BackpackError.invalid("Configure a catalog HTTPS URL first.") }
         let requestToken = authenticated ? session?.token : nil
         let requestRevision = accountRevision
@@ -524,6 +584,13 @@ final class CommunityController: ObservableObject {
         }
         var request = URLRequest(url: try origin.api(path, query: query), timeoutInterval: 30)
         request.httpMethod = method; request.httpBody = body; request.httpShouldHandleCookies = false
+        if let deviceTag {
+            guard method == "GET", authenticated, expectedAccountID != nil,
+                  path.hasPrefix("social/avatars/"), NearbyTokenPolicy.valid(deviceTag) else {
+                throw BackpackError.invalid("Tag scope is valid only for current-account avatar reads.")
+            }
+            request.setValue(deviceTag, forHTTPHeaderField: "X-Catalog-Device-Tag")
+        }
         if let bodyFile {
             guard path == "admin/imports", method == "POST", authenticated, isAdmin, communityUpload, body == nil,
                   bodyFile.isFileURL, let stream = InputStream(url: bodyFile) else {
@@ -583,9 +650,10 @@ final class CommunityController: ObservableObject {
         guard allowServerChange || self.origin == origin else {
             throw BackpackError.invalid("The catalog server changed during the request. Retry on the selected server.")
         }
-        guard allowServerChange || !authenticated || session?.token == requestToken else {
+        guard allowServerChange || (accountRevision == requestRevision && (!authenticated || session?.token == requestToken)) else {
             throw BackpackError.invalid("The catalog account changed during the request. Refresh using the current account.")
         }
+        if !allowServerChange { try Task.checkCancellation() }
         guard (200...299).contains(response.status) else {
             struct Envelope: Decodable {
                 let error: Detail
@@ -635,7 +703,7 @@ final class CommunityController: ObservableObject {
         guard signedIn else { return }
         do {
             let current = try JSONDecoder().decode(CommunityMe.self, from: await request("auth/me").data).user
-            if user?.allowMature != current.allowMature { avatarPolicyRevision = UUID() }
+            if user?.allowMature != current.allowMature || user?.mediaPreferences != current.mediaPreferences { avatarPolicyRevision = UUID() }
             user = current
         }
         catch let error as CommunityFailure where error.status == 401 {
@@ -651,7 +719,7 @@ final class CommunityController: ObservableObject {
         defer { avatarPolicyChanging = false; avatarPolicyRevision = UUID() }
         struct Body: Encodable { let allowMature: Bool }
         let data = try await request("auth/me/preferences", method: "PATCH", body: JSONEncoder().encode(Body(allowMature: allowed)),
-            expectedAccountRevision: expectedRevision).data
+            expectedAccountRevision: expectedRevision, expectedAccountID: account).data
         let result = try JSONDecoder().decode(CommunityMe.self, from: data).user
         guard accountRevision == expectedRevision, result.id == account, result.allowMature == allowed else {
             throw BackpackError.invalid("The account's mature-content preference was not confirmed.")
@@ -670,6 +738,8 @@ final class CommunityController: ObservableObject {
         try vault.remove(sessionKey)
     }
     func forgetLocalSession() throws {
+        stopPhoneSwapGame?()
+        stopLocalLocationFeatures?()
         try clearCredentials()
         setupError = nil
     }
@@ -684,6 +754,8 @@ final class CommunityController: ObservableObject {
         }
     }
     func signOut() async throws {
+        stopPhoneSwapGame?()
+        stopLocalLocationFeatures?()
         guard let server = origin else { throw BackpackError.invalid("No catalog is configured.") }
         guard let token = session?.token else { throw BackpackError.invalid("No active catalog session to sign out.") }
         var failure: Error?
@@ -745,15 +817,19 @@ final class CommunityController: ObservableObject {
         try vault.save(JSONEncoder().encode(receipt), key: deletionKey)
         self.deletion = receipt
     }
-    func items(query: String, category: String, page: Int) async throws -> CommunityPage {
+    func items(query: String, category: String, page: Int, sizes: NativeMatrixFilter = NativeMatrixFilter()) async throws -> CommunityPage {
         guard query.utf16.count <= 120, (1...10000).contains(page) else {
             throw BackpackError.invalid("Use a search up to 120 characters and a valid page.")
         }
         var fields = [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "limit", value: "24")]
         if !query.isEmpty { fields.append(URLQueryItem(name: "q", value: query)) }
         if !category.isEmpty { fields.append(URLQueryItem(name: "category", value: category)) }
+        if !sizes.sizes.isEmpty {
+            guard config?.nativeSizeFiltersEnabled == true else { throw BackpackError.invalid("This server has not enabled exact native/export size filters.") }
+            fields += try sizes.query()
+        }
         do {
-            let result = try JSONDecoder().decode(CommunityPage.self, from: await request("items", query: fields).data)
+            let result = try JSONDecoder().decode(CommunityPage.self, from: await request("items", query: fields, authenticated: signedIn).data)
             guard result.page == page, (1...100).contains(result.limit), result.items.count <= result.limit, result.total >= 0 else {
                 throw BackpackError.invalid("The catalog returned invalid pagination.")
             }
@@ -764,7 +840,8 @@ final class CommunityController: ObservableObject {
                 message: "Your catalog sign-in ended. Open Account to sign in again or sign out and browse as a guest.")
         }
     }
-    func download(_ url: URL, expectedAccountRevision: UUID? = nil) async throws -> Data {
+    func download(_ url: URL, expectedAccountRevision: UUID? = nil, maxBytes: Int = 5_000_000) async throws -> Data {
+        guard (1...5_000_000).contains(maxBytes) else { throw BackpackError.invalid("Invalid catalog media byte budget.") }
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("Account changed before artwork download.")
         }
@@ -778,7 +855,7 @@ final class CommunityController: ObservableObject {
             try validateSession(session)
             request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
         }
-        let response = try await transport.send(request, maxBytes: 5_000_000)
+        let response = try await transport.send(request, maxBytes: maxBytes)
         guard self.origin == origin else { throw BackpackError.invalid("The catalog server changed during the download.") }
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("Account changed during artwork download.")
@@ -803,10 +880,13 @@ final class CommunityController: ObservableObject {
         _ = try await request("items/\(id.uuidString.lowercased())/reports", method: "POST", body: JSONEncoder().encode(Body(reason: reason)))
     }
     func block(_ id: UUID, expectedRevision: UUID? = nil) async throws {
+        stopLocalLocationFeatures?()
+        chatAccessRevision = UUID()
         guard signedIn else { throw BackpackError.invalid("Sign in to block an uploader.") }
         struct Body: Encodable { let userId: String }
         _ = try await request("blocks", method: "POST", body: JSONEncoder().encode(Body(userId: id.uuidString.lowercased())),
             expectedAccountRevision: expectedRevision)
+        chatAccessRevision = UUID()
     }
 
     func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata, sharingAttested: Bool) async throws -> CommunitySubmission {
@@ -836,6 +916,17 @@ final class CommunityController: ObservableObject {
         struct Result: Decodable { let items: [CommunitySubmission] }
         return try JSONDecoder().decode(Result.self, from: await request("me/items").data).items
     }
+    func myUploadPage(page: Int, sizes: NativeMatrixFilter) async throws -> CommunityUploadPage {
+        guard signedIn, let account = user?.id, (1...10000).contains(page) else { throw BackpackError.invalid("Sign in and select a valid owner page.") }
+        if !sizes.sizes.isEmpty && config?.nativeSizeFiltersEnabled != true { throw BackpackError.invalid("Owner size filtering is unavailable.") }
+        let fields = [URLQueryItem(name: "page", value: String(page)), URLQueryItem(name: "limit", value: "24")] + (try sizes.query())
+        let value = try JSONDecoder().decode(CommunityUploadPage.self, from: await request("me/items", query: fields,
+            expectedAccountRevision: accountRevision, expectedAccountID: account).data)
+        guard value.page == page, value.limit == 24, value.total >= 0, value.items.count <= 24 else {
+            throw BackpackError.invalid("Invalid owner upload page.")
+        }
+        return value
+    }
 
     func cloudItems() async throws -> [CommunityCloudItem] {
         try await cloudPage(page: 1).items
@@ -854,20 +945,24 @@ final class CommunityController: ObservableObject {
         return result
     }
 
-    func deleteUpload(_ id: UUID) async throws {
+    func deleteUpload(_ id: UUID, expectedRevision: UUID? = nil) async throws {
+        guard expectedRevision == nil || expectedRevision == accountRevision else { throw BackpackError.invalid("Account changed before deleting the selected upload.") }
         guard signedIn else { throw BackpackError.invalid("Sign in to delete an upload.") }
         guard user?.role == "admin" else { throw BackpackError.invalid("Only catalog admins can delete individual server GIFs.") }
-        _ = try await request("items/\(id.uuidString.lowercased())", method: "DELETE")
+        _ = try await request("items/\(id.uuidString.lowercased())", method: "DELETE",
+            expectedAccountRevision: expectedRevision, expectedAccountID: user?.id)
     }
 
-    func submitUpload(_ id: UUID, sharingAttested: Bool) async throws -> CommunitySubmission {
+    func submitUpload(_ id: UUID, sharingAttested: Bool, expectedRevision: UUID? = nil) async throws -> CommunitySubmission {
+        guard expectedRevision == nil || expectedRevision == accountRevision else { throw BackpackError.invalid("Account changed before submitting the selected upload.") }
         guard signedIn, sharingAttested else { throw BackpackError.invalid("Sign in and explicitly confirm publication permission first.") }
         struct Body: Encodable { let sharingAttested: Bool }
         struct Result: Decodable { let item: CommunitySubmission }
         let body = try JSONEncoder().encode(Body(sharingAttested: true))
-        let response = try await request("items/\(id.uuidString.lowercased())/submit", method: "POST", body: body)
+        let response = try await request("items/\(id.uuidString.lowercased())/submit", method: "POST", body: body,
+            expectedAccountRevision: expectedRevision, expectedAccountID: user?.id)
         let item = try JSONDecoder().decode(Result.self, from: response.data).item
-        guard item.visibility == "shared" else { throw BackpackError.invalid("Sharing consent was sent, but the server did not confirm shared visibility. Refresh My uploads.") }
+        guard item.id == id, item.visibility == "shared" else { throw BackpackError.invalid("Sharing consent was sent, but the server did not confirm this item's shared visibility. Refresh My uploads.") }
         return item
     }
 }

@@ -1,0 +1,106 @@
+import XCTest
+import BackpackProtocol
+@testable import LEDBackpack
+
+@MainActor
+final class SoloSourceTests: XCTestCase {
+    private let sceneID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
+    private let now = Date(timeIntervalSince1970: 1794000000)
+    private func area() -> SoloArea {
+        SoloArea(name: "Own local place", center: .init(latitude: 0, longitude: 0), radius: 100,
+            dwell: 10, hysteresis: 10, cooldown: 60, sceneID: sceneID, kind: .place)
+    }
+    private func fix(_ meters: Double = 0, age: Double = 0, accuracy: Double = 1) -> SoloFix {
+        .init(point: .init(latitude: 0, longitude: meters / 111195), accuracy: accuracy, timestamp: now.addingTimeInterval(-age))
+    }
+    private func scene() -> SoloScene {
+        let gif = Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
+        return SoloScene(id: sceneID, name: "Own art", items: [.init(id: UUID(), name: "Local original", bytes: gif, attribution: nil)])
+    }
+    func testFixedPointRejectsNonfiniteAndInvalidCoordinates() {
+        for value in [SoloPoint(latitude: .nan, longitude: 0), .init(latitude: 91, longitude: 0), .init(latitude: 0, longitude: 181)] {
+            XCTAssertThrowsError(try value.validate())
+        }
+    }
+    func testFixRequiresFreshAccurateSampleWithoutFutureOrCoarseFallback() {
+        XCTAssertTrue(fix(age: 5, accuracy: 25).usable(at: now))
+        XCTAssertFalse(fix(age: 5.01).usable(at: now)); XCTAssertFalse(fix(age: -1).usable(at: now))
+        XCTAssertFalse(fix(accuracy: 25.01).usable(at: now)); XCTAssertFalse(fix(accuracy: -1).usable(at: now))
+    }
+    func testDwellRequiresContinuousFreshSamplesBeforeEntry() {
+        var evaluator = SoloAreaEvaluator()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 0), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 5), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 10), .entered)
+    }
+    func testEntryUsesInnerAccuracyBoundaryNotExpandedRadius() {
+        var evaluator = SoloAreaEvaluator()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(95, accuracy: 3), now: now, uptime: 0), .outside)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(80, accuracy: 3), now: now, uptime: 1), .dwelling)
+    }
+    func testSampleLossResetsDwellAndDoesNotInventEntry() {
+        var evaluator = SoloAreaEvaluator()
+        _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 0)
+        evaluator.discardSample()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 20), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 26), .dwelling)
+    }
+    func testExitAndReentryRespectCooldownWithoutRepeatingInside() {
+        var evaluator = SoloAreaEvaluator()
+        for t in [0.0,5,10] { _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: t) }
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .inside)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(200), now: now, uptime: 12), .outside)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 13), .cooldown)
+    }
+    func testTripPauseAndLongGapNeverAddStraightLineCatchupDistance() {
+        var trip = SoloTrip(); trip.start()
+        _ = trip.sample(fix(), now: now, milestones: [])
+        trip.pause(); trip.start()
+        _ = trip.sample(fix(1000), now: now, milestones: [])
+        XCTAssertEqual(trip.meters, 0)
+        let late = SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 1, timestamp: now.addingTimeInterval(30))
+        _ = trip.sample(late, now: now.addingTimeInterval(30), milestones: [])
+        XCTAssertEqual(trip.meters, 0)
+    }
+    func testRecapSerializationContainsNoRouteTimeOrCoordinateFields() throws {
+        let recap = SoloRecap(id: UUID(), name: "Optional own recap", approximateMeters: 100, summaries: ["Own badge"])
+        let value = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(recap)) as? [String: Any])
+        XCTAssertEqual(Set(value.keys), ["id","name","approximateMeters","summaries"])
+    }
+    func testArchiveRejectsMissingSceneReferenceAndExcessiveCounts() throws {
+        var archive = SoloArchive(); archive.areas = [area()]
+        XCTAssertThrowsError(try archive.validate())
+        archive.scenes = [scene()]; XCTAssertNoThrow(try archive.validate())
+        archive.scenes = (0..<21).map { _ in var next = scene(); next.id = UUID(); return next }
+        XCTAssertThrowsError(try archive.validate())
+    }
+    func testRepositoryAtomicReadbackAndStaleRevisionCannotOverwrite() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("solo-source-fixture-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        addTeardownBlock { try FileManager.default.removeItem(at: root) }
+        let store = SoloSceneRepository(root: root)
+        var archive = SoloArchive(); archive.scenes = [scene()]
+        let saved = try await store.save(archive, expected: nil)
+        let reopened = try await SoloSceneRepository(root: root).load()
+        XCTAssertEqual(reopened?.revision, saved.revision)
+        do { _ = try await store.save(SoloArchive(), expected: nil); XCTFail("Stale revision") } catch {}
+        let retained = try await store.load(); XCTAssertEqual(retained?.archive.scenes.count, 1)
+    }
+    func testSolarIsLocalApproximateAndHandlesPolarAndInvalidZone() {
+        let june = Date(timeIntervalSince1970: 1782043200)
+        if case .events(let rise, let set) = SoloSolar.calculate(day: june, point: .init(latitude: 0, longitude: 0), timeZoneID: "UTC") {
+            XCTAssertLessThan(rise, set)
+        } else { XCTFail("Equatorial solar events") }
+        XCTAssertEqual(SoloSolar.calculate(day: june, point: .init(latitude: 85, longitude: 0), timeZoneID: "UTC"), .polarDay)
+        XCTAssertEqual(SoloSolar.calculate(day: june, point: .init(latitude: 0, longitude: 0), timeZoneID: "invalid-zone"), .unavailable)
+    }
+    func testColdConstructionStopAndDeniedPreparationDoNotCreateLocationManager() {
+        let location = SoloForegroundLocation()
+        XCTAssertFalse(location.hasCreatedManager); location.stop(); XCTAssertFalse(location.hasCreatedManager)
+        XCTAssertThrowsError(try location.requestWhenInUse(consent: false, foreground: false))
+        XCTAssertFalse(location.hasCreatedManager)
+        let controller = SoloSceneController()
+        controller.stop(); controller.setForeground(false)
+        XCTAssertFalse(controller.location.hasCreatedManager); XCTAssertFalse(controller.sensing)
+    }
+}

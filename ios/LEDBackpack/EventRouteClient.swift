@@ -93,6 +93,12 @@ extension CommunityFeatureClient {
         }
         let body = draft.body.normalized()
         try body.validate()
+        if !eventOptionalCheckpointsAvailable || event.settings?.optionalCheckpointsEnabled != true {
+            for checkpoint in body.checkpoints {
+                let original = event.route?.checkpoints.first { $0.id == checkpoint.id }
+                guard checkpoint.optional == original?.optional else { throw BackpackError.invalid("Optional-stage changes require the advertised config and event setting. Legacy assignments are retained.") }
+            }
+        }
         if draft.checkpoints.contains(where: { $0.exclusiveGifId != nil }) || draft.rewards.contains(where: { $0.exclusiveGifId != nil }) {
             guard exclusiveRouteEnabled(event) else { throw BackpackError.invalid("Protected artwork references are not enabled for this event.") }
         }
@@ -101,7 +107,8 @@ extension CommunityFeatureClient {
             "events/\(event.id.uuidString.lowercased())/checkpoints", method: "PATCH", body: JSONEncoder().encode(body))).event
         try checkPlanner(); try value.validate()
         guard value.id == event.id, value.revision > event.revision, let route = value.route,
-              route.published == body.published, route.checkpoints == body.checkpoints, route.geometry == body.geometry,
+              route.published == body.published, route.checkpoints.count == body.checkpoints.count,
+              zip(body.checkpoints, route.checkpoints).allSatisfy({ $0.0.matchesReturned($0.1) }), route.geometry == body.geometry,
               value.badges == body.badges else {
             throw BackpackError.invalid("The exact route save was not confirmed. Refresh before retrying.")
         }

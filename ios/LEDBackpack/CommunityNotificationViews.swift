@@ -66,6 +66,7 @@ struct CommunityNotificationSettingsView: View {
 @MainActor
 struct CommunityActivityView: View {
     @EnvironmentObject private var community: CommunityController
+    @Environment(\.scenePhase) private var phase
     @StateObject private var session = CommunityFeatureSession()
     @State private var notices: [NativeActivityNotice] = []
     @State private var page = 1
@@ -97,6 +98,19 @@ struct CommunityActivityView: View {
         }.disabled(session.busy).modernScene().navigationTitle("Activity")
         .task(id: community.accountRevision) { notices = []; page = 1; session.bind(community); load() }
         .onChange(of: session.denied) { _, denied in if denied { notices = []; pending = nil } }
+        .task(id: "\(phase):\(community.accountRevision):\(community.config?.notificationsEnabled == true)") {
+            guard phase == .active, community.config?.notificationsEnabled == true else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(30)) } catch { return }
+                if !session.busy && pending == nil { load() }
+            }
+        }
+        .onChange(of: phase) { _, state in
+            session.clear(); notices = []; pending = nil
+            if state == .active { session.bind(community); load() }
+        }
+        .onChange(of: community.chatAccessRevision) { _, _ in session.clear(); notices = []; pending = nil; if phase == .active { session.bind(community); load() } }
+        .onChange(of: community.config?.notificationsEnabled) { _, _ in session.clear(); notices = []; pending = nil; if phase == .active { session.bind(community); load() } }
         .onDisappear { session.clear(); notices = []; pending = nil }
         .confirmationDialog("Dismiss your activity notice?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
             if let item = pending {
@@ -107,13 +121,21 @@ struct CommunityActivityView: View {
     @ViewBuilder private func destination(_ notice: NativeActivityNotice) -> some View {
         switch notice.type {
         case .eventInvite, .eventUpdated, .eventCancelled, .eventReminder:
-            if let id = UUID(uuidString: String(notice.referenceId.split(separator: ":")[0])), community.config?.eventsEnabled == true {
-                NavigationLink("Review current authorized event") { CommunityEventDetailView(id: id) }
+            if let id = UUID(uuidString: String(notice.referenceId.prefix(36))), community.config?.eventsEnabled == true {
+                NavigationLink("Review current authorized event notice") {
+                    CommunityEventDetailView(id: id, noticeContext: EventNoticeContext(notice: notice, page: page))
+                }
             }
         case .friendRequest, .friendAccepted:
             if community.config?.socialEnabled == true { NavigationLink("Review current friend requests") { CommunitySocialView() } }
         case .message:
-            if community.config?.messagingEnabled == true { NavigationLink("Open authorized conversations") { CommunityMessagesView() } }
+            if community.config?.messagingEnabled == true {
+                NavigationLink("Open authorized conversations / requests") { CommunityMessagesView() }
+                if community.config?.chatMessageRequestsEnabled == true {
+                    NavigationLink("Review current message requests") { CommunityMessageRequestsView() }
+                }
+                Text("This opaque activity ID is not a peer, room or accepted-thread grant.").font(.caption)
+            }
         case .avatarReviewed:
             if community.config?.avatarsEnabled == true { NavigationLink("Review your avatar") { CommunityAvatarView() } }
         }

@@ -21,16 +21,19 @@ struct CatalogEventInput: Encodable {
     var location: CatalogEventLocation
     var expectedRevision: Int? = nil
     var kind: String? = nil
+    var unlistedLinkConsent: Bool? = nil
     func validate() throws {
         try location.validate()
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.utf16.count <= 160,
-              description.utf16.count <= 5000, ["public", "private"].contains(visibility),
-              (1...10000).contains(capacity), timezone.utf16.count <= 100, TimeZone(identifier: timezone) != nil,
+              description.utf16.count <= 5000, ["public", "private", "unlisted"].contains(visibility),
+              (1...10000).contains(capacity), timezone.utf16.count <= 100,
+              TimeZone.knownTimeZoneIdentifiers.contains(timezone) || timezone == "UTC",
               try CatalogEventTime.parse(endsAtISO) > CatalogEventTime.parse(startsAtISO),
               expectedRevision == nil || (1...9_007_199_254_740_991).contains(expectedRevision ?? 0) else {
             throw BackpackError.invalid("Review event title, UTC time range, timezone, visibility, capacity and revision.")
         }
         guard kind == nil || ["meetup", "group-ride"].contains(kind ?? "") else { throw BackpackError.invalid("Choose a supported event type.") }
+        guard unlistedLinkConsent == nil || unlistedLinkConsent == true else { throw BackpackError.invalid("Unlisted link consent must be explicitly true or omitted.") }
     }
 }
 struct CatalogEvent: Decodable, Identifiable {
@@ -49,6 +52,7 @@ struct CatalogEvent: Decodable, Identifiable {
     let route: CatalogEventRoute?
     let badges: [EventRouteReward]?
     let settings: CatalogEventRouteSettings?
+    var moderation: NativeEventModeration? = nil
     struct Organizer: Decodable, Identifiable {
         let id: UUID
         let displayName: String
@@ -57,11 +61,28 @@ struct CatalogEvent: Decodable, Identifiable {
     struct Access: Decodable {
         let role: CatalogEventRole?
         let invited, member, canManage, canManageRoute, canRsvp, canViewProgress: Bool
+        let invitationDeadline: EventInvitationDeadline
+        let canChooseTeam, canViewRecap: Bool?
+        private enum CodingKeys: String, CodingKey {
+            case role, invited, member, canManage, canManageRoute, canRsvp, canViewProgress, invitationExpiresAtISO, canChooseTeam, canViewRecap
+        }
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            role = try c.decodeIfPresent(CatalogEventRole.self, forKey: .role)
+            invited = try c.decode(Bool.self, forKey: .invited); member = try c.decode(Bool.self, forKey: .member)
+            canManage = try c.decode(Bool.self, forKey: .canManage)
+            canManageRoute = try c.decode(Bool.self, forKey: .canManageRoute)
+            canRsvp = try c.decode(Bool.self, forKey: .canRsvp); canViewProgress = try c.decode(Bool.self, forKey: .canViewProgress)
+            invitationDeadline = try .decode(c, key: .invitationExpiresAtISO)
+            canChooseTeam = try c.decodeIfPresent(Bool.self, forKey: .canChooseTeam)
+            canViewRecap = try c.decodeIfPresent(Bool.self, forKey: .canViewRecap)
+        }
     }
     func validate() throws {
         try CatalogEventInput(title: title, description: description, startsAtISO: startsAtISO,
             endsAtISO: endsAtISO, timezone: timezone, visibility: visibility, capacity: capacity,
             location: location, expectedRevision: revision).validate()
+        try moderation?.validate()
         _ = try CatalogEventTime.parse(serverTime)
         if let participationRevision {
             guard (1...9_007_199_254_740_991).contains(participationRevision) else { throw BackpackError.invalid("Invalid participation revision.") }
@@ -74,6 +95,7 @@ struct CatalogEvent: Decodable, Identifiable {
                 geometry: route.geometry, badges: badges ?? []).validate()
         }
         guard access.canManage == (access.role != nil), access.canManageRoute == (access.role == .owner),
+              moderation?.held != true || (!access.canViewProgress && !access.canRsvp),
               cancelled == (status == .cancelled), Set(organizers.map(\.id)).count == organizers.count else {
             throw BackpackError.invalid("Invalid event authorization/status context.")
         }
@@ -111,6 +133,10 @@ struct CatalogEventClock {
     let baseline: ContinuousClock.Instant
     init(serverTime: String, instant: ContinuousClock.Instant = ContinuousClock().now) throws {
         self.serverTime = try CatalogEventTime.parse(serverTime); baseline = instant
+    }
+    func now(instant: ContinuousClock.Instant = ContinuousClock().now) -> Date {
+        let delta = baseline.duration(to: instant).components
+        return serverTime.addingTimeInterval(max(0, Double(delta.seconds) + Double(delta.attoseconds) / 1e18))
     }
     func label(start: Date, end: Date, cancelled: Bool, instant: ContinuousClock.Instant = ContinuousClock().now) throws -> String {
         let duration = baseline.duration(to: instant).components
@@ -154,6 +180,15 @@ extension CommunityFeatureClient {
         _ = try CatalogEventTime.parse(value.serverTime)
         for event in value.events { try event.validate() }
         for event in value.events { try validateAccess(event) }
+        for event in value.events {
+            let now = try CatalogEventTime.parse(value.serverTime)
+            let expiredInvite = try event.access.invitationDeadline.expired(at: now)
+            let expiredPrivateAccess = try EventDeadlinePolicy.invitationOnlyExpired(event, serverNow: now)
+            if (list == .invitations && event.access.invited && expiredInvite) ||
+                (event.visibility == "private" && expiredPrivateAccess) {
+                throw BackpackError.invalid("An invitation expired; discard this event page and refresh current access.")
+            }
+        }
         return value
     }
     func event(_ id: UUID) async throws -> CatalogEvent {
@@ -164,10 +199,16 @@ extension CommunityFeatureClient {
         let value = try JSONDecoder().decode(Result.self, from: await send(.events, path, method: method, body: data)).event
         try value.validate()
         try validateAccess(value)
+        if value.visibility == "private", try EventDeadlinePolicy.invitationOnlyExpired(value, serverNow: CatalogEventTime.parse(value.serverTime)) {
+            throw CommunityFailure(status: 403, code: "event_invitation_expired", message: "Invitation access expired. Refresh current membership; no cached private event access is retained.")
+        }
         guard expected == nil || value.id == expected else { throw BackpackError.invalid("The server returned a different event.") }
         return value
     }
     private func validateAccess(_ event: CatalogEvent) throws {
+        if invitationDeadlinesEnabled(event), event.access.invited, event.access.invitationDeadline == .unspecified {
+            throw BackpackError.invalid("The enabled server omitted active invitation expiry semantics. Refresh access rather than assuming legacy no-expiry.")
+        }
         if let role = event.access.role {
             guard event.access.member, event.organizers.contains(where: { $0.id == accountID && $0.eventRole == role }) else {
                 throw BackpackError.invalid("The event role is not bound to this account.")
@@ -176,16 +217,27 @@ extension CommunityFeatureClient {
     }
     func saveEvent(_ input: CatalogEventInput, original: CatalogEvent?) async throws -> CatalogEvent {
         try input.validate()
+        if input.visibility == "unlisted" && original?.visibility != "unlisted" {
+            guard unlistedEventsAvailable, original == nil || original?.settings?.unlistedEventsEnabled == true,
+                  input.unlistedLinkConsent == true else { throw BackpackError.invalid("Unlisted links require the actual capability and explicit venue/link consent.") }
+        }
         if let original {
             try validateAccess(original)
             guard original.access.canManage, !original.cancelled, input.expectedRevision == original.revision else {
                 throw BackpackError.invalid("Refresh organizer access and confirm the current revision before editing.")
             }
+            let current = try await event(original.id)
+            guard current.access.canManage, current.access.role == original.access.role else {
+                throw CommunityFailure(status: 403, code: "event_access_changed", message: "Organizer access changed; clear private editing context.")
+            }
+            guard current.revision == original.revision else {
+                throw CommunityFailure(status: 409, code: "event_revision_conflict", message: "Event changed. Keep your draft; explicitly reload before another review.")
+            }
         } else if input.expectedRevision != nil { throw BackpackError.invalid("New events cannot carry an update revision.") }
         return try await eventResponse(path: original.map { "events/\($0.id.uuidString.lowercased())" } ?? "events",
             method: original == nil ? "POST" : "PATCH", data: JSONEncoder().encode(input), expected: original?.id)
     }
-    func rsvp(_ event: CatalogEvent, status: CatalogRSVP) async throws -> CatalogEvent {
+    func rsvp(_ event: CatalogEvent, status: CatalogRSVP) async throws -> CatalogEvent? {
         try validateAccess(event)
         guard status == .declined ? (event.rsvpStatus != nil || event.access.member) : (event.access.canRsvp && !event.cancelled) else {
             throw BackpackError.invalid("RSVP is not available for this event.")
@@ -197,9 +249,17 @@ extension CommunityFeatureClient {
             throw BackpackError.invalid("Refresh the event's participation revision before confirming.")
         }
         struct Body: Encodable { let status: CatalogRSVP; let expectedParticipationRevision: Int? }
-        let value = try await eventResponse(path: "events/\(event.id.uuidString.lowercased())/rsvp",
-            method: "POST", data: JSONEncoder().encode(Body(status: status,
-                expectedParticipationRevision: status == .going && participationReviewEnabled ? event.participationRevision : nil)), expected: event.id)
+        struct Receipt: Decodable { let event: CatalogEvent?; let declined: Bool? }
+        let receipt = try JSONDecoder().decode(Receipt.self, from: await send(.events,
+            "events/\(event.id.uuidString.lowercased())/rsvp", method: "POST",
+            body: JSONEncoder().encode(Body(status: status,
+                expectedParticipationRevision: status == .going && participationReviewEnabled ? event.participationRevision : nil))))
+        guard let value = receipt.event else {
+            guard status == .declined, receipt.declined == true else { throw BackpackError.invalid("Nullable event requires an actual acknowledged decline; no cached access is inferred.") }
+            return nil
+        }
+        try value.validate(); try validateAccess(value)
+        guard value.id == event.id else { throw BackpackError.invalid("RSVP returned a different event.") }
         guard value.rsvpStatus == status else { throw BackpackError.invalid("The server did not confirm the requested RSVP.") }
         if status == .going && participationReviewEnabled {
             guard value.participationRevision == event.participationRevision, value.requiresReconfirmation == false else {
@@ -242,10 +302,7 @@ extension CommunityFeatureClient {
         struct Revision: Encodable { let expectedRevision: Int }
         switch action {
         case .invite:
-            struct Result: Decodable { let invited, automaticRsvp: Bool }
-            let result = try JSONDecoder().decode(Result.self, from: await send(.events, "\(root)/invitations",
-                method: "POST", body: JSONEncoder().encode(Target(userId: user))))
-            guard result.invited, !result.automaticRsvp else { throw BackpackError.invalid("An invitation must not automatically RSVP.") }
+            _ = try await invite(event, target: target, expiresAtISO: nil)
         case .revokeInvite:
             struct Result: Decodable { let revoked, membershipRetained: Bool }
             guard try JSONDecoder().decode(Result.self, from: await send(.events, "\(root)/invitations/\(user)", method: "DELETE")).revoked else {
@@ -254,14 +311,11 @@ extension CommunityFeatureClient {
         case .removeParticipant:
             struct Result: Decodable { let removed: Bool }
             guard try JSONDecoder().decode(Result.self, from: await send(.events, "\(root)/participants/\(user)/remove",
-                method: "POST", body: Data("{}".utf8))).removed else { throw BackpackError.invalid("Participant removal was not confirmed.") }
-        case .addOrganizer, .transferOwnership:
-            if action == .transferOwnership {
-                guard event.organizers.contains(where: { $0.id == target && $0.eventRole == .coorganizer }) else {
-                    throw BackpackError.invalid("Choose an existing eligible co-organizer for ownership transfer.")
-                }
-            }
-            _ = try await eventResponse(path: "\(root)/\(action == .addOrganizer ? "organizers" : "ownership")",
+                method: "POST")).removed else { throw BackpackError.invalid("Participant removal was not confirmed.") }
+        case .transferOwnership:
+            _ = try await transferEventOwnership(event, target: target, formerRole: nil)
+        case .addOrganizer:
+            _ = try await eventResponse(path: "\(root)/organizers",
                 method: "POST", data: JSONEncoder().encode(Target(userId: user, expectedRevision: event.revision)), expected: event.id)
         case .removeOrganizer:
             guard event.organizers.contains(where: { $0.id == target && $0.eventRole == .coorganizer }) else {

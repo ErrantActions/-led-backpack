@@ -105,9 +105,14 @@ struct CommunityAccountView: View {
             }
             NavigationLink("Private cloud library") { CloudVaultSettingsView() }
             NavigationLink("My community uploads") { CommunityUploadsView() }
+            NavigationLink("Motion and data-saving preferences") { ViewerMediaPreferencesView() }
+            NavigationLink("My devices / unverified tags") { AccountDevicesView() }
+            NavigationLink("Firmware library (no flashing)") { FirmwareLibraryView() }
+            NavigationLink("Opt-in generic model research") { DeviceResearchView() }
             NavigationLink("Blocked accounts") { CommunityBlocksView() }
             if community.config?.socialEnabled == true {
                 NavigationLink("Friends & profile") { CommunitySocialView() }
+                NavigationLink("Private event badges (check availability)") { EventAwardListView() }
             }
             if community.config?.avatarsEnabled == true {
                 NavigationLink("Profile avatar") { CommunityAvatarView() }
@@ -115,11 +120,17 @@ struct CommunityAccountView: View {
             if community.config?.eventsEnabled == true {
                 NavigationLink("Events") { CommunityEventsView() }
             }
+            if community.config?.eventReportsEnabled == true {
+                NavigationLink("My event reports / withdrawal") { OwnEventReportsView() }
+            }
             if community.config?.messagingEnabled == true {
                 NavigationLink("Messages") { CommunityMessagesView() }
             }
             if community.config?.chatReportsEnabled == true {
                 NavigationLink("My message incidents") { MessageIncidentListView() }
+            }
+            if community.config?.peerIncidentReportsEnabled == true || community.config?.peerIncidentWithdrawalEnabled == true {
+                NavigationLink("My private peer incidents / withdrawal receipts") { PeerIncidentOwnerView() }
             }
             if community.config?.notificationsEnabled == true {
                 NavigationLink("Private activity") { CommunityActivityView() }

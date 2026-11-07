@@ -31,6 +31,11 @@ struct AdminAccount: Decodable, Identifiable {
     let verified, allowMature, trustedReporter, disabled: Bool
     let createdAt: String
     let itemCount: Int
+    var avatarUrl: URL? = nil
+    var avatarPreviewUrl: URL? = nil
+    var avatarAnimated: Bool? = nil
+    var avatarMature: Bool? = nil
+    var avatarMasked: Bool? = nil
 }
 
 struct AdminAccountsPage: Decodable {
@@ -45,6 +50,8 @@ struct AdminItem: Decodable, Identifiable {
     let aiError: String?
     let aiReview: Review?
     let requiresAdminReview, heldByReports: Bool
+    let quarantined: Bool
+    let moderationVersion: Int?
     var id: UUID { item.id }
     struct Review: Decodable {
         let flags: [String]
@@ -65,9 +72,11 @@ struct AdminItem: Decodable, Identifiable {
         aiReview = try values.decodeIfPresent(Review.self, forKey: .aiReview)
         requiresAdminReview = try values.decode(Bool.self, forKey: .requiresAdminReview)
         heldByReports = try values.decode(Bool.self, forKey: .heldByReports)
+        quarantined = try values.decodeIfPresent(Bool.self, forKey: .quarantined) ?? false
+        moderationVersion = try values.decodeIfPresent(Int.self, forKey: .moderationVersion)
     }
     private enum CodingKeys: String, CodingKey {
-        case visibility, status, moderationReason, aiState, aiError, aiReview, requiresAdminReview, heldByReports
+        case visibility, status, moderationReason, aiState, aiError, aiReview, requiresAdminReview, heldByReports, quarantined, moderationVersion
     }
 }
 
@@ -174,7 +183,7 @@ final class CommunityAdminClient {
         try check()
         let result = try await community.request(path, method: method, body: body, query: query,
             contentType: boundary.map { "multipart/form-data; boundary=\($0)" } ?? "application/json",
-            communityUpload: bodyFile != nil, bodyFile: bodyFile)
+            communityUpload: bodyFile != nil, bodyFile: bodyFile, expectedAccountRevision: revision, expectedAccountID: accountID)
         try Task.checkCancellation()
         try check()
         return result.data
@@ -190,6 +199,31 @@ final class CommunityAdminClient {
     }
     func statistics() async throws -> AdminStatistics {
         try JSONDecoder().decode(AdminStatistics.self, from: await send("admin/stats"))
+    }
+    func peerIncidents(page: Int) async throws -> NativePeerIncidentPage {
+        try check()
+        guard community.config?.peerIncidentReportsEnabled == true else { throw BackpackError.invalid("Peer-incident description/review requires the actual usable-key capability.") }
+        let value = try JSONDecoder().decode(NativePeerIncidentPage.self, from: await send("admin/peer-reports", query: pagination(page)))
+        guard community.config?.peerIncidentReportsEnabled == true else { throw BackpackError.invalid("Peer-report decryption became unavailable; no empty-description fallback.") }
+        try value.validate(requested: page, staff: true); return value
+    }
+    func reviewPeerIncident(_ intent: PeerIncidentReviewIntent) async throws -> NativePeerIncidentResult {
+        try check()
+        guard community.config?.peerIncidentReportsEnabled == true else { throw BackpackError.invalid("Peer review requires current global-admin access and the existing usable messaging key.") }
+        let value = try JSONDecoder().decode(NativePeerIncidentResult.self, from: await send(
+            "admin/peer-reports/\(intent.report.id.uuidString.lowercased())", method: "PATCH", body: intent.data))
+        try value.report.validate(staff: true)
+        _ = try CatalogEventTime.parse(value.serverTimeISO)
+        guard community.config?.peerIncidentReportsEnabled == true, value.accountActionTaken == false,
+              value.report.id == intent.report.id, value.report.reporterId == intent.report.reporterId,
+              value.report.reportedUserId == intent.report.reportedUserId,
+              value.report.details == intent.report.details, value.report.category == intent.report.category,
+              value.report.createdAtISO == intent.report.createdAtISO, value.report.expiresAtISO == intent.report.expiresAtISO,
+              value.report.revision > intent.report.revision, value.report.resolved == intent.resolved,
+              value.report.review?.note == intent.note else {
+            throw BackpackError.invalid("Captured peer-incident review was not confirmed as unverified with no account action.")
+        }
+        return value
     }
     func messageIncidents(page: Int, state: String) async throws -> NativeMessageIncidents {
         guard community.config?.chatReportsEnabled == true, (1...209).contains(page), ["all", "open", "resolved"].contains(state) else { throw BackpackError.invalid("Message incident review is unavailable.") }

@@ -11,13 +11,14 @@
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UILaunchScreen</key><dict/>
-    <key>NSBluetoothAlwaysUsageDescription</key><string>Connect to your LED backpack to read its status and control its display.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>Use your location for GPS speed and local weather when you start those features.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key><string>Connect to your LED backpack to read its status and control its display. Explicit foreground friend discovery, phone GIF sharing and manually compared offline local pairing use separate ephemeral-token services. Local pairing and game consent are independent; no name or account/device identifier is advertised.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Use your location only for features you deliberately start: GPS display/weather, foreground checkpoint eligibility, or independent SOLO place/adventure/event-area offers and approximate trip distance. SOLO home/work fixed areas and processing remain on this device. SOLO samples are discarded without saving or uploading a route, live location or name; nothing is automatically published.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>Continue your explicitly started GPS display while the app is in the background.</string>
     <key>NSMotionUsageDescription</key><string>Show optional phone motion measurements during your live display session.</string>
+    <key>NSNearbyInteractionUsageDescription</key><string>Only when you explicitly start a locally paired foreground game with ranging, exchange an encrypted peer token and use coarse nearby stability hints. No direction, exact distance, friend map or location history is displayed or saved. Manual paired mode remains a separate explicit choice.</string>
     <key>NSAppleMusicUsageDescription</key><string>Read supported system Music metadata for your explicitly started now-playing display.</string>
     <key>NSLocalNetworkUsageDescription</key><string>Connect to your optional self-hosted GIF catalog when it is on your local network.</string>
-    <key>NSCameraUsageDescription</key><string>Scan a public QR code on another signed-in device to explicitly approve trusted private-library key adoption.</string>
+    <key>NSCameraUsageDescription</key><string>When you explicitly choose Scan, read a friend invitation for authenticated preview, an offline local-pair code for deliberate out-of-band key comparison, or a public QR for separately confirmed trusted private-library key adoption. These are separate permissions; manual input remains available without camera access.</string>
     <key>UIBackgroundModes</key><array><string>bluetooth-central</string><string>location</string></array>
     <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
     <key>UIApplicationSupportsIndirectInputEvents</key><true/>

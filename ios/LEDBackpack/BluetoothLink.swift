@@ -11,7 +11,7 @@ struct NearbyPanel: Identifiable {
 
 @MainActor
 final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
-    @Published private(set) var state = "Bluetooth starting"
+    @Published private(set) var state = "Bluetooth idle — scan explicitly for a backpack"
     @Published private(set) var nearby: [NearbyPanel] = []
     @Published private(set) var connected = false
     @Published private(set) var log: [String] = []
@@ -25,7 +25,9 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     var onPlayback: ((Playback) -> Void)?
     var systemDisconnectAlerts = true
     var selectedID: UUID? { peripheral?.identifier }
-    private var central: CBCentralManager!
+    private lazy var central = CBCentralManager(delegate: self, queue: .main, options: [
+        CBCentralManagerOptionRestoreIdentifierKey: "LEDBackpack.central"
+    ])
     private var peripheral: CBPeripheral?
     private var found: [UUID: CBPeripheral] = [:]
     private var writer: CBCharacteristic?
@@ -58,9 +60,6 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
 
     override init() {
         super.init()
-        central = CBCentralManager(delegate: self, queue: .main, options: [
-            CBCentralManagerOptionRestoreIdentifierKey: "LEDBackpack.central"
-        ])
     }
 
     func note(_ text: String) {
@@ -69,6 +68,9 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     }
 
     func scan() throws {
+        guard ![CBManagerState.unknown, .resetting].contains(central.state) else {
+            throw BackpackError.invalid("Bluetooth is preparing after your explicit request. Wait for its OS state, then tap Scan again.")
+        }
         guard central.state == .poweredOn else { throw BackpackError.invalid("Enable Bluetooth and allow access in Settings.") }
         guard peripheral == nil else { throw BackpackError.invalid("Disconnect before scanning for another panel.") }
         nearby = []; found = [:]

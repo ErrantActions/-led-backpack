@@ -18,11 +18,18 @@ struct EventRouteCheckpoint: Codable, Identifiable, Equatable {
     var order: Int
     var gifItemId: UUID?
     var exclusiveGifId: UUID?
+    var optional: Bool? = nil
     var point: EventCoordinate {
         get { EventCoordinate(latitude: latitude, longitude: longitude) }
         set { latitude = newValue.latitude; longitude = newValue.longitude }
     }
-    private enum CodingKeys: String, CodingKey { case id, title, kind, latitude, longitude, radiusMeters, order, gifItemId, exclusiveGifId }
+    func matchesReturned(_ other: EventRouteCheckpoint) -> Bool {
+        var lhs = self, rhs = other
+        lhs.optional = optional == true ? true : nil
+        rhs.optional = other.optional == true ? true : nil
+        return lhs == rhs
+    }
+    private enum CodingKeys: String, CodingKey { case id, title, kind, latitude, longitude, radiusMeters, order, gifItemId, exclusiveGifId, optional }
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(id.uuidString.lowercased(), forKey: .id)
@@ -31,12 +38,14 @@ struct EventRouteCheckpoint: Codable, Identifiable, Equatable {
         try values.encode(radiusMeters, forKey: .radiusMeters); try values.encode(order, forKey: .order)
         try values.encodeIfPresent(gifItemId?.uuidString.lowercased(), forKey: .gifItemId)
         try values.encodeIfPresent(exclusiveGifId?.uuidString.lowercased(), forKey: .exclusiveGifId)
+        try values.encodeIfPresent(optional, forKey: .optional)
     }
     func validate() throws {
         try point.validate()
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.utf16.count <= 160,
               radiusMeters.isFinite, (1...100000).contains(radiusMeters), (0..<50).contains(order),
-              gifItemId == nil || exclusiveGifId == nil else { throw BackpackError.invalid("Review checkpoint title, radius, order and artwork source.") }
+              gifItemId == nil || exclusiveGifId == nil,
+              optional != true || kind == .checkpoint else { throw BackpackError.invalid("Review checkpoint title, radius, order and artwork source. Start and finish must be required.") }
     }
 }
 struct EventRouteReward: Codable, Identifiable, Equatable {
@@ -66,6 +75,21 @@ struct CatalogEventRoute: Decodable {
 }
 struct CatalogEventRouteSettings: Decodable {
     let exclusiveArtworkReferences: Bool?
+    var expiringInvitationsEnabled: Bool? = nil
+    var sharedProgressExpiryEnabled: Bool? = nil
+    var sharedProgressRetentionSeconds: Int? = nil
+    var accountAwardsEnabled: Bool? = nil
+    var unlistedEventsEnabled: Bool? = nil
+    var ownershipAuditEnabled: Bool? = nil
+    var formerOwnerRoleChoiceEnabled: Bool? = nil
+    var eventReportsEnabled: Bool? = nil
+    var optionalCheckpointsEnabled: Bool? = nil
+    var eventTeamsEnabled: Bool? = nil
+    var eventCollectionsEnabled: Bool? = nil
+    var eventDisplayPlanningEnabled: Bool? = nil
+    var eventGuestbookAvailable: Bool? = nil
+    var eventGuestbookEnabled: Bool? = nil
+    var eventRecapsEnabled: Bool? = nil
 }
 struct EventRouteWrite: Encodable {
     let expectedRevision: Int
@@ -127,7 +151,12 @@ struct EventRouteDraft {
     var fixedGeometryMatchesOriginal: Bool {
         guard let route = original.route, published == route.published, geometry.map(\.point) == route.geometry else { return false }
         func fixed(_ entries: [EventRouteCheckpoint]) -> [EventRouteCheckpoint] {
-            entries.map { source in var value = source; value.gifItemId = nil; value.exclusiveGifId = nil; return value }
+            entries.map {
+                source in
+                var value = source; value.gifItemId = nil; value.exclusiveGifId = nil
+                value.optional = value.optional == true ? true : nil
+                return value
+            }
         }
         return fixed(checkpoints) == fixed(route.checkpoints)
     }

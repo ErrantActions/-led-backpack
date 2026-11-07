@@ -43,7 +43,8 @@ final class CommunityChatTests: XCTestCase {
     private func messageDTO(event: UUID? = nil, recipient: Bool = true) -> String {
         let fields = recipient ? #","recipientId":"\#(peer)""# : ""
         let scope = event.map { #","eventId":"\#($0)""# } ?? ""
-        return #"{"id":"\#(message)","senderId":"\#(account)","text":"Hello","createdAt":1700000000000\#(fields)\#(scope)}"#
+        let retainedNow = Int64(Date().timeIntervalSince1970 * 1000)
+        return #"{"id":"\#(message)","senderId":"\#(account)","text":"Hello","createdAt":\#(retainedNow)\#(fields)\#(scope)}"#
     }
     func testAbsentOptionalCapabilitiesFailClosed() async throws {
         let (_, client, stub) = try await setup([], enabled: false)

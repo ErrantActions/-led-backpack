@@ -49,31 +49,44 @@ final class DisconnectAlerts: NSObject, UNUserNotificationCenterDelegate {
 
 @MainActor
 final class LiveSensors: NSObject, ObservableObject, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
+    private var manager: CLLocationManager?
     private let motion = CMMotionManager()
     @Published private(set) var location: CLLocation?
     @Published private(set) var heading: Double?
     @Published private(set) var roll = 0.0
     @Published private(set) var acceleration = 0.0
-    @Published private(set) var authorization = CLAuthorizationStatus.notDetermined
+    @Published private(set) var authorization: CLAuthorizationStatus?
     @Published private(set) var failure: String?
     var onWake: (() -> Void)?
     var locationRunning = false
+    var hasInitializedLocationManager: Bool { manager != nil }
 
     override init() {
         super.init()
-        manager.delegate = self
-        authorization = manager.authorizationStatus
         UIDevice.current.isBatteryMonitoringEnabled = true
     }
 
+    private func activatedLocationManager() -> CLLocationManager {
+        if let manager {
+            authorization = manager.authorizationStatus
+            return manager
+        }
+        let value = CLLocationManager()
+        manager = value
+        authorization = value.authorizationStatus
+        value.delegate = self
+        return value
+    }
+
     func requestAlways() {
+        let manager = activatedLocationManager()
         if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
         else { manager.requestAlwaysAuthorization() }
     }
 
     func startLocation(background: Bool, precise: Bool) throws {
         guard CLLocationManager.locationServicesEnabled() else { throw BackpackError.invalid("Location Services are off.") }
+        let manager = activatedLocationManager()
         guard ![.denied, .restricted].contains(manager.authorizationStatus) else {
             throw BackpackError.invalid("Location permission denied. Open iOS Settings.")
         }
@@ -90,6 +103,7 @@ final class LiveSensors: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func startHeading() throws {
         guard CLLocationManager.headingAvailable() else { throw BackpackError.invalid("This device has no heading sensor.") }
+        let manager = activatedLocationManager()
         failure = nil; heading = nil
         manager.startUpdatingHeading()
     }
@@ -109,8 +123,8 @@ final class LiveSensors: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func stop() {
-        manager.stopUpdatingLocation(); manager.stopUpdatingHeading()
-        manager.allowsBackgroundLocationUpdates = false
+        manager?.stopUpdatingLocation(); manager?.stopUpdatingHeading()
+        manager?.allowsBackgroundLocationUpdates = false
         motion.stopDeviceMotionUpdates(); locationRunning = false
     }
 
@@ -165,6 +179,15 @@ final class LiveEngine: ObservableObject {
     private var speedHistory: [(Date, Double)] = []
     private var alertUntil = Date.distantPast
     private var lastBrake = Date.distantPast
+    private var locationFeaturesSuspended = false
+
+    func suspendLocationFeatures() {
+        guard let mode, [.speed, .weather, .motion, .compass].contains(mode) else { return }
+        locationFeaturesSuspended = true
+        sensors.stop()
+        weatherFetch?.cancel()
+        status = "Location features stopped locally. Last device frame may remain; explicitly stop the live screen before restarting."
+    }
 
     init(panel: PanelController, sensors: LiveSensors) {
         self.panel = panel; self.sensors = sensors
@@ -193,6 +216,7 @@ final class LiveEngine: ObservableObject {
             try await panel.beginLive()
         } catch { sensors.stop(); throw error }
         sceneTheme = theme; sceneMessage = message
+        locationFeaturesSuspended = false
         mode = selected; status = "Starting"; lastRender = .distantPast
         speedHistory = []; alertUntil = .distantPast
         task = Task { [weak self] in
@@ -245,6 +269,7 @@ final class LiveEngine: ObservableObject {
 
     private func render() async {
         guard !Task.isCancelled, let mode, !rendering, let size = panel.size, panel.link.connected else { return }
+        guard !locationFeaturesSuspended else { return }
         rendering = true; lastRender = Date()
         defer { rendering = false }
         do {

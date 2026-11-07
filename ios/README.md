@@ -3,7 +3,837 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+## Replacement APP checkpoint - PURPLE / unsigned runner validation resumed
+
+Owner clarification: the intended Mac execution path is the existing GitHub
+Actions `xcode-27` runner. Its active unsigned-validation workflow last succeeded
+in run `42159868752` at historical source `0c5850e`; current dirty source is not
+included. No separate local Mac provisioning is needed. The owner has now
+explicitly unpaused narrow native commit/push and unsigned runner validation.
+Independent firmware/GIF/full20-key/reserved-slot work must not be sweep-staged.
+
+The owner-requested [dedicated recovery workflow](../.github/workflows/native-recovery.yml)
+is now prepared. It runs manually or on the isolated `native-recovery` branch,
+never ordinary branch pushes. It uses the existing `xcode-27` runner, compiles
+unsigned, executes all18source fixture groups together and then full unit/UI
+regressions. Each stage stops on failure and retains provenance/logs/result
+bundles. No signing, provider activation or deployment is included. Its initial
+workflow/ignore-allowlist-only commit `2b19e7f` was pushed successfully; current
+native source is not yet published or validated. The dedicated branch trigger
+uses authorized Git push without requiring a new API token or provider key.
+Local YAML/permission/trigger checks, all6Bash syntax checks,18selector-file
+checks and result-retention checks passed for the initial manual workflow.
+The isolated branch trigger's local YAML/Bash/selector checks also passed.
+This is workflow syntax/wiring evidence only, not executed native tests.
+
+The native publication checkpoint is a selectively staged APP snapshot, not a
+claim to validate every remaining dirty firmware edit. Independent Wire/full20-
+key/reserved-slot/storage/batch/OTA/evidence/hardware-GIF work remains unstaged.
+Mixed app roots retain their committed hardware APIs in the indexed snapshot;
+native account/service/player/editor/lifecycle/permission changes travel together.
+Working-tree research bytes remain unchanged. Runner results apply to the exact
+published snapshot SHA, never automatically to the remaining dirty work.
+
+Current P0-P11 /34-family reconciliation and exact ownership/limitations are in
+[TODO.md](TODO.md#replacement-app-recovery-reconciliation---2026-11-06-purple).
+Retained artwork/main PHONE/SOLO/offline pairing/optional NI and other feature
+entry points were not reimplemented. Recovery fixed module visibility of the
+shared `ScopedPhoneCanvasControls` and rejected old ordinary request responses
+after same-origin account/reload changes or cancellation. Logout/erasure's
+explicit separate receipt handling is preserved. Five new `CommunityTests`
+methods are prepared, **ALL UNEXECUTED**; no native compiler/runtime pass.
+
+This replacement independently read the live public `/api/v1/config` over normal
+TLS: deterministic artwork tools, manifests/size filters, presence/friend peer
+identity, event moderation/keyless withdrawal are enabled. Messaging/chat,
+playlists, guestbook/report creation, Apple push, cloud, redraw and integrity
+enforcement remain disabled. Keep actual in-app capability/error gating; do not
+enable providers/keys or ComfyUI. Backend35c13fb/616+13/Linux/live evidence is
+separate from native proof.
+
+### Consolidated Mac commands - prepared only, not executed
+
+Prerequisite: publish the **reviewed native snapshot and its dependencies**,
+then let the authorized runner check out that exact SHA. Independent dirty
+hardware changes remain outside this milestone. No source copying is needed.
+The Windows host lacks
+Swift/Xcode/XcodeGen and cannot execute iOS builds/XCTest. Existing workflow
+requires Xcode27.1, simulator SDK27.1 and an available iOS27.1 iPhone Duo.
+Verify those installations before executing; do not silently use another SDK.
+Ruby/Bundler/fastlane/signing are not needed for this unsigned simulator phase.
+
+The following is **Mac Bash**, only after execution/source-access authorization.
+Set `NATIVE_CHECKOUT` to the owner-approved Mac path for this retained tree and
+`SIMULATOR_ID` to the verified simulator UDID; no guessed destination.
+
+```sh
+set -euo pipefail
+cd "${NATIVE_CHECKOUT:?Owner-approved current native tree required}/ios"
+: "${SIMULATOR_ID:?Verified iOS27.1 iPhone Duo simulator UDID required}"
+export DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer
+test -d "$DEVELOPER_DIR"
+xcodebuild -version | grep -Fx "Xcode 27.1"
+swift --version
+xcodebuild -showsdks
+test "$(xcrun --sdk iphonesimulator --show-sdk-version)" = "27.1"
+xcrun simctl list devices available
+xcodegen --version
+xcodegen generate
+swift test --package-path Packages/BackpackProtocol
+xcodebuild build-for-testing -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath build/Recovery CODE_SIGNING_ALLOWED=NO
+TESTS=()
+for CLASS in CommunityTests AccountNativeParityTests CatalogManifestTests \
+  AdminArtworkTests AutomaticPhoneSessionTests ScopedPhonePreviewTests \
+  SoloSourceTests LocalPairingTests FriendArtworkSelectionTests FriendPlaybackTests \
+  LocationManagerInitializationTests LocalPixelDocumentTests LocalPixelCodecTests \
+  LocalPixelGIFTests LocalPixelStoreTests EventSocialSourceTests \
+  OwnerPlaylistSourceTests CommunityChatSourceParityTests; do
+  TESTS+=("-only-testing:LEDBackpackTests/$CLASS")
+done
+xcodebuild test-without-building -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath build/Recovery -resultBundlePath build/RecoveryFocused.xcresult \
+  -parallel-testing-enabled NO "${TESTS[@]}" CODE_SIGNING_ALLOWED=NO
+xcodebuild test-without-building -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath build/Recovery -resultBundlePath build/RecoveryIntegrated.xcresult \
+  -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
+```
+
+Stop on any failed preflight/build/test; retain logs, unique result bundles,
+source provenance and actual executed/failure/skip counts. Do not run a later
+stage to hide an earlier failure. Existing manual CI focused mode selects four
+older groups only; it is not the consolidated recovery selector above.
+
+Full regression includes `LEDBackpackTests` and `LEDBackpackUITests`; XCTest
+navigation fixtures are not a live-service acceptance pass. Still required:
+current-config live integration with owned normal test-account data, manifest/
+hash/error/unavailable UX, offline composed GIF pixels/timing/bounds, crash/
+first-original/restore, cancellation/expiry/roles/blocks, memory, VoiceOver/
+Dynamic Type and foreground lifecycle. Real-device Keychain/PRF/App Attest/APNs,
+two-phone BLE/NI/recovery, hardware transport and signed distribution remain
+separately owner-gated. No native green or beta readiness is claimed.
+
+## Main PHONE, SOLO and explicit local pair continuation - PURPLE/source only
+
+The scoped event/owner-playlist player now offers a distinct **Play on main
+PHONE / preserve my original** action. It stops the isolated preview first
+(including its screen leases), acquires the shared PHONE owner, saves the actual
+initial bytes/playhead/policy durably, and uses the existing exact scoped media
+aliases/current-access checks. Authorization is checked again after decode,
+immediately before commit. Initial originals survive successive entries; stale
+manual selections/targets/accounts cannot be adopted. Stop retains explicit
+recovery; restore acknowledges exact original bytes without deleting the copy.
+
+This global path honors the CURRENT captured source/cue lease, at most30seconds;
+it never silently renews it or promises full unattended playback of longer
+playlists. A new explicit source request is required for another window.
+The owner editor additionally has a default-off one-shot option to start one
+main-PHONE window at the next due foreground schedule occurrence. It consumes
+that consent, disarms future occurrences on leaving the editor and never runs
+background/catch-up work. Ordinary preview requests do not trigger this option.
+Owner entry timing pauses while loading; event entries are discarded if the
+server-clock cue moved during I/O. Gentle scene frames are encoded once as a
+bounded local animation, not repeatedly sent to the server or journaled per
+frame. No hardware commands, guaranteed synchronization or background scheduler.
+The earlier scoped-player misplaced type declarations/starting-entry watchdog
+reference were corrected directly in source; this is NOT a compiler pass.
+
+The cancelled SOLO implementation has been retained and inspected: actual local
+scene copies, fixed place/adventure/event-kind targets, quality/dwell/hysteresis/
+cooldown offers, approximate distance, one-shot milestones, optional route-free
+recaps, local solar/polar/manual states and owned atomic archive are wired.
+Foreground/location/PHONE consent are explicit, lazy and distinct. Manual
+changes during arming/restoring now invalidate the operation, restore captures
+its expected revision across I/O, and nonrepeating daylight scenes no longer
+restart their final original GIF just to fill a presentation window.
+Selected scene copies follow the displayed local-library order, not Set order.
+Home/work coordinates remain device-only; samples/routes/encounters are not
+stored/uploaded. Actual quality/solar/lifecycle/device behavior is unverified.
+
+**Offline paired calm colors** is a new bounded account-free PHONE game, not an
+offline substitute for online friendship or original-GIF sharing. Both devices
+explicitly exchange fresh two-minute QR/manual codes, compare all four key-hash
+groups, approve stationary/noncontact play and choose the same preset/ranging
+mode. A third separate BLE UUID namespace carries only ephemeral hints and
+bounded encrypted frames. X25519/HKDF/AES-GCM proves the manually compared key,
+domain-bound to both canonical codes/nonces/roles; locator UUIDs are not secrets.
+Both application-ready acknowledgments and reliable recovery precede displaying
+generated complementary colors. No original/private GIF/file/name/account/GPS
+is transferred; no Met/Received collection or online consent is created.
+Lost receipts are uncertain; no exactly-once/anti-relay/proximity/safety claim.
+
+Optional NearbyInteraction is real source using NISession/discovery-token
+secure coding and the authenticated channel. It initializes only after explicit
+foreground NI game consent and original preparation. Only coarse fresh relative
+stability is exposed, never exact distance/direction/map/history. No sample is
+persisted. Unsupported/denied/suspended/stale/removed ranging stops, with an
+explicit manual-mode/new-pair option, never silent fallback or resume. Stable
+relative range does not prove people are stationary; user approval remains
+required. Usage descriptions are wired without enabling background NI/signing.
+All actual camera/BLE/NI/device operations and two-phone proof remain UNEXECUTED.
+
+**32 NEW deterministic fixtures prepared, ALL UNEXECUTED:**8 in
+`AutomaticPhoneSessionTests.swift`,12 in `SoloSourceTests.swift`,12 in
+`LocalPairingTests.swift`. They cover actual first-original/lease/restore/
+post-decode authorization, local persistence/quality/dwell/trip/solar/no-route
+bounds, canonical pair codes/comparison/purpose crypto/replay/range stability
+and cold denied-manager/session paths. They are not executed or device evidence.
+
+Exact source files: new `AutomaticPhoneSession.swift`, `ScopedGlobalPhone.swift`,
+`LocalPairing.swift`, `LocalNearbyInteraction.swift`, `LocalPairedGame.swift`,
+`LocalPairedGameView.swift`; changed `ScopedPhonePreview.swift`, `PhoneDisplay.swift`,
+`PhoneDisplayViews.swift`, `SwapRecovery.swift`, `SoloSceneController.swift`,
+`SoloSceneViews.swift`, `PhoneSwapRadio.swift`, `PhoneSwapProtocol.swift`,
+`LEDBackpackApp.swift`, `OwnerPlaylistViews.swift`, `Info.plist`; the three new test files above, README,
+TODO and Protocol. Existing firmware/full20-key/reserved55–59/wire logic is
+unchanged. Native build/typecheck/tests/grammar/CI remain UNEXECUTED; Mac/Xcode
+consolidation, accessibility/memory/Keychain/crypto/OS permissions, actual NI/
+radio/recovery and distribution/provider gates remain separate.
+
+The final VS Code request to run the new artwork/automatic PHONE/SOLO/local-pair
+Swift groups was cancelled before any result arrived. There is no confirmed
+native execution/pass from that request. Consolidated validation requires an
+authorized Mac/Xcode environment; Windows/source inspection is not a substitute.
+
+## Native admin artwork studio - PURPLE, ALL UNVALIDATED
+
+Administration now opens real capability-gated **Owned artwork previews /
+compare / branches**. Choose a named current public catalog source, an owned
+completed result, or one explicitly picked local GIF. Settings and deliberate
+processing consent create a new owned preview job; no cloud/private-library scan,
+community publication, source overwrite, provider installation or hardware action.
+Cleanup/upscale are deterministic, not AI; redraw requires its separate actual
+capability and never falls back to pretending resizing is AI.
+
+The typed job client uses the existing current-admin/account/origin/media-policy
+scope and exact-byte request/integrity pipeline. JSON selects exactly one source;
+immutable multipart puts settings metadata before the sole GIF. No community
+upload-policy header/publication grant is applied to private editing inputs.
+Creation must return HTTP202 with the captured normalized settings and source.
+Late account/role/capability/media-policy results are discarded.
+
+Latest20 owned jobs, status/error/24-hour expiry, retained-input availability,
+explicit paused input/result comparison, independent branch creation, ten-step
+session-local selection undo and cancel/remove are actual UI. Download re-fetches
+current authorization and bytes, checks exact canonical same-origin owned routes,
+size, complete bounded GIF decode and64x64 result canvas, then rechecks the job.
+No nonexistent digest manifest/revision-CAS or synchronized-display guarantee is
+invented. Unknown legacy input stays unavailable. Exported copies cannot be
+recalled; provider assets have their separately managed retention.
+
+One active job/10submissions-hour,5MB input/output,120source frames/40million
+decoded pixels and16AI-redraw frames remain explicit. Previews own no global
+phone selection, journal, brightness/awake lease or backpack transport. Current
+jobs/access are polled only while foreground; closing/background/account/role/
+policy changes clear private state and stop local work. New loaded images pause
+comparison; motion/data-saving restrictions never silently resume it. Uncertain
+submissions require deliberate owned-job reconciliation, not automatic replay.
+The source does not claim that polling eliminates all revocation races.
+
+**24 NEW AdminArtworkTests methods prepared, ALL UNEXECUTED:** settings/AI gates,
+job retention/status/legacy input, URL safety, exact one-source/multipart/privacy
+policy, corrupt/resource bounds, role/capability/scope separation, duplicate jobs,
+creation HTTP/auth/source binding, branches, before/after authorized media/
+64x64 validation, late account change, cancellation receipts and store clearing.
+Changed native files: `AdminArtwork.swift`, `AdminArtworkStore.swift`,
+`AdminArtworkViews.swift` (new), `AccountServiceScope.swift`,
+`CommunityClient.swift`, `CommunityAdminViews.swift`;
+`LEDBackpackTests/AdminArtworkTests.swift` (new), README and TODO.
+No native checks/build/tests/typecheck/grammar/CI were executed. All native source
+remains PURPLE; actual UI/memory/Keychain/integrity/device evidence remains P10.
+The interrupted backend inspection made no key/env/container/template changes.
+Existing dirty firmware/GIF/full20-key/reserved55–59 work is preserved.
+
+## Separate friend artwork selection and isolated preview - PURPLE/source only
+
+The accepted-friend page now selects a greeting/pass artwork independently of
+the current phone display. Choose an explicitly picked local file, an owner-local
+phone original or an existing local GIF; alternatively explicitly copy the
+displayed phone artwork. No private-library/cloud scan or automatic upload.
+Selection/preview never calls the global phone player's show/restore methods,
+acquires a screen/display lease, writes a slot, arms Bluetooth or starts service
+work. The current phone bytes/playhead remain the initial recovery original.
+
+The selected bytes/attribution are captured separately by the friend authority:
+greetings play the selected local greeting only after existing authenticated
+eligibility, and a pass sender transmits only the selected privacy-safe candidate.
+The recipient's current artwork remains recovery-only and is never substituted
+as outgoing art. Original local bytes, timing, repeats and attribution are
+preserved. Known current-controller attribution is reused only while its current
+account/artwork revision still matches; a new choice with no credit never
+inherits unrelated original artwork credit.
+
+The isolated preview reuses the bounded GIF decoder and monotonic playback clock,
+starts paused, uses exact source delays/repeats, and owns no awake/brightness
+lease. Palette/duet preview does not overwrite the selected media. Explicit
+preview Play respects Reduce Motion and local animation/data-saving controls;
+policy/lifecycle changes pause it and never silently restart it. One chosen
+original, one decoded preview and at most one cancellable decode worker are
+retained; originals remain <=5 MB and the shared decoded-preview budget is
+40 MB each. Sender pass selection additionally validates the <=128 KiB sanitized
+GIF and safe credit before preparing its media intent. Unsupported still pass,
+corrupt/resource-exhausting media and I/O errors preserve the previous choice.
+
+Account/service/target/background/selection changes reject late results.
+Changing artwork/preset or withdrawing draft consent discards unarmed
+preparation; the Arm button observes actual radio readiness and binds the exact
+prepared choice/preset. Immediate rejected starts do not consume a session or
+initialize a radio; an activation that actually starts remains conservatively
+consumed if its later outcome is uncertain. Existing peer crypto/ready/recovery,
+current service proof and separate game consent boundaries are unchanged.
+
+**14 NEW FriendArtworkSelectionTests methods prepared, ALL UNEXECUTED**:
+selection versus global phone, corrupt/oversize/still rejection, byte-preserving
+pass candidate, cancelled/late reads, isolated preset preview, original timing/
+repeat/pause policy, separate greeting/recipient bytes, account-draft clearing,
+failed arming, durable original separation and correct attribution.
+Exact changes: `LEDBackpack/` — `FriendArtworkSelection.swift` (new),
+`FriendPeerInteraction.swift`, `FriendPlaybackViews.swift`, `PhoneSwapGame.swift`;
+`LEDBackpackTests/FriendArtworkSelectionTests.swift` (new), `README.md`,
+`TODO.md`, `Protocol.md`. Source only; no validation/build/test/typecheck/grammar/
+CI, actual radio/camera/sensors/device/firmware, signing/provisioning, commit/push
+or deployment. Hardware/UWB/standalone offline pairing and runtime evidence
+remain pending. Independent dirty firmware/reserved55–59 work is untouched.
+
+## Event social and owner playlists - PURPLE, SOURCE ONLY
+
+Event teams, separately consented hunts/cooperative goals, guestbook, private
+recap and display-plan forms are now source-wired, as are owner-only playlists,
+foreground source schedules and separately consented public snapshots/paused
+local QR previews. Current capability/access/revision/consent guards remain
+authoritative; server-managed encryption is not E2EE. Saved plans/schedules
+are not physical synchronization, background execution or verified attendance.
+
+The initial batch reports60new XCTest methods prepared, ALL unexecuted, in
+[EventSocialSourceTests.swift](LEDBackpackTests/EventSocialSourceTests.swift)
+and [OwnerPlaylistSourceTests.swift](LEDBackpackTests/OwnerPlaylistSourceTests.swift).
+The public-snapshot DTO's accidental function-local scope was corrected during
+integration; no compiler or tests were run. Current-session publish receipts
+and revoke-all do not invent an owner-wide share inventory endpoint.
+
+The follow-up now wires actual isolated PHONE previews via
+[ScopedPhonePreview.swift](LEDBackpack/ScopedPhonePreview.swift): exact original
+aliases, bounded media/decode, before/after and periodic current authorization,
+fixed foreground lease, paused explicit controls, durations/shuffle and gentle
+scenes.30additional methods make90cumulative event/playlist fixtures, ALL
+unexecuted. Global selected artwork/original journal/root/backpack/background/
+physical synchronization remain untouched or unverified.
+
+## Chat requests, published cards and recovery - PURPLE, SOURCE ONLY
+
+Opt-in message requests, authorized published-playlist chat cards/paused
+revalidated viewers and immutable exact-byte Keychain outbox are source-wired,
+with30-day retained-history recovery and60-day minimal receipt limits.
+Server-managed encryption is not E2EE. Private playlist IDs/text/schedules are
+not substituted for published snapshot references; no owner-wide inventory API
+is invented.52new fixture methods are prepared, ALL validation unexecuted.
+Actual server capabilities, Mac/Keychain/media/access/cancellation/integration
+validation and beta gates remain pending.
+
+## Offline pixel studio and phone policy integration - PURPLE, SOURCE ONLY
+
+Phone display > Offline pixel & GIF studio is account-free local RGBA editing,
+editable projects and explicit new-copy PNG/GIF export. It never automatically
+selects the active display, uploads, pairs or writes hardware. Dimensions are
+1..128 per side, at most120frames/8MB decoded RGBA, with bounded undo and
+off-main cancellable I/O. Original input bytes are not rewritten.
+
+[LocalPixelGIF.swift](LEDBackpack/LocalPixelGIF.swift) uses the existing
+structural reader and ImageIO patch decoding to compose logical-canvas frames,
+including optimized rectangles, binary transparency, local palettes,
+interlacing and disposal0..3. Centiseconds and absent/finite/forever loop
+semantics are retained; missing delay controls use the existing10cs local
+default. Reserved disposal, plain-text/user-input GIFs, APNG and animated WebP
+remain explicitly unavailable. Exact GIF export rejects partial alpha and
+unrepresentable palettes; transparent animations reserve a palette entry
+(at most255opaque colors/frame). PNG/projects retain RGBA.
+
+The interrupted follow-up's source was recovered and integrated, not executed.
+There are75new LocalPixel XCTest methods prepared across four files, plus
+three new phone saved-preference policy fixtures; ALL validation is unexecuted.
+These counts and source inspection are not compile/runtime/composition proof.
+
+Saved viewer preferences now gate automatic phone animation separately from
+explicit manual Play and local phone controls. Policy changes stop automatic
+playback/hand-offs without restarting when re-enabled; original recovery and
+local controls are not rewritten. Studio previews start paused, stop on viewer
+policy changes and still require explicit Play. The root observes current user
+preferences; the studio observes `avatarPolicyRevision`. No hardware behavior
+or beta readiness is claimed.
+
+## Account, catalog, devices and admin continuation — PURPLE, SOURCE ONLY
+
+This bounded source batch adds real native forms, selectors, paging, confirmations
+and request/state handling, not live activation. Production **6bed90c** remains
+unchanged; absent source capabilities display unavailable. **All validation is
+unexecuted**: no build, XCTest, typecheck, grammar/lint, CI, signing/provisioning,
+provider/credential work, deployment, radio/camera/sensor/device/firmware operation,
+commit or push occurred. Existing dirty source and independent firmware/full20-key,
+GIF timing/transparency and reserved55–59 work are preserved.
+
+Wired surfaces:
+
+- Account > Profile avatar now selects an immutable local raster/GIF snapshot,
+  separately previews the exact file and optional oriented percentage crop, and
+  explicitly uploads/replaces only the previewed selection. Changing file/crop/
+  account invalidates that preview. The original bytes plus crop metadata go to
+  the existing AI-only service; there is no local GIF rewrite, timing clamp,
+  private-library selection/upload/AI scan or manual approval queue. Current
+  avatar version is reread before replacement/removal; retry captures the failed
+  immutable version. Existing input/decoded-pixel/consent/error limits remain.
+- Account > Motion and data-saving preferences saves mature-content preferences
+  independently of avatar-upload availability, and loads/saves revision-bound
+  viewer motion/data settings when advertised. Shared profile/admin/contributor/
+  scoped-device avatars and private attachment rendering use those settings,
+  reduced motion and the existing visible/active renderer. Explicit Play may
+  still use data. Saved settings now govern automatic phone presentation;
+  explicit manual Play and independent local controls remain separate. GIF
+  timing/original bytes and backpack playback are not changed.
+- Community search, My uploads and the new bulk community queue expose exact
+  native versus actually-recorded-export any/all size filters: advertised
+  16/32/48/64, explicitly legacy96x128, and up to16 custom rectangles. No rotation
+  or resized-as-native claim. My uploads pages owner records. Community detail
+  explicitly selects an original or recorded export (no missing-export fallback),
+  rechecks authorized detail before/after bounded media I/O, and checks per-file
+  bytes, dimensions, frames and actual bounded frame decoding. The source-only
+  `catalogDownloadManifestEnabled` contract now provides the trusted per-file
+  SHA-256 manifest; the native path binds and rechecks it before/after download,
+  checking the digest before any raster decoding. Save/customize deliberately
+  reacquire a current authorized/verified copy rather than commit an old preview.
+  Stale account/mature/policy results clear; anonymous official-app browsing
+  remains distinct from admin-only web. Attribution and local independent copies
+  are preserved. Contributor avatars confer no general profile access.
+- Account > My devices adds/edits owner-private generic labels and optional matrix,
+  defaults owner sharing off, explicitly issues/replaces/revokes locally rendered
+  unverified QR tags, selects current accepted friends for offers, and accepts/
+  declines/cancels/unlinks captured revisions. Incoming offers and friend
+  selectors are bounded/paged. Explicit paste/read of a shared owner card displays
+  only minimal identity/approved scoped avatar, rechecks every5seconds while
+  visible, and uses the tag header plus normal native proof. Transfers/revocation/
+  unlink never resurrect tags or alter local GIFs. There is no physical ownership
+  proof, readable-identifier claim, public directory or automatic connection.
+- Account > Firmware library lists currently authorized published stock/custom
+  releases with exact model/hardware/version/tag filters and paging. Explicit
+  `.bin` export rechecks captured revision/access before/after I/O and independently
+  verifies declared size/SHA-256. Administration adds metadata-first immutable
+  `.bin` draft upload, separate declared-target publication, withdrawal and
+  deletion. A digest or admin declaration is not authenticity/compatibility:
+  execution, flashing, recovery protocol and recommendations stay unavailable.
+- Account > Optional model research submits only `{targetId,consent:true}` after
+  an initially unchecked choice of an admin-curated generic combination.
+  Administration separately creates/deletes sanitized combinations and views
+  aggregate **self-reports**, never verified devices/installs. No raw device
+  strings, BLE/MAC/serial/IP/account/location/source/time or connection history
+  is collected into the submission. Authentication is not anonymous transport;
+  individual aggregate contributions cannot be retrieved/withdrawn.
+- Existing Administration navigation now reaches page-local exact-ID community
+  quarantine/delete, including quarantine holds, and content-blind paged upload
+  alerts with visible/active30second refresh. Bulk actions capture confirmation,
+  reason, account/role and item snapshots, preflight current state, and validate
+  the atomic selection receipt. Private/cloud items are rejected. Quarantine
+  release still uses the existing explicit safety/audience item editor, not AI.
+  Acknowledge and deliberate account-wide upload-hold release are distinct; alerts
+  expose only counters, never private content. Conflicts/uncertain receipts demand
+  reconciliation, not silent retries.
+
+Contract boundaries (not unfinished native download wiring):
+
+- The new continuation-source `GET /items/:id/download-manifest` is now genuinely
+  wired through `NativeCatalogManifest.swift`, gated by
+  `config.catalogDownloadManifestEnabled`. `CatalogItem`/`PanelVariant` remain
+  unchanged; hashes come only from the separate current trusted API response,
+  never optional speculative fields, downloaded bytes, names or local
+  fingerprints. The native decoder requires manifest version1, matching item,
+  `integrityOnly:true`, valid ISO server time, exactly one original and the exact
+  currently recorded original/export set, at most6 unique canonical names/URLs,
+  configured HTTPS origin/path, lowercase hex64 SHA-256 and source byte/dimension/
+  frame/40M decoded-pixel bounds. Preview/unknown/missing/rotated/invented files
+  cannot substitute. Byte length/SHA are checked before GIF structure, canvas/
+  frame-rectangle and actual per-frame decoding checks. Current detail and a
+  second current manifest are checked after I/O; changed hashes/descriptors,
+  authorization, account, mature/viewer policy, server/capability or local
+  selection/load generation discard late results. Busy/quota/conflict failures
+  propagate without legacy fallback or automatic retry.
+- Absent flags (including live6bed90c) preserve legacy limited browsing/download
+  behavior with the explicit **Checksum unavailable / not checksum-verified**
+  label. Only an advertised, successful manifest path may say its SHA matched.
+  Missing-live capability is not missing-source wiring: the source server
+  contract and native consumer now both exist, all unvalidated/unactivated.
+  A trusted manifest proves current transfer integrity, not authorship, safety,
+  historical variant authenticity, firmware compatibility or perpetual access.
+  Save/customize reacquire current bytes and recheck selection/account generation
+  immediately before their separate local copy; previously saved copies cannot
+  be recalled. No community integrity-manifest coding surface remains blocked.
+- Existing, different digest contracts are not absent: firmware detail supplies
+  `id,revision,byteSize,sha256,downloadUrl`, already bound and verified by
+  `AccountFirmwareLibrary.swift`. Owner-private `/cloud/items` and migration
+  contracts supply `dataHash`, `metadataHash`, optional private
+  `metadata.contentHash` and migration `manifestHash`; existing `CloudVaultClient`,
+  `CloudVaultStore` and `CloudVaultWire` check their account/key/generation/version
+  bindings, ciphertext hashes/decryption and independently reconstructed migration
+  manifest. Managed plaintext is not compared to ciphertext `dataHash`. Those
+  private contracts do not authorize or authenticate community originals/exports
+  and were not replaced or widened here. Validation remains unexecuted for all
+  contracts, including the new community manifest continuation.
+- Bulk/alert APIs do not expose client version-CAS fields; item/alert preflight
+  and server community-selection authorization are real, but cannot certify
+  absence of every concurrent edit. Avatar replace/remove similarly use current
+  version preflight; no undocumented expected-version write field is sent. This
+  is an explicit absent-server-contract guarantee, not an independently actionable
+  native CAS implementation left blocked or unfinished.
+- LocalLibrary, PhoneArtworkLibrary, PhoneDisplayViews, all LocalPixel files,
+  PhoneDisplay/LiveEngine/BluetoothLink/LEDBackpackApp and GIF/firmware wire files
+  were untouched by this batch. The narrow phone integration hook is
+  `community.user?.mediaPreferences?.permitsAnimation(reducedMotion:manual:)`,
+  invalidated by `community.avatarPolicyRevision`. Use it for service avatar/
+  attachment requests, not to rewrite timing or override local playback controls.
+  Local size/provenance filtering must use recorded source dimensions, never
+  infer native size from a resized panel copy.
+
+New source files in `LEDBackpack`: `AccountMediaPreferences.swift`,
+`NativeCatalogSizes.swift`, `AccountServiceScope.swift`, `AccountDevices.swift`,
+`AccountFirmwareLibrary.swift`, `AccountDeviceResearch.swift`,
+`CommunityBulkModeration.swift`, `CommunityUploadAlerts.swift`,
+`NativeCatalogManifest.swift`.
+Direct integrations: `CommunityClient.swift`, `CommunityFeatures.swift`,
+`CommunityAccounts.swift`, `CommunitySocialViews.swift`, `CommunityGallery.swift`,
+`CommunityUpload.swift`, `CommunityAdmin.swift`, `CommunityAdminViews.swift`, plus
+only the shared-attachment preference renderer in `CommunityChatViews.swift`.
+`LEDBackpackTests/AccountNativeParityTests.swift` prepares **70 NEW XCTest
+fixtures**, all unexecuted (crop/immutable GIF bytes, mature/viewer settings,
+size/native/export bounds, guest/role/current-account/late-result guards,
+unverified tags/transfers/scoped headers, firmware bytes/revisions, provenance-
+free research, bulk selection/conflicts and content-blind alert decoding).
+`LEDBackpackTests/CatalogManifestTests.swift` adds **30 NEW** focused manifest/
+decoder/state fixtures: **100 NEW total** in this bounded account/catalog batch,
+all unexecuted. They cover strict complete descriptors/origin/names/hash bounds,
+actual GIF bytes/decoding, missing-flag honesty, no busy/error downgrade, current
+account/mature/capability/late-hash rejection and anonymous official-app requests.
+The existing recursive `project.yml` source/test directories include these files;
+no project generation or build was performed. Native/device/beta validation and
+all absent live capabilities remain pending, never green.
+
+## Native event owner/reports and builder/gallery — PURPLE, SOURCE ONLY
+
+This bounded follow-up implements native source for the local event contracts
+in the catalog `API.md` (147a808 plus the post147a808 independent moderation
+flag correction). Production 6bed90c does **not** advertise these new policy
+capabilities. Nothing here deploys/activates them, provisions a key/provider,
+builds the app or establishes beta readiness. All prior independent dirty
+friend/phone, GIF/timing, full20-key and reserved55–59/firmware work is preserved.
+
+Actual native surfaces:
+
+- Event organizer tools now link to **Named co-organizers / ownership / audit**.
+  Add choices come from the currently authorized named roster; remove/transfer
+  choices are current named co-organizers. Current event-owner role and captured
+  revision are required, never a global-admin override. Ownership receipt/audit
+  controls require the advertised source ownership capability. Explicit retain/
+  relinquish controls additionally require the actual event setting; omission
+  retains the legacy co-organizer choice. A successful nullable receipt clears
+  old event/management/audit/media/chat state without an unauthorized detail
+  reread; independent membership comes only from the receipt. Only the current
+  owner pages history. Erased references remain nullable opaque IDs, never
+  private-profile lookups.
+- Event details offer a blank category/details, initially unchecked **Report
+  event** form only with `eventReportsEnabled` and the event setting. No title,
+  venue, roster, chat, GIF, screenshot, scan or GPS is copied into its request.
+  **Account > My event reports / withdrawal** pages own explanations/revisions/
+  expiry, with no staff notes or event detail requirement. Withdrawal captures
+  the report revision and acknowledges unchanged moderation.
+- **Administration > Typed event report cases** has typed literal notes and
+  hold/release/resolve with captured report/event/actual moderation revisions,
+  including actual zero for a first hold. ReviewContext is a separate type,
+  never normal event/membership authority. Private `contentWithheld` drops even
+  injected formerly-public definitions; no case-authorized media/roster/chat/
+  profile reads exist. The independent **Existing event holds / release only**
+  surface uses `eventModerationEnabled`, even with reporting/key unavailable.
+  Only when that flag is absent does an explicitly true legacy reporting flag
+  support the old held routes; explicit false never falls back. Release requires
+  actual existing held state and never decrypts or invents a report.
+- Holds hide normal progress, badge-collection, media and conversations/contact
+  entries; stale media is dropped on authorization/context changes. Organizers
+  can still correct definitions. A known own RSVP can be deliberately declined
+  without a detail read, accepting an acknowledged `event:null` honestly. Release
+  never restores shared progress or bypasses participation review/new consent;
+  report withdrawal, thirty-day expiry and erasure never release a hold.
+- Create/edit retains the existing meetup/group-ride, schedule/IANA timezone,
+  capacity, fixed venue/radius and exact unchanged ISO seconds/milliseconds.
+  New dates must be explicitly selected. Advertised unlisted controls send
+  `unlistedLinkConsent:true` only after deliberate consent and warn about
+  link-readable/public venue exposure. Public/unlisted-to-private local review
+  explicitly retains going/invited/organizer membership until separate removal.
+  Back/cancel performs no write or implicit GPS/progress/friend consent.
+- Native MapKit still uses actual events/roles/revisions/structural locks and
+  per-page imagery/search permission, **not** web `eventMapPlanningEnabled`.
+  Typed numeric venue/stage/guide alternatives require no imagery. Required
+  start/finish have distinct IDs even at identical loop coordinates. Optional
+  intermediates require both actual config/event gates; legacy optional/artwork
+  assignments are retained. Server published/order/progress/review locks remain
+  authoritative. Named authorized community/event-exclusive artwork is reused.
+- Event-definition and route saves now have mandatory structured **LOCAL
+  pre-save review** of their exact immutable, separate payloads: schedule/zone/
+  visibility/fixed geometry/radii/order/optional stages/rewards/artwork/consent/
+  copy retention. Only explicit confirmation writes. Back, input/account/
+  selection/access/revision changes invalidate review; late artwork is dropped.
+  Acknowledgement never overwrites newer local edits.
+- **Event > Organizer image gallery** adds explicit bounded raster staging/
+  decoded preview, caption/alt edits, complete order/first-image cover, upload
+  and removal, while reusing immutable replacement. Metadata precedes one still
+  file; 5 MB, PNG/JPEG/WebP, 20-image, 8192px/40M input and 1600px preview budgets
+  apply. No PDF/video/camera/cloud scan exists. Revision/full-order conflicts
+  retain choices; explicit cancel/reload is required. Replacement retains order/
+  cover, resets public-link approval and retires the old URL. Pending public/
+  unlisted images are labeled unpublished and never used as a published cover.
+  Account/event/role/access/mature-policy changes clear covers/requests.
+
+Current contract limits: upload appends atomically under server capacity rules,
+but its DTO has no expected-order field. Removal likewise has no server
+compare-and-swap revision/order field; native preflight pins the snapshot without
+inventing rejected fields or promising race-free DELETE. Order and replacement
+do have server full-order guards; metadata editing has an asset-revision guard.
+Uncertain acknowledgements never trigger automatic retries.
+
+**46 NEW focused XCTest fixtures prepared, ALL UNEXECUTED**:
+`LEDBackpackTests\EventGovernanceTests.swift` (23) and
+`LEDBackpackTests\EventBuilderGalleryTests.swift` (23). Existing route fixtures
+were adapted to nullable RSVP and explicit route-review inputs, not executed.
+Decoder/role/withheld/nullable/expiry/conflict/independent-release/form/
+separate-draft/geometry/media/order/late-result coverage is prepared source only.
+`project.yml` already includes both whole source/test directories; no generation
+or project/signing change is needed.
+
+**ALL validation remains UNEXECUTED:** builds, XCTest, typecheck, grammar, lint,
+CI, browser/simulator/device/visual/accessibility/media/network/radio/camera/
+sensor/receiver/firmware checks. No commits/pushes, backend edits, deployment,
+signing/provider/key/model operations or live device/server operations occurred.
+
+## Accepted-friend PHONE interactions — PURPLE/source only
+
+Active, owned accepted sessions now open **Choose / preview / arm PHONE
+interaction** in Friends > Location-powered consent. The invitation/acceptance
+controls still start no playback; each phone must separately select local media,
+choose the same supported preset and approve the kind/role/media-sharing intent.
+Manual local previews start paused and make no current-friendship or sync claim.
+They do not require a live account response or silently arm Bluetooth.
+
+The new source consumes `friendSessionPeerIdentityEnabled` and the documented
+revision-bound GET/POST participant peer-identity contract. Only the original
+start/accept login and a currently active, mutually permitted session qualify.
+Opaque hint hashes are SHA256 of the UTF8 token STRING. Keys are ephemeral
+Curve25519, public keys only go to the service, and session UUIDs are locators,
+not secrets. Immutable-role keys are erased on stop/background; there is no
+silent replacement or session renewal. This bounded UI requires a fresh accepted
+session after stopping; it does not automatically rotate an expired friend hint.
+
+The existing bounded GATT framing and encrypted exchange core now supports a
+distinct accepted-friend UUID namespace (`A7C25000...` service, `...5001` hint,
+`...5002` inbox, `...5003` outbox; shared suffix
+`9055-4916-B4FE-CE72ED134B06`). It advertises only the service UUID, then serves
+only the intended friend's short-lived hint. No friend-discoverability or GIF
+game enablement is required or synthesized. Their service endpoints/tokens,
+managers and authorization remain independent. HKDF/AES-GCM transcripts bind
+the distinct friend purpose, service origin, both account-bound keys/hints,
+nonces, main session/kind/preset/roles/revisions and unchanged expiry. Both
+participants must independently read stable hints and prove key possession;
+this is still relayable, not verified proximity.
+
+Actual phone behavior is source-wired:
+
+- Greeting plays only the owner's explicitly selected local still/GIF after
+  authenticated eligibility; that greeting is NOT transmitted.
+- Shared palettes render a matching soft 24-frame preset; duet renders
+  complementary left/right halves of a common local scene.
+- Pass-animation transfers only the session sender's separately sanitized
+  chosen GIF <=128 KiB, preserves source timing/repeats, validates the complete
+  bytes, and alternates visible/black two-second presentation legs. The
+  recipient's previous artwork is never shared. Source originals are not
+  rewritten; unsupported still transfer fails rather than converting it.
+- Encrypted matching media agreements precede media offers. Each actual local
+  scene is rendered/decoded before its explicit scene-ready acknowledgment;
+  complete validation and bilateral application-ready/ready-ack precede replacement. ATT delivery
+  alone is insufficient. The known initial original is durable before arming.
+  Friend-specific recovery readiness does NOT pretend either side enabled the
+  separate game. Only actual pass recipients enter Received swaps; public
+  protocol markers and generated scenes create no receipt or Met-friends card.
+
+Authenticated monotonic ping/pong measures RTT/offset and a stated error budget;
+RTT >600ms or inconsistent/missed scheduling fails explicitly. Shared starts
+use a four-second lead plus the server-clock expiry anchor, not GPS. Translation,
+nonce/counter replay and role/preset checks are bounded. Actual GATT latency,
+render timing and visual synchronization are UNVERIFIED, not certified sync.
+Final receipt loss can leave outcomes uncertain; no exactly-once promise.
+
+One controller leases the phone target, excluding an armed game/friend
+interaction/manual recovery race. Durable originals retain purpose/session
+association and initial bytes across replacements. An active journal from
+another purpose/session requires explicit restore first. Stop closes local
+radio/key/playback before service withdrawal, retains recovery, and never
+restores over a newer deliberate selection. Motion/data-saving/foreground and
+both hint deadlines remain gates through decode and scheduled commit. Peer Stop
+releases phone brightness/awake leases without changing their independent opt-in
+settings; explicit Play, restore or presentation action can acquire them again.
+No automatic same-encounter retrigger. No coordinates/history, progress/badges,
+private-library scans/uploads, game consent, hardware-slot or firmware writes.
+
+**24 deterministic FriendPlaybackTests fixtures prepared, ALL UNEXECUTED**:
+actual renderer/palette/duet/timing, privacy-safe pass/recipient boundaries,
+clock quality/invalid samples, purpose/key/revision/counter replay, token-string
+hash/identity/login/expiry, explicit bilateral agreement, restart/purpose-bound
+durable originals/readiness/cancellation/repeated replacement, target exclusion,
+actual phone policy/handoff/late selection, and receipt-versus-marker retention.
+The CGImage pixel encoder is shared with the existing MediaCodec path so bounded
+scene generation and GIF encoding run off-main, without duplicating encoders.
+Recovery preparation/staging methods were also lifted to repository scope so
+the shared actor exposes the actual methods used by both engines.
+
+Source changes: `LEDBackpack/` — `CommunityClient.swift`,
+`FriendPeerInteraction.swift` (new), `FriendPlaybackViews.swift` (new),
+`LEDBackpackApp.swift`, `LocationFeatureViews.swift`, `MediaCodec.swift`,
+`PhoneArtworkLibrary.swift`, `PhoneDisplay.swift`, `PhoneDisplayViews.swift`,
+`PhoneSwapGame.swift`, `PhoneSwapLocalStore.swift`, `PhoneSwapProtocol.swift`,
+`PhoneSwapRadio.swift`, `SwapRecovery.swift`, `SwapRecoveryViews.swift`;
+`LEDBackpackTests/FriendPlaybackTests.swift` (new), this README and TODO.
+
+Hardware recovery/transport, UWB/ranging, fully standalone offline paired modes,
+consolidated compile/typecheck/XCTest/grammar/CI, physical radio/permissions/
+timing/privacy verification and signing/rollout remain pending. No validation,
+camera/radio/sensor/device operation, provider/provisioning, commit/push,
+deployment or production activation occurred. Preserve PURPLE, not green.
+Independent dirty firmware and reserved slots55–59 remain untouched.
+
+## Local event policy source follow-up (final service 147a808)
+
+The bounded native invitation/progress follow-up is **source only and unvalidated**.
+Actual config+event flags gate explicit deadline controls: omission keeps the
+server's seven-day new-grant default or existing deadline/legacy null; an explicit
+future UTC timestamp up to thirty days intentionally changes a grant. Receipts
+display their actual expiry, never a locally invented default. Independent going/
+organizer access is not removed simply because an invitation expires.
+
+Event list/detail expiry uses the server clock and rechecks access. Inbox event
+navigation revalidates the exact current notice and opaque grant reference through
+the existing authorized page, not a suffix interpreted as event revision. If a
+notice moved off its captured page, navigation fails closed and asks for a refresh;
+it does not scan unrelated pages or substitute general event visibility. Card
+foreground revalidation clears unverified references while existing reconciliation
+continues. No new resolver endpoint or automatic RSVP is invented.
+
+Event detail explains shared-progress retention (event end +24h or earlier
+withdrawal), no silent extension or arrival certification, and separate private
+badge policy. The next local source slice now links organizer tools to a current
+participant/invitation roster with named current friends, bounded paging and
+explicit invite/revoke versus owner-only participant-removal confirmation.
+It is **not** a historical expired/revoked invitation ledger; the service exposes
+current state only. Fresh captured role/revision checks do not invent unsupported
+revision fields or claim atomic CAS for those endpoints.
+
+The member progress screen displays latest self-reported claims and returned
+retention deadlines, not a timeline, GPS or certified arrival. Published
+optional/required/start/finish metadata is retained; the server enforces ordering,
+actual event window and reviewed participation. Sharing defaults off, resets on
+context/revision/account/access/lifecycle changes, and never queues a replay.
+Local-only validation also withdraws prior shared state; its local checkpoint is
+memory-only. Explicit own withdrawal does not require detail/board access and
+remains available in the open screen after membership loss. Supplied permitted
+avatar metadata is optional; the existing renderer/default does not fetch another
+profile or widen permission.
+
+The separate badge source slice now supplies explicit private collection and
+owner inventory/profile-choice/hide/removal screens. Social/me and event settings
+must actually advertise `accountAwardsEnabled`; the list uses bounded owner-only
+24-row pages. Joined/checkpoint collection captures reviewed participation and
+separate consent, never a progress-sharing choice. Optional/required/start/finish/
+window/order enforcement remains server-authoritative. The UI distinguishes
+sharing requested, currently visible, currently permitted and unavailable/null
+revision. Showing requires a new captured current-version/participation-privacy
+confirmation; hiding and deletion do not require event access. Server limits of
+500 private records/12 requested profile badges are explicit, not local guesses.
+
+Collection is private by default and self-reported/uncertified; names may reveal
+participation or visits to known places. Old-version/rejoined records are never
+automatically republished. Current profile/friend DTOs may supply minimal badges,
+but normal profile AND current-event authorization remain required; friendship or
+admin role does not unlock private badges. No artwork bytes, credentials, GPS or
+arrival timeline are copied. Source consent resets and late-account guards prevent
+automatic offline replay. Hunt-specific alternate collection flows and broader
+parity remain out of scope.
+
+Twelve focused badge fixtures and twelve prior roster/progress fixtures are
+**prepared, not executed**. See [native TODO](TODO.md)
+for exact source/remaining surfaces. No Swift tests, source
+validation commands, builds or CI were executed for this source-only slice.
+Production capabilities are not inferred from the final local backend source.
+
 ## Requirements
+
+### Nearby friend discovery (local source-complete, not validated)
+
+Friends > Add friends / Look for friends has independent default-off lookup and
+discoverability. Prepare checks the existing Bluetooth usage declaration and
+allows OS permission/state preparation only; another explicit Start arms one
+five-minute foreground service session after checking its actual capability and
+current account/control revision. No automatic relaunch, background, denied-state
+or expiry restart. Global Stop all/friend/block/account hooks stop local peer work
+before captured service withdrawal. Failed/ambiguous remote acknowledgments remain
+explicitly unconfirmed, with deliberate reconciliation, not silent renewal.
+
+A separate CoreBluetooth adapter advertises only a fixed application service
+UUID, then serves the current short-lived opaque token through a read-only GATT
+characteristic. It does not assume iOS arbitrary advertisement service-data
+support, advertise names/email/account/hardware IDs, or modify backpack protocol.
+Concurrent connections, read timeouts, observation count/age, duplicate tokens
+and TTL are bounded. Transient peripheral object handles remain local; RSSI,
+coordinates, exact peer distances and encounter history are not sent, shown,
+logged or persisted. Copied fresh tokens can still be relayed: this is a hint,
+not authenticated physical proximity or distance proof.
+
+Only actually read fresh tokens are resolved through the authorized service into
+minimal named/avatar/default cards; alphabetical ordering is not distance sorting.
+An explicit request rechecks current token access and still needs recipient
+acceptance, granting no location/game/library rights. Manual invite-token/friend
+request controls remain available. The later separate QR source slice below now
+adds local generation, explicit camera scanning and authenticated inviter preview.
+Discovery does not start greetings, synchronized playback, pass-animation, UWB,
+GIF swaps or geofence scenes. Twelve fixtures are prepared, all validation is
+unexecuted; keep source status PURPLE, not green or beta-ready. Real radio,
+background/OS behavior, compilation and consolidated acceptance remain pending.
+
+### Local foreground location foundation (unvalidated source)
+
+Friends > Location-powered consent & timed sessions separates independent/mutual
+per-friend service permissions, the persisted global-stop revision, deliberate
+volatile timed-session control and actual phone sensing. Capability absence is
+unavailable. The service list/invite/accept/decline/stop controls do not establish
+proximity or start playback, games, sensors, discovery or GIF exchanges. Explicit
+Stop all first stops this foundation's local coordinator, then requests service
+revocation; remote failure is shown. A legacy service without global revocation
+can stop sessions but is not claimed to clear all per-friend flags.
+
+An authorized event's foreground local checkpoint hint requests When-In-Use
+permission only after explicit consent, and requires another explicit Start
+against fresh fixed geometry/member/review/time/version state. Actual sensing
+has a visible active/off state, a maximum sixty-second lease, no background
+request and no automatic restart/renewal after expiry, background, account,
+friend or permission changes. Reduced/denied/restricted/unavailable accuracy
+uses manual fallback. Samples are discarded; only ephemeral dwell/cooldown/
+eligibility state remains, with no coordinate storage, logs or network payload.
+
+The local hint uses <=5s freshness, <=25m usable accuracy, confidence bounds
+inside the configured radius, inner 2m entry margin, ten-second dwell and
+sixty-second cooldown. It never enlarges a radius, certifies arrival, exposes a
+peer distance/history or triggers progress/badges. Manual progress and private
+collection remain separate deliberate actions. Later source-only sections add
+phone greetings/palettes/duet/pass and the separate GIF game/recovery. Verified
+BLE/UWB/ranging/sync, hardware interactions and geofence scenes remain pending.
+Existing live-dashboard sensors are not activated by this
+foundation. Global Stop all/consent withdrawal suspends location-dependent
+dashboard sensing/rendering too, without a hardware write; its last frame may
+remain until an ordinary explicit display action. Ten deterministic fixtures are prepared, not executed;
+no build/test/grammar/CI, actual sensor/device or external operations occurred.
 
 - iOS 17 or later.
 - A compatible backpack only for Bluetooth controls; phone display works
@@ -14,6 +844,33 @@ backpacks. No vendor login, cloud database or account subscription is required.
 This is an experimental app. Background behavior and optional live features
 depend on iOS permissions, system scheduling and device compatibility.
 See the [packet protocol reference](Protocol.md) for integration details.
+
+The supplied firmware research adds conservative local protocol refinements:
+live-drawing type/length semantics are explicit with unchanged bounded wire
+bytes, and complete slot metadata distinguishes an absent resource from the
+firmware's occupied-but-unavailable sentinel. Unavailable identifiers cannot
+match cached thumbnails or now-playing artwork; acknowledged uploads warn
+instead of associating an unknown key. Full metadata participates in overwrite/
+erase confirmations. This does not add firmware flashing, readback or new
+device commands. These new fixtures await resumed Swift/Mac validation; the
+current backend-handoff/Mac-CI pause and production settings remain unchanged.
+
+The full-report follow-up adds source-timing-preserving GIF previews/editor/export
+(including pauses over ten seconds), immutable single/batch upload compatibility
+review and explicit consent before overwrites, repeat-preserving batch fitting,
+and optional 64/8-color live bandwidth modes with full RGB unchanged by default.
+Firmware evidence is read-only and model/revision-specific; rotation displays
+wire codes instead of guessed degrees. The [protocol coverage table](Protocol.md)
+records every research area and why incomplete storage/update/GPIO findings are
+not enabled as app controls. Focused fixtures are prepared; only offline
+validation is authorized while Swift/Mac/device work remains paused.
+
+The subsequent recovered OTA document now has a narrow offline inspection tool
+under Backpack. It checks the whole MV container and hashes, model/revision
+provenance and supplied decimal checksum, then displays a never-transmitted
+packet plan. **It cannot flash.** The vendor ArrayBuffer/MD5 ambiguity, duplicate
+handling, reboot/recovery and actual device acceptance are unresolved. No vendor
+credential/download, BLE send, automatic downgrade or firmware image is bundled.
 
 ## Navigation and library
 
@@ -331,7 +1188,8 @@ opening/closing/changing phone artwork never writes a slot or stops hardware
 playback. Library thumbnails remain artwork-only. The full-screen phone player
 fits portrait/landscape geometry with a black background and crisp interpolation;
 tap artwork to hide/show controls, pause/play, choose local library artwork or
-open a PNG/JPEG/WebP still/GIF file. Brightness is not modified.
+import a PNG/JPEG/WebP still/GIF original. Brightness stays unchanged unless the
+separate phone-only override is explicitly enabled; it never uses panel controls.
 The launcher and player chrome reuse Aurora headings, mint/lavender/rose accents,
 glass surfaces and primary buttons. Only the controls fade, respecting Reduce
 Motion; no glow/filter/tint is applied to the full-screen artwork itself.
@@ -352,17 +1210,277 @@ frames are released when not viewing; retained original
 local bytes support resume. Reduced Motion initially shows a still; explicit
 Play permits animation. **Keep screen awake** is opt-in (also useful for stills)
 only while the foreground phone display is visible, and restores the previous
-idle-timer setting on background, picker entry, exit or disabling it. No screen
-brightness writes, background playback task, account/network request or BLE
-packet is needed. Opened files are not edited or automatically added to Library.
+idle-timer setting on background, picker entry, exit or disabling it. The optional
+phone brightness lease separately captures/restores the prior screen value on
+background/visibility loss, error or exit; it never forces maximum brightness.
+No background playback task, account/network request or BLE packet is needed.
+Imported files are copied byte-for-byte into the separate private local phone
+originals library (100 files /100 MB, each <=5 MB), with distinct IDs even for
+identical copies; source files are never rewritten. The original GIF library
+remains selectable without conversion.
 
-`PhoneDisplaySnapshot` is an internal, self-contained Codable local checkpoint:
-original bytes/source ID, elapsed phase, play intent, explicit motion override
-and keep-awake preference. Restore validates before replacing the current
-artwork, so failed loads do not lose the original. This is not a swap wire
-protocol, automatic persistence, a crash-recovery journal or a received-art
-collection. Future automatic GIF Swap must implement/prove those separately;
+The current beta-critical source follow-up moves phone file reads, decoding and
+library persistence to cancellable workers/actor storage. Selection is committed
+only after validation, with generation/foreground/visibility guards; corrupt,
+unsupported or resource-exhausting media leaves previous bytes/state retained.
+Decoded previews are immutable, bounded and released offscreen. Two bounded
+previews can coexist during an atomic selection; no unbounded phone cache is added.
+Black aspect-fit portrait/landscape rendering offers optional nearest-neighbor
+pixels and a bounded grid only when individual pixels are visible. Animation
+allow/data-saving still controls stop play until another explicit Play; source
+centiseconds/repeats remain unchanged. New selections and cold starts are paused.
+
+Library's explicit Phone/Backpack target selector only changes local target
+selection. Hardware staging and panel playback remain separate from retained phone
+bytes/playhead; switching targets does not send anything. Without connection the
+hardware UI says unavailable, while phone display still works. Backpack Bluetooth
+manager creation is now lazy until an explicit hardware operation, without
+changing framing, slots, caching, firmware or reserved55–59 semantics. Existing
+separately opted-in account/cloud tools retain their own gates; opening/selecting/
+playing phone originals never invokes them.
+
+`PhoneDisplaySnapshot` retains original bytes/source ID, elapsed phase, play intent,
+explicit motion override, awake/brightness and presentation policies. Restore
+validates before replacing current artwork, so failed loads do not lose it.
+The later recovery-first source now persists this snapshot through the separately
+bounded journal below. It is not a swap wire protocol or automatic exchange;
 phone snapshots do not contain or require a peripheral/slot.
+
+Current changes are PURPLE/source-only: twelve new deterministic offline
+decoder/state/target/brightness/import fixtures and adapted prior phone fixtures
+are prepared, not executed. Prior Mac results apply only to prior source, not
+this asynchronous player/library/target follow-up. Consolidated compilation,
+physical orientation/accessibility/lock/file-picker/lease restoration and beta
+rollout remain separate gates. Actual exchange/met-friend state and hardware recovery remain later scopes.
+
+### Recovery-first local swap preparation — PURPLE/source only
+
+Phone library > Recovery first / Received swaps has an actual local prepare and
+**Restore my original phone artwork** action. Before anything could replace
+artwork, preparation captures exact original still/GIF bytes, timing/repeats,
+source ID/available attribution, monotonic playhead/frame, paused/play intent,
+phone presentation/awake/brightness policies and explicit target association.
+The owned app directory holds one schema-1 atomic file envelope with SHA-256
+integrity, installation/account-or-local scope and bounded bytes. Integrity is
+local corruption detection, not a peer signature or encrypted transfer protocol.
+Preparation reads it back before confirming; it never alters displayed artwork.
+
+Restart/disconnect does not auto-restore or start a game. The phone launcher
+detects a retained original when opened, and recovery inspection shows exact
+stage with explicit target/account checks. A corrupt/incomplete/version/identity/
+target mismatch fails without resetting the file. Restore validates the original,
+marks restoring durably, changes only the phone player, verifies the restored
+bytes/frame/source/play intent, then acknowledges restoration atomically.
+The original is **not deleted**, including after acknowledgment; a new prepared
+record can replace only an acknowledged record after a local 60s cooldown.
+Cancellation keeps recovery required. A newer manual phone choice is replaced
+only by the explicit restore confirmation, never on a background/account callback.
+
+Hardware automatic replacement is unavailable: staged selection, slot number,
+hash or unknown/all-01 metadata alone cannot recover original bytes or scheduling.
+No backpack protocol/cache/reserved55–59 change or physical command was added.
+Future hardware exchange needs reliably recoverable original bytes/playback and
+the actual matching device/full20 descriptor before it can even be considered.
+No current screen claims that requirement is met.
+
+The future-application policy requires one durable prepared original, complete
+bounded validated incoming bytes, matching local transaction/session/account
+epoch, unexpired state and **both peers' independent explicit game-enable and
+ready acknowledgments**. Cancellation/expiry/cooldown cannot grant replacement.
+The recovery tool itself models prerequisites and starts no peer transfer.
+The later phone-only game source below now supplies separate operational game
+consent, authenticated transfer, apply and local minimal Met cards. Synchronized
+scenes and hardware exchange remain unavailable. Discovery/friendship/OS
+permission cannot enable a game.
+
+Received swaps is a separate owned local collection (20 originals/50MB, <=5MB
+each) with immutable transaction-scoped receipts, payload validation and supplied
+attribution. Preview is isolated from the live phone target, initially still,
+foreground/reduced-motion aware; explicit Save creates an independent phone-library
+copy and Remove touches only that received record. Manual import is clearly
+labeled **not a verified peer transfer or encounter**. Exact receipt IDs dedupe
+only their transaction; identical private images in other transactions remain
+separate. No peer paths, cloud/private-library scan/upload, global content dedup,
+location or encounter timeline is stored.
+
+Fourteen deterministic recovery/restart/corruption/wrong-target/consent/readiness/
+receipt/restore fixtures are prepared, all validation unexecuted. Source-complete
+PURPLE does not mean safe automatic exchange, hardware recovery or beta readiness.
+
+### Actual phone-only automatic GIF game — PURPLE/source only
+
+The phone-library launcher now has a separately consented automatic game. Actual
+`gifSwapPresenceEnabled` and current authenticated `/social/swap-presence` key/
+consent state are mandatory; friend discoverability is never a fallback. Explicit
+Enable registers a new volatile Curve25519 public key, captures Stop-all revision,
+retains the initial exact original durably, and opens the phone canvas. The
+explicit risk disclosure covers automatic display/sharing of the currently chosen
+GIF (including private-origin artwork), minimal service name/card, retained
+recipient copies and unexpected mature/offensive images. There is no per-encounter
+popup; enabling the game, not friendship/discovery/OS permission, supplies consent.
+Requests-disabled strangers may play without changing request preferences.
+
+The implementation uses a purpose-separated fixed game service
+`E28D4000-5B96-4B65-AD2E-E2156EA61621`, token read `.4001`, acknowledged-write
+inbox `.4002` and notify outbox `.4003` with the same suffix. It reuses existing
+bounded token-read/decoder policies but deliberately owns independent radio
+managers from friend discovery and never touches backpack GATT. Advertising uses
+only the fixed service UUID, no unsupported iOS service-data/name/stable IDs.
+Friend/game stop controls remain independent; global stop, account, permission
+loss and background close both as appropriate. Actual dual-manager coexistence/
+advertising on iOS is unverified and errors are explicit, not silently merged.
+
+Both sides independently read/resolve each other's **game** token before trusting
+the service-returned account/key/card. A peer-supplied name, account claim or hello
+token is not substituted for an observation. Deterministic initiator role and
+fresh nonces bind origin, session, both accounts, token/key pairs and roles into
+one transcript. X25519 possession proof, HKDF-SHA256 directional keys and AES-GCM
+with transcript/role/counter AAD protect bounded application messages. Strict
+counters reject reflection/replay/out-of-order frames; ephemeral private keys,
+tokens and radio identifiers are never persisted. This trusts the service binding
+and does **not** claim verified proximity, anti-relay or audited E2EE.
+
+Current scope intentionally accepts GIFs <=128KiB, not covert still conversion.
+A separately constructed outgoing copy strips comments/non-loop application/
+trailing metadata while retaining compressed image blocks, graphic controls,
+centiseconds/repeats. Unsupported rendering extensions fail rather than silently
+alter the source. Safe author/license credit is retained; source/private URLs
+and credentials are not transmitted. The original remains unchanged and is the
+recovery source. Complete incoming bytes must pass length/hash/sanitized-GIF/
+resource/composition validation. Malformed, duplicate/out-of-order chunks and
+unavailable current authorization fail closed, never falling back to unverified
+offline identity.
+
+Actual GATT framing is versioned, bounded and backpressured: <=4096-byte outer
+frames, <=512-byte media chunks, <=32 queued application frames, acknowledged
+characteristic writes or ready-to-update notify flow. A 45-second exchange bound
+and token expiry stop work. ATT success is **not** a ready acknowledgment.
+Both peers send application payload-ready and matching ready-ack after full
+validation; current service consent/key/access is rechecked before apply.
+The shared owned recovery actor records the next replacement before only the
+expected-generation phone canvas can change. Initial original bytes/playback
+remain across consecutive swaps, with a 60-second cooldown and no same-account
+ping-pong within an armed game. Other target/new manual selection invalidates
+ownership. Paused/motion/data-saving/brightness/awake choices are not forced.
+
+Final application receipts distinguish locally applied from peer-acknowledged
+application; disconnect/lost acknowledgment is uncertain, not exactly-once.
+Stopping/failure erases keys, stops local radio first, and retains explicit
+original recovery. The phone control overlay exposes Stop/restore. Restore
+requires the known original/current target/account and cannot automatically
+overwrite a newer manual selection. Token rotation is only within the original
+armed end/key, between exchanges; expiring transfers stop rather than mutate
+their transcript or extend consent. Lost arm/rotation acknowledgment has explicit
+current-login reconciliation/withdrawal, no automatic retry/restart.
+
+Validated received GIFs use the separate Received swaps collection with normal
+explicit Save/remove. Minimal account-scoped local Met cards persist only ID,
+display name and request availability—not keys/tokens/peripheral IDs/RSSI,
+meeting time, coordinates, distance or a synced encounter history. Cards say
+**Not friends yet**, have default initials/no avatar/profile grant, and expose
+explicit current-service request, local dismissal and block. Existing relationships
+remain service-authoritative; games never create friendship automatically.
+The later purpose-specific peer-incident source below now supplies deliberate
+game/Met/owner/admin controls against the new private endpoint. Message/event/
+catalog reports are not repurposed, no success is faked and no private artwork
+is copied to administrators.
+
+Friend-nearby start now consumes `nearbyDiscoveryControlRevisionEnabled` and
+returned `locationControlsRevision`, sending the captured `expectedControlsRevision`.
+Advertised revision control never silently defaults to zero. Omission retains
+only genuinely pre-stop legacy behavior; stale/missing post-stop captures fail.
+
+Eighteen new deterministic service/codec/crypto/transfer/consent/replay/bounds/
+recovery/late-account fixtures are prepared; **all validation is unexecuted**.
+No radio, physical peer transfer, cryptographic interoperability, consolidated
+compile/test, background, signing or beta-readiness result is claimed. Hardware
+exchange, UWB/ranging, synchronized scenes and production activation remain
+unsupported/deferred. Peer reports are separately source-coded below, unvalidated.
+
+### Private peer-incident controls — PURPLE/source only
+
+The new purpose-specific backend source (`f485ee6` plus local documented
+refinements, UNVALIDATED) enables deliberate report selection from an authenticated
+game peer or retained minimal Met card. The selected ID/name is copied into an
+immutable current reporter/catalog/account-epoch/role context before stopping
+the game. Stop alone does not erase that explicit selection. Account/server/
+role/view changes cancel drafts and reject late results. No untrusted peer-wire
+name/ID or arbitrary target-profile lookup is used to substantiate an allegation.
+
+The explanation starts blank, category is explicit and consent unchecked.
+Only claimed UUID/category/trimmed1–1000UTF16 explanation/consent is submitted;
+no automatic GIF/bytes/hash/screenshot/chat/URL/location/scan/encounter metadata
+is copied. Unknown valid claimed identifiers are not confirmed as accounts.
+All report/receipt/review DTOs require **claimVerified:false**; resolved/reopened
+does not certify misconduct, identity, proximity, an encounter or account existence.
+Create/review never takes an account action. Ordinary local Stop/block/remove
+controls remain independent.
+
+Account > My private peer incidents provides 24-row owned description pages and
+an explicitly selected **metadata-only withdrawal mode**. The independent
+`peerIncidentWithdrawalEnabled` route works without a usable description key,
+game/friendship/event access or even the general social-feature flag. It only
+authorizes peer-reports receipts/withdrawal, not another social/profile endpoint.
+Expired rows awaiting cleanup can still be withdrawn at their exact captured
+revision. `descriptionsIncluded:false` is required; receipts reject explanation/
+category/ciphertext/review fields. Key loss disables description/create/review,
+not a fake empty successful list. A conflict retains captured revision intent
+until an explicit reload/reselection, never automatic retry or rebase.
+
+Current global administrators have a separate retained-case pager and captured
+revision resolve/reopen review with a deliberately typed1–1000UTF16 staff note.
+Only staff receive reporterId/latest review; owner DTOs reject staff fields.
+Notes and explanations render as literal text. Admin role/key loss discards
+private visible data/drafts; no private target profile/media/general-chat or
+ban/block grant is obtained. Staff review still requires accountActionTaken:false.
+
+Server-relative read clocks only label case creation/retention, not arrival or
+meeting time. Description reads stop at exactly30days; receipts/known withdrawals
+remain independent while bounded500-case cleanup catches up. UI discloses100/account,
+5000global,20write/120read quotas and by/about account erasure; no forensic
+journal/backup erasure claim. Existing authenticated request-proof and expected-
+account guards are reused; no key/provider is provisioned or bypassed.
+
+Sixteen deterministic DTO/selection/consent/UTF16/revision/keyless/late-account/
+ownership/current-role/expiry fixtures are prepared, all validation unexecuted.
+These source screens and the new backend source are not covered by prior passing
+test totals. Consolidated compilation/tests, actual privacy/role/key-loss/
+retention/visual/device behavior and deployment remain separate acceptance gates.
+
+### Friend invitation QR / camera parity — PURPLE/source only
+
+Friends & profile and Add friends / Look for friends now link to **My friend QR /
+Scan / Manual invite**. Explicit Create obtains a revocable 15-minute invite;
+CoreImage renders its configured-origin `/social#invite=TOKEN` locally, never
+through an external QR service. Only that fragment token is shared: no credentials,
+private-library keys, coordinates or profile metadata. Deadlines use server time;
+own Revoke hides the QR/link immediately and calls the owner endpoint. Creating
+another invitation is not claimed to revoke older invitations automatically.
+
+Explicit Scan is the only camera entry. The actual `Info.plist` camera description
+was extended; the scanner checks it before requesting permission, handles
+denied/restricted/unavailable states with meaningful errors and keeps manual
+link/token input available. AVFoundation capture/setup/stop runs on an owned serial
+queue, with a dismissal race guard; background, permission change, dismissal and
+account change stop scanning without restart. No camera was initialized or used
+while preparing this source/fixtures.
+
+Scanned/pasted input accepts only a canonical token or exact configured catalog
+HTTPS `/social#invite=TOKEN`, rejecting foreign origins, userinfo, query/path/
+encoding tricks, other-purpose QR data and oversized input. Consumed fragments
+are removed from native text/navigation state; tokens/previews remain memory-only,
+never logs/backups. Authenticated preview returns only name/ID/expiry/eligibility.
+It does not look up avatars, unlock profiles or send a request. Another explicit
+confirmation rechecks exact inviter/expiry/revocation/account before consuming
+the invite to request friendship. Recipient acceptance/existing friendship
+remains separate; no automatic accept, location/discovery/game/library grant.
+Cancellation invalidates late work. Native universal-link OS association/rollout
+is not provisioned; camera/manual paste works without claiming that integration.
+
+Twelve deterministic decoder/link-safety/preview/cancellation/camera-policy/
+late-account/owned-revocation fixtures are prepared, not executed. Actual camera/
+permission/readability/expired-link/physical workflow and consolidated compilation
+remain pending. No peer transfer or new game API was started.
 
 See [native TODO](TODO.md). Focused tests are prepared, not executed; native
 compilation/XCTest, real-device timing/lifecycle/idle-timer and orientation/
@@ -468,7 +1586,8 @@ source-only private badges/gallery/chat work. This native slice is source work,
 not an iOS compile, device-validation or deployment claim.
 
 An event owner can open **Event > Plan venue route & checkpoints**. Event details
-use a MapKit fixed-venue editor instead of numeric-coordinate entry. Place/address
+use a MapKit fixed-venue editor with explicit numeric alternatives in the new
+PURPLE event source follow-up above. Place/address
 search and tap/drag placement choose the venue; circle-edge taps and accessible
 radius controls choose activation radius. Event type selection never invents a
 route/GPS permission, and unchanged date controls preserve original ISO seconds
@@ -500,7 +1619,9 @@ Protected choices require both actual exclusive capabilities and the event
 `exclusiveArtworkReferences` setting, scoped authenticated previews and the
 asset/event path context. Missing/withdrawn opaque references show unavailable,
 must be cleared/replaced explicitly, and never fall back to community content.
-No gallery upload/reordering, publication or private-vault operation is added.
+That original checkpoint added no gallery upload/reordering or publication.
+The new PURPLE event source follow-up above adds organizer gallery controls;
+neither slice scans or publishes private-vault contents.
 
 Each draft captures the original revision immutably. Background checks only
 update permission/conflict information, not draft fields. Saves preflight the
@@ -660,7 +1781,8 @@ Send queue > Add local GIFs** to select several artwork tiles. The queue retains
 up to 60 entries in schema-1 local storage/backups; repeated source IDs and
 byte-identical independent files are allowed. This is not content deduplication.
 Reorder entries with Edit and assign distinct destination slots. Automatic
-assignment uses empty ordinary slots (2–59); reserved slots 0/1 require an
+assignment uses empty ordinary slots (2–54); reserved slots 0/1 and future-feature
+slots 55–59 require an
 explicit selection. Review pins the device, dimensions and complete inventory.
 Replacing occupied slots requires typing `OVERWRITE`; local/cloud files remain.
 

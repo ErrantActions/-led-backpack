@@ -53,6 +53,7 @@ struct RootView: View {
     @EnvironmentObject private var library: LocalLibrary
     @EnvironmentObject private var vault: CloudVaultStore
     @EnvironmentObject private var phone: PhoneDisplayController
+    @EnvironmentObject private var targets: DisplayTargetSelection
     @EnvironmentObject private var apple: NativeApplePushCoordinator
     var body: some View {
         TabView(selection: $app.selectedTab) {
@@ -77,6 +78,7 @@ struct RootView: View {
         .fullScreenCover(isPresented: Binding(get: { phone.presented }, set: { if !$0 { phone.dismiss() } })) {
             PhoneDisplayView()
         }
+        .onChange(of: targets.target) { _, target in if target == .hardware { phone.dismiss() } }
         .sheet(isPresented: Binding(get: { apple.destination != nil && !phone.presented }, set: { if !$0 { apple.clearDestination() } })) {
             if let destination = apple.destination {
                 NavigationStack {
@@ -231,6 +233,7 @@ struct LibraryView: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var vault: CloudVaultStore
     @EnvironmentObject private var phone: PhoneDisplayController
+    @EnvironmentObject private var targets: DisplayTargetSelection
     @StateObject private var cloud = CloudLibraryStore()
     @State private var scope = LibraryScope.all
     @State private var cloudSelection: CommunityCloudItem?
@@ -364,6 +367,18 @@ struct LibraryView: View {
 
     private var libraryHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Picker("Display target", selection: $targets.target) {
+                ForEach(NativeDisplayTarget.allCases) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented)
+            Text(targets.target == .phone ?
+                "Phone target: local, account-free, no Bluetooth or slot writes." :
+                (app.link.connected ? "Backpack target: transfers still require explicit confirmation. Phone artwork is retained." :
+                    "Backpack controls unavailable: connect explicitly. Phone display still works offline."))
+                .font(.caption).foregroundStyle(.secondary)
+            if targets.target == .hardware, let id = targets.hardwareArtworkID,
+               let media = library.state.media.first(where: { $0.id == id }) {
+                Text("Retained hardware selection: \(media.name). Switching targets does not send it.").font(.caption)
+            }
             LibraryScopeControl(selection: $scope)
             NavigationLink { PhoneDisplayLibraryView() } label: {
                 Label("Phone display", systemImage: "iphone")
@@ -631,10 +646,13 @@ struct LibraryView: View {
                 attribution = item.attribution; editorCategory = item.category
                 editorName = "\(item.name) edited"; editor = true
             }
-        case .send: selected = item; uploading = true
+        case .send: targets.stageHardware(item.id); selected = item; uploading = true
         case .phone:
-            do { try phone.show(library.data(item), mediaID: item.id) }
-            catch { phone.report(error) }
+            targets.target = .phone; phone.cancelPendingSelection()
+            Task {
+                do { try await phone.showLocalFile(library.phoneOriginalURL(item), mediaID: item.id) }
+                catch { if !Task.isCancelled { phone.report(error) } }
+            }
         case .enqueue: app.run { try library.enqueue([item.id]) }
         case .share:
             if !community.signedIn { pendingCloudSave = item; showAccount = true }

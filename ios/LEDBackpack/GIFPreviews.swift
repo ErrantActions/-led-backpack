@@ -3,7 +3,8 @@ import ImageIO
 import UniformTypeIdentifiers
 import BackpackProtocol
 
-final class GIFPreview: NSObject {
+// Frames and timing are immutable; workers only create images, and views consume them on MainActor.
+final class GIFPreview: NSObject, @unchecked Sendable {
     let frames: [UIImage]
     let duration: Double
     let frameEnds: [Double]
@@ -25,7 +26,6 @@ final class GIFPreview: NSObject {
     }
 }
 
-@MainActor
 enum GIFPreviewDecoder {
     static func validateOriginal(_ data: Data) throws {
         guard try originalFrameCount(data) <= 120 else {
@@ -70,10 +70,16 @@ enum GIFPreviewDecoder {
             throw BackpackError.invalid("This image cannot be previewed.")
         }
         try checkDimensions(source)
+        if phone {
+            guard let raw = CGImageSourceGetType(source), let type = UTType(raw as String),
+                  [.gif, .png, .jpeg, .webP].contains(type) else { throw BackpackError.invalid("Phone display supports GIF or PNG/JPEG/WebP stills only.") }
+        }
         let count = CGImageSourceGetCount(source)
         guard (1...1200).contains(count) else {
             throw BackpackError.invalid("The preview supports 1 to 1200 frames.")
         }
+        let structure = GIFStructure.isGIF(data) ? try GIFStructure.inspect(data) : nil
+        guard structure == nil || structure?.frames.count == count else { throw BackpackError.invalid("GIF preview timing/image frame counts do not match.") }
         if phone && count > 1 {
             guard let type = CGImageSourceGetType(source), type as String == UTType.gif.identifier else {
                 throw BackpackError.invalid("Use GIF for phone animations; other supported images must be stills.")
@@ -96,6 +102,10 @@ enum GIFPreviewDecoder {
         ]
         for index in 0..<count {
             try Task.checkCancellation()
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [String: Any] ?? [:]
+            guard let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
+                  let height = properties[kCGImagePropertyPixelHeight as String] as? Int,
+                  (1...4096).contains(width), (1...4096).contains(height) else { throw BackpackError.invalid("A frame exceeds the bounded phone/preview dimensions.") }
             guard let image = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else {
                 throw BackpackError.invalid("Could not decode the GIF preview.")
             }
@@ -104,14 +114,7 @@ enum GIFPreviewDecoder {
             guard cost <= costLimit else {
                 throw BackpackError.invalid("The animation exceeds the preview memory budget.")
             }
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [String: Any] ?? [:]
-            let gif = properties[kCGImagePropertyGIFDictionary as String] as? [String: Any] ?? [:]
-            let delay = gif[kCGImagePropertyGIFUnclampedDelayTime as String] as? Double
-                ?? gif[kCGImagePropertyGIFDelayTime as String] as? Double ?? 0.1
-            guard delay.isFinite, (0...(phone ? 655.35 : 10)).contains(delay) else {
-                throw BackpackError.invalid("The preview has unsupported frame timing.")
-            }
-            delays.append(Double(max(phone ? 1 : 2, Int((delay * 100).rounded()))) / 100)
+            delays.append(structure?.frames[index].previewDelay ?? 0.1)
         }
         var cycles: Int?
         if phone {

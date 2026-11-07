@@ -38,11 +38,13 @@ private struct EventRoutePlannerContent: View {
     @State private var fit = UUID()
     @State private var localFailure: String?
     @State private var artworkTarget: PlannerArtworkTarget?
-    @State private var saveReview = false
+    @State private var saveReview: NativeEventRouteReview?
     @State private var discardReview = false
     @State private var reloadRevision = 0
     @State private var reviewingServer: CatalogEvent?
     @State private var loaded = false
+    @State private var numericLatitude = ""
+    @State private var numericLongitude = ""
     private var editable: Bool { !store.readOnly && !store.conflict && !store.saving && !session.denied }
     private var structureEditable: Bool { editable && !store.structureLocked }
     private var pins: [OrganizerMapPin] {
@@ -98,6 +100,26 @@ private struct EventRoutePlannerContent: View {
                             }.font(.caption).padding(16).glassPanel()
                         }
                         mapPanel(draft)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Numeric fixed points (no maps/search needed)").font(.headline)
+                            TextField("Explicit decimal latitude", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
+                            TextField("Explicit decimal longitude", text: $numericLongitude).keyboardType(.numbersAndPunctuation)
+                            HStack {
+                                Button("Add start") { addNumeric(.start) }
+                                Button("Add intermediate") { addNumeric(.checkpoint) }
+                                Button("Add finish") { addNumeric(.finish) }
+                            }
+                            Button("Move selected stage / guide to typed coordinates") {
+                                do { move(selected, try NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude)) }
+                                catch { localFailure = error.localizedDescription }
+                            }
+                            Button("Add typed guide point") {
+                                edit(structural: true) {
+                                    guard $0.geometry.count < 200 else { throw BackpackError.invalid("Use at most 200 guide points.") }
+                                    $0.geometry.append(EventGeometryPoint(point: try NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude)))
+                                }
+                            }
+                        }.padding(16).glassPanel().disabled(!structureEditable)
                         checkpointPanel(draft)
                         geometryPanel(draft)
                         rewardsPanel(draft)
@@ -107,7 +129,7 @@ private struct EventRoutePlannerContent: View {
                             Text("Publishing requires exactly one start first and one finish last. Guide lines are organizer-authored, not navigation or a safe-routing promise. Claims/rewards remain self-reported, not certified attendance.")
                                 .font(.caption).foregroundStyle(.secondary)
                             Button("Review and save route") {
-                                do { try draft.body.validate(); saveReview = true } catch { localFailure = error.localizedDescription }
+                                do { saveReview = try NativeEventRouteReview(draft) } catch { localFailure = error.localizedDescription }
                             }.buttonStyle(AuroraPrimaryButton())
                                 .disabled(!editable || session.busy || store.loadingArtwork || (store.structureLocked && !draft.fixedGeometryMatchesOriginal))
                             Button("Refresh permissions / compare revision") { store.refreshPermission() }.disabled(session.busy)
@@ -127,18 +149,21 @@ private struct EventRoutePlannerContent: View {
                 guard phase == .active else { return }
                 while !Task.isCancelled {
                     do { try await Task.sleep(for: .seconds(30)) } catch { return }
-                    if !saveReview && !discardReview && reviewingServer == nil && !session.busy { store.refreshPermission() }
+                    if saveReview == nil && !discardReview && reviewingServer == nil && !session.busy { store.refreshPermission() }
                 }
             }
             .onChange(of: session.busy) { _, busy in if !busy { store.operationEnded() } }
             .onChange(of: session.denied) { _, denied in if denied { store.clear(); artworkTarget = nil; reviewingServer = nil; imagery = false } }
-            .onChange(of: store.readOnly) { _, value in if value { artworkTarget = nil; reviewingServer = nil; imagery = false } }
+            .onChange(of: store.readOnly) { _, value in if value { artworkTarget = nil; reviewingServer = nil; imagery = false; saveReview = nil } }
+            .onChange(of: store.conflict) { _, value in if value { saveReview = nil; artworkTarget = nil } }
+            .onChange(of: session.failure) { _, value in if value != nil { saveReview = nil } }
+            .onChange(of: routeFingerprint) { _, _ in saveReview = nil }
             .onChange(of: community.accountRevision) { _, _ in store.clear(); dismiss() }
             .onChange(of: community.user?.id) { _, id in if id != session.client?.accountID { store.clear(); dismiss() } }
             .onChange(of: community.config?.eventsEnabled) { _, value in
                 if value != true { artworkTarget = nil; store.clear(); imagery = false; dismiss() }
             }
-            .onDisappear { if artworkTarget == nil && reviewingServer == nil { store.clear() } }
+            .onDisappear { if artworkTarget == nil && reviewingServer == nil && saveReview == nil { store.clear() } }
             .sheet(item: $artworkTarget) { target in
                 if let client = session.client, let event = store.draft?.original {
                     RouteArtworkPicker(client: client, event: event) { choice in
@@ -171,14 +196,20 @@ private struct EventRoutePlannerContent: View {
                         .toolbar { Button("Done") { reviewingServer = nil } }
                 }
             }
-            .confirmationDialog("Save this captured route revision?", isPresented: $saveReview) {
-                Button("Save route at revision \(store.draft?.original.revision ?? 0)") {
-                    store.save { dismiss(); saved() }
+            .sheet(item: $saveReview) { captured in
+                EventRouteReviewView(captured: captured, back: { saveReview = nil }) {
+                    guard editable, captured.matches(store.draft) else { saveReview = nil; return }
+                    store.save(captured: captured) { saveReview = nil; dismiss(); saved() }
                 }
-            } message: { Text("Schedule/venue/route/artwork changes may require going participants to review again. This save never shares participant progress or enables GPS.") }
+            }
             .confirmationDialog("Discard local route edits?", isPresented: $discardReview) {
                 Button("Reload reviewed revision \(reloadRevision)", role: .destructive) {
                     store.reloadDiscardingDraft(reviewedRevision: reloadRevision); fit = UUID()
+                }
+                private var routeFingerprint: Data? {
+                    guard let draft = store.draft else { return nil }
+                    let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+                    return try? encoder.encode(draft.body.normalized())
                 }
             } message: { Text("Only the version you reviewed is loaded. A newer unseen revision requires another review.") }
         }
@@ -220,6 +251,19 @@ private struct EventRoutePlannerContent: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(checkpoint.order + 1) / \(checkpoint.kind.rawValue.capitalized)").font(.caption).foregroundStyle(Aurora.mint)
                     TextField("Checkpoint name", text: checkpointText(checkpoint.id)).disabled(!structureEditable)
+                    if checkpoint.kind == .checkpoint, session.client?.eventOptionalCheckpointsAvailable == true,
+                       draft.original.settings?.optionalCheckpointsEnabled == true {
+                        Toggle("Optional stage — may be skipped", isOn: Binding(get: {
+                            store.draft?.checkpoints.first(where: { $0.id == checkpoint.id })?.optional == true
+                        }, set: { optional in
+                            edit(structural: true) {
+                                guard let index = $0.checkpoints.firstIndex(where: { $0.id == checkpoint.id }) else { throw BackpackError.invalid("Stage selection changed.") }
+                                $0.checkpoints[index].optional = optional
+                            }
+                        })).disabled(!structureEditable)
+                    } else if checkpoint.optional == true {
+                        Text("Existing optional assignment retained; editing is not advertised by this server.").font(.caption)
+                    }
                     Stepper("Radius \(Int(checkpoint.radiusMeters))m", value: checkpointRadius(checkpoint.id), in: 1...100000, step: 5)
                         .disabled(!structureEditable)
                     artworkButton(checkpoint.artwork, target: .checkpoint(checkpoint.id))
@@ -313,6 +357,11 @@ private struct EventRoutePlannerContent: View {
             case .radius:
                 guard let index = value.checkpoints.firstIndex(where: { "c:\($0.id)" == selected }) else {
                     throw BackpackError.invalid("Select a checkpoint pin before placing its circle edge.")
+                }
+                private func addNumeric(_ kind: EventCheckpointKind) {
+                    edit(structural: true) {
+                        try $0.addCheckpoint(kind, at: NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude))
+                    }
                 }
                 let center = value.checkpoints[index].point
                 let radius = MKMapPoint(CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude))

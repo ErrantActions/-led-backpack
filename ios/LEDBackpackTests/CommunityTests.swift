@@ -244,6 +244,75 @@ final class CommunityTests: XCTestCase {
         XCTAssertTrue(vault.values.isEmpty)
     }
 
+    func testInflightLoginCannotReestablishAForgottenLocalSession() async throws {
+        let vault = CommunityMemoryVault(), stub = DeferredCommunityStub()
+        let service = client(stub, vault: vault)
+        let operation = Task { try await service.signIn(email: "test@example.org", password: "example test password") }
+        await stub.waitForRequest()
+        try service.forgetLocalSession()
+        await stub.finish(login())
+        do { try await operation.value; XCTFail("Forgotten session must reject an older login") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("account changed")) }
+        XCTAssertFalse(service.signedIn)
+        XCTAssertTrue(vault.values.isEmpty)
+    }
+
+    func testInflightLoginCannotReplaceANewerAccountOnTheSameServer() async throws {
+        let vault = CommunityMemoryVault(), stub = DeferredCommunityStub()
+        let service = client(stub, vault: vault)
+        let operation = Task { try await service.signIn(email: "test@example.org", password: "example test password") }
+        await stub.waitForRequest()
+        let newer = CommunityUser(id: UUID(), email: "new@example.org", displayName: "New account",
+            role: "user", verified: true, authMethods: nil)
+        try service.establishSession(CommunityLogin(user: newer, token: token, expiresAt: "2099-01-01T00:00:00Z"))
+        let saved = vault.values["session|\(root)"], revision = service.accountRevision
+        await stub.finish(login())
+        do { try await operation.value; XCTFail("Older login must not replace a newer account") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("account changed")) }
+        XCTAssertEqual(service.user?.id, newer.id)
+        XCTAssertEqual(service.accountRevision, revision)
+        XCTAssertEqual(vault.values["session|\(root)"], saved)
+    }
+
+    func testInflightConfigIsDiscardedAfterSameOriginReload() async throws {
+        let stub = DeferredCommunityStub(), service = client(stub, vault: CommunityMemoryVault())
+        let operation = Task { try await service.loadConfig() }
+        await stub.waitForRequest()
+        service.configure(root, reload: true)
+        await stub.finish(response(#"{"requireEmailVerification":false,"artworkToolsEnabled":true}"#))
+        do { try await operation.value; XCTFail("Reloaded context must reject old config") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("account changed")) }
+        XCTAssertNil(service.config)
+    }
+
+    func testCancelledConfigDoesNotCommitAnUncancelledTransportResponse() async throws {
+        let stub = DeferredCommunityStub(), service = client(stub, vault: CommunityMemoryVault())
+        let operation = Task { try await service.loadConfig() }
+        await stub.waitForRequest()
+        operation.cancel()
+        await stub.finish(response(#"{"requireEmailVerification":false,"artworkToolsEnabled":true}"#))
+        do { try await operation.value; XCTFail("Cancelled config must not commit") }
+        catch is CancellationError {}
+        XCTAssertNil(service.config)
+    }
+
+    func testInflightSignupCannotLoginAfterLocalSessionWasForgotten() async throws {
+        let vault = CommunityMemoryVault()
+        let stub = DeferredCommunityStub([response(#"{"requireEmailVerification":false,"accountDeletionRetainsSharedGifs":false}"#)])
+        let service = client(stub, vault: vault)
+        let operation = Task {
+            try await service.signUp(email: "test@example.org", password: "example test password", displayName: "Rider")
+        }
+        await stub.waitForRequest()
+        try service.forgetLocalSession()
+        await stub.enqueue(login())
+        await stub.finish(response(#"{"message":"Account created"}"#, status: 201))
+        do { _ = try await operation.value; XCTFail("Late signup must not automatically sign in") }
+        catch { XCTAssertTrue(error.localizedDescription.contains("account changed")) }
+        XCTAssertFalse(service.signedIn)
+        XCTAssertTrue(vault.values.isEmpty)
+    }
+
     func testOldDeletionDoesNotEraseANewServerSession() async throws {
         let vault = CommunityMemoryVault()
         let old = DeferredCommunityStub([login()])

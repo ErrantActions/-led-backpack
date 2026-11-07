@@ -18,6 +18,9 @@ extension CommunityFeatureClient {
         struct Result: Decodable { let chat: NativeChatRoom }
         let room = try JSONDecoder().decode(Result.self, from: await send(.messaging, "social/chats/\(id.uuidString.lowercased())")).chat
         guard room.id == id else { throw BackpackError.invalid("Wrong chat room response.") }
+        guard room.kind == "group" ? groupsEnabled : room.kind == "event" && eventChatsEnabled else {
+            throw BackpackError.invalid("Current room kind is not enabled by this server.")
+        }
         return room
     }
     func createRoom(title: String, invitees: [UUID], shareHistory: Bool) async throws -> NativeChatRoom {
@@ -95,10 +98,16 @@ extension CommunityFeatureClient {
                 URLQueryItem(name: "beforeId", value: before.id.uuidString.lowercased())]
         }
         let page = try JSONDecoder().decode(DirectChatPage.self, from: await send(.messaging, "social/messages", query: query))
+        if retainedChatRecoveryEnabled {
+            guard page.retentionDays == 30, page.recovery == "retained-history-only", page.encryption == "server-managed" else {
+                throw BackpackError.invalid("The server did not confirm retained-history recovery and encryption. No recovery fallback is available.")
+            }
+        }
         guard page.limit == 50, page.messages.count <= 50, page.messages.allSatisfy({ row in
             guard let recipient = row.recipientId else { return false }
             return Set([row.senderId, recipient]) == Set([accountID, peer]) && row.eventId == event &&
-                row.createdAt.isFinite && (0...9_007_199_254_740_991).contains(row.createdAt)
+                row.createdAt.isFinite && (0...9_007_199_254_740_991).contains(row.createdAt) &&
+                NativeChatRetention.retained(createdAtMilliseconds: row.createdAt, now: Date())
         }) else { throw BackpackError.invalid("Private conversation history does not match its captured context.") }
         for row in page.messages { _ = try row.pin?.normalized() }
         return page
@@ -117,6 +126,7 @@ extension CommunityFeatureClient {
         return page
     }
     func sendChat(_ intent: ChatSendIntent) async throws -> NativeChatMessage {
+        if intent.reference?.kind == "playlist" && !chatPlaylistReferencesEnabled { throw BackpackError.invalid("Published playlist chat cards are unavailable.") }
         if intent.reference != nil && !chatReferencesEnabled { throw BackpackError.invalid("Scoped shared references are unavailable.") }
         if intent.attachmentID != nil && !chatMediaEnabled { throw BackpackError.invalid("Private chat media is unavailable.") }
         if intent.pin != nil && !chatPinsEnabled { throw BackpackError.invalid("Fixed chat pins are unavailable.") }

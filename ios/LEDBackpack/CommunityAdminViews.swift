@@ -33,6 +33,11 @@ struct CommunityAdminView: View {
             if community.isAdmin && !store.denied {
                 Form {
                     Section {
+                        NavigationLink("Bulk community quarantine / deletion") { CommunityBulkModerationView() }
+                        NavigationLink("Content-blind upload alerts / holds") { CommunityUploadAlertsView() }
+                        NavigationLink("Firmware drafts / publish / withdraw") { FirmwareLibraryView(admin: true) }
+                        NavigationLink("Generic research target curation") { DeviceResearchView(admin: true) }
+                        NavigationLink("Owned artwork previews / compare / branches") { AdminArtworkView() }
                         Picker("Admin tools", selection: $tool) {
                             ForEach(AdminTool.allCases) { Text($0.rawValue).tag($0) }
                         }.disabled(store.busy)
@@ -40,6 +45,15 @@ struct CommunityAdminView: View {
                             .font(.caption).foregroundStyle(.secondary)
                         if community.config?.chatReportsEnabled == true {
                             NavigationLink("Deliberately submitted message incidents") { MessageIncidentListView(staff: true) }
+                        }
+                        if community.config?.eventReportsEnabled == true {
+                            NavigationLink("Typed event report cases") { EventModerationView(holdsOnly: false) }
+                        }
+                        if community.config?.eventModerationEnabled ?? (community.config?.eventReportsEnabled == true) {
+                            NavigationLink("Existing event holds / release only") { EventModerationView(holdsOnly: true) }
+                        }
+                        if community.config?.peerIncidentReportsEnabled == true || community.config?.peerIncidentWithdrawalEnabled == true {
+                            NavigationLink("Private peer-incident review (unverified claims)") { PeerIncidentAdminView() }
                         }
                     }
                     if store.busy { ProgressView("Contacting catalog…") }
@@ -149,6 +163,10 @@ struct CommunityAdminView: View {
             if let result = store.accounts {
                 ForEach(result.users) { account in
                     Section(account.displayName) {
+                        AccountApprovedProfileAvatar(person: SocialPerson(id: account.id, displayName: account.displayName,
+                            avatarUrl: account.avatarUrl, avatarPreviewUrl: account.avatarPreviewUrl,
+                            avatarAnimated: account.avatarAnimated, avatarMature: account.avatarMature,
+                            avatarMasked: account.avatarMasked)).frame(width: 56, height: 70)
                         Text(account.email).textSelection(.enabled)
                         LabeledContent("Role", value: account.role)
                         LabeledContent("Account", value: account.disabled ? "Disabled" : "Enabled")

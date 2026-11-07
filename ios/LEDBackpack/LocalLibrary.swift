@@ -3,7 +3,7 @@ import Combine
 import Security
 import BackpackProtocol
 
-struct Attribution: Codable, Equatable {
+struct Attribution: Codable, Equatable, Sendable {
     var source: String
     var author: String
     var license: String
@@ -87,6 +87,10 @@ final class LocalLibrary: ObservableObject {
     @Published private(set) var state: LibraryState
     private let folder: URL
     private var stateURL: URL { folder.appendingPathComponent("library.json") }
+    func phoneOriginalURL(_ media: SavedMedia) throws -> URL {
+        guard state.media.contains(where: { $0.id == media.id }) else { throw BackpackError.invalid("Selected local artwork was removed.") }
+        return folder.appendingPathComponent(media.filename)
+    }
 
     init(folder: URL? = nil) throws {
         self.folder = try folder ?? FileManager.default.url(for: .applicationSupportDirectory,

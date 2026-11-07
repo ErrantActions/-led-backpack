@@ -74,6 +74,7 @@ struct NativeActivityNotice: Decodable, Identifiable {
         }
     }
     func reference() throws -> UUID {
+        // A numeric invitation suffix identifies a grant, not an event revision.
         let parts = referenceId.split(separator: ":", omittingEmptySubsequences: false)
         guard (1...2).contains(parts.count), let id = UUID(uuidString: String(parts[0])),
               parts.count == 1 || ((1...63).contains(parts[1].count) && parts[1].utf8.allSatisfy({ (48...57).contains($0) })) else {

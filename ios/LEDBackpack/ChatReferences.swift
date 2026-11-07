@@ -1,23 +1,43 @@
 import SwiftUI
 import BackpackProtocol
 
-struct ChatReferenceSelection: Encodable {
+struct ChatReferenceSelection: Codable {
     let kind: String
     let id: UUID
     let expectedRevision, expectedParticipationRevision: Int?
+    var inviteRecipient: Bool? = nil
     init(gif: UUID) { kind = "communityGif"; id = gif; expectedRevision = nil; expectedParticipationRevision = nil }
+    init(publishedShare: NativePublishedPlaylistID) {
+        kind = "playlist"; id = publishedShare.value; expectedRevision = nil; expectedParticipationRevision = nil
+    }
     init(event: SharedChatEvent) throws {
         guard event.revision > 0, event.participationRevision > 0, event.status != "ended", event.status != "cancelled" else {
             throw BackpackError.invalid("Select a current, available event; review changed revisions before sharing.")
         }
         kind = "event"; id = event.id; expectedRevision = event.revision; expectedParticipationRevision = event.participationRevision
     }
-    private enum CodingKeys: String, CodingKey { case kind, id, expectedRevision, expectedParticipationRevision }
+    private enum CodingKeys: String, CodingKey { case kind, id, expectedRevision, expectedParticipationRevision, inviteRecipient }
+    func validate() throws {
+        switch kind {
+        case "communityGif", "playlist":
+            guard expectedRevision == nil, expectedParticipationRevision == nil, inviteRecipient == nil else {
+                throw BackpackError.invalid("This reference cannot carry event revisions or an invitation.")
+            }
+        case "event":
+            guard let expectedRevision, let expectedParticipationRevision, expectedRevision > 0,
+                  expectedParticipationRevision > 0, inviteRecipient == nil || inviteRecipient == true else {
+                throw BackpackError.invalid("Review the current event revisions and an explicit invite-only choice.")
+            }
+        default: throw BackpackError.invalid("Unsupported outgoing reference kind.")
+        }
+    }
     func encode(to encoder: Encoder) throws {
+        try validate()
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(kind, forKey: .kind); try c.encode(id.uuidString.lowercased(), forKey: .id)
         try c.encodeIfPresent(expectedRevision, forKey: .expectedRevision)
         try c.encodeIfPresent(expectedParticipationRevision, forKey: .expectedParticipationRevision)
+        try c.encodeIfPresent(inviteRecipient, forKey: .inviteRecipient)
     }
 }
 struct SharedChatEvent: Decodable, Identifiable {
@@ -27,6 +47,7 @@ struct SharedChatEvent: Decodable, Identifiable {
     let location: CatalogEventLocation
     let coverUrl: String?
     let coverRevision: Int?
+    var canInvite: Bool? = nil
     func dates(locale: Locale = .autoupdatingCurrent) throws -> String {
         guard let zone = TimeZone(identifier: timezone) else { throw BackpackError.invalid("Invalid event timezone.") }
         try location.validate()
@@ -47,20 +68,26 @@ struct HydratedChatReference: Decodable {
     let available: Bool
     let event: SharedChatEvent?
     let gif: SharedChatGIF?
+    let playlist: NativeChatPublishedPlaylist?
     let changed, planChanged: Bool
     private enum CodingKeys: String, CodingKey { case kind, available, changed, planChanged }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        kind = try c.decode(String.self, forKey: .kind); available = try c.decode(Bool.self, forKey: .available)
-        guard ["event", "communityGif"].contains(kind) else { throw BackpackError.invalid("Unsupported shared-reference kind.") }
+        kind = try c.decode(String.self, forKey: .kind)
+        let advertised = try c.decode(Bool.self, forKey: .available)
         changed = try c.decodeIfPresent(Bool.self, forKey: .changed) ?? false
         planChanged = try c.decodeIfPresent(Bool.self, forKey: .planChanged) ?? false
-        event = available && kind == "event" ? try SharedChatEvent(from: decoder) : nil
-        gif = available && kind == "communityGif" ? try SharedChatGIF(from: decoder) : nil
+        event = advertised && kind == "event" ? try SharedChatEvent(from: decoder) : nil
+        gif = advertised && kind == "communityGif" ? try SharedChatGIF(from: decoder) : nil
+        let candidate = advertised && kind == "playlist" ? try NativeChatPublishedPlaylist(from: decoder) : nil
+        try candidate?.validate(now: .distantPast)
+        if let candidate, try CatalogEventTime.parse(candidate.expiresAtISO) > Date() { playlist = candidate }
+        else { playlist = nil }
+        available = advertised && ["event", "communityGif", "playlist"].contains(kind) && (kind != "playlist" || playlist != nil)
         if let event { _ = try event.dates() }
     }
     var fingerprint: String {
-        "\(kind):\(available):\(event?.id.uuidString ?? gif?.id.uuidString ?? ""):\(event?.revision ?? 0):\(event?.participationRevision ?? 0):\(event?.coverRevision ?? 0):\(gif?.gifUrl ?? ""):\(changed):\(planChanged)"
+        "\(kind):\(available):\(event?.id.uuidString ?? gif?.id.uuidString ?? playlist?.id.uuidString ?? ""):\(event?.revision ?? 0):\(event?.participationRevision ?? 0):\(event?.coverRevision ?? 0):\(gif?.gifUrl ?? ""):\(playlist?.expiresAtISO ?? ""):\(changed):\(planChanged)"
     }
 }
 enum ChatReferenceMedia {
@@ -153,6 +180,10 @@ struct ChatReferenceCardView: View {
                 if card.changed || card.planChanged { Label("Event changed — review current details", systemImage: "exclamationmark.circle").foregroundStyle(.orange) }
                 NavigationLink("Review event / RSVP") { CommunityEventDetailView(id: event.id) }
                 Text("Sharing is not an invitation, RSVP or access grant. No GPS/progress is enabled.").font(.caption).foregroundStyle(.secondary)
+            } else if let playlist = card.playlist, client.chatPlaylistReferencesEnabled {
+                NativeChatPlaylistCard(playlist: playlist, client: client)
+            } else {
+                Label("Shared content unavailable", systemImage: "rectangle.slash").foregroundStyle(.secondary)
             }
         }.padding(12).glassPanel()
     }
@@ -171,14 +202,17 @@ private struct SharedChatEventDateView: View {
 struct ChatReferencePicker: View {
     @EnvironmentObject private var community: CommunityController
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     let client: CommunityFeatureClient
     let context: ChatConversation
     let choose: (ChatReferenceSelection) -> Void
-    @State private var events = false
+    @State private var kind = "gif"
     @State private var search = ""
     @State private var page = 1
     @State private var gifs: [HydratedChatReference] = []
     @State private var eventRows: [SharedChatEvent] = []
+    @State private var playlistRows: [NativeChatPublishedPlaylist] = []
+    @State private var inviteEventID: UUID?
     @State private var more = false
     @State private var failure: String?
     @State private var selected: ChatReferenceSelection?
@@ -187,17 +221,41 @@ struct ChatReferencePicker: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Share a reference into this exact conversation. Private events require current organizer access; no invitation or attendance is granted.").font(.caption)
-                    Picker("Content", selection: $events) { Text("Community GIF").tag(false); Text("Event").tag(true) }.pickerStyle(.segmented)
-                    if !events { TextField("Search approved community GIFs", text: $search).textFieldStyle(.roundedBorder) }
+                    Picker("Content", selection: $kind) {
+                        Text("GIF").tag("gif"); Text("Event").tag("event")
+                        if client.chatPlaylistReferencesEnabled { Text("Published playlist").tag("playlist") }
+                    }.pickerStyle(.segmented)
+                    if kind == "gif" { TextField("Search approved community GIFs", text: $search).textFieldStyle(.roundedBorder) }
                     if let failure { Text(failure).foregroundStyle(.orange) }
-                    if events {
+                    if kind == "event" {
                         ForEach(eventRows) { event in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(event.title).font(.headline); SharedChatEventDateView(event: event); Text(event.location.label)
                                 Text("Event revision \(event.revision) · participation plan \(event.participationRevision)").font(.caption).foregroundStyle(.secondary)
-                                Button("Review sharing this event") { do { selected = try ChatReferenceSelection(event: event) } catch { failure = error.localizedDescription } }
+                                if case .direct = context, event.canInvite == true {
+                                    Toggle("Also invite this direct recipient (may renew withdrawn invitation)", isOn: Binding(
+                                        get: { inviteEventID == event.id }, set: { inviteEventID = $0 ? event.id : nil; selected = nil }))
+                                }
+                                Button("Review sharing this event") {
+                                    do {
+                                        var value = try ChatReferenceSelection(event: event)
+                                        if case .direct = context, event.canInvite == true, inviteEventID == event.id { value.inviteRecipient = true }
+                                        selected = value
+                                    } catch { failure = error.localizedDescription }
+                                }
                             }.padding(16).glassPanel()
                         }
+                    } else if kind == "playlist" {
+                        ForEach(playlistRows) { playlist in
+                            VStack(alignment: .leading) {
+                                Text(playlist.title).font(.headline); Text(playlist.description)
+                                Text("\(playlist.entryCount) entries · expires \(playlist.expiresAtISO)").font(.caption)
+                                Button("Attach this published snapshot") {
+                                    selected = .init(publishedShare: playlist.publishedID)
+                                }
+                            }
+                        }
+                        Text("Only current authorized published snapshots appear. Private titles, notes, schedules and owner draft IDs are never copied. Publishing remains a separate explicit action.")
                     } else {
                         ForEach(Array(gifs.enumerated()), id: \.offset) { _, card in
                             if let gif = card.gif, card.available {
@@ -209,21 +267,26 @@ struct ChatReferencePicker: View {
                     HStack { Button("Previous") { page -= 1 }.disabled(page == 1); Spacer(); Button("Next") { page += 1 }.disabled(!more) }
                 }.padding(20)
             }.modernScene().navigationTitle("Share into chat").toolbar { Button("Cancel") { dismiss() } }
-            .task(id: "\(events):\(search):\(page):\(community.avatarPolicyRevision)") {
-                gifs = []; eventRows = []; selected = nil; more = false; failure = nil
+            .task(id: "\(kind):\(search):\(page):\(phase):\(community.chatAccessRevision):\(community.avatarPolicyRevision):\(community.config?.messagingEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true)") {
+                gifs = []; eventRows = []; playlistRows = []; selected = nil; more = false; failure = nil
+                guard phase == .active, community.config?.messagingEnabled == true, client.chatReferencesEnabled else { return }
                 do {
-                    if events { let result = try await client.referenceEvents(context, page: page); try Task.checkCancellation(); eventRows = result.items; more = result.more }
+                    if kind == "playlist" { let result = try await client.chatPublishedPlaylists(context, page: page); try Task.checkCancellation(); playlistRows = result.playlists; more = result.hasMore }
+                    else if kind == "event" { let result = try await client.referenceEvents(context, page: page); try Task.checkCancellation(); eventRows = result.items; more = result.more }
                     else { let result = try await client.referenceGIFs(context, page: page, search: search); try Task.checkCancellation(); gifs = result.items; more = result.more }
                 } catch { if !Task.isCancelled { failure = error.localizedDescription } }
             }
             .onChange(of: community.accountRevision) { _, _ in dismiss() }
-            .onChange(of: events) { _, _ in page = 1 }
+            .onChange(of: community.chatAccessRevision) { _, _ in gifs = []; eventRows = []; playlistRows = []; selected = nil; dismiss() }
+            .onChange(of: phase) { _, state in if state != .active { gifs = []; eventRows = []; playlistRows = []; selected = nil; dismiss() } }
+            .onChange(of: kind) { _, _ in page = 1; inviteEventID = nil }
             .onChange(of: search) { _, _ in page = 1 }
-            .onChange(of: community.avatarPolicyChanging) { _, changing in if changing { gifs = []; eventRows = []; selected = nil; dismiss() } }
+            .onChange(of: community.avatarPolicyChanging) { _, changing in if changing { gifs = []; eventRows = []; playlistRows = []; selected = nil; dismiss() } }
             .confirmationDialog("Share this displayed reference?", isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } })) {
                 if let selected { Button("Attach reference to draft") { choose(selected); dismiss() } }
             } message: {
                 Text("Displayed event revision \(selected?.expectedRevision.map(String.init) ?? "not applicable"), participation plan \(selected?.expectedParticipationRevision.map(String.init) ?? "not applicable"). A changed/unavailable reference is rejected, never automatically rebased. Nothing is sent until Send.")
+                if selected?.inviteRecipient == true { Text("Send will also invite the actual direct recipient, possibly renewing a withdrawn invitation. This never RSVPs or starts progress/location sharing.") }
             }
         }
     }

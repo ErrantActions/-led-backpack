@@ -11,6 +11,7 @@ struct ChatScreenSelection: Identifiable, Hashable {
 @MainActor
 struct CommunityMessagesView: View {
     @EnvironmentObject private var community: CommunityController
+    @Environment(\.scenePhase) private var phase
     @StateObject private var session = CommunityFeatureSession()
     @State private var friends: [SocialPerson] = []
     @State private var recent: [RecentChatContact] = []
@@ -27,6 +28,9 @@ struct CommunityMessagesView: View {
             if community.config?.messagingEnabled == true && !session.denied {
                 if session.busy { ProgressView() }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                if community.config?.chatMessageRequestsEnabled == true {
+                    NavigationLink("Non-friend message requests / stop") { CommunityMessageRequestsView() }
+                }
                 Section("Friends") {
                     ForEach(friends) { person in
                         Button(person.displayName) { selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName) }
@@ -77,12 +81,16 @@ struct CommunityMessagesView: View {
             } else { Text(session.failure ?? "Messaging is unavailable until this server advertises configured support.") }
         }
         .modernScene().navigationTitle("Messages")
-        .task(id: "\(community.accountRevision):\(community.config?.messagingEnabled == true)") {
-            clear(); page = 1; session.bind(community)
+        .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(phase)") {
+            clear(); selection = nil; page = 1; session.clear()
+            guard phase == .active else { return }
+            session.bind(community)
             if community.config?.messagingEnabled == true { load() }
         }
         .onChange(of: session.denied) { _, denied in if denied { clear() } }
         .onChange(of: community.accountRevision) { _, _ in clear(); selection = nil }
+        .onChange(of: community.chatAccessRevision) { _, _ in clear(); selection = nil; session.clear() }
+        .onDisappear { session.clear(); clear() }
         .navigationDestination(item: $selection) { item in CommunityConversationView(context: item.context, title: item.title) }
         .sheet(isPresented: $creating, onDismiss: load) { NativeGroupCreateView() }
         .confirmationDialog("Respond to group invitation?", isPresented: Binding(get: { pendingInvite != nil },
@@ -130,6 +138,11 @@ struct CommunityConversationView: View {
     @State private var attachment: ChatAttachmentDraft?
     @State private var pin: ChatPin?
     @State private var intent: ChatSendIntent?
+    @State private var outbox: NativeChatOutboxRecord?
+    @State private var outboxFailure: String?
+    @State private var newQuestionsAllowed = false
+    @State private var contactPreference: NativeMessageRequestPreference?
+    @State private var canManageOwnContact = false
     @State private var importing = false
     @State private var importScope: UUID?
     @State private var deleting: NativeChatMessage?
@@ -156,6 +169,7 @@ struct CommunityConversationView: View {
                     Text(session.failure ?? "Conversation access is unavailable. Recheck access; private media never falls back to public URLs.")
                 } else {
                     Text(liveStatus).font(.caption).foregroundStyle(.secondary)
+                    if let outboxFailure { Text(outboxFailure).foregroundStyle(.orange) }
                     if let liveFailure { Text(liveFailure).font(.caption).foregroundStyle(.orange) }
                     if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                     if more { Button("Load older messages") { load(older: true) }.disabled(session.busy) }
@@ -174,17 +188,19 @@ struct CommunityConversationView: View {
                         }
                     }
                     if let room { Button("Room information / members") { roomInfo = true }.disabled(session.busy || room.archived) }
-                    Button("Recheck conversation access") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)
+                    Button("Reload retained authorized history / access") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)
                     DisclosureGroup("Privacy & history") {
-                        Text("Messages are stored with server-managed encryption, not end-to-end encryption. Room history follows the owner's invitation choice. Event-wide rooms never include private organizer questions. Deletion cannot recall recipients' screenshots or saved copies.")
+                        Text("Messages use server-managed encryption, not E2EE. Direct/organizer recovery reloads only authorized history less than 30 days old with the same server messaging key. Deleted/expired messages, lost keys and private libraries cannot be restored. Minimal sender/client-ID receipts last at most 60 days, not forever. Room history follows its invitation choice. Screenshots cannot be recalled.")
                             .font(.caption)
                     }
                 }
             }.padding(20)
         }
         .modernScene().navigationTitle(revoked || session.denied ? "Messages" : room?.title ?? title)
-        .task(id: community.accountRevision) {
-            clear(); session.bind(community); load(older: false)
+        .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatMediaEnabled == true):\(community.config?.chatPinsEnabled == true):\(community.config?.directMessageRetentionDays.map(String.init) ?? "missing"):\(community.config?.directMessageRecovery ?? "missing")") {
+            clear(); session.clear()
+            guard phase == .active, community.config?.messagingEnabled == true else { return }
+            session.bind(community); load(older: false)
         }
         .task(id: "\(session.client?.instanceID.uuidString ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.liveChatEnabled == true):\(liveRevision)") {
             guard phase == .active, community.config?.messagingEnabled == true, let client = session.client else { return }
@@ -227,12 +243,22 @@ struct CommunityConversationView: View {
             }
         }
         .onChange(of: community.avatarPolicyChanging) { _, changing in
-            if changing { messages = []; referencesVerified = false; choosingReference = false; reference = nil; referencePolicyStale = intent?.reference != nil }
-            else if !session.busy { load(older: false) }
+            if changing { stopTyping(); clear(); session.clear() }
+            else if phase == .active { session.bind(community); load(older: false) }
+        }
+        .onChange(of: community.avatarPolicyRevision) { _, _ in
+            stopTyping(); clear(); session.clear()
+            if phase == .active, !community.avatarPolicyChanging { session.bind(community); load(older: false) }
         }
         .onChange(of: shareTyping) { _, _ in scheduleTyping() }
-        .onChange(of: phase) { _, state in if state != .active { stopTyping() } }
+        .onChange(of: phase) { _, state in
+            if state != .active { stopTyping(); session.clear(); clear() }
+            else if !session.busy && !revoked { load(older: false, reconcile: true) }
+        }
         .onChange(of: community.accountRevision) { _, _ in stopTyping(); clear(); session.clear(); dismiss() }
+        .onChange(of: community.chatAccessRevision) { _, _ in stopTyping(); clear(); session.clear(); dismiss() }
+        .onChange(of: community.config?.groupChatsEnabled) { _, _ in stopTyping(); clear(); session.clear(); if phase == .active { session.bind(community); load(older: false) } }
+        .onChange(of: community.config?.eventChatsEnabled) { _, _ in stopTyping(); clear(); session.clear(); if phase == .active { session.bind(community); load(older: false) } }
         .onChange(of: session.denied) { _, denied in if denied { clear(); revoked = true } }
         .onDisappear { stopTyping(); session.clear(); clear() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image, .gif]) { result in
@@ -268,19 +294,60 @@ struct CommunityConversationView: View {
             }
             if let pin { Text("Fixed place: \(pin.label)").font(.caption); Button("Remove unsent place") { self.pin = nil }.disabled(intent != nil) }
             if let reference {
-                Label(reference.kind == "event" ? "Current event reference attached" : "Community GIF reference attached", systemImage: "link")
+                Label(reference.kind == "event" ? "Current event reference attached" : reference.kind == "playlist" ? "Published snapshot reference attached" : "Community GIF reference attached", systemImage: "link")
+                if reference.inviteRecipient == true {
+                    Text("Send will also invite the actual direct recipient and may renew a withdrawn invitation. It will not RSVP.").font(.caption).foregroundStyle(.orange)
+                }
                 Button("Remove unsent reference") { self.reference = nil }.disabled(intent != nil)
             }
-            TextField("Message", text: $text, axis: .vertical).lineLimit(1...6).disabled(intent != nil)
+            if case .direct(_, let event) = context, event != nil {
+                if !newQuestionsAllowed { Text("New visitor questions are disabled or unverified. Retained history, exact existing retries and organizer replies remain separate.").font(.caption) }
+                if canManageOwnContact {
+                    Button("Load my organizer question settings") {
+                        session.run { client in
+                            guard let event else { throw BackpackError.invalid("Missing event context.") }
+                            let value = try await client.organizerContact(event)
+                            try session.checked(client); contactPreference = value
+                        }
+                    }
+                }
+                if let contactPreference {
+                    Button(contactPreference.enabled ? "Stop new visitor questions to me" : "Enable new visitor questions to me") {
+                        session.run { client in
+                            guard case .direct(_, let eventID) = context, let eventID else { throw BackpackError.invalid("Missing event context.") }
+                            let value = try await client.saveOrganizerContact(eventID, original: contactPreference, enabled: !contactPreference.enabled)
+                            try session.checked(client); self.contactPreference = value
+                        }
+                    }
+                }
+            }
+            if let outbox {
+                Text("Stored exact intent: \(outbox.state.rawValue). Retry deadline: \(outbox.retryBefore.formatted()).").font(.caption)
+                if outbox.state == .uncertain {
+                    Button("Explicitly retry stored exact bytes / ID") { retryOutbox(outbox) }
+                    Text("First recheck retained history. Similar text is not an acknowledgment; history does not expose client-ID receipts.").font(.caption)
+                    Button("Abandon uncertain intent and clear draft (may have delivered)", role: .destructive) {
+                        var abandoned = outbox; abandoned.state = .abandoned; abandoned.acknowledgedMessageID = nil
+                        do { try NativeChatOutbox.save(abandoned); dismissAcknowledgedOutbox(abandoned) }
+                        catch { outboxFailure = error.localizedDescription }
+                    }
+                } else {
+                    Button("Archive terminal receipt and clear draft (not resend)") { dismissAcknowledgedOutbox(outbox) }
+                }
+                Text("No automatic retries or new-ID replacement. Retired/inaccessible intents cannot be resent.").font(.caption)
+            }
+            Button("Inspect this account's private outbox", action: restoreOutbox)
+            TextField("Message", text: $text, axis: .vertical).lineLimit(1...6).disabled(intent != nil || outbox != nil)
             HStack {
                 if client.chatMediaEnabled { Button("Attach image / GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || attachment != nil) }
                 if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil) }
-                if client.chatReferencesEnabled { Button("Share GIF / event") { choosingReference = true }.disabled(intent != nil) }
+                if client.chatReferencesEnabled { Button("Share GIF / event / published playlist") { choosingReference = true }.disabled(intent != nil || outbox != nil) }
                 Spacer()
-                Button(intent == nil ? "Send" : "Retry exact send") { send() }.buttonStyle(.borderedProminent)
+                Button("Send deliberate new message") { send() }.buttonStyle(.borderedProminent)
+                    .disabled(outbox != nil || !newQuestionsAllowed)
             }
             if intent != nil {
-                Button("Discard failed send intent", role: .destructive) { intent = nil; referencePolicyStale = false }
+                Text("The finalized intent remains in the private outbox. Reconcile or retry that same intent; do not replace its ID.").font(.caption)
                 Text("A failed connection may have accepted the message. Retry retains the same ID/bytes; check history before starting a different intent.").font(.caption)
             }
             if client.chatLiveEnabled { Toggle("Share ephemeral typing indicator", isOn: $shareTyping) }
@@ -290,10 +357,48 @@ struct CommunityConversationView: View {
     private func send() {
         session.run({ client in
             guard !referencePolicyStale else { throw BackpackError.invalid("Media policy changed. Discard the captured failed intent and reselect current references explicitly.") }
+            guard newQuestionsAllowed else { throw BackpackError.invalid("Current new-message permission is unavailable.") }
+            guard try NativeChatOutbox.load(origin: client.origin.url.absoluteString, account: client.accountID, context: context) == nil else {
+                throw BackpackError.invalid("Inspect and reconcile the existing private outbox before creating another intent.")
+            }
             if intent == nil { intent = try ChatSendIntent(context: context, text: text, attachmentID: attachment?.attachment.id, pin: pin, reference: reference) }
             guard let intent else { throw BackpackError.invalid("Prepare a valid send intent.") }
-            _ = try await client.sendChat(intent)
+            let record = try NativeChatOutboxRecord(account: client.accountID, origin: client.origin.url.absoluteString,
+                context: context, clientID: intent.clientMessageID, bytes: intent.data, consent: true)
+            try NativeChatOutbox.save(record); outbox = record
+            do {
+                let result = try await client.submitOutbox(record)
+                try session.checked(client); outbox = result
+            } catch {
+                try session.checked(client); messages = []; referencesVerified = false; newQuestionsAllowed = false
+                restoreOutbox(); throw error
+            }
         }, success: { intent = nil; text = ""; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; stopTyping(); load(older: false) })
+    }
+    private func restoreOutbox() {
+        guard let client = session.client else { return }
+        do {
+            try client.check(.messaging)
+            outbox = try NativeChatOutbox.load(origin: client.origin.url.absoluteString, account: client.accountID, context: context)
+            outboxFailure = outbox == nil ? "No retained outbox intent for this conversation." : nil
+        } catch { outboxFailure = error.localizedDescription }
+    }
+    private func retryOutbox(_ record: NativeChatOutboxRecord) {
+        messages = []; referencesVerified = false
+        session.run { client in
+            do {
+                let result = try await client.submitOutbox(record)
+                try session.checked(client); outbox = result; intent = nil; text = ""; reference = nil; pin = nil; attachment = nil
+            } catch {
+                try session.checked(client); restoreOutbox(); throw error
+            }
+        } success: { load(older: false) }
+    }
+    private func dismissAcknowledgedOutbox(_ record: NativeChatOutboxRecord) {
+        do {
+            try NativeChatOutbox.archiveTerminal(record)
+            outbox = nil; intent = nil; text = ""; reference = nil; pin = nil; attachment = nil
+        } catch { outboxFailure = error.localizedDescription }
     }
     private func load(older: Bool, reconcile: Bool = false) {
         session.run { client in
@@ -301,8 +406,11 @@ struct CommunityConversationView: View {
                 let rows: [NativeChatMessage]
                 switch context {
                 case .direct(let peer, let event):
+                    let permission = try await client.organizerChatPermission(peer: peer, eventID: event)
                     let result = try await client.directHistory(peer: peer, event: event, before: older ? directCursor : nil)
                     try session.checked(client)
+                    newQuestionsAllowed = permission.newMessagesAllowed; canManageOwnContact = permission.canManageOwnContact
+                    if !canManageOwnContact { contactPreference = nil }
                     rows = result.messages
                     let tokenChanged = result.viewToken != nil && result.viewToken != viewToken
                     if !reconcile || tokenChanged { directCursor = result.nextBefore; more = result.hasMore }
@@ -315,6 +423,7 @@ struct CommunityConversationView: View {
                     if tokenChanged { messages = [] }
                     if !older && !reconcile { messages = [] }
                     viewToken = result.viewToken; room = result.chat
+                    newQuestionsAllowed = result.chat.canSend
                     if !reconcile || tokenChanged { roomCursor = result.nextBefore; more = result.hasMore }
                     rows = result.messages
                     if !older, phase == .active, let visible = rows.compactMap(\.sequence).max(), visible > result.readSequence {
@@ -323,17 +432,24 @@ struct CommunityConversationView: View {
                 }
                 try session.checked(client)
                 if reconcile {
+                    if case .direct = context {
+                        messages.removeAll { !NativeChatRetention.retained(createdAtMilliseconds: $0.createdAt, now: Date()) }
+                    }
+                    if let oldest = rows.map(\.createdAt).min() {
+                        let authorized = Set(rows.map(\.id))
+                        messages.removeAll { $0.createdAt >= oldest && !authorized.contains($0.id) }
+                    } else { messages = [] }
                     for row in rows { if let index = messages.firstIndex(where: { $0.id == row.id }) { messages[index] = row } }
                 }
                 var ids = Set(messages.map(\.id))
                 messages += rows.filter { ids.insert($0.id).inserted }
                 messages.sort { ($0.sequence.map(Double.init) ?? $0.createdAt) < ($1.sequence.map(Double.init) ?? $1.createdAt) }
                 referencesVerified = true
-            } catch let error as CommunityFailure where [401, 403, 404].contains(error.status) {
+            } catch let error as CommunityFailure where [401, 403, 404, 409].contains(error.status) {
                 clear(); revoked = true
                 throw error
             } catch {
-                referencesVerified = false
+                messages = []; referencesVerified = false; newQuestionsAllowed = false
                 throw error
             }
         }
@@ -353,28 +469,29 @@ struct CommunityConversationView: View {
     }
     private func stopTyping() {
         typingTask?.cancel(); typing = []
-        guard shareTyping, let client = session.client, client.chatLiveEnabled else { return }
-        Task {
-            do { try await client.setTyping(context, clientID: typingClient, active: false) }
-            catch { Logger(subsystem: "com.errantactions.ledbackpack", category: "chat-lifecycle").error("Typing cleanup failed; memory-only indicator expires after its bounded TTL.") }
-        }
+        // The server's bounded typing TTL expires it; background/access loss never starts another request.
     }
-    private func clear() { messages = []; room = nil; text = ""; intent = nil; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; reporting = nil; typing = []; viewToken = nil; revoked = false }
+    private func clear() { messages = []; room = nil; text = ""; intent = nil; outbox = nil; outboxFailure = nil; newQuestionsAllowed = false; contactPreference = nil; canManageOwnContact = false; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; choosingPin = false; importing = false; deleting = nil; reporting = nil; typing = []; viewToken = nil; revoked = false; directCursor = nil; roomCursor = nil; more = false }
 }
 
 @MainActor
 private struct PrivateChatImage: View {
+    @EnvironmentObject private var community: CommunityController
     @Environment(\.accessibilityReduceMotion) private var reduced
     let item: PrivateChatAttachment
     let client: CommunityFeatureClient
     @State private var manual = false
     var body: some View {
+        let animate = community.user?.mediaPreferences?.permitsAnimation(reducedMotion: reduced, manual: manual) ?? (!reduced || manual)
         VStack {
-            GIFThumbnail(key: "private-chat:\(client.instanceID):\(item.id):\(manual):\(reduced)", cache: false) {
-                try await client.privateChatMedia(item, animated: item.animated && (!reduced || manual))
+            GIFThumbnail(key: "private-chat:\(client.instanceID):\(item.id):\(animate):\(community.avatarPolicyRevision)", cache: false) {
+                try await client.privateChatMedia(item, animated: item.animated && animate)
             }.clipShape(RoundedRectangle(cornerRadius: 16))
-            if reduced && item.animated { Button(manual ? "Pause GIF" : "Play GIF") { manual.toggle() }.font(.caption) }
-        }
+            if item.animated && (reduced || community.user?.mediaPreferences?.animationsEnabled == false || community.user?.mediaPreferences?.dataSaving == true) {
+                Button(manual ? "Pause GIF" : "Play GIF") { manual.toggle() }.font(.caption)
+            }
+        }.onChange(of: community.user?.mediaPreferences) { _, _ in manual = false }
+            .onChange(of: community.accountRevision) { _, _ in manual = false }
     }
 }
 
