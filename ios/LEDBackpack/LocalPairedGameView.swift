@@ -50,7 +50,7 @@ struct LocalPairedGameView: View {
                 Picker("Same preset on both phones", selection: $preset) { ForEach(FriendScenePreset.allCases) { Text($0.rawValue).tag($0) } }
                 Toggle("We are stationary and playing without contact", isOn: $stationary)
                 Toggle("Use optional phone ranging on both devices", isOn: $useRange)
-                Text("Ranging needs supported phones and separate OS consent. If unavailable, stop and choose manual pairing—never automatic fallback.").font(.caption)
+                if useRange { Text("Needs supported phones and OS consent. No automatic manual fallback.").font(.caption) }
                 Toggle("Allow this color game to animate my phone", isOn: $consent)
                 Text("Your original is retained. This shares generated colors only, not your GIFs, account, location or friendship.").font(.caption)
                 LocalPairStartControls(game: game, radio: game.radio, compared: compared, consent: consent,
@@ -58,7 +58,7 @@ struct LocalPairedGameView: View {
                 }
                 LocalRangeStatus(ranging: game.ranging)
                 ScopedPhoneCanvasControls(session: game.session, stop: { game.stop() }, restore: { await game.restore() })
-                NavigationLink("Recovery first / Received swaps") { SwapRecoveryView() }
+                NavigationLink("Recovery tools") { SwapRecoveryView() }
                 FeatureDetails("Pairing status & support") {
                     Text(game.status)
                     Text("Codes expire in two minutes. Compare both phones; copied codes do not prove proximity or identity.")

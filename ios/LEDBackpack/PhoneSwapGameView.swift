@@ -75,7 +75,7 @@ struct PhoneSwapGameView: View {
                         Task { await game.contactAction(value.card, action: value.action); cardAction = nil }
                     }
             }
-        } message: { Text("Normal current service permissions are authoritative. No automatic friendship, location permission, public directory or media/profile access.") }
+        } message: { Text("This changes only the selected contact. It does not grant location or game permission.") }
         .confirmationDialog("Remove this received GIF and its Found Users card?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
             if let item = removing {
                 Button("Remove received GIF/card", role: .destructive) {

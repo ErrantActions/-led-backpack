@@ -11,6 +11,10 @@ final class AdminArtworkStore: ObservableObject {
     @Published private(set) var input: NativeArtworkUpload?
     @Published private(set) var result: NativeArtworkUpload?
     @Published private(set) var catalog: CommunityPage?
+    @Published private(set) var nextCatalogPage: Int?
+    private var catalogQuery = ""
+    private var failedCatalogPage: Int?
+    var canRetryCatalog: Bool { failedCatalogPage != nil && !busy }
     @Published private(set) var busy = false
     @Published private(set) var failure: String?
     @Published private(set) var message: String?
@@ -30,6 +34,7 @@ final class AdminArtworkStore: ObservableObject {
         jobs = []; selected = nil; catalog = nil; source = nil; upload = nil
         sourceName = "Choose one explicit source"; input = nil; result = nil
         history = []; failure = nil; message = nil; uncertainSubmission = false
+        nextCatalogPage = nil; catalogQuery = ""; failedCatalogPage = nil
     }
     private func accept(_ scope: AccountServiceScope, stamp: UUID) throws {
         try scope.check()
@@ -89,11 +94,32 @@ final class AdminArtworkStore: ObservableObject {
         open(previous, remember: false)
     }
     func search(_ query: String, page: Int) {
+        guard !busy else { failure = "Finish the active artwork operation first."; return }
+        if page == 1 { catalog = nil; nextCatalogPage = nil; catalogQuery = query }
+        guard catalogQuery == query else { failure = "Search changed; start with the first page."; return }
+        failedCatalogPage = page
         work { scope, stamp in
             let value = try await scope.artworkCatalog(query, page: page); try self.accept(scope, stamp: stamp)
-            self.catalog = value
+            guard value.page == page else { throw BackpackError.invalid("Artwork catalog returned a different page.") }
+            var merged = self.catalog?.items ?? []
+            var indices = Dictionary(uniqueKeysWithValues: merged.enumerated().map { ($0.element.id, $0.offset) })
+            var added = 0
+            for item in value.items {
+                if let index = indices[item.id] { merged[index] = item }
+                else if merged.count < 100 { indices[item.id] = merged.count; merged.append(item); added += 1 }
+            }
+            self.catalog = CommunityPage(items: merged, page: value.page, limit: value.limit, total: value.total)
+            let more = page * value.limit < value.total && merged.count < 100
+            guard !more || added > 0 else { throw BackpackError.invalid("Artwork catalog returned no new items. Retry or refine the search.") }
+            self.nextCatalogPage = more ? page + 1 : nil; self.failedCatalogPage = nil
         }
     }
+    func nearCatalogEnd(_ id: UUID) {
+        guard !busy, failure == nil, let page = nextCatalogPage,
+              catalog?.items.suffix(4).contains(where: { $0.id == id }) == true else { return }
+        search(catalogQuery, page: page)
+    }
+    func retryCatalog() { if canRetryCatalog, let page = failedCatalogPage { search(catalogQuery, page: page) } }
     func chooseCommunity(_ item: CommunityItem) {
         guard !busy, catalog?.items.contains(where: { $0.id == item.id }) == true else { failure = "Choose a named item from the current authorized source page."; return }
         source = .community(item.id); sourceName = "Community: " + item.title; upload = nil

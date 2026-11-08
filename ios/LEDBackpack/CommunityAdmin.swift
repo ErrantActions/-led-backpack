@@ -470,6 +470,13 @@ final class CommunityAdminStore: ObservableObject {
     @Published private(set) var statistics: AdminStatistics?
     @Published private(set) var accounts: AdminAccountsPage?
     @Published private(set) var items: AdminItemsPage?
+    private var itemStatus = AdminItemStatus.pending
+    private var failedItemsPage: Int?
+    private var itemRevisions: [UUID: UUID] = [:]
+    var canRetryItems: Bool { !busy && failedItemsPage != nil }
+    func itemPreviewKey(_ item: AdminItem) -> String {
+        "moderation:\(contextID?.uuidString ?? "none"):\(item.id):\(itemRevisions[item.id]?.uuidString ?? "original")"
+    }
     @Published private(set) var reports: AdminReportsPage?
     @Published private(set) var settings: AdminSettings?
     @Published private(set) var imports: [AdminImport] = []
@@ -491,6 +498,7 @@ final class CommunityAdminStore: ObservableObject {
         client = nil; busy = false
         statistics = nil; accounts = nil; items = nil; reports = nil; settings = nil
         imports = []; selectedImport = nil; selectedItem = nil; failure = nil; message = nil
+        failedItemsPage = nil; itemRevisions = [:]
     }
     func checked(_ value: CommunityAdminClient) throws {
         try Task.checkCancellation()
@@ -528,7 +536,7 @@ final class CommunityAdminStore: ObservableObject {
     func load(_ tool: AdminTool, page: Int, query: String, role: String, status: AdminItemStatus) {
         switch tool {
         case .accounts: accounts = nil
-        case .moderation: items = nil
+        case .moderation: items = nil; itemStatus = status; failedItemsPage = nil; itemRevisions = [:]
         case .reports: reports = nil
         default: break
         }
@@ -542,6 +550,7 @@ final class CommunityAdminStore: ObservableObject {
             case .moderation:
                 let value = try await client.items(page: page, status: status)
                 try self.checked(client); self.items = value
+                for item in value.items { self.itemRevisions[item.id] = UUID() }
             case .reports:
                 let value = try await client.reports(page: page)
                 try self.checked(client); self.reports = value
@@ -551,6 +560,38 @@ final class CommunityAdminStore: ObservableObject {
                 let value = try await client.imports(); try self.checked(client); self.imports = value
                 self.selectedImport = nil
             }
+            return nil
+        }
+    }
+    func nearItemsEnd(_ id: UUID, status: AdminItemStatus, valid: @escaping @MainActor () -> Bool) {
+        guard !busy, failure == nil, itemStatus == status, valid(), let items,
+              items.items.count < 100, items.page * items.limit < items.total,
+              items.items.suffix(4).contains(where: { $0.id == id }) else { return }
+        appendItems(page: items.page + 1, status: status, valid: valid)
+    }
+    func retryItems(status: AdminItemStatus, valid: @escaping @MainActor () -> Bool) {
+        if canRetryItems, let page = failedItemsPage { appendItems(page: page, status: status, valid: valid) }
+    }
+    private func appendItems(page: Int, status: AdminItemStatus, valid: @escaping @MainActor () -> Bool) {
+        guard !busy, itemStatus == status, valid(), let previous = items else { return }
+        failedItemsPage = page
+        run { client in
+            let value = try await client.items(page: page, status: status)
+            try self.checked(client)
+            guard valid(), self.itemStatus == status else { throw CancellationError() }
+            var merged = previous.items
+            var indices = Dictionary(uniqueKeysWithValues: merged.enumerated().map { ($0.element.id, $0.offset) })
+            var added = 0
+            for item in value.items {
+                if let index = indices[item.id] { merged[index] = item }
+                else if merged.count < 100 { indices[item.id] = merged.count; merged.append(item); added += 1 }
+                self.itemRevisions[item.id] = UUID()
+            }
+            self.items = AdminItemsPage(items: merged, page: value.page, limit: value.limit, total: value.total)
+            guard value.page * value.limit >= value.total || merged.count == 100 || added > 0 else {
+                throw BackpackError.invalid("Moderation returned no new items. Retry this page or change the status filter.")
+            }
+            self.failedItemsPage = nil
             return nil
         }
     }

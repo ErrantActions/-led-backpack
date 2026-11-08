@@ -151,41 +151,47 @@ struct SwapRecoveryView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 Text("Recovery first").font(.title2.bold())
                 Label("Recovery tool — no exchange started here", systemImage: "lock.shield")
-                Text("No game is enabled. No peer transfer, discovery-triggered replacement, slot write or hardware restoration exists in this screen. A saved original is prerequisite, not evidence that a swap happened.").font(.caption)
-                Text("Target: \(targets.target.rawValue). Hardware automatic replacement is blocked: a slot/hash/unknown or sentinel descriptor is not recoverable original bytes/state.").font(.caption).foregroundStyle(.orange)
+                Text("Restore your saved original. This screen never starts a game.").font(.caption)
+                if targets.target != .phone { Text("Select Phone to restore. Backpack originals cannot be recovered here.").foregroundStyle(.orange) }
                 if let failure = store.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice = store.notice { Text(notice).font(.caption) }
                 if store.busy { ProgressView() }
                 Button("Inspect retained recovery / received originals") { task = Task { await store.load(ownerScope: SwapRecoveryStore.ownerScope(community)) } }.disabled(store.busy)
                 if let journal = store.journal {
                     VStack(alignment: .leading, spacing: 8) {
+                        FeatureDetails("Original details") {
                         Text("Saved transaction: \(journal.transactionID.uuidString.lowercased())").font(.caption.monospaced())
                         Text("Stage: \(journal.stage.rawValue) · original frame \(journal.originalFrame + 1)")
                         Text("Exact original bytes: \(journal.phone.data?.count ?? 0); playhead \(journal.phone.elapsed, specifier: "%.2f")s. No encounter/location history.").font(.caption)
+                        }
                         if journal.needsRecovery { Label("Original recovery copy retained", systemImage: "arrow.uturn.backward") }
                         if journal.needsRecovery {
                             Button("Cancel future readiness / retain recovery") { task = Task { await store.cancelReadiness(community: community) } }.disabled(store.busy)
                         }
                         Button("Restore my original phone artwork") { restoreConfirmation = true }
                             .disabled(store.busy || targets.target != .phone)
-                        Text("Restore explicitly replaces the current phone choice, even if you selected newer artwork. Check the target. An account/installation mismatch fails closed; no automatic recovery on login, disconnect or target change.").font(.caption)
+                        Text("Restore replaces your current phone choice. Check before confirming.").font(.caption).foregroundStyle(.orange)
                     }.padding(16).glassPanel()
                 }
                 Button("Prepare durable copy of my current phone original") { preparing = true }
                     .disabled(store.busy || targets.target != .phone || !phone.hasArtwork || phone.loading)
-                Text("One active transaction. Original remains retained through errors/restarts/cancellation and until an acknowledged restore. A new prepared original may replace only an acknowledged record after its cooldown; no automatic replay.").font(.caption)
+                FeatureDetails("Recovery rules") {
+                    Text("One active original survives errors and restarts. Replacing it requires an acknowledged restore and cooldown.")
+                }
                 Text("Received swaps — separate local collection").font(.headline)
                 Button("Manually import a received file (not peer transfer)") { importing = true }.disabled(store.busy)
-                Text("Local staging/preview/save/remove only, never automatic cloud/publication/friendship. Original timing/bytes and supplied attribution stay intact. No arbitrary peer filenames/paths are followed.").font(.caption)
+                Text("Received copies stay local until you explicitly save or share them.").font(.caption)
                 ForEach(store.received) { item in
                     VStack(alignment: .leading, spacing: 8) {
                         ReceivedSwapPixels(data: item.data, play: false)
                             .frame(height: 130).clipShape(RoundedRectangle(cornerRadius: 16))
                         Text(item.name).font(.headline)
-                        Text(item.bilateralConfirmed == true ? "Confirmed bilateral swap — sender paired in Found Users, not proximity proof" :
-                            item.transportVerified ? "Validated peer artwork — bilateral application/sender pairing not established" :
-                            "Manually staged — no verified peer transfer").font(.caption)
-                        if let attribution = item.attribution { Text("\(attribution.author) · \(attribution.source) · \(attribution.license)").font(.caption) }
+                        Text(item.bilateralConfirmed == true ? "Confirmed swap" :
+                            item.transportVerified ? "Peer copy · completion unconfirmed" :
+                            "Manually imported · not a peer transfer").font(.caption)
+                        if let attribution = item.attribution {
+                            FeatureDetails("Credit") { Text("\(attribution.author) · \(attribution.source) · \(attribution.license)") }
+                        }
                         Button("Inspect full local preview") { selected = item }
                         Button("Save independent copy to phone library") {
                             task = Task {

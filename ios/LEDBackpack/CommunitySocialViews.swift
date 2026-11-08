@@ -33,7 +33,7 @@ struct CommunitySocialView: View {
                 session.client?.accountID == community.user?.id {
                 if session.busy { ProgressView() }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-                Section("Your profile") {
+                DisclosureGroup("My profile") {
                     if let preferences, let client = session.client {
                         CommunityProfileAvatar(person: preferences.profile, client: client).frame(width: 72, height: 72)
                         Text(preferences.profile.id.uuidString.lowercased()).font(.caption).textSelection(.enabled)
@@ -63,7 +63,6 @@ struct CommunitySocialView: View {
                                 }
                                 Text(friend.displayName)
                             }
-                            Text(friend.id.uuidString.lowercased()).font(.caption).textSelection(.enabled)
                             if preferences?.accountAwardsEnabled == true && badgesVerified {
                                 AuthorizedProfileEventBadges(badges: friend.eventBadges ?? [])
                             }
@@ -73,7 +72,9 @@ struct CommunitySocialView: View {
                             Button("Block contact", role: .destructive) {
                                 confirm("Block contact", "Stops friendship, requests and related permissions. Unblocking does not restore them.") { try await $0.block(friend.id) }
                             }
-                            Button(friend.locationFeaturesAllowed == true ? "Revoke future location-feature consent" : "Allow future location features for this friend") {
+                            FeatureDetails("Friend permissions") {
+                            Text(friend.id.uuidString.lowercased()).textSelection(.enabled)
+                            Button(friend.locationFeaturesAllowed == true ? "Revoke location consent" : "Allow future location features") {
                                 let capturedRevision = locationRevision
                                 confirm("Change future-feature consent", "This does not turn on GPS, nearby discovery or a live-user map. Mutual permission requires both friends.") {
                                     try await $0.futureLocation(friend.id, enabled: friend.locationFeaturesAllowed != true, expectedControlsRevision: capturedRevision)
@@ -82,12 +83,16 @@ struct CommunitySocialView: View {
                             .disabled(friend.locationFeaturesAllowed != true && locationRevision == nil && preferences?.socialLocationGlobalStopEnabled == true)
                             Text(friend.mutualLocationFeaturesAllowed == true ? "Future-feature consent is mutual." : "No mutual future-location-feature consent.")
                                 .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
-                    HStack {
+                    if page > 1 || friends.count == 50 { HStack {
                         Button("Previous friends") { page -= 1; load() }.disabled(page <= 1)
                         Spacer()
                         Button("Next friends") { page += 1; load() }.disabled(friends.count < 50 || page >= 10000)
+                    } }
+                    if friends.isEmpty && !session.busy && session.failure == nil {
+                        ContentUnavailableView("No friends yet", systemImage: "person.2", description: Text("Scan a friend's invitation to connect."))
                     }
                 }.disabled(session.busy)
                 Section("Friend requests") {
@@ -101,12 +106,13 @@ struct CommunitySocialView: View {
                     ForEach(requests?.outbound ?? []) { request in
                         Text("Pending request to \(request.recipientId.uuidString.lowercased())").font(.caption)
                     }
-                    HStack {
+                    if requestPage > 1 || (requests?.inbound.count ?? 0) + (requests?.outbound.count ?? 0) == 50 { HStack {
                         Button("Previous requests") { requestPage -= 1; load() }.disabled(requestPage <= 1)
                         Spacer()
                         Button("Next requests") { requestPage += 1; load() }
                             .disabled((requests?.inbound.count ?? 0) + (requests?.outbound.count ?? 0) < 50 || requestPage >= 10000)
-                    }
+                    } }
+                    DisclosureGroup("Request by account ID") {
                     TextField("Account UUID", text: $target).textInputAutocapitalization(.never).autocorrectionDisabled()
                     Button("Send friend request") {
                         let text = target
@@ -117,22 +123,20 @@ struct CommunitySocialView: View {
                             try await client.requestFriend(id)
                         }, success: { target = ""; load() })
                     }
+                    }
                 }.disabled(session.busy)
                 Section("Single-use friend invite") {
-                    NavigationLink("My friend QR / Scan / Manual invite preview") { FriendInviteQRView() }
-                    Text("Locally generated, revocable 15-minute links. Scanning/entry only previews a minimal authenticated inviter; a request needs another explicit action.").font(.caption)
+                    NavigationLink("Add friends") { NearbyDiscoveryView() }
+                    Text("Scan to preview. Send a request only when you choose.").font(.caption)
                 }
                 NavigationLink("Blocked accounts") { CommunityBlocksView() }
                 NavigationLink("Location-powered consent & timed sessions") { FriendLocationFeaturesView() }
-                if community.config?.nearbyDiscoveryEnabled == true {
-                    NavigationLink("Add friends / Look for friends") { NearbyDiscoveryView() }
-                }
                 Button("Refresh friends and profile", action: load).disabled(session.busy)
             } else {
                 Text(session.failure ?? "Friends are unavailable until this server enables the social capability.")
             }
         }
-        .modernScene().navigationTitle("Friends & profile")
+        .modernScene().navigationTitle("Friends & profile").buttonStyle(.borderless)
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.socialEnabled == true)") {
             clear(); page = 1; requestPage = 1; session.bind(community)
             if community.config?.socialEnabled == true { load() }

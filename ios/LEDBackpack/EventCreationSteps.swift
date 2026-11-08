@@ -23,16 +23,18 @@ struct EventCreationNextSteps: View {
         List {
             Section("Event created") {
                 Text(event.title).font(.title2.bold())
-                Text("The event is saved. Routes, checkpoints, invitations and game choices are separate reviewed actions—not automatic GPS grants or publication.").font(.caption)
+                Label("Saved", systemImage: "checkmark.circle")
+                Text("Creating an event does not start GPS or invite anyone.").font(.caption)
             }
-            Section("Shape the experience") {
+            NavigationLink("Open event") { CommunityEventDetailView(id: event.id) }
+                .buttonStyle(AuroraPrimaryButton())
+            DisclosureGroup("Add a route & checkpoints") {
                 NavigationLink("Place start/finish gates and ride/game checkpoints") {
                     EventRoutePlannerView(original: event, saved: { routeSaved = true })
                 }.disabled(!event.access.canManageRoute || event.cancelled)
                 if routeSaved { Text("Route save acknowledged. Open the event to review its current plan and participation rules.").font(.caption) }
-                Text("Pick start and destination, generate a driving/walking road route, drag shaping handles to choose different roads, then tap the route to drop checkpoints. Review the exact plan before saving. Route previews are not live navigation, safety certification or saved participant tracks.").font(.caption)
-                NavigationLink("Open event / invite friends / manage participants") { CommunityEventDetailView(id: event.id) }
+                Text("Choose start and destination, shape the route, then place checkpoints. Review before saving.").font(.caption)
             }
-        }.navigationTitle("Next: gates & checkpoints")
+        }.navigationTitle("Event ready")
     }
 }

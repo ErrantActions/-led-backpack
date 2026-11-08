@@ -346,10 +346,11 @@ struct LibraryView: View {
         }
         .navigationDestination(isPresented: $showAccount) { CommunityAccountView() }
         .onAppear {
+            cloud.resume()
             libraryVisible = true
             resumeCloudSave()
         }
-        .onDisappear { libraryVisible = false }
+        .onDisappear { cloud.cancel(); libraryVisible = false }
         .onChange(of: showAccount) { _, value in if !value { resumeCloudSave() } }
     }
 
@@ -426,7 +427,10 @@ struct LibraryView: View {
                 if vault.available {
                     ForEach(filteredVault) { item in CloudVaultArtworkRow(item: item) }
                 } else {
-                    ForEach(filteredCloud) { item in CloudArtworkRow(cloud: item) { cloudSelection = item } }
+                    ForEach(filteredCloud) { item in
+                        CloudArtworkRow(cloud: item, open: { cloudSelection = item }, previewKey: cloud.thumbnailKey(item))
+                            .onAppear { cloud.nearEnd(item.id, community: community, library: library, visible: filteredCloud.map(\.id)) }
+                    }
                 }
             }
                 if vault.available && !vault.syncing { Text("Private cloud is paused on this device. Local files are unchanged.").font(.caption) }
@@ -438,12 +442,9 @@ struct LibraryView: View {
                             .disabled(!vault.syncing || vault.locked || vault.busy)
                     }
                 } else if cloud.loading { ProgressView("Updating cloud library...") }
-                if !vault.available && cloud.nextPage != nil {
-                    Button("Load more artwork") { Task { await cloud.loadMore(community, library: library) } }.disabled(cloud.loading)
-                }
                 if !vault.available, let failure = cloud.failure {
                     Label(failure, systemImage: "icloud.slash").font(.caption).foregroundStyle(.orange)
-                    Button("Retry sync") { Task { await cloud.refresh(community, library: library) } }
+                    Button("Retry sync") { Task { await cloud.retry(community, library: library) } }
                 }
             if filteredMedia.isEmpty && (vault.available ? filteredVault.isEmpty : filteredCloud.isEmpty) && !cloud.loading {
                 ContentUnavailableView("Make this space yours", systemImage: "photo.on.rectangle.angled",

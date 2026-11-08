@@ -100,18 +100,19 @@ struct CommunityAccountView: View {
             } else {
                 Text("Refresh your account before managing deletion.").font(.caption)
             }
+            NavigationLink("Library sync") { CloudVaultSettingsView() }
+            Button("Open Social") { app.selectedTab = .social; dismiss() }.buttonStyle(AuroraPrimaryButton())
+            DisclosureGroup("Account tools") {
             Button("Refresh account") { perform { try await community.refreshUser(); return nil } }
             if community.config?.appleSignInEnabled == true, community.user?.authMethods?.password == true,
                community.user?.authMethods?.apple != true {
                 Button("Link Sign in with Apple") { linkingApple = true }
             }
-            NavigationLink("Private cloud library") { CloudVaultSettingsView() }
             NavigationLink("My community uploads") { CommunityUploadsView() }
             NavigationLink("Motion and data-saving preferences") { ViewerMediaPreferencesView() }
             NavigationLink("My devices / unverified tags") { AccountDevicesView() }
             NavigationLink("Firmware library (no flashing)") { FirmwareLibraryView() }
             NavigationLink("Opt-in generic model research") { DeviceResearchView() }
-            Button("Open Social — friends, events, messages & games") { app.selectedTab = .social; dismiss() }
             if community.config?.appIntegrityProtocol == "app-attest-v1" {
                 NavigationLink("App key recovery") { NativeIntegrityRecoveryView() }
             }
@@ -123,6 +124,7 @@ struct CommunityAccountView: View {
             Button("Sign in again") {
                 do { try community.forgetLocalSession() }
                 catch { failure = error.localizedDescription }
+            }
             }
             Button("Sign out", role: .destructive) { perform { try await community.signOut(); return "Signed out." } }
         }.disabled(busy)

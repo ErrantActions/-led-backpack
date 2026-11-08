@@ -58,8 +58,7 @@ struct CommunityMessagesView: View {
                         }
                     }
                     if community.config?.groupChatsEnabled == true { Button("Create group") { creating = true } }
-                    Text("Event-wide rooms are separate from private organizer questions. Open an eligible event to explicitly join its room.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    FeatureDetails("Event chats") { Text("Join event-wide chats from an eligible event. Organizer questions stay private.") }
                 }
                 Section("Group invitations") {
                     ForEach(invitations) { invite in
@@ -72,15 +71,19 @@ struct CommunityMessagesView: View {
                         }
                     }
                 }
-                HStack {
+                if page > 1 || hasMore { HStack {
                     Button("Previous") { page -= 1; load() }.disabled(page <= 1 || session.busy)
                     Spacer()
                     Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy)
+                } }
+                if !session.busy && session.failure == nil && friends.isEmpty && recent.isEmpty && rooms.isEmpty && invitations.isEmpty {
+                    ContentUnavailableView("No conversations yet", systemImage: "bubble.left.and.bubble.right",
+                        description: Text("Connect with a friend to start chatting."))
                 }
                 Button("Refresh", action: load).disabled(session.busy)
             } else { Text(session.failure ?? "Messaging is unavailable until this server advertises configured support.") }
         }
-        .modernScene().navigationTitle("Messages")
+        .modernScene().navigationTitle("Messages").buttonStyle(.borderless)
         .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(phase)") {
             clear(); selection = nil; page = 1; session.clear()
             guard phase == .active else { return }

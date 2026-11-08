@@ -33,14 +33,15 @@ struct CommunityAdminView: View {
             if community.isAdmin && !store.denied {
                 Form {
                     Section {
+                        Picker("Admin tools", selection: $tool) {
+                            ForEach(AdminTool.allCases) { Text($0.rawValue).tag($0) }
+                        }.disabled(store.busy)
+                        DisclosureGroup("More administration tools") {
                         NavigationLink("Bulk community quarantine / deletion") { CommunityBulkModerationView() }
                         NavigationLink("Content-blind upload alerts / holds") { CommunityUploadAlertsView() }
                         NavigationLink("Firmware drafts / publish / withdraw") { FirmwareLibraryView(admin: true) }
                         NavigationLink("Generic research target curation") { DeviceResearchView(admin: true) }
                         NavigationLink("Owned artwork previews / compare / branches") { AdminArtworkView() }
-                        Picker("Admin tools", selection: $tool) {
-                            ForEach(AdminTool.allCases) { Text($0.rawValue).tag($0) }
-                        }.disabled(store.busy)
                         Text("Community administration only. Private GIFs and vault keys are never available here.")
                             .font(.caption).foregroundStyle(.secondary)
                         if community.config?.chatReportsEnabled == true {
@@ -54,6 +55,7 @@ struct CommunityAdminView: View {
                         }
                         if community.config?.peerIncidentReportsEnabled == true || community.config?.peerIncidentWithdrawalEnabled == true {
                             NavigationLink("Private peer-incident review (unverified claims)") { PeerIncidentAdminView() }
+                        }
                         }
                     }
                     if store.busy { ProgressView("Contacting catalog…") }
@@ -69,7 +71,7 @@ struct CommunityAdminView: View {
                     description: Text(store.failure ?? "Refresh your account or sign in with an admin account."))
             }
         }
-        .modernScene().navigationTitle("Administration")
+        .modernScene().navigationTitle("Administration").buttonStyle(.borderless)
         .task(id: loadID) {
             pending = nil; selectedZIP = nil
             store.bind(community)
@@ -221,7 +223,7 @@ struct CommunityAdminView: View {
                 ForEach(result.items) { item in
                     Button { store.openItem(item.id) } label: {
                         HStack(spacing: 12) {
-                            GIFThumbnail(key: "admin:\(community.accountRevision):\(item.id)", cache: false) {
+                            GIFThumbnail(key: store.itemPreviewKey(item), cache: false) {
                                 try await community.download(item.item.previewUrl)
                             }.frame(width: 72, height: 72).clipShape(RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading) {
@@ -231,9 +233,18 @@ struct CommunityAdminView: View {
                                 if item.requiresAdminReview { Text("Needs human review").font(.caption).foregroundStyle(.orange) }
                             }
                         }
-                    }.disabled(store.busy)
+                    }.disabled(store.busy).onAppear {
+                        let captured = status
+                        store.nearItemsEnd(item.id, status: captured, valid: { status == captured && tool == .moderation })
+                    }
                 }
-                pager(page: result.page, limit: result.limit, total: result.total)
+                if result.items.count == 100 { Text("Showing 100 submissions. Change the status filter.").font(.caption) }
+                if store.canRetryItems {
+                    Button("Retry page") {
+                        let captured = status
+                        store.retryItems(status: captured, valid: { status == captured && tool == .moderation })
+                    }
+                }
             }
         }
     }
@@ -385,7 +396,7 @@ private struct CommunityAdminItemEditor: View {
                             .font(.caption).foregroundStyle(.secondary)
                         Button("Save moderation") { confirmation = true }.disabled(status == .approved && !reviewed)
                     }.disabled(store.busy)
-                    Section("AI review") {
+                    DisclosureGroup("AI review details") {
                         Text(item.aiState)
                         if let review = item.aiReview {
                             Text("Audience: \(review.audience) / confidence: \(review.confidence.formatted(.percent))")

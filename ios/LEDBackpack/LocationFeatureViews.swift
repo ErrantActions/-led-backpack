@@ -30,15 +30,17 @@ struct FriendLocationFeaturesView: View {
     }
     var body: some View {
         Form {
-            Section("Real states, separate permissions") {
+            Section("Friend play") {
                 Text(local.status)
                 Label(local.sensing ? "Phone sensing ACTIVE" : "Phone sensing OFF", systemImage: local.sensing ? "location.fill" : "location.slash")
-                Text("Service consent/session state is not actual proximity, ranging or playback. Friend sessions use no phone sensor. Local checkpoint sensing is enabled separately on a downloaded event.").font(.caption)
-                Text("Participation, shared images and timed interactions can imply nearby presence without coordinates. Mutual per-friend permission, explicit session consent and separate foreground OS consent are required for their respective features.").font(.caption)
+                FeatureDetails("Permissions & privacy") {
+                    Text("Session consent is not proximity or playback. Friends opt in separately; any GPS use needs its own OS permission.")
+                    Text("Participation can imply presence even without coordinates. No sensor starts from this screen.")
+                }
                 Button("Stop all location features", role: .destructive) { stopAll() }
                 if let notice { Text(notice).font(.caption) }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-                Button("Explicitly reload current permissions/sessions") {
+                Button("Refresh sessions") {
                     if confirmed { intent = nil; confirmed = false }
                     load()
                 }
@@ -83,7 +85,7 @@ struct FriendLocationFeaturesView: View {
                         Picker("Planned phone interaction kind", selection: $kind) { ForEach(FriendInteractionKind.allCases) { Text($0.rawValue).tag($0) } }
                         Stepper("Duration \(seconds) seconds", value: $seconds, in: 60...900, step: 30)
                         Toggle("I consent to one deliberately selected friend control session", isOn: $consent)
-                        Text("Control acceptance alone starts no media. Active owned sessions have a separate PHONE scene page with explicit kind/preset/media arming. No game, coordinates/history, ranging or verified clock sync.").font(.caption)
+                        Text("Acceptance does not start playback. Both friends arm their phone scene separately.").font(.caption)
                         if let clock {
                             TimelineView(.periodic(from: .now, by: 1)) { _ in
                                 ForEach(sessions) { value in

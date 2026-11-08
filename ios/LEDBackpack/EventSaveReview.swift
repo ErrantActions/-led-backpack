@@ -72,7 +72,12 @@ struct EventDefinitionReviewView: View {
         NavigationStack {
             Form {
                 let input = captured.input
-                Section("Exact event-definition write only") {
+                Section(input.title) {
+                    Text("\(input.startsAtISO) – \(input.endsAtISO)")
+                    Text(input.location.label)
+                    Text("\(input.visibility.capitalized) · \(input.capacity) places")
+                }
+                FeatureDetails("Exact saved fields") {
                     Text(input.expectedRevision.map { "Captured event revision \($0)" } ?? "Create new event")
                     Text(input.title); Text(input.description)
                     Text("Kind: \(input.kind ?? "omitted / existing unchanged")")
@@ -90,10 +95,11 @@ struct EventDefinitionReviewView: View {
                     Label("Changing to private RETAINS going, invited and organizer membership.", systemImage: "exclamationmark.triangle")
                     Text("Existing recipients/copies may retain details. Separate deliberate removals are required; Back performs no write.")
                 }
-                Text("Unsaved route stages, order, optional flags, rewards and artwork are NOT included. Event and route drafts save separately. No GPS, friend, progress or participation consent is granted. Existing gallery copies/approval remain governed by their own permissions.").font(.caption)
-                Button("Explicitly confirm captured definition", action: confirm)
+                Text("Saves the event definition only. Routes and participation are separate choices.").font(.caption)
+                Button(input.expectedRevision == nil ? "Create event" : "Save event update", action: confirm)
+                    .buttonStyle(AuroraPrimaryButton())
                 Button("Back — no write", role: .cancel, action: back)
-            }.modernScene().navigationTitle("Local pre-save review")
+            }.modernScene().navigationTitle("Review event").buttonStyle(.borderless)
         }
     }
 }
@@ -107,7 +113,11 @@ struct EventRouteReviewView: View {
         NavigationStack {
             Form {
                 let draft = captured.draft, event = draft.original
-                Section("Exact route write only · revision \(event.revision)") {
+                Section(event.title) {
+                    Text("\(draft.body.normalized().checkpoints.count) checkpoints · \(draft.body.geometry.count) guide points")
+                    Text(draft.published ? "Published route" : "Unpublished draft")
+                }
+                FeatureDetails("Exact route & artwork") {
                     Text("Event context (NOT saved): \(event.title)")
                     Text("\(event.startsAtISO) – \(event.endsAtISO) / \(event.timezone)")
                     Text("\(event.visibility) · fixed venue \(event.location.label): \(event.location.latitude), \(event.location.longitude), \(event.location.radiusMeters)m")
@@ -125,10 +135,10 @@ struct EventRouteReviewView: View {
                         Text(artwork(badge.gifItemId, badge.exclusiveGifId)).font(.caption)
                     }
                 }
-                Text("No event schedule/visibility/venue edits are included. No automatic publication to the community, private-library scan, GPS, progress or friend consent. Existing participants/copies may retain earlier details; server order, active-progress and review locks are authoritative. Release never restores progress or bypasses new consent.").font(.caption)
-                Button("Explicitly confirm captured route", action: confirm)
+                Text("Saves this route only. No schedule, GPS or participation changes. Existing recipients can retain earlier copies.").font(.caption)
+                Button("Save reviewed route", action: confirm).buttonStyle(AuroraPrimaryButton())
                 Button("Back — no write", role: .cancel, action: back)
-            }.modernScene().navigationTitle("Local route review")
+            }.modernScene().navigationTitle("Review route").buttonStyle(.borderless)
         }
     }
     private func artwork(_ community: UUID?, _ exclusive: UUID?) -> String {

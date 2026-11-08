@@ -49,7 +49,7 @@ struct LocalPixelStudioView: View {
             projects
             newCanvas
         }
-        .modernScene().navigationTitle("Offline pixel studio")
+        .modernScene().navigationTitle("Offline pixel studio").buttonStyle(.borderless)
         .task {
             store.setForeground(phase == .active)
             await store.loadProjects(); await originals.load()
@@ -79,9 +79,8 @@ struct LocalPixelStudioView: View {
     }
     private var intro: some View {
         Section {
-            Text("No account, network, Bluetooth or backpack. True \(art.width) × \(art.height) transparent RGBA canvas.")
-            Text("PNG/current frame and GIF/all frames save NEW local copies. Nothing starts playback or selects the phone display automatically.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text("\(art.width) × \(art.height) local pixels").font(.headline)
+            Text("New copies only. Your originals and display are unchanged.").font(.caption)
             if let error = store.failure { Text(error).foregroundStyle(.orange).accessibilityLabel("Studio error: \(error)") }
             if let notice = store.notice { Text(notice).foregroundStyle(.secondary).accessibilityLabel(notice) }
             if store.busy {
@@ -163,7 +162,7 @@ struct LocalPixelStudioView: View {
         }
     }
     private var timeline: some View {
-        Section("Frames / exact GIF timing") {
+        DisclosureGroup("Frames & timing") {
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(Array(art.frames.enumerated()), id: \.element.id) { index, frame in
@@ -206,7 +205,7 @@ struct LocalPixelStudioView: View {
         }.disabled(store.busy || store.playing)
     }
     private var previewControls: some View {
-        Section("Reversible local preview ONLY") {
+        DisclosureGroup("Preview controls") {
             Button(store.playing ? "Pause preview" : "Play preview explicitly") {
                 if store.playing { store.pause() }
                 else { previewStart = Date(); store.play(reducedMotion: reducedMotion, dataSaving: animationBlocked) }
@@ -216,7 +215,7 @@ struct LocalPixelStudioView: View {
             Slider(value: $brightness, in: 0...1) { Text("Preview RGB brightness") }
             Slider(value: $blackFloor, in: 0...0.2) { Text("Preview black floor") }
             Button("Reset preview appearance") { brightness = 1; blackFloor = 0; grid = true }
-            Text("Preview starts paused, stops on background/exit or saved viewer-setting changes and honors Reduce Motion, phone animation permission and local/phone data-saving. Explicit studio Play is manual playback, not automatic animation. Brightness/black floor/grid never edit pixels, change system brightness or control hardware. No safety or hardware-compatibility certification.")
+            Text("Preview only. Motion/data-saving settings apply; no display or original pixels change.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -228,10 +227,13 @@ struct LocalPixelStudioView: View {
                 do { importPoint = try coordinate(); importSprite = true; importing = true }
                 catch { store.failure = error.localizedDescription }
             }
-            Text("Up to 5 MB; true 1…128 dimensions; no silent resize. PNG/JPEG/WebP stills and up to 120 GIF frames. GIF subrectangles, transparency, interlacing and disposal 0–3 are composed into logical-canvas RGBA frames. Missing GIF delay controls use the existing 10 cs local default; original timing/disposal bytes remain separate. Plain-text/user-input GIFs, reserved disposal, APNG and animated WebP are unavailable. Existing hardware GIF Studio is not invoked.")
-                .font(.caption).foregroundStyle(.secondary)
+            FeatureDetails("Supported imports") {
+                Text("Up to5 MB,128×128 and120 GIF frames. Stills: PNG/JPEG/WebP. Unsupported formats fail without changing the draft.")
+            }
+            DisclosureGroup("Edit an existing original") {
             ForEach(originals.items) { item in
                 Button("Edit local original: \(item.name)") { pending = .library(item) }
+            }
             }
             if store.retainedImport != nil {
                 Text("Most recently read import bytes retained in this session, even if pixel decoding failed.")
@@ -246,14 +248,16 @@ struct LocalPixelStudioView: View {
                     .font(.caption).textSelection(.enabled)
             }
             Button("Save NEW editable project locally") { store.saveProject(name: name) }
-            Button("Export PNG / current frame to Phone originals") { store.export(animated: false, name: name, library: originals) }
-            Button("Export GIF / all frames to Phone originals") { store.export(animated: true, name: name, library: originals) }
-            Text("GIF export is exact indexed color, not lossy quantization: binary alpha and at most 256 palette entries per frame. Animations with transparency reserve one entry in every frame (255 opaque colors). Partial alpha or extra colors produce an error; PNG and editable projects retain RGBA. Source file metadata beyond explicit local attribution is retained in original bytes, not copied into authored exports. Imported semi-transparent RGB may round by one premultiplication unit.")
-                .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("Export a copy") {
+                Button("Export current frame as PNG") { store.export(animated: false, name: name, library: originals) }
+                Button("Export animation as GIF") { store.export(animated: true, name: name, library: originals) }
+                Text("GIF needs binary transparency and at most256 colors per frame. Unsupported pixels produce an error; PNG and projects retain RGBA.")
+                    .font(.caption)
+            }
         }.disabled(store.busy || store.playing || originals.busy)
     }
     private var projects: some View {
-        Section("Owned editable projects (offline)") {
+        DisclosureGroup("Saved projects") {
             if store.projects.isEmpty { Text("No saved studio projects yet. Save explicitly before leaving; unsaved edits are not auto-synced.") }
             ForEach(store.projects) { entry in
                 HStack {
@@ -268,7 +272,7 @@ struct LocalPixelStudioView: View {
         }.disabled(store.busy || store.playing)
     }
     private var newCanvas: some View {
-        Section("New document — confirmation required") {
+        DisclosureGroup("New canvas") {
             ForEach([16, 32, 48, 64], id: \.self) { side in
                 Button("New \(side) × \(side)") { pending = .new(side, side) }
             }

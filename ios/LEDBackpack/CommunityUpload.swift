@@ -198,14 +198,14 @@ struct CommunityUploadView: View {
 @MainActor
 struct CommunityUploadsView: View {
     @EnvironmentObject private var community: CommunityController
-    @State private var items: [CommunitySubmission] = []
-    @State private var busy = false
+    @StateObject private var catalog = CommunityUploadsStore()
+    private var items: [CommunitySubmission] { catalog.items }
+    private var busy: Bool { working || catalog.loading }
+    @State private var working = false
     @State private var failure: String?
     @State private var selected: CommunitySubmission?
     @State private var sharing: CommunitySubmission?
     @State private var sizes = NativeMatrixFilter()
-    @State private var number = 1
-    @State private var total = 0
     @State private var operation: Task<Void, Never>?
     private struct Account: Equatable {
         let origin: CommunityOrigin?
@@ -226,7 +226,7 @@ struct CommunityUploadsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.title).font(.headline)
                         if let width = item.width, let height = item.height { Text("native:\(width)x\(height) — exact original").font(.caption) }
-                        Text("Visibility: \(item.visibility) / status: \(item.status) / AI: \(item.aiState)").font(.caption)
+                        Text(item.status.capitalized).font(.caption)
                         if !item.moderationReason.isEmpty { Text(item.moderationReason).font(.caption) }
                         if let error = item.aiError { Text(error).font(.caption).foregroundStyle(.orange) }
                         if item.visibility == "private" {
@@ -235,40 +235,40 @@ struct CommunityUploadsView: View {
                         if community.user?.role == "admin" {
                             Button("Delete server upload", role: .destructive) { selected = item }.disabled(busy)
                         } else {
+                            FeatureDetails("Retention & review") {
                             Text(community.config?.accountDeletionRetainsSharedGifs == true
                                 ? "Only admins can delete individual server GIFs. This server retains approved shared work after account deletion."
                                 : "Only admins can delete individual server GIFs. Account deletion removes all GIFs you contributed, including approved shared work.")
                                 .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
-                    }
+                    }.onAppear { if !working { catalog.nearEnd(item.id) } }
                 }
                 if items.isEmpty && !busy && failure == nil { Text("No uploads yet. Share a GIF from Library > Actions.") }
-                HStack {
-                    Button("Previous") { number = max(1, number - 1); refresh() }.disabled(busy || number == 1)
-                    Text("Page \(number)")
-                    Button("Next") { number += 1; refresh() }.disabled(busy || number * 24 >= total)
-                }
+                if catalog.nextPage == nil && !items.isEmpty && items.count < 100 && !busy && catalog.failure == nil { Text("You're all caught up").font(.caption) }
+                if items.count == 100 { Text("Showing 100 uploads. Refine your filter.").font(.caption) }
             }
             if busy { ProgressView() }
             if let failure { Text(failure).foregroundStyle(.orange) }
+            if let failure = catalog.failure { Text(failure).foregroundStyle(.orange); Button("Retry") { catalog.retry() } }
         }
         .modernScene().navigationTitle("My uploads")
-        .task(id: account) { operation?.cancel(); items = []; selected = nil; sharing = nil; number = 1; total = 0; busy = false; if community.signedIn { refresh() } }
-        .onDisappear { operation?.cancel(); items = []; selected = nil; sharing = nil }
+        .task(id: account) { operation?.cancel(); catalog.cancel(); selected = nil; sharing = nil; working = false; if community.signedIn { refresh() } }
+        .onDisappear { operation?.cancel(); catalog.cancel(); selected = nil; sharing = nil }
         .confirmationDialog(sharingWarning, isPresented: Binding(
             get: { sharing != nil }, set: { if !$0 { sharing = nil } })) {
             Button("I have sharing rights; submit for review") {
                 guard let sharing, !busy else { return }
-                self.sharing = nil; busy = true; failure = nil
+                self.sharing = nil; working = true; failure = nil
                 let stamp = account
                 operation = Task {
-                    defer { if stamp == account { busy = false } }
+                    defer { if stamp == account { working = false } }
                     do {
                         guard account == stamp else { return }
                         let updated = try await community.submitUpload(sharing.id, sharingAttested: true, expectedRevision: stamp.revision)
                         try Task.checkCancellation()
                         guard account == stamp else { return }
-                        if let index = items.firstIndex(where: { $0.id == updated.id }) { items[index] = updated }
+                        catalog.update(updated)
                     } catch { if account == stamp { failure = error.localizedDescription } }
                 }
             }
@@ -277,16 +277,16 @@ struct CommunityUploadsView: View {
             get: { selected != nil }, set: { if !$0 { selected = nil } })) {
             Button("Delete server upload", role: .destructive) {
                 guard let selected else { return }
-                self.selected = nil; busy = true; failure = nil
+                self.selected = nil; working = true; failure = nil
                 let stamp = account
                 operation = Task {
-                    defer { if stamp == account { busy = false } }
+                    defer { if stamp == account { working = false } }
                     do {
                         guard account == stamp else { return }
                         try await community.deleteUpload(selected.id, expectedRevision: stamp.revision)
                         try Task.checkCancellation()
                         guard account == stamp else { return }
-                        items.removeAll { $0.id == selected.id }
+                        catalog.remove(selected.id)
                     } catch { if account == stamp { failure = error.localizedDescription } }
                 }
             }
@@ -294,23 +294,14 @@ struct CommunityUploadsView: View {
     }
     private func refresh() {
         guard !busy else { return }
-        busy = true; failure = nil
+        failure = nil
         let stamp = account
-        let requestedPage = number
-        items = []
-        operation = Task {
-            defer { if stamp == account { busy = false } }
-            do {
+        catalog.search(valid: { stamp == account && community.signedIn }, fetch: { requestedPage in
                 try await community.loadConfig()
                 try Task.checkCancellation()
-                guard stamp == account else { return }
-                let result = try await community.myUploadPage(page: requestedPage, sizes: stamp.sizes)
-                try Task.checkCancellation()
-                guard stamp == account else { return }
-                items = result.items; total = result.total
-            }
-            catch { if stamp == account && !Task.isCancelled { failure = error.localizedDescription } }
-        }
+                guard stamp == account else { throw CancellationError() }
+                return try await community.myUploadPage(page: requestedPage, sizes: stamp.sizes)
+        })
     }
     private var sharingWarning: String {
         let retention = community.config?.accountDeletionRetainsSharedGifs == true

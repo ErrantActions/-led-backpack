@@ -25,10 +25,10 @@ private struct EventGalleryContent: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text(organizer ? "Organizer image gallery" : "Current authorized gallery").font(.title2.bold())
-                Text("Explicitly chosen still files only. No camera, PDF/video, private-library or cloud autoscan. Public/unlisted images awaiting approval are NOT published.").font(.caption)
+                Text("Choose still images only. Public images need approval.").font(.caption)
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice = store.notice { Text(notice).foregroundStyle(.orange) }
-                if store.conflict { Text("Conflict: captured asset revision/full order, file and descriptions remain local. Cancel/reload explicitly; no rebase or retry.").foregroundStyle(.orange) }
+                if store.conflict { Text("Gallery changed. Your draft is retained; cancel and review before saving.").foregroundStyle(.orange) }
                 if session.busy { ProgressView() }
                 Button("Refresh current access / images (keep choices)") { store.load(id: eventID, organizer: organizer) }.disabled(session.busy)
                 if let event = store.event, let gallery = store.gallery, let client = session.client, !session.denied {
@@ -105,19 +105,24 @@ private struct EventGalleryContent: View {
             .sheet(item: $store.intent) { intent in
                 NavigationStack {
                     Form {
+                        FeatureDetails("Captured revision & order") {
                         Text("Captured event revision \(intent.event.revision), ordinary \(intent.event.access.role?.rawValue ?? "") role.")
                         Text("Captured full order: \(intent.gallery.assets.map { $0.id.uuidString }.joined(separator: ", "))").font(.caption)
+                        }
                         Text("Caption: \(intent.caption)\nAlt: \(intent.alt)")
                         switch intent.action {
                         case .upload:
-                            Text("Metadata-first immutable staged still, explicit permission true; max 5 MB / 20 images. Public/unlisted requires approval before publication.")
+                            Text("Uploads your chosen image. Public images need approval.")
                         case .metadata(let id, let revision):
-                            Text("Description edit: \(id.uuidString), expected asset revision \(revision). Changes reset public approval, not event participation.")
+                            Text("Updates descriptions and resets public approval. Event participation is unchanged.")
+                            FeatureDetails("Selected image") { Text("\(id.uuidString) · revision \(revision)") }
                         case .order(let ids):
-                            Text("Exact desired full order: \(ids.map { $0.uuidString }.joined(separator: ", "))")
+                            FeatureDetails("New order") { Text(ids.map { $0.uuidString }.joined(separator: ", ")) }
                             Text("First image is cover. Reordering never approves a pending image.")
                         case .remove(let id, let revision):
-                            Text("Hide and durably queue removal of \(id.uuidString), captured asset revision \(revision). Server DELETE has no atomic revision/order field; native preflight checks the snapshot, but cannot promise a server compare-and-swap.")
+                            Text("Removes only this image. Access is rechecked, but the server cannot atomically compare gallery revisions.")
+                                .foregroundStyle(.orange)
+                            FeatureDetails("Selected image") { Text("\(id.uuidString) · revision \(revision)") }
                         }
                         Button("Explicitly confirm captured gallery action") { store.apply(intent) }.disabled(session.busy)
                         Button("Back — no write", role: .cancel) { store.intent = nil }

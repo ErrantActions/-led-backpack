@@ -167,7 +167,7 @@ final class NavigationTests: XCTestCase {
         reveal(first, in: app); first.tap(); reveal(second, in: app); second.tap()
         app.buttons["community-send-selection"].tap()
         XCTAssertTrue(app.navigationBars["Send & Play"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Connect from the Backpack tab, then retry. This screen does not scan or connect automatically."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Connect your backpack, then retry."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Send & Play on backpack"].exists)
         let prepare = app.buttons["Prepare / update send copies"]
         reveal(prepare, in: app, requireHittable: false)
@@ -190,6 +190,8 @@ final class NavigationTests: XCTestCase {
         let permission = app.buttons["Request When-In-Use location permission deliberately"]
         reveal(permission, in: app); XCTAssertTrue(permission.exists)
         XCTAssertFalse(permission.isEnabled)
+        let phoneOptions = app.buttons["Phone animation"]
+        reveal(phoneOptions, in: app); phoneOptions.tap()
         let automation = app.buttons["Capture durable original and arm PHONE"]
         reveal(automation, in: app, requireHittable: false)
         XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
@@ -213,10 +215,130 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Community GIF gallery"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Sign in for friends, events and messaging"].exists)
         assertNoVisibleEntryForms(app)
-        let friends = app.descendants(matching: .any).matching(identifier: "social-link-Friends / requests / profile").firstMatch
+        let friends = app.buttons["social-primary-friends"]
         reveal(friends, in: app, requireHittable: false)
         XCTAssertTrue(friends.exists); XCTAssertFalse(friends.isEnabled)
         attach(app, name: "Social tab - grouped features, private capabilities sign-in gated")
+    }
+
+    func testEachSocialTileOpensItsOwnFeatureAndReturnsToSocial() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
+        app.launch()
+        signInFixture(app)
+        let social = app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch
+        social.tap()
+        let routes = [
+            ("friends", "Friends & profile", "No friends yet"), ("messages", "Messages", "No conversations yet"),
+            ("events", "Events", "No events yet"), ("games", "GPS & nearby games", "Choose your next game")
+        ]
+        for (route, title, content) in routes {
+            XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
+            let tile = app.buttons["social-primary-\(route)"]
+            reveal(tile, in: app); XCTAssertTrue(tile.isEnabled); tile.tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 10), "The \(route) tile must open \(title).")
+            XCTAssertTrue(app.staticTexts[content].waitForExistence(timeout: 10), "Verify actual \(route) content, not just a title.")
+            for (_, other, _) in routes where other != title {
+                XCTAssertFalse(app.navigationBars[other].isHittable, "Do not route \(route) to \(other).")
+            }
+            attach(app, name: "Social \(route) - distinct intended destination")
+            let back = app.buttons["BackButton"]
+            XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
+        }
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
+    }
+
+    func testCommunityLoadsNextPageByScrollingWithoutLoadMore() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--pagination-ui-fixture"]
+        app.launch()
+        let discover = app.buttons["Discover GIFs"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 20)); discover.tap()
+        XCTAssertTrue(app.navigationBars["Community"].waitForExistence(timeout: 10))
+        let first = app.buttons["community-gif-cccccccc-1234-4567-89ab-000000000001"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Load more"].exists)
+        let last = app.buttons["community-gif-cccccccc-1234-4567-89ab-000000000030"]
+        reveal(last, in: app); XCTAssertTrue(last.exists)
+        let results = app.descendants(matching: .any).matching(identifier: "community-results").firstMatch
+        XCTAssertEqual(results.value as? String, "30 GIFs")
+        XCTAssertTrue(app.staticTexts["You're all caught up"].exists)
+        XCTAssertFalse(app.buttons["Load more"].exists)
+        attach(app, name: "Community - next page acknowledged from near-end visibility")
+    }
+
+    func testAddFriendsMatchesSketchAndNeverStartsDiscoveryOnEntry() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
+        app.launch(); signInFixture(app)
+        app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch.tap()
+        let friends = app.buttons["social-primary-friends"]
+        reveal(friends, in: app); friends.tap()
+        let add = app.buttons["Add friends"]
+        reveal(add, in: app); add.tap()
+        XCTAssertTrue(app.navigationBars["Add friends"].waitForExistence(timeout: 10))
+        for id in ["add-friends-look", "add-friends-my-qr", "add-friends-scan-qr"] {
+            XCTAssertTrue(app.buttons[id].exists); XCTAssertTrue(app.buttons[id].isHittable)
+        }
+        XCTAssertTrue(app.switches["find-me-toggle"].exists)
+        XCTAssertTrue(app.staticTexts["Discovery off"].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "add-friends-empty").firstMatch.exists)
+        attach(app, name: "Add friends - three actions, Find Me off, real empty state")
+        app.buttons["add-friends-my-qr"].tap()
+        XCTAssertTrue(app.navigationBars["My QR Code"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Create a new 15-minute invitation"].exists)
+        XCTAssertFalse(app.buttons["Scan friend QR with camera (explicit)"].exists)
+        attach(app, name: "My QR Code - distinct subsection, no automatic code renewal")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Add friends"].waitForExistence(timeout: 10))
+        app.buttons["add-friends-look"].tap()
+        XCTAssertTrue(app.navigationBars["Discovery permission"].waitForExistence(timeout: 10))
+        let enable = app.buttons["Enable Bluetooth"]
+        XCTAssertTrue(enable.exists); XCTAssertFalse(enable.isEnabled)
+        XCTAssertFalse(app.buttons["Start discovery"].exists)
+        attach(app, name: "Find friends - separate default-off consent before Bluetooth")
+        app.buttons["Cancel"].tap()
+    }
+
+    func testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Filter library"].waitForExistence(timeout: 20))
+        app.buttons["Filter library"].tap(); app.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Export connection log"].exists)
+        let catalog = app.buttons["Catalog server and account"]
+        reveal(catalog, in: app); XCTAssertTrue(catalog.isHittable)
+        attach(app, name: "Settings - account route reachable, diagnostics collapsed")
+        app.buttons["Done"].tap()
+        let artwork = app.buttons["Preview Night ride"]
+        reveal(artwork, in: app); artwork.press(forDuration: 1)
+        app.buttons["Edit a copy"].tap()
+        XCTAssertTrue(app.navigationBars["GIF Studio"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Use source timing"].exists)
+        XCTAssertFalse(app.buttons["Reset manual edits"].exists)
+        XCTAssertTrue(app.buttons["Timing & loops"].exists)
+        let save = app.buttons["Save new GIF to library"]
+        reveal(save, in: app); XCTAssertTrue(save.isHittable)
+        attach(app, name: "GIF Studio - clear save action, advanced tools collapsed")
+        app.buttons["Cancel"].tap()
+    }
+
+    private func signInFixture(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["Catalog account"].waitForExistence(timeout: 20))
+        app.buttons["Catalog account"].tap()
+        let emailOption = app.buttons["Continue with email"]
+        XCTAssertTrue(emailOption.waitForExistence(timeout: 10)); emailOption.tap()
+        let email = app.textFields["Email"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5)); email.tap(); email.typeText("ui@example.invalid")
+        app.secureTextFields["Password"].tap(); app.secureTextFields["Password"].typeText("fixture-password")
+        app.keyboards.buttons["Go"].tap()
+        let account = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "UI Rider")).firstMatch
+        XCTAssertTrue(account.waitForExistence(timeout: 10))
+        let back = app.buttons["BackButton"]
+        XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
     }
 
     func testFoundUsersIsReachableWithoutStartingBluetoothOrInventingSwapSuccess() throws {

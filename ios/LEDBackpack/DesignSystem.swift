@@ -154,7 +154,7 @@ struct FeatureDetails<Content: View>: View {
     }
     var body: some View {
         DisclosureGroup {
-            VStack(alignment: .leading, spacing: 10) { content }
+            content
                 .font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
                 .buttonStyle(.borderless)
         } label: {

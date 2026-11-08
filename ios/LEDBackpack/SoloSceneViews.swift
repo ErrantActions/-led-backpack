@@ -104,12 +104,14 @@ struct SoloScenesView: View {
                 .accessibilityLabel("Request When-In-Use location permission deliberately")
             Button("Start GPS") { solo.startSensing() }.buttonStyle(AuroraPrimaryButton())
                 .disabled(!solo.sensingConsent || !solo.loaded || solo.sensing)
+            DisclosureGroup("Phone animation") {
             Toggle("Animate my phone automatically", isOn: Binding(get: { solo.automationConsent }, set: solo.setAutomationConsent))
             Text("Your original is saved before any automatic change. Open the phone player first.")
                 .font(.caption)
             Button(solo.armed ? "Phone automation on" : "Start phone automation") { Task { await solo.arm() } }
                 .disabled(solo.armed || !solo.automationConsent || solo.busy)
                 .accessibilityLabel(solo.armed ? "PHONE automation is armed" : "Capture durable original and arm PHONE")
+            }
             if targets.target != .phone {
                 Text("Select the phone target first.").foregroundStyle(.orange)
             }
@@ -416,7 +418,7 @@ private struct SoloAreaEditor: View {
             Section("Fixed point") {
                 Toggle("Use one GPS fix for this private draft", isOn: $captureConsent)
                     .disabled(saving)
-                Text("Stop active play first. The point stays in this draft until you Save; no route or visit is recorded.").font(.caption)
+                Text("Stop playing first. This private point is saved only when you choose Save.").font(.caption)
                 Button("Allow location") {
                     do {
                         try solo.requestFixedPointPermission(consent: captureConsent)

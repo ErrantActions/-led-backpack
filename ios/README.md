@@ -1,5 +1,30 @@
 # LED Backpack for iOS
 
+### Post-build10 UX corrections - source in validation
+
+Social's four primary buttons now use explicit distinct destinations instead of
+multiple NavigationLinks competing inside one List row. Add Friends follows the
+owner's rough three-action layout (look nearby, own QR, scan QR), with Find Me
+showing actual armed findability and a separate default-off discovery permission
+step. Opening the page does not activate Bluetooth, GPS or friendship.
+
+Community, Commons, legacy owned-library rows, My Uploads, route artwork and
+admin catalog/moderation lists use guarded near-end paging. Page/cursor identity,
+one in-flight operation, account/filter/generation cancellation, stable-ID
+upserts, preview invalidation, exhaustion and explicit error Retry are retained.
+Local collections and the event's bounded full-order gallery do not invent
+remote paging. Required inventory reconciliation for unified cloud sync remains
+automatic.
+
+Workflow end screens use shorter outcomes and expandable advanced controls.
+Required sharing consent, errors, destructive confirmation, Stop and Restore
+remain available. Gallery definition conflicts retain local drafts; actual
+role/access loss still clears them. The previously unreachable catalog settings
+link was moved out of the backup button's action.
+
+These changes are **not in TestFlight build10**. Actual unsigned native
+compile/unit/UI/screenshot evidence will be recorded after validation.
+
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
