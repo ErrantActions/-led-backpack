@@ -334,6 +334,7 @@ private struct SoloSceneComposer: View {
 private struct SoloAreaEditor: View {
     @EnvironmentObject private var solo: SoloSceneController
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     let original: SoloArea?
     @State private var name: String
     @State private var latitude: String
@@ -348,6 +349,10 @@ private struct SoloAreaEditor: View {
     @State private var error: String?
     @State private var saving = false
     @State private var operation: Task<Void, Never>?
+    @State private var captureConsent = false
+    @State private var capturing = false
+    @State private var captureNotice: String?
+    @State private var draftGeneration = UUID()
     init(original: SoloArea? = nil) {
         self.original = original
         _name = State(initialValue: original?.name ?? "")
@@ -363,12 +368,28 @@ private struct SoloAreaEditor: View {
     }
     var body: some View {
         Form {
-            Text("Purposeful offline numeric alternative: enter fixed geometry yourself. No map tiles, search, reverse geocoding or location upload.")
+            Text("Choose a private fixed point with one explicitly requested fresh foreground GPS fix, or enter geometry manually. No map tiles, search, reverse geocoding or location upload.")
             TextField("Private area / target name", text: $name)
             Picker("Local purpose", selection: $kind) {
                 Text("Place preset (home/work stays on device)").tag(SoloAreaKind.place)
                 Text("Own adventure badge / artwork target").tag(SoloAreaKind.adventure)
                 Text("Personal fixed event area (not attendance)").tag(SoloAreaKind.event)
+            }
+            Section("Optional current fixed point — device-local draft") {
+                Toggle("I request one foreground GPS fix for this private fixed point only", isOn: $captureConsent)
+                    .disabled(saving)
+                Text("Stop SOLO sensing/PHONE automation first. Capture does not enable either, save an area, record a route or publish a check-in. Only explicit Save below retains your chosen fixed geometry.").font(.caption)
+                Button("Request When-In-Use permission for this fixed point") {
+                    do {
+                        try solo.requestFixedPointPermission(consent: captureConsent)
+                        captureNotice = "OS permission requested separately. After granting, press Capture explicitly."
+                    } catch { self.error = error.localizedDescription }
+                }.disabled(!captureConsent || capturing || saving || solo.busy || solo.sensing || solo.armed || phase != .active)
+                Button("Capture one fresh fixed point (up to10s)", action: capturePoint)
+                    .disabled(!captureConsent || capturing || saving || solo.busy || solo.sensing || solo.armed || phase != .active)
+                if capturing { ProgressView("Waiting for a fresh, accurate fixed point") }
+                if capturing { Button("Cancel fixed-point capture", role: .destructive) { cancelDraftOperation() } }
+                if let captureNotice { Text(captureNotice).font(.caption) }
             }
             TextField("Fixed latitude −90…90", text: $latitude).keyboardType(.numbersAndPunctuation)
             TextField("Fixed longitude −180…180", text: $longitude).keyboardType(.numbersAndPunctuation)
@@ -383,11 +404,33 @@ private struct SoloAreaEditor: View {
             if kind == .adventure { TextField("Own local badge name", text: $badge) }
             Text("Starting foreground sensing explicitly evaluates saved targets. Offers are approximate; automatic PHONE changes require separate arming. Event areas neither import protected media nor certify attendance. Own badges never unlock cloud permissions.")
             if let error { Text(error).foregroundStyle(.orange) }
-            Button("Save fixed local target", action: save).disabled(saving)
+            Button("Save fixed local target", action: save)
+                .disabled(saving || capturing || !solo.loaded || solo.busy || solo.sensing || solo.armed)
         }
         .navigationTitle(original == nil ? "New fixed area" : "Edit fixed area")
         .toolbar { Button("Cancel") { operation?.cancel(); dismiss() } }
-        .onDisappear { operation?.cancel() }
+        .onDisappear { cancelDraftOperation() }
+        .onChange(of: phase) { _, value in if value != .active { captureConsent = false; cancelDraftOperation() } }
+        .onChange(of: captureConsent) { _, value in if !value && capturing { cancelDraftOperation() } }
+    }
+    private func cancelDraftOperation() {
+        draftGeneration = UUID(); operation?.cancel(); operation = nil; capturing = false; saving = false
+    }
+    private func capturePoint() {
+        guard captureConsent, phase == .active, !capturing, !saving else {
+            error = "Explicit active foreground capture consent is required."; return
+        }
+        let stamp = UUID(); draftGeneration = stamp; capturing = true; error = nil; captureNotice = nil
+        operation = Task {
+            defer { if draftGeneration == stamp { capturing = false } }
+            do {
+                let point = try await solo.captureFixedPoint(consent: captureConsent)
+                try Task.checkCancellation()
+                guard draftGeneration == stamp, captureConsent, phase == .active else { throw CancellationError() }
+                latitude = String(point.latitude); longitude = String(point.longitude)
+                captureNotice = "Fresh point copied into this private draft. No area, visit, badge or route was saved; review and Save deliberately."
+            } catch { if draftGeneration == stamp && !Task.isCancelled { self.error = error.localizedDescription } }
+        }
     }
     private func save() {
         guard let lat = Double(latitude), let lon = Double(longitude), let r = Double(radius),
@@ -396,9 +439,9 @@ private struct SoloAreaEditor: View {
         }
         let area = SoloArea(id: original?.id ?? UUID(), name: name, center: SoloPoint(latitude: lat, longitude: lon),
             radius: r, dwell: d, hysteresis: h, cooldown: c, sceneID: sceneID, kind: kind, badge: kind == .adventure ? badge : nil)
-        saving = true
+        let stamp = UUID(); draftGeneration = stamp; saving = true
         operation = Task {
-            defer { saving = false }
+            defer { if draftGeneration == stamp { saving = false } }
             do {
                 try await solo.edit { value in
                     if let original {
@@ -406,6 +449,8 @@ private struct SoloAreaEditor: View {
                         value.areas[index] = area
                     } else { value.areas.append(area) }
                 }
+                try Task.checkCancellation()
+                guard draftGeneration == stamp else { throw CancellationError() }
                 dismiss()
             } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
         }

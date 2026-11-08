@@ -10,6 +10,7 @@ protocol SoloLocationSource: AnyObject {
     var hasCreatedManager: Bool { get }
     func requestWhenInUse(consent: Bool, foreground: Bool) throws
     func start(consent: Bool, foreground: Bool) throws
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix
     func stop()
 }
 
@@ -19,6 +20,9 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
     private var running = false
     private var authorization: CLAuthorizationStatus?
     private var accuracy: CLAccuracyAuthorization?
+    private var captureID: UUID?
+    private var captureResult: CheckedContinuation<SoloFix, Error>?
+    private var captureTimeout: Task<Void, Never>?
     var received: ((SoloFix) -> Void)?
     var invalidated: ((String) -> Void)?
     var hasCreatedManager: Bool { manager != nil }
@@ -38,7 +42,7 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
         deliberateManager().requestWhenInUseAuthorization()
     }
     func start(consent: Bool, foreground: Bool) throws {
-        guard consent, foreground else { throw BackpackError.invalid("Foreground local sensing consent is off.") }
+        guard consent, foreground, captureID == nil else { throw BackpackError.invalid("Foreground sensing consent is off or a fixed-point capture is active.") }
         let value = deliberateManager()
         guard CLLocationManager.locationServicesEnabled(), value.authorizationStatus == .authorizedWhenInUse || value.authorizationStatus == .authorizedAlways,
               value.accuracyAuthorization == .fullAccuracy else {
@@ -47,19 +51,72 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
         value.desiredAccuracy = kCLLocationAccuracyBest; value.distanceFilter = kCLDistanceFilterNone
         running = true; value.startUpdatingLocation()
     }
-    func stop() { running = false; manager?.stopUpdatingLocation() }
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix {
+        try Task.checkCancellation()
+        guard consent, foreground, !running, captureID == nil else {
+            throw BackpackError.invalid("Explicit foreground fixed-point consent and stopped sensing are required.")
+        }
+        let value = deliberateManager()
+        guard CLLocationManager.locationServicesEnabled(),
+              [.authorizedWhenInUse, .authorizedAlways].contains(value.authorizationStatus),
+              value.accuracyAuthorization == .fullAccuracy else {
+            throw BackpackError.invalid("Grant full-accuracy When-In-Use permission separately, then retry or enter a fixed point manually.")
+        }
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                captureID = id; captureResult = continuation
+                value.desiredAccuracy = kCLLocationAccuracyBest
+                captureTimeout = Task { [weak self] in
+                    do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                    guard !Task.isCancelled else { return }
+                    self?.finishCapture(.failure(BackpackError.invalid("No usable fresh fix arrived within10s. Retry explicitly or use manual geometry.")), id: id)
+                }
+                value.requestLocation()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.finishCapture(.failure(CancellationError()), id: id) }
+        }
+    }
+    private func finishCapture(_ result: Result<SoloFix, Error>, id: UUID) {
+        guard captureID == id, let continuation = captureResult else { return }
+        captureID = nil; captureResult = nil; captureTimeout?.cancel(); captureTimeout = nil
+        if !running { manager?.stopUpdatingLocation() }
+        continuation.resume(with: result)
+    }
+    func stop() {
+        running = false; manager?.stopUpdatingLocation()
+        if let id = captureID { finishCapture(.failure(CancellationError()), id: id) }
+    }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard manager === self.manager else { return }
         let changed = authorization != manager.authorizationStatus || accuracy != manager.accuracyAuthorization
         authorization = manager.authorizationStatus; accuracy = manager.accuracyAuthorization
-        if running && changed { stop(); invalidated?("OS location permission/accuracy changed — explicit enable/start required") }
+        if (running || captureID != nil) && changed {
+            let wasRunning = running
+            if let id = captureID { finishCapture(.failure(BackpackError.invalid("OS permission/accuracy changed during fixed-point capture.")), id: id) }
+            stop()
+            if wasRunning { invalidated?("OS location permission/accuracy changed — explicit enable/start required") }
+        }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard running, let last = locations.last else { return }
-        received?(SoloFix(point: SoloPoint(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude),
-            accuracy: last.horizontalAccuracy, timestamp: last.timestamp))
+        guard manager === self.manager, let last = locations.last else { return }
+        let fix = SoloFix(point: SoloPoint(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude),
+            accuracy: last.horizontalAccuracy, timestamp: last.timestamp)
+        if let id = captureID, fix.usable(at: Date()),
+           [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
+           manager.accuracyAuthorization == .fullAccuracy {
+            finishCapture(.success(fix), id: id)
+        }
+        if running { received?(fix) }
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        stop(); invalidated?("Local fix unavailable — stopped, manual operation only")
+        guard manager === self.manager else { return }
+        let wasRunning = running
+        if let id = captureID { finishCapture(.failure(error), id: id) }
+        stop()
+        if wasRunning { invalidated?("Local fix unavailable — stopped, manual operation only") }
     }
 }
 
@@ -135,6 +192,21 @@ final class SoloSceneController: ObservableObject {
             discardSample()
             status = "Sensing paused for the separate OS permission step. After granting, deliberately press Start sensing."
         } catch { report(error) }
+    }
+    func requestFixedPointPermission(consent: Bool) throws {
+        guard !sensing, !armed, !busy else { throw BackpackError.invalid("Stop sensing/PHONE automation before preparing a fixed-point capture.") }
+        try location.requestWhenInUse(consent: consent, foreground: foreground)
+    }
+    func captureFixedPoint(consent: Bool) async throws -> SoloPoint {
+        guard consent, foreground, !sensing, !armed, !busy else {
+            throw BackpackError.invalid("Explicit foreground capture consent and stopped sensing/automation are required.")
+        }
+        let stamp = epoch
+        let fix = try await location.capture(consent: consent, foreground: foreground)
+        try Task.checkCancellation()
+        guard epoch == stamp, foreground, !sensing, !armed, !busy else { throw CancellationError() }
+        guard fix.usable(at: Date()) else { throw BackpackError.invalid("Captured point is stale, coarse or invalid; manual draft retained.") }
+        return fix.point
     }
     func startSensing() {
         do {

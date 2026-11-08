@@ -8,6 +8,9 @@ private final class SoloLocationFixture: SoloLocationSource {
     var invalidated: ((String) -> Void)?
     var hasCreatedManager: Bool { false }
     private(set) var running = false
+    var captureFix: SoloFix?
+    var captureAction: (() -> Void)?
+    private(set) var captures = 0
     func requestWhenInUse(consent: Bool, foreground: Bool) throws {
         guard consent, foreground else { throw BackpackError.invalid("Fixture consent/foreground is off.") }
         stop()
@@ -17,6 +20,13 @@ private final class SoloLocationFixture: SoloLocationSource {
         running = true
     }
     func stop() { running = false }
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix {
+        guard consent, foreground, !running else { throw BackpackError.invalid("Fixture capture requires explicit inactive foreground consent.") }
+        captures += 1; captureAction?()
+        try Task.checkCancellation()
+        guard let captureFix else { throw BackpackError.invalid("Fixture has no current point.") }
+        return captureFix
+    }
 }
 
 @MainActor
@@ -69,6 +79,43 @@ final class SoloSourceTests: XCTestCase {
             timestamp: Date().addingTimeInterval(-0.1)))
         XCTAssertGreaterThan(controller.trip.meters, 0)
         controller.stop()
+    }
+    func testFixedPointCaptureNeedsExplicitConsentAndDoesNotStartSensing() async throws {
+        let source = SoloLocationFixture(), controller = SoloSceneController(location: source)
+        controller.setForeground(true)
+        source.captureFix = SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date())
+        do { _ = try await controller.captureFixedPoint(consent: false); XCTFail("Missing capture consent") }
+        catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        XCTAssertEqual(source.captures, 0)
+        let point = try await controller.captureFixedPoint(consent: true)
+        XCTAssertEqual(point, .init(latitude: 1, longitude: 2))
+        XCTAssertEqual(source.captures, 1); XCTAssertFalse(source.running)
+        XCTAssertFalse(controller.sensing); XCTAssertFalse(controller.sensingConsent); XCTAssertFalse(controller.armed)
+        XCTAssertTrue(controller.archive.areas.isEmpty)
+        XCTAssertFalse(source.hasCreatedManager)
+    }
+    func testFixedPointCaptureRejectsStaleCoarseAndChangedContext() async throws {
+        let source = SoloLocationFixture(), controller = SoloSceneController(location: source)
+        controller.setForeground(true)
+        for sample in [
+            SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date().addingTimeInterval(-6)),
+            SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 26, timestamp: Date())
+        ] {
+            source.captureFix = sample
+            do { _ = try await controller.captureFixedPoint(consent: true); XCTFail("Invalid captured quality") }
+            catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        }
+        source.captureFix = SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date())
+        source.captureAction = { controller.stop() }
+        do { _ = try await controller.captureFixedPoint(consent: true); XCTFail("Stopped capture context") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertTrue(controller.archive.areas.isEmpty); XCTAssertFalse(controller.sensing)
+    }
+    func testUnconsentedOneShotCaptureDoesNotCreateLocationManager() async throws {
+        let location = SoloForegroundLocation()
+        do { _ = try await location.capture(consent: false, foreground: false); XCTFail("Unconsented capture") }
+        catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        XCTAssertFalse(location.hasCreatedManager)
     }
     func testFixedPointRejectsNonfiniteAndInvalidCoordinates() {
         for value in [SoloPoint(latitude: .nan, longitude: 0), .init(latitude: 91, longitude: 0), .init(latitude: 0, longitude: 181)] {

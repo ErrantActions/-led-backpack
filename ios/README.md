@@ -3,6 +3,25 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Unsigned private fixed-point capture follow-up - source only
+
+SOLO area setup now offers a separately consented, foreground-only one-fix
+capture or the existing offline numeric fallback. Permission preparation does
+not enable sensing/PHONE automation. An already-authorized full-accuracy source
+requests one fix, accepts only fresh≤5s/accuracy≤25m valid geometry, and times out
+after10s without silent retry. Source cancellation/stop/background/permission
+changes retire the continuation; request IDs prevent old timers/cancellation
+from finishing a new capture.
+
+The chosen point goes only into the visible private area draft. It neither
+saves an area nor reports a visit/badge or publishes a route. Explicit Save
+still validates local scene/bounds and reliable stopped configuration.
+Draft cancellation/consent removal/background clears capture work; async
+results cannot replace a closed/new draft. No maps, search, provider keys,
+server coordinates or physical device operations are added.
+Three new injected-source/quality/context/cold-consent fixtures are prepared.
+This source is not in build9 and has not yet executed native validation.
+
 ### Current released checkpoint: TestFlight0.1.0(9)
 
 Committed source1944292 passed native compilation, portable9/0, priority96/0,

@@ -4,6 +4,18 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Unsigned private fixed-point capture - source PURPLE
+
+- [x] Explicit one-fix private area draft capture with separate foreground
+  consent/OS permission preparation; no sensing/PHONE automation or area save.
+  Existing offline numeric geometry remains available.
+- [x] Fresh≤5s/full-accuracy≤25m valid point,10s timeout, current request/epoch
+  cancellation guards, no silent restart or map/search/provider/server upload.
+- [x] Draft consent removal/background/close cancels capture; explicit Save
+  remains required and guarded against stale/new draft completion.
+- [ ]3new injected-source/quality/context/cold-consent fixtures and unsigned
+  native validation. No physical GPS/permission proof or new beta inferred.
+
 ## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
 
 - [x] Same selected-target manual fallback with explicit private/unverified
