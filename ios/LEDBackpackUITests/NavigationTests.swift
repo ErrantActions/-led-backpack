@@ -36,7 +36,8 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["On iPhone"].exists)
         XCTAssertFalse(app.buttons["Cloud"].exists)
         XCTAssertTrue(app.buttons["Library sync settings"].exists)
-        XCTAssertGreaterThanOrEqual(app.buttons["Library sync settings"].frame.height, 44)
+        // Accessibility rectangles can subtract to 43.99999999999997 for a 44-point control.
+        XCTAssertGreaterThanOrEqual(app.buttons["Library sync settings"].frame.height, 44 - 0.000001)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Unified guest library - no storage scopes")
         reveal(app.buttons["Preview Night ride"], in: app)
