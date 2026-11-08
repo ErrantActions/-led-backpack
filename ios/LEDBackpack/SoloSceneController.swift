@@ -4,7 +4,17 @@ import Combine
 import BackpackProtocol
 
 @MainActor
-final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate {
+protocol SoloLocationSource: AnyObject {
+    var received: ((SoloFix) -> Void)? { get set }
+    var invalidated: ((String) -> Void)? { get set }
+    var hasCreatedManager: Bool { get }
+    func requestWhenInUse(consent: Bool, foreground: Bool) throws
+    func start(consent: Bool, foreground: Bool) throws
+    func stop()
+}
+
+@MainActor
+final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLocationSource {
     private var manager: CLLocationManager?
     private var running = false
     private var authorization: CLAuthorizationStatus?
@@ -71,7 +81,7 @@ final class SoloSceneController: ObservableObject {
     @Published private(set) var areaStates: [UUID: SoloAreaResult] = [:]
     @Published private(set) var recoveryAvailable = false
     @Published private(set) var daylightDescription = "No daylight plan selected"
-    let location = SoloForegroundLocation()
+    let location: any SoloLocationSource
     private var repository: SoloSceneRepository?
     private let recoveryRepository: SwapRecoveryRepository?
     private var revision: UUID?
@@ -91,11 +101,13 @@ final class SoloSceneController: ObservableObject {
     private var sessionUnlocks: [SoloUnlock] = []
     private var journal: LocalSwapOriginal?
     private var selectedDaylight: UUID?
-    init(repository: SoloSceneRepository? = nil, recoveryRepository: SwapRecoveryRepository? = nil) {
+    init(repository: SoloSceneRepository? = nil, recoveryRepository: SwapRecoveryRepository? = nil,
+        location: (any SoloLocationSource)? = nil) {
         self.repository = repository
         self.recoveryRepository = recoveryRepository
-        location.received = { [weak self] in self?.receive($0) }
-        location.invalidated = { [weak self] in self?.stop($0) }
+        self.location = location ?? SoloForegroundLocation()
+        self.location.received = { [weak self] in self?.receive($0) }
+        self.location.invalidated = { [weak self] in self?.stop($0) }
     }
     func bind(phone: PhoneDisplayController, targets: DisplayTargetSelection) { self.phone = phone; self.targets = targets }
     private func storage() throws -> SoloSceneRepository {
@@ -119,7 +131,9 @@ final class SoloSceneController: ObservableObject {
     func requestPermission() {
         do {
             try location.requestWhenInUse(consent: sensingConsent, foreground: foreground)
-            status = "OS permission is separate. After granting, deliberately press Start sensing."
+            sensing = false; stale?.cancel(); stale = nil; latestFix = UUID()
+            discardSample()
+            status = "Sensing paused for the separate OS permission step. After granting, deliberately press Start sensing."
         } catch { report(error) }
     }
     func startSensing() {

@@ -114,9 +114,19 @@ foreground fixes without a movement distance filter, allowing fresh continuous
 dwell while standing still. Existing accuracy/noise/gap rules still govern
 approximate trip distance; no speed/chase objective is added. Cancelled stale
 callbacks are checked against both current session and latest-fix identities.
-Two new SOLO dwell/noise fixtures are prepared; the targeted gps selector now
-also includes SoloSourceTests. Actual stationary-phone cadence/permission and
-private gameplay/device acceptance remain unverified.
+Two new SOLO dwell/noise fixtures passed at2005e72 in run42441726482:
+actual app/test compile and69focused native event/GPS/SOLO tests/0failures.
+The bounded gps selector includes SoloSourceTests. Actual stationary-phone
+cadence/permission and private gameplay/device acceptance remain unverified.
+
+The next SOLO permission-state source follow-up aligns the controller with the
+location source's deliberate OS-permission pause: sensing is off, stale work
+retired and area/trip sample anchors discarded, while an explicit Start remains
+available after granting. It does not silently restart, drop accrued distance
+or create a straight-line catch-up segment. A small location-source interface
+keeps the real lazy CLLocationManager as default and permits deterministic
+controller fixtures without requesting OS/device permissions.
+Two new permission/restart/trip-anchor regressions are prepared.
 
 ### Social tab navigation follow-up - source only
 

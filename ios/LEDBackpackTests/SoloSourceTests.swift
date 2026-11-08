@@ -3,6 +3,23 @@ import BackpackProtocol
 @testable import LEDBackpack
 
 @MainActor
+private final class SoloLocationFixture: SoloLocationSource {
+    var received: ((SoloFix) -> Void)?
+    var invalidated: ((String) -> Void)?
+    var hasCreatedManager: Bool { false }
+    private(set) var running = false
+    func requestWhenInUse(consent: Bool, foreground: Bool) throws {
+        guard consent, foreground else { throw BackpackError.invalid("Fixture consent/foreground is off.") }
+        stop()
+    }
+    func start(consent: Bool, foreground: Bool) throws {
+        guard consent, foreground else { throw BackpackError.invalid("Fixture consent/foreground is off.") }
+        running = true
+    }
+    func stop() { running = false }
+}
+
+@MainActor
 final class SoloSourceTests: XCTestCase {
     private let sceneID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
     private let now = Date(timeIntervalSince1970: 1794000000)
@@ -16,6 +33,42 @@ final class SoloSourceTests: XCTestCase {
     private func scene() -> SoloScene {
         let gif = Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
         return SoloScene(id: sceneID, name: "Own art", items: [.init(id: UUID(), name: "Local original", bytes: gif, attribution: nil)])
+    }
+    private func sensingController() async throws -> (SoloSceneController, SoloLocationFixture) {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("solo-permission-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        addTeardownBlock { try FileManager.default.removeItem(at: root) }
+        let source = SoloLocationFixture()
+        let controller = SoloSceneController(repository: SoloSceneRepository(root: root.appendingPathComponent("solo")),
+            recoveryRepository: SwapRecoveryRepository(root: root.appendingPathComponent("recovery")), location: source)
+        await controller.load()
+        XCTAssertTrue(controller.loaded)
+        controller.setForeground(true); controller.setSensingConsent(true); controller.startSensing()
+        return (controller, source)
+    }
+    func testPermissionRequestPausesControllerAndAllowsExplicitRestart() async throws {
+        let (controller, source) = try await sensingController()
+        XCTAssertTrue(controller.sensing); XCTAssertTrue(source.running)
+        controller.requestPermission()
+        XCTAssertFalse(controller.sensing); XCTAssertFalse(source.running)
+        XCTAssertTrue(controller.sensingConsent); XCTAssertTrue(controller.loaded)
+        controller.startSensing()
+        XCTAssertTrue(controller.sensing); XCTAssertTrue(source.running)
+        XCTAssertFalse(source.hasCreatedManager)
+    }
+    func testPermissionPauseDropsTripAnchorBeforeRestart() async throws {
+        let (controller, source) = try await sensingController()
+        try controller.startTrip()
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-1)))
+        controller.requestPermission(); controller.startSensing()
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 50 / 111195.0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-1)))
+        XCTAssertEqual(controller.trip.meters, 0)
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 60 / 111195.0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-0.1)))
+        XCTAssertGreaterThan(controller.trip.meters, 0)
+        controller.stop()
     }
     func testFixedPointRejectsNonfiniteAndInvalidCoordinates() {
         for value in [SoloPoint(latitude: .nan, longitude: 0), .init(latitude: 91, longitude: 0), .init(latitude: 0, longitude: 181)] {

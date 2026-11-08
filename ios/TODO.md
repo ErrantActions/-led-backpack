@@ -29,8 +29,13 @@ availability or that the product backlog is finished.
 - [x] Subsequent SOLO source requests recurring stationary fixes rather than
   movement-filtered samples; stale callbacks are session/latest-fix guarded.
   Existing noise, accuracy and gap filters remain; no false distance objective.
-- [ ]2new SOLO stationary-dwell/noise regressions and next focused validation.
-  Actual device/private acceptance remains unperformed; no new beta upload.
+- [x]2new SOLO stationary-dwell/noise regressions executed: app/test compile
+  and69focused native tests/0 at2005e72 in run42441726482.
+- [x] Further source aligns controller sensing state with the OS-permission
+  pause, retires stale callbacks and discards sample/trip anchors; explicit
+  restart remains possible without catch-up distance or automatic rearming.
+- [ ]2new injectable-source permission/restart/trip regressions and focused
+  validation. Actual device/private acceptance remains unperformed; no new beta.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
