@@ -12,7 +12,7 @@ struct LibraryMediaRow: View {
 
     var body: some View {
         Button { action(.preview) } label: {
-            GIFThumbnail(key: "local:\(item.id.uuidString)") { try library.data(item) }
+            GIFThumbnail(key: item.previewKey) { try library.data(item) }
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 19))
         }.buttonStyle(.plain)

@@ -195,12 +195,15 @@ final class CloudSynchronizationTests: XCTestCase {
         try await store.synchronize(library)
         let updated = try XCTUnwrap(library.state.media.first)
         XCTAssertEqual(updated.id, saved.id); XCTAssertEqual(updated.name, "Changed remotely")
+        XCTAssertNotEqual(updated.previewKey, saved.previewKey)
+        XCTAssertNotNil(updated.contentRevision)
         XCTAssertTrue(updated.isFavorite); XCTAssertEqual(updated.categoryName, "Rides")
         XCTAssertEqual(try library.data(updated), second)
         let reloaded = try LocalLibrary(folder: folder), restarted = CloudVaultStore(folder: folder)
         await restarted.bind(service)
         try await restarted.synchronize(reloaded)
         XCTAssertEqual(reloaded.state.media.count, 1)
+        XCTAssertEqual(reloaded.state.media.first?.previewKey, updated.previewKey)
         let writes = await transport.writeCount()
         XCTAssertEqual(writes, 0)
     }
@@ -317,6 +320,17 @@ final class CloudSynchronizationTests: XCTestCase {
             attribution: nil, category: nil, favorite: false))
         XCTAssertEqual(try library.data(saved), bytes)
         XCTAssertEqual(library.state.media.first?.category, "Edited while downloading")
+    }
+
+    func testMetadataOnlyCloudUpdateKeepsPreviewIdentity() throws {
+        let library = try LocalLibrary(folder: folder), bytes = try gif()
+        try library.add(name: "Original", data: bytes)
+        let saved = try XCTUnwrap(library.state.media.first)
+        let updated = try library.applyCloudUpdate(saved, original: bytes, data: bytes,
+            title: "New title", attribution: nil, category: "Rides", favorite: true)
+        XCTAssertEqual(updated.id, saved.id)
+        XCTAssertEqual(updated.previewKey, saved.previewKey)
+        XCTAssertEqual(try library.data(updated), bytes)
     }
 
     func testStorageLimitRetainsCloudItemsAndReportsIncompleteSync() async throws {

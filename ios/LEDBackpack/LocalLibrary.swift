@@ -18,6 +18,8 @@ struct SavedMedia: Identifiable, Codable, Equatable {
     var category: String?
     var favorite: Bool?
     var cloudSource: MediaCloudSource?
+    var contentRevision: UUID?
+    var previewKey: String { "local:\(id.uuidString):\(contentRevision?.uuidString ?? "original")" }
     var categoryName: String {
         let value = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return value.isEmpty ? "Uncategorized" : value
@@ -209,7 +211,10 @@ final class LocalLibrary: ObservableObject {
         value.media[index].attribution = attribution
         value.media[index].category = normalized
         value.media[index].favorite = favorite
-        if original != data { value.slotPreviews?.removeAll { $0.mediaID == expected.id } }
+        if original != data {
+            value.media[index].contentRevision = UUID()
+            value.slotPreviews?.removeAll { $0.mediaID == expected.id }
+        }
         let url = folder.appendingPathComponent(expected.filename)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         do { try commit(value) }

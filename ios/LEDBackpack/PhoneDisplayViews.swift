@@ -53,7 +53,7 @@ struct PhoneDisplayLibraryView: View {
                                 } catch { if !Task.isCancelled { phone.report(error) } }
                             }
                         } label: {
-                            GIFThumbnail(key: "phone-existing:\(item.id)") {
+                            GIFThumbnail(key: item.previewKey) {
                                 let url = try library.phoneOriginalURL(item)
                                 return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
                             }.aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 16))
