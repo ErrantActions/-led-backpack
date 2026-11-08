@@ -472,6 +472,20 @@ final class PhoneSwapGameTests: XCTestCase {
         let values = try await repository.received()
         XCTAssertTrue(values.isEmpty)
     }
+    func testStagedExchangeCannotOmitPeerSuppressionOrUsePreparedOriginal() async throws {
+        let repository = try localRepository()
+        var journal = try await repository.prepareGame(
+            snapshot: PhoneDisplaySnapshot(data: playingGIF(1), mediaID: nil, elapsed: 0, wantsPlayback: true,
+                motionOverride: false, keepAwake: false), artworkRevision: UUID(), ownerScope: "fixture", attribution: nil)
+        journal.gameExchangeID = UUID(); journal.gameExchangePeerID = peer
+        XCTAssertThrowsError(try journal.validate(installation: journal.installationID, ownerScope: "fixture", target: .phone))
+        journal.gamePeerIDs = [peer]
+        XCTAssertThrowsError(try journal.validate(installation: journal.installationID, ownerScope: "fixture", target: .phone))
+        journal.stage = .replacementApplied
+        XCTAssertNoThrow(try journal.validate(installation: journal.installationID, ownerScope: "fixture", target: .phone))
+        journal.gameExchangePeerID = UUID()
+        XCTAssertThrowsError(try journal.validate(installation: journal.installationID, ownerScope: "fixture", target: .phone))
+    }
     func testFoundProjectionAndRemovalRespectAccountAndPreserveOriginal() async throws {
         let repository = try localRepository(), data = playingGIF(2), proof = receipt(playingGIF(2))
         let original = try await stage(repository, incoming: data, exchange: proof.exchangeID)

@@ -23,7 +23,7 @@ availability or that the product backlog is finished.
   explicit Save/Remove/optional Friend Request/Block/Report/Restore; normal
   permissions retained, account-scoped recovery reads, no automatic friendship,
   location/encounter upload, hardware recovery or precise ranging claims.
-- [x] 13 new exact-source/cooldown/rearm/staging/receipt/duplicate/scope/
+- [x] 14 new exact-source/cooldown/rearm/staging/receipt/duplicate/scope/
   cancellation/removal fixtures and one empty/default-off UI fixture prepared.
 - [ ] Execute native compile/unit/UI validation for this exact source. Local
   syntax/member-scope/whitespace checks alone are not native runtime proof.

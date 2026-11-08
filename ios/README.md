@@ -50,7 +50,7 @@ Nearby Bluetooth is not reliable meters, anti-relay or physical proximity proof.
 No fixed-beacon checkpoint binding, backpack original recovery or fake NI proof
 is added. Existing GPS quality/dwell/lease/manual-private-claim paths remain.
 
-13 new PhoneSwapGameTests and one native navigation fixture are prepared.
+14 new PhoneSwapGameTests and one native navigation fixture are prepared.
 Only local Swift syntax/member-scope and whitespace checks have executed for
 this slice; they are NOT compiler, XCTest, simulator or physical evidence.
 Windows has no Swift/Xcode or installed WSL; no new native CI, signing, device

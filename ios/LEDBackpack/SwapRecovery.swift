@@ -70,11 +70,11 @@ struct LocalSwapOriginal: Codable, Sendable {
                   Set(gamePeerIDs).count == gamePeerIDs.count else {
                 throw BackpackError.invalid("Invalid retained game peer suppression; original retained.")
             }
-            if gameExchangeID != nil || gameExchangePeerID != nil {
-                guard peerPurpose == "game-v1", gameExchangeID != nil, let gameExchangePeerID,
-                      gamePeerIDs?.contains(gameExchangePeerID) == true else {
-                    throw BackpackError.invalid("Invalid staged game exchange binding; original retained.")
-                }
+        }
+        if gameExchangeID != nil || gameExchangePeerID != nil {
+            guard peerPurpose == "game-v1", stage != .prepared, gameExchangeID != nil, let gameExchangePeerID,
+                  gamePeerIDs?.contains(gameExchangePeerID) == true else {
+                throw BackpackError.invalid("Invalid staged game exchange binding; original retained.")
             }
         }
         if stage == .restored {
