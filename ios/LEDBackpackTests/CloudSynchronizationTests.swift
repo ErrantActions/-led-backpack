@@ -109,10 +109,12 @@ private final class SynchronizationAccount: CommunityVault {
 @MainActor
 final class CloudSynchronizationTests: XCTestCase {
     private var folder: URL!
+    private var account: CommunityController?
     override func setUpWithError() throws {
         folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     }
     override func tearDownWithError() throws {
+        account = nil
         if FileManager.default.fileExists(atPath: folder.path) { try FileManager.default.removeItem(at: folder) }
     }
     private func gif(_ text: String = "A") throws -> Data {
@@ -122,6 +124,7 @@ final class CloudSynchronizationTests: XCTestCase {
     private func setup(_ transport: SynchronizationTransport, consent: Bool = true) async throws
         -> (LocalLibrary, CloudVaultStore, CommunityController) {
         let service = CommunityController(vault: SynchronizationAccount(), factory: { _ in transport })
+        account = service
         service.configure(SynchronizationTransport.origin)
         try service.establishSession(CommunityLogin(user: CommunityUser(id: XCTUnwrap(UUID(uuidString: SynchronizationTransport.account)),
             email: "fixture@example.invalid", displayName: "Fixture", role: "user", verified: true, authMethods: nil),
@@ -213,6 +216,7 @@ final class CloudSynchronizationTests: XCTestCase {
         store.requestSynchronization(library)
         try await waitUntil { !store.busy }
         XCTAssertNotNil(store.failure); XCTAssertNil(store.lastSynchronized)
+        XCTAssertTrue(store.failure?.contains("conflict") == true)
         XCTAssertEqual(library.state.media.first?.category, "Local choice")
         XCTAssertEqual(try library.data(saved), bytes)
         let writes = await transport.writeCount()
@@ -227,6 +231,7 @@ final class CloudSynchronizationTests: XCTestCase {
         store.requestSynchronization(library)
         try await waitUntil { !store.busy }
         XCTAssertNotNil(store.failure); XCTAssertNil(store.lastSynchronized)
+        XCTAssertTrue(store.failure?.contains("offline") == true)
         XCTAssertEqual(library.state.media.count, 1)
         await transport.setOffline(false)
         store.requestSynchronization(library)
@@ -323,6 +328,7 @@ final class CloudSynchronizationTests: XCTestCase {
         store.requestSynchronization(library)
         try await waitUntil { !store.busy }
         XCTAssertNotNil(store.failure); XCTAssertNil(store.lastSynchronized)
+        XCTAssertTrue(store.failure?.contains("100 items") == true)
         XCTAssertEqual(library.state.media.count, 100)
         XCTAssertEqual(store.cloudOnly(local: library.state.media).count, 1)
     }
@@ -385,6 +391,7 @@ final class CloudSynchronizationTests: XCTestCase {
         store.requestSynchronization(library)
         try await waitUntil { !store.busy }
         XCTAssertNotNil(store.failure); XCTAssertNil(store.lastSynchronized)
+        XCTAssertTrue(store.failure?.contains("content hash mismatch") == true)
         XCTAssertTrue(library.state.media.isEmpty)
     }
 
@@ -399,6 +406,7 @@ final class CloudSynchronizationTests: XCTestCase {
         store.requestSynchronization(library)
         try await waitUntil { !store.busy }
         XCTAssertNotNil(store.failure); XCTAssertNil(store.lastSynchronized)
+        XCTAssertTrue(store.failure?.contains("version rolled back") == true)
         XCTAssertEqual(try library.data(XCTUnwrap(library.state.media.first)), second)
     }
 }
