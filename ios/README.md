@@ -98,7 +98,15 @@ clock, event read older than5s, or event ending during the dependency fetch
 cannot start a new lease. Permission checks are followed by another deadline
 check before updates begin. The maximum remains60s, with no wall-clock reset,
 new sensor permission, stored samples or claims of perfect network clock sync.
-Three new lease regressions are prepared for the next targeted native run.
+Three new lease regressions passed in run42440162550 at15ab177:
+actual app/test compilation and52targeted event/GPS tests/0failures.
+
+A further source follow-up retains scoped hint cooldown deadlines in a bounded,
+memory-only map across sensing stop/rearm. It neither stores coordinates/
+samples nor writes an encounter timeline. A different authorized target is
+independent; active deadlines are not evicted to permit instant reentry.
+Expired entries are pruned and invalid monotonic inputs fail closed.
+Three new cooldown fixtures are prepared; this source is not in build9.
 
 ### Social tab navigation follow-up - source only
 

@@ -43,12 +43,32 @@ struct LocalCheckpointEvaluator {
         lastEligible = now; self.entered = nil; return .eligible
     }
 }
-struct ForegroundLocationScope: Equatable {
+struct ForegroundLocationScope: Hashable {
     let accountRevision: UUID
     let eventID: UUID
     let eventRevision: Int
     let participationRevision: Int
     let checkpointID: UUID
+}
+struct LocalCheckpointCooldowns {
+    private var deadlines: [ForegroundLocationScope: TimeInterval] = [:]
+    private mutating func prune(_ uptime: TimeInterval) throws {
+        guard uptime.isFinite, uptime >= 0 else { throw BackpackError.invalid("Invalid local checkpoint cooldown clock.") }
+        deadlines = deadlines.filter { $0.value > uptime }
+    }
+    mutating func requireStart(_ scope: ForegroundLocationScope, uptime: TimeInterval) throws {
+        try prune(uptime)
+        guard deadlines[scope] == nil else {
+            throw BackpackError.invalid("This authorized checkpoint hint is still cooling down. Stop/rearm does not reset its 60-second limit.")
+        }
+    }
+    mutating func issued(_ scope: ForegroundLocationScope, uptime: TimeInterval) throws {
+        try prune(uptime)
+        guard deadlines[scope] != nil || deadlines.count < 64 else {
+            throw BackpackError.invalid("Local checkpoint cooldown budget is full. Wait for expiry; no state was discarded.")
+        }
+        deadlines[scope] = max(deadlines[scope] ?? 0, uptime + 60)
+    }
 }
 struct LocalCheckpointHint: Equatable {
     let id: UUID
@@ -76,6 +96,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
     private var fixed: EventRouteCheckpoint?
     private var deadlineUptime: TimeInterval?
     private var evaluator = LocalCheckpointEvaluator()
+    private var cooldowns = LocalCheckpointCooldowns()
     private var expiry: Task<Void, Never>?
     private var stale: Task<Void, Never>?
     private var epoch = UUID()
@@ -115,6 +136,9 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         let server = try CatalogEventTime.parse(event.serverTime), start = try CatalogEventTime.parse(event.startsAtISO)
         let end = try CatalogEventTime.parse(event.endsAtISO)
         _ = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
+        let selectedScope = ForegroundLocationScope(accountRevision: accountRevision, eventID: event.id,
+            eventRevision: event.revision, participationRevision: revision, checkpointID: checkpoint.id)
+        try cooldowns.requireStart(selectedScope, uptime: ProcessInfo.processInfo.systemUptime)
         let manager = activatedLocationManager()
         guard [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
               manager.accuracyAuthorization == .fullAccuracy else {
@@ -122,8 +146,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
             throw BackpackError.invalid(status)
         }
         let lease = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
-        scope = ForegroundLocationScope(accountRevision: accountRevision, eventID: event.id, eventRevision: event.revision,
-            participationRevision: revision, checkpointID: checkpoint.id)
+        scope = selectedScope
         fixed = checkpoint
         // Short lease requires a fresh authorized event read before any explicit restart.
         deadlineUptime = ProcessInfo.processInfo.systemUptime + lease
@@ -168,6 +191,8 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         let evaluated = evaluator.evaluate(distance: distance, accuracy: sample.horizontalAccuracy,
             age: age, radius: fixed.radiusMeters, now: uptime)
         if evaluated == .eligible {
+            do { try cooldowns.issued(scope, uptime: uptime) }
+            catch { stop(error.localizedDescription); return }
             hint = LocalCheckpointHint(id: UUID(), scope: scope, observedUptime: uptime, validUntilUptime: min(deadlineUptime, uptime + 5))
         } else if evaluated == .manual || evaluated == .outside {
             hint = nil

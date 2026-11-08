@@ -74,4 +74,26 @@ final class GPSGameEligibilityTests: XCTestCase {
         evaluator.discardSample()
         XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 11), .cooldown)
     }
+    func testIssuedHintCooldownSurvivesRearmWithoutBlockingAnotherTarget() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        let selected = scope(), other = scope(checkpoint: UUID())
+        try cooldowns.issued(selected, uptime: 10)
+        XCTAssertThrowsError(try cooldowns.requireStart(selected, uptime: 11))
+        XCTAssertNoThrow(try cooldowns.requireStart(other, uptime: 11))
+        XCTAssertThrowsError(try cooldowns.requireStart(selected, uptime: 69.999))
+        XCTAssertNoThrow(try cooldowns.requireStart(selected, uptime: 70))
+    }
+    func testCheckpointCooldownBudgetExpiresRatherThanEvictingActiveTargets() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        for _ in 0..<64 { try cooldowns.issued(scope(checkpoint: UUID()), uptime: 0) }
+        let next = scope(checkpoint: UUID())
+        XCTAssertThrowsError(try cooldowns.issued(next, uptime: 1))
+        XCTAssertNoThrow(try cooldowns.issued(next, uptime: 60))
+        XCTAssertThrowsError(try cooldowns.requireStart(next, uptime: 61))
+    }
+    func testCheckpointCooldownRejectsInvalidMonotonicInput() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        XCTAssertThrowsError(try cooldowns.requireStart(scope(), uptime: .nan))
+        XCTAssertThrowsError(try cooldowns.issued(scope(), uptime: -1))
+    }
 }

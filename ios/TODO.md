@@ -19,8 +19,13 @@ availability or that the product backlog is finished.
 - [x] Subsequent source carries the current monotonic event clock through
   dependency reads and both GPS start paths; stale/wrong/backwards/expired
   windows cannot reset a lease. Permission checks do not extend the deadline.
-- [ ]3new lease fixtures and next exact-source targeted native validation.
-  Actual device/private acceptance remains unperformed.
+- [x]3new lease fixtures executed: app/test compile and52targeted native
+  tests/0failures in run42440162550 at15ab177.
+- [x] Further source preserves authorized-target hint cooldowns across local
+  stop/rearm in a bounded memory-only map; no coordinate/sample/history file or
+  upload, no active-deadline eviction to bypass the limit.
+- [ ]3new cooldown regressions and next targeted native validation.
+  Actual device/private acceptance remains unperformed; no new beta upload.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
