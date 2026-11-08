@@ -96,4 +96,25 @@ final class GPSGameEligibilityTests: XCTestCase {
         XCTAssertThrowsError(try cooldowns.requireStart(scope(), uptime: .nan))
         XCTAssertThrowsError(try cooldowns.issued(scope(), uptime: -1))
     }
+    func testDwellFeedbackUsesActualFreshSamplesAndClearsAtEligibility() {
+        var evaluator = LocalCheckpointEvaluator()
+        XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 0), .dwelling)
+        XCTAssertEqual(evaluator.dwellRemaining, 10)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 5)
+        XCTAssertEqual(evaluator.dwellRemaining, 5)
+        XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 10), .eligible)
+        XCTAssertNil(evaluator.dwellRemaining)
+    }
+    func testDwellFeedbackCannotSurviveDriftStaleFixOrReset() {
+        var evaluator = LocalCheckpointEvaluator()
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 0)
+        _ = evaluator.evaluate(distance: 50, accuracy: 1, age: 0, radius: 50, now: 1)
+        XCTAssertNil(evaluator.dwellRemaining)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 2)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 6, radius: 50, now: 3)
+        XCTAssertNil(evaluator.dwellRemaining)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 4)
+        evaluator.discardSample(); XCTAssertNil(evaluator.dwellRemaining)
+        evaluator.reset(); XCTAssertNil(evaluator.dwellRemaining)
+    }
 }

@@ -136,6 +136,10 @@ private struct EventGPSHuntContent: View {
                     .disabled(!gpsConsent || selected == nil || busy || model.busy || model.needsReload)
                 Label(gps.status, systemImage: gps.sensing ? "location.fill" : "location.slash")
                 Text(gps.eligibility.rawValue).font(.headline)
+                if let remaining = gps.dwellRemaining, gps.sensing, gps.eligibility == .dwelling {
+                    Text("Remain still: about \(Int(ceil(remaining))) more seconds of fresh, stable GPS fixes are needed.")
+                        .font(.caption)
+                }
                 Toggle("I am stopped / on foot and can safely confirm", isOn: $stationary)
                 Button("Confirm this target privately") { confirmGPS(event, collection: collection) }
                     .buttonStyle(.borderedProminent)

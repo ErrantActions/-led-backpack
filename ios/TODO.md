@@ -62,7 +62,12 @@ availability or that the product backlog is finished.
 - [x] Next unsigned hunt UX exposes own private confirmed target progress and
   explicit next-remaining-target choice, not automatic sensing/claims, public
   progress or contributor/peer counts. Finish still requires completion.
-- [ ]2new private-progress/remaining-target fixtures and targeted validation.
+- [x]2new private-progress/remaining-target fixtures passed: app/test compile
+  and93focused native tests/0 at698b0f9 in run42447324717.
+- [x] Next unsigned GPS HUD shows dwell remaining from actual fresh fixes,
+  cleared on drift/invalid/stale/eligible/cooldown/stop. No predicted arrival
+  timer or automatic claim; both event/route eligibility paths share feedback.
+- [ ]2new fresh-dwell/reset feedback fixtures and targeted native validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

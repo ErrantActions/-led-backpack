@@ -174,7 +174,14 @@ Targets remain any-order selectable, and finish is offered only after current
 private completion prerequisites. Selecting a target starts neither GPS nor
 collection, changes no sharing/cooperative consent and computes no peer or
 contributor counts/distances. Two private-progress/remaining-target fixtures
-are prepared; this source is not in uploaded build9.
+passed at698b0f9 in run42447324717: actual app/test compilation and93focused
+native tests/0failures. This source is not in uploaded build9.
+
+The next unsigned GPS HUD source reports remaining dwell only from actual
+usable continuous fixes. Outside/invalid/stale/eligible/cooldown/stopped states
+clear that feedback; no timer predicts arrival or automatically confirms it.
+Both event hunt and route eligibility views share the existing evaluator/
+controller feedback. Two fresh-dwell/reset regressions are prepared.
 
 ### Social tab navigation follow-up - source only
 

@@ -212,6 +212,9 @@ struct EventLocalEligibilityView: View {
             Text("Samples are discarded, never saved, logged, encoded or sent. No peer positions/distances, encounter history, background permission, GPS proof or navigation. Eligibility never records progress or badges.").font(.caption)
             Label(local.status, systemImage: local.sensing ? "location.fill" : "location.slash")
             Text(local.eligibility.rawValue)
+            if let remaining = local.dwellRemaining, local.sensing, local.eligibility == .dwelling {
+                Text("Remain still: about \(Int(ceil(remaining))) more seconds of fresh fixes are needed.").font(.caption)
+            }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             Button("Refresh authorized fixed plan") { local.stop("Plan refresh requires new consent"); consent = false; load() }
             if let event, let route = event.route {

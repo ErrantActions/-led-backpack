@@ -20,10 +20,12 @@ struct LocalCheckpointEvaluator {
     private var entered: TimeInterval?
     private var lastEligible: TimeInterval?
     private var previous: TimeInterval?
-    mutating func reset() { entered = nil; lastEligible = nil; previous = nil }
-    mutating func discardSample() { entered = nil; previous = nil }
+    private(set) var dwellRemaining: TimeInterval?
+    mutating func reset() { entered = nil; lastEligible = nil; previous = nil; dwellRemaining = nil }
+    mutating func discardSample() { entered = nil; previous = nil; dwellRemaining = nil }
     mutating func evaluate(distance: Double, accuracy: Double, age: Double, radius: Double,
         now: TimeInterval, dwell: TimeInterval = 10, cooldown: TimeInterval = 60) -> CheckpointEligibility {
+        dwellRemaining = nil
         guard distance.isFinite, distance >= 0, accuracy.isFinite, accuracy > 0, accuracy <= 25,
               age.isFinite, (0...5).contains(age), radius.isFinite, radius >= 1, now.isFinite,
               dwell.isFinite, dwell >= 10, cooldown.isFinite, cooldown >= 60 else {
@@ -39,7 +41,11 @@ struct LocalCheckpointEvaluator {
             guard distance + accuracy <= max(0, radius - 2) else { return .outside }
             entered = now
         }
-        guard let entered, now - entered >= dwell else { return .dwelling }
+        guard let entered else { return .manual }
+        guard now - entered >= dwell else {
+            dwellRemaining = dwell - (now - entered)
+            return .dwelling
+        }
         lastEligible = now; self.entered = nil; return .eligible
     }
 }
@@ -89,6 +95,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
     @Published private(set) var sensing = false
     @Published private(set) var eligibility = CheckpointEligibility.manual
     @Published private(set) var hint: LocalCheckpointHint?
+    @Published private(set) var dwellRemaining: TimeInterval?
     private var manager: CLLocationManager?
     private var lastAuthorization: CLAuthorizationStatus?
     private var lastAccuracy: CLAccuracyAuthorization?
@@ -165,7 +172,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         epoch = UUID()
         manager?.stopUpdatingLocation(); expiry?.cancel(); stale?.cancel()
         expiry = nil; stale = nil; scope = nil; fixed = nil; deadlineUptime = nil; hint = nil
-        evaluator.reset(); eligibility = .manual; sensing = false; status = reason
+        evaluator.reset(); dwellRemaining = nil; eligibility = .manual; sensing = false; status = reason
     }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard manager === self.manager else { return }
@@ -190,6 +197,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         let distance = sample.distance(from: target), age = Date().timeIntervalSince(sample.timestamp)
         let evaluated = evaluator.evaluate(distance: distance, accuracy: sample.horizontalAccuracy,
             age: age, radius: fixed.radiusMeters, now: uptime)
+        dwellRemaining = evaluator.dwellRemaining
         if evaluated == .eligible {
             do { try cooldowns.issued(scope, uptime: uptime) }
             catch { stop(error.localizedDescription); return }
@@ -209,6 +217,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
             guard !Task.isCancelled, self?.epoch == stamp else { return }
             self?.evaluator.discardSample(); self?.hint = nil; self?.eligibility = .manual
+            self?.dwellRemaining = nil
             self?.status = "GPS fix stale — manual fallback, no confirmed arrival"
         }
     }
