@@ -27,8 +27,10 @@ availability or that the product backlog is finished.
   cancellation/removal fixtures and one empty/default-off UI fixture prepared.
 - [ ] Execute native compile/unit/UI validation for this exact source. Local
   syntax/member-scope/whitespace checks alone are not native runtime proof.
-  No Swift/Xcode/installed WSL on Windows and no new native CI operation was
-  authorized for this slice. Existing TestFlight build8 remains unchanged.
+  Owner now requests current changes in TestFlight before further roadmap work:
+  use the existing exact-source native validation and protected upload workflow,
+  not unrelated provider/device operations. Existing build8 remains unchanged
+  until actual archive/export/upload and App Store Connect are verified.
 - [ ] Authorized actual two-phone foreground/background/OS revoke/token/
   key/ready/disconnect/cooldown/current-GIF/restore acceptance. GPS fixed-target
   quality/dwell/manual claim and optional supported-phone NI remain separate.

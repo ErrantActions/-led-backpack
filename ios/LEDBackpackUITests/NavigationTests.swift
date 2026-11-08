@@ -168,8 +168,10 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Send & Play"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Connect from the Backpack tab, then retry. This screen does not scan or connect automatically."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Send & Play on backpack"].exists)
-        XCTAssertTrue(app.buttons["Prepare / update send copies"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Prepare / update send copies"].isEnabled)
+        let prepare = app.buttons["Prepare / update send copies"]
+        reveal(prepare, in: app, requireHittable: false)
+        XCTAssertTrue(prepare.waitForExistence(timeout: 5))
+        XCTAssertFalse(prepare.isEnabled)
         attach(app, name: "Community direct Send & Play - no forced local save or radio scan")
     }
 
@@ -196,7 +198,7 @@ final class NavigationTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture"]
         app.launch()
-        let social = app.tabBars.buttons["Social"]
+        let social = app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch
         XCTAssertTrue(social.waitForExistence(timeout: 20)); social.tap()
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Community GIF gallery"].waitForExistence(timeout: 5))
@@ -253,7 +255,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
     }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true) {
         let window = app.windows.firstMatch.frame
         let scroll = app.scrollViews.allElementsBoundByIndex.first {
             $0.isHittable && $0.frame.intersects(window)
@@ -272,12 +274,12 @@ final class NavigationTests: XCTestCase {
         }
         for _ in 0..<8 {
             if element.exists {
-                if element.isHittable && visible.contains(element.frame) { return }
+                if (!requireHittable || element.isHittable) && visible.contains(element.frame) { return }
                 let distance = min(visible.height * 0.45,
                     max(-visible.height * 0.45, visible.midY - element.frame.midY))
                 if abs(distance) < 1 {
                     let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                        element.isHittable && visible.contains(element.frame)
+                        (!requireHittable || element.isHittable) && visible.contains(element.frame)
                     }, object: nil)
                     if XCTWaiter.wait(for: [ready], timeout: 1) == .completed { return }
                     continue
@@ -296,7 +298,7 @@ final class NavigationTests: XCTestCase {
             }
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        XCTAssertTrue(element.isHittable && visible.contains(element.frame),
+        XCTAssertTrue((!requireHittable || element.isHittable) && visible.contains(element.frame),
             "Reveal the entire control before interacting. Hittable=\(element.isHittable), control=\(element.frame), viewport=\(visible)")
     }
 
