@@ -181,7 +181,11 @@ The next unsigned GPS HUD source reports remaining dwell only from actual
 usable continuous fixes. Outside/invalid/stale/eligible/cooldown/stopped states
 clear that feedback; no timer predicts arrival or automatically confirms it.
 Both event hunt and route eligibility views share the existing evaluator/
-controller feedback. Two fresh-dwell/reset regressions are prepared.
+controller feedback. Two fresh-dwell/reset regressions passed at40c9c8b in
+run42448104253: actual app/test compile and95focused native tests/0failures.
+The accumulated post-build9 source is undergoing a separate consolidated
+unsigned full/unit/UI/public regression sweep; focused passes do not imply
+physical acceptance, a full integration pass or another beta upload.
 
 ### Social tab navigation follow-up - source only
 

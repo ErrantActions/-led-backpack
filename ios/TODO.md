@@ -67,7 +67,11 @@ availability or that the product backlog is finished.
 - [x] Next unsigned GPS HUD shows dwell remaining from actual fresh fixes,
   cleared on drift/invalid/stale/eligible/cooldown/stop. No predicted arrival
   timer or automatic claim; both event/route eligibility paths share feedback.
-- [ ]2new fresh-dwell/reset feedback fixtures and targeted native validation.
+- [x]2new fresh-dwell/reset feedback fixtures passed: app/test compile and
+  95focused native tests/0 at40c9c8b in run42448104253.
+- [ ] Consolidated unsigned full/unit/UI/public regression sweep for the
+  accumulated post-build9 GPS/SOLO/local-pair source. No signing/device/provider
+  permission inferred; uploaded build9 and unrelated firmware remain unchanged.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
