@@ -52,7 +52,12 @@ availability or that the product backlog is finished.
 - [x] Further unsigned source rechecks local NI freshness after queued sends
   drain, before positive nearby announcements reach the radio; stale claims
   fail explicitly with recovery retained, no silent substitution/fallback.
-- [ ]1new queue/transmission-time regression and targeted validation.
+- [x]1new queue/transmission-time regression passed: app/test compile and
+  89focused native tests/0 at01bf425 in run42445262344.
+- [x] Next unsigned local-pair source separates preparation/application/
+  receipt-sent state, preventing premature bilateral status and stale async
+  completion across stop/new sessions.
+- [ ]2new local-pair outcome-state regressions and targeted native validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

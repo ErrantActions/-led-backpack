@@ -29,8 +29,7 @@ final class LocalPairedGame: ObservableObject {
     private var ready = false
     private var peerReady = false
     private var acknowledged = false
-    private var applied = false
-    private var peerApplied = false
+    private var application = LocalPairApplicationState()
     private var rangeSent: Bool?
     private var peerRange = false
     private var wantsRange = false
@@ -209,11 +208,11 @@ final class LocalPairedGame: ObservableObject {
         case "local-range":
             guard agreed, wantsRange else { throw BackpackError.invalid("Ranging was not independently enabled.") }
             peerRange = message.sceneReady == true
-            if !peerRange && applied { throw BackpackError.invalid("Peer ranging freshness lost; stop rather than infer proximity.") }
+            if !peerRange && application.localApplied { throw BackpackError.invalid("Peer ranging freshness lost; stop rather than infer proximity.") }
             try await applyIfReady()
         case "local-applied":
-            guard peerReady, !peerApplied else { throw BackpackError.invalid("Unexpected/replayed local scene receipt.") }
-            peerApplied = true; status = applied ? "Both local scene receipts received; no verified proximity/sync/safety claim" : "Peer applied; local application still pending"
+            guard peerReady, !application.peerApplied else { throw BackpackError.invalid("Unexpected/replayed local scene receipt.") }
+            application.peerApplied = true; reportApplication()
         default: throw BackpackError.invalid("Unknown local paired protocol message.")
         }
     }
@@ -228,28 +227,46 @@ final class LocalPairedGame: ObservableObject {
         Task {
             do {
                 try await send(.init(kind: "local-range", sceneReady: state))
-                if !state && applied { throw BackpackError.invalid("NI freshness/stability lost; local game stopped.") }
+                if !state && application.localApplied { throw BackpackError.invalid("NI freshness/stability lost; local game stopped.") }
                 try await applyIfReady()
             } catch { if stamp == epoch { fail(error) } }
         }
     }
     private func applyIfReady() async throws {
-        guard agreed, peerReady, acknowledged, !applied, let scene else { return }
+        guard agreed, peerReady, acknowledged, application.canApply, let scene else { return }
         guard !wantsRange || (ranging.hasFreshStableHint() && peerRange) else { status = "Both ready; waiting for fresh coarse NI hints, not verified proximity"; return }
-        applied = true
+        let stamp = epoch
+        application.applying = true
+        defer { if epoch == stamp { application.applying = false } }
         try await session.apply(scene, title: "Locally paired complementary calm colors — no private original shared") {
             try self.checkPair()
             guard self.active, !self.wantsRange || (self.ranging.hasFreshStableHint() && self.peerRange) else { throw CancellationError() }
         }
+        try checkPair()
+        guard active, epoch == stamp else { throw CancellationError() }
+        application.applying = false
+        application.localApplied = true
         try await send(.init(kind: "local-applied"))
-        status = "Local color scene applied after both-ready; peer final outcome may be uncertain"
+        try checkPair()
+        guard active, epoch == stamp else { throw CancellationError() }
+        application.localReceiptSent = true
+        reportApplication()
+    }
+    private func reportApplication() {
+        if application.confirmed {
+            status = "Both local scene receipts received after completed application; no verified proximity/sync/safety claim"
+        } else if application.localApplied {
+            status = "Local color scene applied after both-ready; final application receipt is still pending or uncertain"
+        } else {
+            status = "Peer applied; local application is still pending. No bilateral success is inferred."
+        }
     }
     func stop(_ message: String = "Local pairing stopped — original retained, no automatic restart") {
         epoch = UUID(); active = false; arming = false; radio.stop(); ranging.stop()
         task?.cancel(); receiveTail?.cancel(); sendTail?.cancel(); task = nil; receiveTail = nil; sendTail = nil
         session.stop(message); key = nil; own = nil; peer = nil; code = nil; comparison = nil; deadline = nil
         cipher = nil; first = nil; link = nil; observed = false; proved = false; agreed = false
-        ready = false; peerReady = false; acknowledged = false; applied = false; peerApplied = false
+        ready = false; peerReady = false; acknowledged = false; application = .init()
         rangeSent = nil; peerRange = false; localToken = nil; gotToken = false; scene = nil; queued = 0; status = message
     }
     private func fail(_ error: Error) { stop("Local paired game failed/stopped; explicit original restore remains available"); failure = error.localizedDescription }

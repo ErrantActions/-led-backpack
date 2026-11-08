@@ -156,8 +156,16 @@ A further unsigned queue-boundary follow-up requires current local NI freshness
 again after previous encrypted sends drain, immediately before dispatching a
 positive nearby announcement to the radio. Expired queued claims fail closed
 with explicit recovery status rather than being silently substituted or sent.
-One new transmission-time regression is prepared; peer protocol fields and
-manual fallback behavior remain unchanged.
+The transmission-time regression passed at01bf425 in run42445262344:
+actual app/test compile and89focused native tests/0failures. Peer protocol
+fields and manual fallback behavior remain unchanged.
+
+The next unsigned local-pair outcome follow-up separates in-flight display
+preparation from verified local application and successful receipt sending.
+An early peer receipt cannot claim bilateral completion before local display
+commit/receipt; late async completions recheck current epoch/pair and cannot
+change a stopped/new session. Two state-machine regressions are prepared.
+No physical display atomicity, ranging or identity proof is inferred.
 
 ### Social tab navigation follow-up - source only
 

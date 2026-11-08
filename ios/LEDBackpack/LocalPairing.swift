@@ -39,6 +39,14 @@ struct LocalPairCode: Codable, Equatable, Sendable {
             canRequestFriendship: false, publicKey: key, token: hint, tokenExpiresAtISO: expiresAt)
     }
 }
+struct LocalPairApplicationState {
+    var applying = false
+    var localApplied = false
+    var localReceiptSent = false
+    var peerApplied = false
+    var canApply: Bool { !applying && !localApplied }
+    var confirmed: Bool { !applying && localApplied && localReceiptSent && peerApplied }
+}
 struct LocalRangeStability {
     private var previous: (distance: Float, time: Double)?
     private var start: Double?

@@ -113,6 +113,26 @@ final class LocalPairingTests: XCTestCase {
         XCTAssertThrowsError(try gate.requireFresh(uptime: 4))
         XCTAssertThrowsError(try gate.requireFresh(uptime: 5))
     }
+    func testPeerReceiptDuringLocalPreparationCannotConfirmBothApplications() {
+        var state = LocalPairApplicationState()
+        state.applying = true; state.peerApplied = true
+        XCTAssertFalse(state.canApply); XCTAssertFalse(state.confirmed)
+        state.localApplied = true
+        XCTAssertFalse(state.confirmed)
+        state.localReceiptSent = true
+        XCTAssertFalse(state.confirmed)
+        state.applying = false
+        XCTAssertTrue(state.confirmed)
+    }
+    func testLocalApplicationWithoutPeerReceiptRemainsUnconfirmedAndResetClearsState() {
+        var state = LocalPairApplicationState()
+        state.localApplied = true; state.localReceiptSent = true
+        XCTAssertFalse(state.canApply); XCTAssertFalse(state.confirmed)
+        state.peerApplied = true
+        XCTAssertTrue(state.confirmed)
+        state = .init()
+        XCTAssertTrue(state.canApply); XCTAssertFalse(state.confirmed)
+    }
     func testNIColdStopAndUnconsentedPrepareNeverInitializeSession() {
         let ni = LocalNearbyInteraction()
         XCTAssertFalse(ni.initialized); ni.stop(); XCTAssertFalse(ni.initialized)
