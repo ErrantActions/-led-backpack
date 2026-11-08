@@ -317,6 +317,10 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Settings - account route reachable, diagnostics collapsed")
         let done = app.buttons["settings-done"]
         XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
+        let settingsClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !app.buttons["settings-done"].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settingsClosed], timeout: 10), .completed)
         let artwork = app.buttons["Preview Night ride"]
         reveal(artwork, in: app); artwork.press(forDuration: 1)
         app.buttons["Edit a copy"].tap()
@@ -457,10 +461,10 @@ final class NavigationTests: XCTestCase {
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true, maximumSwipes: Int = 8) {
         let window = app.windows.firstMatch.frame
-        let collection = app.collectionViews.allElementsBoundByIndex.first {
+        let collection = app.collectionViews.allElementsBoundByIndex.last {
             $0.isHittable && $0.frame.intersects(window)
         }
-        let scroll = collection ?? app.scrollViews.allElementsBoundByIndex.first {
+        let scroll = collection ?? app.scrollViews.allElementsBoundByIndex.last {
             $0.isHittable && $0.frame.intersects(window)
         }
         let container = scroll ?? app
@@ -486,15 +490,8 @@ final class NavigationTests: XCTestCase {
                     if XCTWaiter.wait(for: [ready], timeout: 1) == .completed { return }
                     continue
                 }
-                let startY = distance > 0 ? visible.minY + visible.height * 0.25 :
-                    visible.minY + visible.height * 0.75
-                let origin = app.coordinate(withNormalizedOffset: .zero)
-                let start = origin.withOffset(CGVector(dx: visible.midX - app.frame.minX,
-                    dy: startY - app.frame.minY))
-                let end = origin.withOffset(CGVector(dx: visible.midX - app.frame.minX,
-                    dy: startY + distance - app.frame.minY))
-                start.press(forDuration: 0.1, thenDragTo: end,
-                    withVelocity: .slow, thenHoldForDuration: 0.2)
+                if distance > 0 { container.swipeDown() }
+                else { container.swipeUp() }
             } else {
                 container.swipeUp()
             }
@@ -514,5 +511,9 @@ final class NavigationTests: XCTestCase {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = name + " - element frames"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
     }
 }

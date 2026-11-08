@@ -271,7 +271,7 @@ struct SettingsView: View {
             }.modernScene().navigationTitle("Settings").buttonStyle(.borderless)
             .safeAreaInset(edge: .bottom) {
                 Button("Done") { dismiss() }
-                    .buttonStyle(.bordered).frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonStyle(AuroraPrimaryButton())
                     .padding(8).background(.regularMaterial)
                     .accessibilityIdentifier("settings-done")
             }
