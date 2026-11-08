@@ -263,7 +263,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(first.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Load more"].exists)
         let last = app.buttons["community-gif-cccccccc-1234-4567-89ab-000000000030"]
-        reveal(last, in: app); XCTAssertTrue(last.exists)
+        reveal(last, in: app, maximumSwipes: 20); XCTAssertTrue(last.exists)
         let results = app.staticTexts["community-page-count"]
         reveal(results, in: app)
         XCTAssertEqual(results.label, "30 GIFs · End of results")
@@ -315,7 +315,8 @@ final class NavigationTests: XCTestCase {
         let catalog = app.buttons["Catalog server and account"]
         reveal(catalog, in: app); XCTAssertTrue(catalog.isHittable)
         attach(app, name: "Settings - account route reachable, diagnostics collapsed")
-        app.buttons["Done"].tap()
+        let done = app.buttons["settings-done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
         let artwork = app.buttons["Preview Night ride"]
         reveal(artwork, in: app); artwork.press(forDuration: 1)
         app.buttons["Edit a copy"].tap()
@@ -454,7 +455,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
     }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true) {
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true, maximumSwipes: Int = 8) {
         let window = app.windows.firstMatch.frame
         let collection = app.collectionViews.allElementsBoundByIndex.first {
             $0.isHittable && $0.frame.intersects(window)
@@ -473,7 +474,7 @@ final class NavigationTests: XCTestCase {
         if tabs.exists && tabs.frame.intersects(visible) {
             visible.size.height = max(0, tabs.frame.minY - visible.minY)
         }
-        for _ in 0..<8 {
+        for _ in 0..<maximumSwipes {
             if element.exists {
                 if (!requireHittable || element.isHittable) && visible.contains(element.frame) { return }
                 let distance = min(visible.height * 0.45,

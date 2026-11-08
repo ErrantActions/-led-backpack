@@ -269,8 +269,12 @@ struct SettingsView: View {
                         .font(.caption)
                 }
             }.modernScene().navigationTitle("Settings").buttonStyle(.borderless)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-            .toolbar(.visible, for: .navigationBar)
+            .safeAreaInset(edge: .bottom) {
+                Button("Done") { dismiss() }
+                    .buttonStyle(.bordered).frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(8).background(.regularMaterial)
+                    .accessibilityIdentifier("settings-done")
+            }
             .task { preferences = library.state.preferences }
             .fileExporter(isPresented: $exporter, document: document, contentType: .json, defaultFilename: exportName) { result in
                 if case .failure(let error) = result { panel.report(error) }
