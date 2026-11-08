@@ -168,5 +168,6 @@ private struct SocialLink<Destination: View>: View {
                 if !enabled { Text(community.signedIn ? "Unavailable" : "Sign in").font(.caption).foregroundStyle(.secondary) }
             }
         }.disabled(!enabled)
+            .accessibilityIdentifier("social-link-\(title)")
     }
 }

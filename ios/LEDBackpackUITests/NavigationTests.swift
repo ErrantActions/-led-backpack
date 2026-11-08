@@ -204,8 +204,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Community GIF gallery"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Sign in for friends, events and messaging"].exists)
         assertNoVisibleEntryForms(app)
-        let friends = app.buttons["Friends / requests / profile"]
-        reveal(friends, in: app); XCTAssertTrue(friends.exists); XCTAssertFalse(friends.isEnabled)
+        let friends = app.descendants(matching: .any).matching(identifier: "social-link-Friends / requests / profile").firstMatch
+        reveal(friends, in: app, requireHittable: false)
+        XCTAssertTrue(friends.exists); XCTAssertFalse(friends.isEnabled)
         attach(app, name: "Social tab - grouped features, private capabilities sign-in gated")
     }
 

@@ -6,6 +6,12 @@ availability or that the product backlog is finished.
 
 ## Current-GIF automatic swaps / Found Users - source PURPLE
 
+Release validation at source1c5035e/run42433392571 compiled app and both test
+bundles, passed priority GPS/swap checks,528focused fixtures and964full units
+with0failures/2explicit skips. Four of five integrated UI methods passed;
+the Social disabled-link selector failed because its label includes Sign in.
+Stable route identifiers are now being validated; no TestFlight upload yet.
+
 - [x] Actual currently playing, unfinished PHONE capture with exact bytes and
   artwork/policy revision checks before/after sanitization; received playback
   becomes the next other-peer source, separate from durable FIRST recovery.
