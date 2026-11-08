@@ -17,8 +17,10 @@ availability or that the product backlog is finished.
   app/test compile and98focused native tests/0 atdf40e46 in run42452361645.
 - [x] Subsequent source enforces the monotonic capture deadline at fix
   acceptance and source completion, not merely timer callback scheduling.
-- [ ]1new exact capture-window regression and unsigned validation.
-  No physical GPS/permission proof or new beta inferred.
+- [x]1new exact capture-window regression passed: app/test compile and
+  99focused native tests/0 atf43f6cc in run42453233273.
+- [ ] Physical GPS/permission/private-provider acceptance remains unperformed;
+  no full/UI/public sweep or new beta for these latest capture additions.
 
 ## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
 

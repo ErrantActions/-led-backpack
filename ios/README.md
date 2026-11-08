@@ -27,7 +27,10 @@ acceptance remains unperformed.
 A subsequent source follow-up checks the monotonic ten-second capture window
 when accepting a fix and after awaiting the source, independently of delayed
 timeout callbacks. Late/backwards completions cannot enter the draft.
-One new exact-boundary capture-window fixture is prepared for unsigned validation.
+The exact-boundary capture-window fixture passed atf43f6cc in run42453233273:
+actual app/test compile and99focused native tests/0failures.
+This remains an unsigned software fixture checkpoint, not real GPS capture/
+permission/private-provider acceptance, a full release sweep or a new beta.
 
 ### Current released checkpoint: TestFlight0.1.0(9)
 
