@@ -24,13 +24,16 @@ Frozen source `0772fd9` passed full unsigned native validation in
 and separate read-only public integration1/0. All18 synchronization fixtures
 passed. Reviewed XCTest screenshots show one artwork collection without storage
 scopes. Remote byte changes also invalidate Library, phone, queue and picker
-previews while preserving artwork identity. This release candidate is not in
-TestFlight9; the next protected upload is a separate checkpoint.
+previews while preserving artwork identity. Release `1ef59c3` was signed,
+archived, exported and uploaded as **0.1.0 build10** in
+[run42506053458](https://github.com/ErrantActions/-led-backpack/actions/runs/42506053458).
+Signing cleanup passed. Apple processing and internal tester availability are
+not verified; TestFlight9 does not include these changes.
 The existing unsigned source workflow's `library` mode runs the cloud-sync,
 library, vault/protocol/crypto and direct-cloud-send tests together with all
 navigation UI regressions, followed by the separate read-only public integration.
 
-### Clean LED interface overhaul - verified unsigned release candidate
+### Clean LED interface overhaul - uploaded in TestFlight build10
 
 The five tabs remain Library, Social, Backpack, Create and Live. Compact
 artwork-first cards replace oversized introductions; restrained LED accents,
@@ -49,8 +52,9 @@ No protocol, account, sensor, cloud-access or firmware permission is added.
 UI regressions cover default-off games, guest capability gates, expanded scene
 actions and timing invalidation/new-copy preservation. The existing unsigned
 workflow now exports XCTest screenshots for visual review. Native compiler,
-test counts and screenshot results are recorded above. These changes are not
-in TestFlight build9; signing/upload remains a separate release step.
+test counts and screenshot results are recorded above. These changes are
+uploaded in TestFlight build10, not build9; tester/device acceptance remains
+a separate checkpoint.
 
 For UI-only fixture corrections, the existing unsigned source workflow has a
 `ui` mode: compile, run all NavigationTests, run separate read-only public
