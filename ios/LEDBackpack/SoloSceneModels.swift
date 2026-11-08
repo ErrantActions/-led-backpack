@@ -25,6 +25,18 @@ struct SoloFix: Sendable {
             (0...5).contains(now.timeIntervalSince(timestamp))
     }
 }
+struct SoloFixedPointWindow: Sendable {
+    let started: ContinuousClock.Instant
+    let deadline: ContinuousClock.Instant
+    init(instant: ContinuousClock.Instant = ContinuousClock().now) {
+        started = instant; deadline = instant.advanced(by: .seconds(10))
+    }
+    func require(instant: ContinuousClock.Instant = ContinuousClock().now) throws {
+        guard instant >= started, instant < deadline else {
+            throw BackpackError.invalid("The ten-second fixed-point capture window expired or changed. Retry explicitly; no late point is accepted.")
+        }
+    }
+}
 
 struct SoloSceneItem: Codable, Identifiable, Sendable {
     let id: UUID

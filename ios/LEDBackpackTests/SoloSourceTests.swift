@@ -117,6 +117,13 @@ final class SoloSourceTests: XCTestCase {
         catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
         XCTAssertFalse(location.hasCreatedManager)
     }
+    func testFixedPointWindowRejectsDeadlineAndLateOrBackwardsCompletion() throws {
+        let now = ContinuousClock().now, window = SoloFixedPointWindow(instant: ContinuousClock().now)
+        XCTAssertNoThrow(try window.require(instant: window.started.advanced(by: .seconds(9.999))))
+        XCTAssertThrowsError(try window.require(instant: window.deadline))
+        XCTAssertThrowsError(try window.require(instant: window.started.advanced(by: .seconds(11))))
+        XCTAssertThrowsError(try window.require(instant: now.advanced(by: .seconds(-1))))
+    }
     func testFixedPointRejectsNonfiniteAndInvalidCoordinates() {
         for value in [SoloPoint(latitude: .nan, longitude: 0), .init(latitude: 91, longitude: 0), .init(latitude: 0, longitude: 181)] {
             XCTAssertThrowsError(try value.validate())

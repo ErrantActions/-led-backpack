@@ -13,8 +13,12 @@ availability or that the product backlog is finished.
   cancellation guards, no silent restart or map/search/provider/server upload.
 - [x] Draft consent removal/background/close cancels capture; explicit Save
   remains required and guarded against stale/new draft completion.
-- [ ]3new injected-source/quality/context/cold-consent fixtures and unsigned
-  native validation. No physical GPS/permission proof or new beta inferred.
+- [x]3new injected-source/quality/context/cold-consent fixtures passed:
+  app/test compile and98focused native tests/0 atdf40e46 in run42452361645.
+- [x] Subsequent source enforces the monotonic capture deadline at fix
+  acceptance and source completion, not merely timer callback scheduling.
+- [ ]1new exact capture-window regression and unsigned validation.
+  No physical GPS/permission proof or new beta inferred.
 
 ## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
 

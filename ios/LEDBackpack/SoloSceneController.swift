@@ -23,6 +23,7 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
     private var captureID: UUID?
     private var captureResult: CheckedContinuation<SoloFix, Error>?
     private var captureTimeout: Task<Void, Never>?
+    private var captureWindow: SoloFixedPointWindow?
     var received: ((SoloFix) -> Void)?
     var invalidated: ((String) -> Void)?
     var hasCreatedManager: Bool { manager != nil }
@@ -63,10 +64,11 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
             throw BackpackError.invalid("Grant full-accuracy When-In-Use permission separately, then retry or enter a fixed point manually.")
         }
         let id = UUID()
+        let window = SoloFixedPointWindow()
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
-                captureID = id; captureResult = continuation
+                captureID = id; captureResult = continuation; captureWindow = window
                 value.desiredAccuracy = kCLLocationAccuracyBest
                 captureTimeout = Task { [weak self] in
                     do { try await Task.sleep(for: .seconds(10)) } catch { return }
@@ -81,7 +83,7 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
     }
     private func finishCapture(_ result: Result<SoloFix, Error>, id: UUID) {
         guard captureID == id, let continuation = captureResult else { return }
-        captureID = nil; captureResult = nil; captureTimeout?.cancel(); captureTimeout = nil
+        captureID = nil; captureResult = nil; captureWindow = nil; captureTimeout?.cancel(); captureTimeout = nil
         if !running { manager?.stopUpdatingLocation() }
         continuation.resume(with: result)
     }
@@ -104,6 +106,12 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLoc
         guard manager === self.manager, let last = locations.last else { return }
         let fix = SoloFix(point: SoloPoint(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude),
             accuracy: last.horizontalAccuracy, timestamp: last.timestamp)
+        if let id = captureID {
+            do {
+                guard let captureWindow else { throw BackpackError.invalid("Fixed-point capture deadline is unavailable.") }
+                try captureWindow.require()
+            } catch { finishCapture(.failure(error), id: id); return }
+        }
         if let id = captureID, fix.usable(at: Date()),
            [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
            manager.accuracyAuthorization == .fullAccuracy {
@@ -202,8 +210,10 @@ final class SoloSceneController: ObservableObject {
             throw BackpackError.invalid("Explicit foreground capture consent and stopped sensing/automation are required.")
         }
         let stamp = epoch
+        let window = SoloFixedPointWindow()
         let fix = try await location.capture(consent: consent, foreground: foreground)
         try Task.checkCancellation()
+        try window.require()
         guard epoch == stamp, foreground, !sensing, !armed, !busy else { throw CancellationError() }
         guard fix.usable(at: Date()) else { throw BackpackError.invalid("Captured point is stale, coarse or invalid; manual draft retained.") }
         return fix.point

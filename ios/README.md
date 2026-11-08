@@ -19,8 +19,15 @@ still validates local scene/bounds and reliable stopped configuration.
 Draft cancellation/consent removal/background clears capture work; async
 results cannot replace a closed/new draft. No maps, search, provider keys,
 server coordinates or physical device operations are added.
-Three new injected-source/quality/context/cold-consent fixtures are prepared.
-This source is not in build9 and has not yet executed native validation.
+Three new injected-source/quality/context/cold-consent fixtures passed at
+df40e46 in run42452361645: actual app/test compile and98focused native
+tests/0failures. This source is not in build9; physical capture/permission
+acceptance remains unperformed.
+
+A subsequent source follow-up checks the monotonic ten-second capture window
+when accepting a fix and after awaiting the source, independently of delayed
+timeout callbacks. Late/backwards completions cannot enter the draft.
+One new exact-boundary capture-window fixture is prepared for unsigned validation.
 
 ### Current released checkpoint: TestFlight0.1.0(9)
 
