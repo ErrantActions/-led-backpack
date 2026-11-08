@@ -207,6 +207,27 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Social tab - grouped features, private capabilities sign-in gated")
     }
 
+    func testFoundUsersIsReachableWithoutStartingBluetoothOrInventingSwapSuccess() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let games = app.buttons["GPS & nearby games"]
+        XCTAssertTrue(games.waitForExistence(timeout: 20))
+        reveal(games, in: app); games.tap()
+        let swap = app.buttons["Automatic PHONE GIF exchange game"]
+        XCTAssertTrue(swap.waitForExistence(timeout: 10))
+        reveal(swap, in: app); swap.tap()
+        XCTAssertTrue(app.navigationBars["Phone GIF swap game"].waitForExistence(timeout: 10))
+        let found = app.staticTexts["Found Users"]
+        reveal(found, in: app); XCTAssertTrue(found.exists)
+        XCTAssertTrue(app.staticTexts["No confirmed swaps for this account yet. Partial exchanges are not Found success."].exists)
+        XCTAssertFalse(app.buttons["Prepare GAME Bluetooth (explicit)"].exists)
+        XCTAssertFalse(app.buttons["Enable 5-minute phone-only game"].exists)
+        XCTAssertFalse(app.buttons["Send friend request"].exists)
+        XCTAssertTrue(app.buttons["Reload Found Users"].exists)
+        attach(app, name: "Found Users - empty verified-pair collection, no sensor or friendship consent")
+    }
+
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })

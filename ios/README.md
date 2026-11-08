@@ -3,6 +3,57 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Automatic current-GIF swap / Found Users - source follow-up
+
+Both players independently opt in to the foreground PHONE game beforehand.
+No per-encounter popup or friendship is required. Play a phone GIF, open the
+player menu's Automatic GIF swap / Found Users sheet, prepare GAME Bluetooth,
+then enable. This sheet leaves the actual player visible/playing; choosing
+artwork through the old library picker is not treated as current playback.
+Social/GPS game entries also offer the existing local library and player path.
+
+Outgoing capture now requires actual playing, unfinished PHONE bytes with
+unchanged artwork/policy revisions before and after sanitization. Pause,
+selection, policy, background, token/account/target changes stop sharing.
+Saved viewer settings that disable automatic phone playback block game arming;
+the game never silently overrides them.
+A received GIF that is now playing becomes the next other-peer source; the
+durable FIRST original and its attribution/playhead are never substituted.
+Accepted-friend intents retain their separate selected-artwork/consent behavior.
+
+The 60-second throttle uses monotonic runtime time and resumes the retained
+service-clock cooldown. Same-peer IDs and the staged exchange are retained in
+the existing original journal, so stop/rearm or a new controller cannot reset
+the current original's suppression. Only an acknowledged explicit original
+restore and subsequent new journal create a new game recovery association.
+No peer encounter times, GPS, RSSI, exact distances or timeline are uploaded.
+
+Found Users is a scoped projection of existing ReceivedSwapArtwork records,
+paired atomically with existing LocalMetFriend cards ONLY after both validated
+application receipts, current authenticated peer/service binding and matching
+staged exchange/bytes/recovery. Partial, legacy unconfirmed, mismatched,
+cancelled and conflicting duplicate outcomes cannot synthesize Found success.
+Identical confirmed duplicates reuse the same record. Outgoing digest is
+retained locally for duplex duplicate integrity, never an encounter upload.
+No new parallel contact/artwork collection is created.
+
+Rows show the received GIF and corresponding minimal sender, with explicit
+permanent local Save, Remove, optional Send Friend Request, Block, private
+Report and the existing first-original Restore. Preview respects motion/data
+saving. Bound Received records are filtered by account in recovery UI too.
+Removing a receipt does not delete the first original or separately saved copy;
+blocking/reporting remain separate normal service-authorized actions.
+BLE observation/token/key/transcript/readiness/recovery remain mandatory.
+Nearby Bluetooth is not reliable meters, anti-relay or physical proximity proof.
+No fixed-beacon checkpoint binding, backpack original recovery or fake NI proof
+is added. Existing GPS quality/dwell/lease/manual-private-claim paths remain.
+
+13 new PhoneSwapGameTests and one native navigation fixture are prepared.
+Only local Swift syntax/member-scope and whitespace checks have executed for
+this slice; they are NOT compiler, XCTest, simulator or physical evidence.
+Windows has no Swift/Xcode or installed WSL; no new native CI, signing, device
+or provider operations were started. This source is not in TestFlight build8.
+
 ### Social tab navigation follow-up - source only
 
 A fifth Social tab groups community browsing/Favorites, friends/requests/QR/

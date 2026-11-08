@@ -10,6 +10,7 @@ final class SwapRecoveryStore: ObservableObject {
     @Published private(set) var notice: String?
     private var repository: SwapRecoveryRepository?
     private var operation = UUID()
+    private var activeOwnerScope: String?
     init(repository: SwapRecoveryRepository? = nil) { self.repository = repository }
     private func storage() throws -> SwapRecoveryRepository {
         if let repository { return repository }
@@ -22,10 +23,11 @@ final class SwapRecoveryStore: ObservableObject {
         guard let id = community.user?.id, let origin = community.origin, community.signedIn else { return "owner-local-no-account" }
         return origin.url.absoluteString + "|" + id.uuidString.lowercased()
     }
-    func invalidate() { operation = UUID(); busy = false; received = []; journal = nil; failure = nil; notice = nil }
-    func load() async {
+    func invalidate() { operation = UUID(); busy = false; received = []; journal = nil; failure = nil; notice = nil; activeOwnerScope = nil }
+    func load(ownerScope: String? = nil) async {
         guard !busy else { return }
         let stamp = operation
+        activeOwnerScope = ownerScope
         busy = true; defer { if stamp == operation { busy = false } }
         do {
             let original = try await storage().load()
@@ -33,7 +35,7 @@ final class SwapRecoveryStore: ObservableObject {
             journal = original
             let collection = try await storage().received()
             try Task.checkCancellation(); guard stamp == operation else { return }
-            received = collection; failure = nil
+            received = collection.filter { $0.ownerScope == nil || $0.ownerScope == ownerScope }; failure = nil
         } catch { if stamp == operation && !Task.isCancelled { failure = error.localizedDescription } }
     }
     func prepare(phone: PhoneDisplayController, targets: DisplayTargetSelection,
@@ -109,7 +111,7 @@ final class SwapRecoveryStore: ObservableObject {
                 name: url.deletingPathExtension().lastPathComponent, attribution: nil)
             let values = try await storage().received()
             guard stamp == operation else { return }
-            received = values
+            received = values.filter { $0.ownerScope == nil || $0.ownerScope == activeOwnerScope }
             notice = "File staged locally in Received swaps. This was a manual import, not a peer transfer or encounter."
         } catch { if stamp == operation && !Task.isCancelled { failure = error.localizedDescription } }
     }
@@ -118,6 +120,9 @@ final class SwapRecoveryStore: ObservableObject {
         let stamp = operation; busy = true
         defer { if stamp == operation { busy = false } }
         do {
+            guard item.ownerScope == nil || item.ownerScope == activeOwnerScope else {
+                throw BackpackError.invalid("This confirmed received GIF belongs to another account.")
+            }
             try await storage().removeReceived(item.id)
             guard stamp == operation else { return }
             received.removeAll { $0.id == item.id }; notice = "Received local copy removed; recovery original unchanged."
@@ -151,7 +156,7 @@ struct SwapRecoveryView: View {
                 if let failure = store.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice = store.notice { Text(notice).font(.caption) }
                 if store.busy { ProgressView() }
-                Button("Inspect retained recovery / received originals") { task = Task { await store.load() } }.disabled(store.busy)
+                Button("Inspect retained recovery / received originals") { task = Task { await store.load(ownerScope: SwapRecoveryStore.ownerScope(community)) } }.disabled(store.busy)
                 if let journal = store.journal {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Saved transaction: \(journal.transactionID.uuidString.lowercased())").font(.caption.monospaced())
@@ -177,7 +182,9 @@ struct SwapRecoveryView: View {
                         ReceivedSwapPixels(data: item.data, play: false)
                             .frame(height: 130).clipShape(RoundedRectangle(cornerRadius: 16))
                         Text(item.name).font(.headline)
-                        Text(item.transportVerified ? "Authenticated peer-protocol receipt — not proximity/attendance proof" : "Manually staged — no verified peer transfer").font(.caption)
+                        Text(item.bilateralConfirmed == true ? "Confirmed bilateral swap — sender paired in Found Users, not proximity proof" :
+                            item.transportVerified ? "Validated peer artwork — bilateral application/sender pairing not established" :
+                            "Manually staged — no verified peer transfer").font(.caption)
                         if let attribution = item.attribution { Text("\(attribution.author) · \(attribution.source) · \(attribution.license)").font(.caption) }
                         Button("Inspect full local preview") { selected = item }
                         Button("Save independent copy to phone library") {
@@ -191,7 +198,7 @@ struct SwapRecoveryView: View {
                 }
             }.padding(20)
         }.modernScene().navigationTitle("Swap recovery")
-        .task { await store.load() }
+        .task { await store.load(ownerScope: SwapRecoveryStore.ownerScope(community)) }
         .onChange(of: community.accountRevision) { _, _ in cancelContext() }
         .onChange(of: targets.target) { _, _ in cancelContext() }
         .onChange(of: phase) { _, state in if state != .active { cancelContext() } }
@@ -251,7 +258,7 @@ private struct ReceivedSwapPreview: View {
 }
 
 @MainActor
-private struct ReceivedSwapPixels: View {
+struct ReceivedSwapPixels: View {
     let data: Data
     let play: Bool
     var fullSize = false

@@ -124,7 +124,7 @@ struct SocialTabView: View {
     private var gamesSection: some View {
         Section("Games & exchanges — separate opt-ins") {
             NavigationLink("GPS & nearby games") { GPSGamesView() }
-            SocialLink("Automatic PHONE GIF swap / Met friends", feature: .gifSwap) { PhoneSwapGameView() }
+            SocialLink("Automatic PHONE GIF swap / Found Users", feature: .gifSwap) { PhoneSwapGameView() }
             NavigationLink("Offline paired calm colors / optional NI") { LocalPairedGameView() }
             NavigationLink("Received swaps / original recovery") { SwapRecoveryView() }
             Text("PHONE swap is built; actual two-phone proof remains separate. Unknown backpack originals cannot be safely recovered for automatic hardware swaps.").font(.caption)

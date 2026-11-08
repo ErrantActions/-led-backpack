@@ -110,6 +110,7 @@ struct PhoneDisplayView: View {
     @State private var controls = true
     @State private var choosing = false
     @State private var soloControls = false
+    @State private var gameControls = false
     @State private var importing = false
     @State private var pendingFile: PhoneArtwork?
     @State private var selection: Task<Void, Never>?
@@ -138,6 +139,7 @@ struct PhoneDisplayView: View {
                             .accessibilityLabel("Close phone display")
                         Spacer(); StatusPill(title: "ON PHONE", symbol: "iphone"); Spacer()
                         Menu {
+                            Button("Automatic GIF swap / Found Users") { gameControls = true }
                             Button("SOLO local scenes / arm PHONE automation") { soloControls = true }
                             Button("Local library") { phone.setVisible(false); choosing = true }
                             Button("Import original image / GIF") { phone.setVisible(false); importing = true }
@@ -197,6 +199,11 @@ struct PhoneDisplayView: View {
                 }.padding(20).foregroundStyle(.white)
             }
         }.statusBarHidden(true)
+        .sheet(isPresented: $gameControls) {
+            NavigationStack {
+                PhoneSwapGameView().toolbar { Button("Done") { gameControls = false } }
+            }
+        }
         .sheet(isPresented: $soloControls) {
             NavigationStack {
                 SoloScenesView().toolbar { Button("Done") { soloControls = false } }

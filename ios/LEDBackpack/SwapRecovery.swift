@@ -22,6 +22,9 @@ struct LocalSwapOriginal: Codable, Sendable {
     var acknowledgementSHA256: String?
     var cooldownUntil: Date?
     var peerPurpose: String? = nil
+    var gamePeerIDs: [UUID]? = nil
+    var gameExchangeID: UUID? = nil
+    var gameExchangePeerID: UUID? = nil
     var needsRecovery: Bool { stage != .restored }
 
     static func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
@@ -62,6 +65,18 @@ struct LocalSwapOriginal: Codable, Sendable {
                 throw BackpackError.invalid("Unknown recovery controller/session association; original retained.")
             }
         }
+        if let gamePeerIDs {
+            guard peerPurpose == "game-v1", gamePeerIDs.count <= 32,
+                  Set(gamePeerIDs).count == gamePeerIDs.count else {
+                throw BackpackError.invalid("Invalid retained game peer suppression; original retained.")
+            }
+            if gameExchangeID != nil || gameExchangePeerID != nil {
+                guard peerPurpose == "game-v1", gameExchangeID != nil, let gameExchangePeerID,
+                      gamePeerIDs?.contains(gameExchangePeerID) == true else {
+                    throw BackpackError.invalid("Invalid staged game exchange binding; original retained.")
+                }
+            }
+        }
         if stage == .restored {
             guard acknowledgementSHA256 == originalSHA256 else { throw BackpackError.invalid("Restoration acknowledgment is incomplete; original copy retained.") }
         }
@@ -96,12 +111,27 @@ struct ReceivedSwapArtwork: Codable, Identifiable, Sendable {
     let name: String
     let attribution: Attribution?
     let transportVerified: Bool
+    var sender: LocalMetFriend? = nil
+    var ownerScope: String? = nil
+    var bilateralConfirmed: Bool? = nil
+    var sentSHA256: String? = nil
+    func isFoundUser(ownerScope: String) -> Bool {
+        transportVerified && bilateralConfirmed == true && sender != nil && self.ownerScope == ownerScope && sentSHA256?.count == 64
+    }
     func validate() throws {
         guard schema == 1, (1...5_000_000).contains(data.count), sha256 == LocalSwapOriginal.digest(data),
               !name.isEmpty, name.utf16.count <= 160 else { throw BackpackError.invalid("Received artwork is incomplete, corrupted or outside its bounds.") }
         if let attribution {
             guard [attribution.source, attribution.author, attribution.license, attribution.licenseURL].allSatisfy({ $0.utf16.count <= 2048 }) else {
                 throw BackpackError.invalid("Received attribution exceeds its metadata bounds.")
+            }
+        }
+        if sender != nil || ownerScope != nil || bilateralConfirmed != nil || sentSHA256 != nil {
+            guard transportVerified, bilateralConfirmed == true, let sender, let ownerScope,
+                  !ownerScope.isEmpty, ownerScope.utf8.count <= 2200,
+                  (1...80).contains(sender.displayName.utf16.count), let sentSHA256,
+                  sentSHA256.count == 64, sentSHA256.allSatisfy({ $0.isHexDigit && !$0.isUppercase }) else {
+                throw BackpackError.invalid("Received GIF and confirmed minimal sender card are not paired.")
             }
         }
         _ = try GIFPreviewDecoder.phoneDisplay(data)
@@ -214,7 +244,10 @@ actor SwapRecoveryRepository {
             let expected = current.stage == .prepared ? current.sourceArtworkRevision : current.replacementArtworkRevision
             guard current.ownerScope == ownerScope, [.prepared,.replacementApplied].contains(current.stage),
                   current.peerPurpose == purpose || (current.peerPurpose == nil && current.stage == .prepared),
-                  expected == artworkRevision else { throw BackpackError.invalid("Restore/review the existing original first; a different deliberate phone selection/purpose cannot be adopted silently.") }
+                  expected == artworkRevision,
+                  snapshot.data.map(LocalSwapOriginal.digest) == (current.stage == .prepared ? current.originalSHA256 : current.replacementSHA256) else {
+                throw BackpackError.invalid("Restore/review the existing original first; a different phone selection, bytes or purpose cannot be adopted silently.")
+            }
             if current.peerPurpose == nil {
                 current.peerPurpose = purpose
                 try encode(current).write(to: journalURL, options: [.atomic, .completeFileProtection])
@@ -244,17 +277,35 @@ actor SwapRecoveryRepository {
         return current
     }
     func stageGameReplacement(readiness: SwapPeerReadiness, session: UUID, accountEpoch: UUID,
-        ownerScope: String, expectedRevision: UUID, nextRevision: UUID, incoming: Data, now: Date) throws -> LocalSwapOriginal {
+        ownerScope: String, expectedRevision: UUID, nextRevision: UUID, incoming: Data, now: Date,
+        peerID: UUID? = nil) throws -> LocalSwapOriginal {
         guard var current = try load() else { throw BackpackError.invalid("No durable original; replacement forbidden.") }
         let expected = current.stage == .prepared ? current.sourceArtworkRevision : current.replacementArtworkRevision
         guard expected == expectedRevision else { throw BackpackError.invalid("A newer deliberate phone selection must not be overwritten.") }
         try readiness.requireApply(journal: current, installation: installation(), ownerScope: ownerScope,
             session: session, account: accountEpoch, incoming: incoming, now: now)
+        if let peerID {
+            var peers = current.gamePeerIDs ?? []
+            guard current.peerPurpose == "game-v1", !peers.contains(peerID), peers.count < 32 else {
+                throw BackpackError.invalid("This peer already exchanged in the retained game; stop/rearm cannot permit ping-pong.")
+            }
+            peers.append(peerID)
+            current.gamePeerIDs = peers.sorted { $0.uuidString < $1.uuidString }
+            current.gameExchangeID = session; current.gameExchangePeerID = peerID
+        } else {
+            current.gameExchangeID = nil; current.gameExchangePeerID = nil
+        }
         current.stage = .replacementApplied
         current.replacementSHA256 = LocalSwapOriginal.digest(incoming); current.replacementArtworkRevision = nextRevision
         current.cooldownUntil = now.addingTimeInterval(60)
         try encode(current).write(to: journalURL, options: [.atomic, .completeFileProtection])
-        return current
+        guard let checked = try load(), checked.transactionID == current.transactionID,
+              checked.replacementArtworkRevision == nextRevision, checked.replacementSHA256 == current.replacementSHA256,
+              checked.gameExchangeID == current.gameExchangeID, checked.gameExchangePeerID == current.gameExchangePeerID,
+              checked.gamePeerIDs == current.gamePeerIDs else {
+            throw BackpackError.invalid("Game staging read-back failed; first original retained, do not apply.")
+        }
+        return checked
     }
     func stageSoloReplacement(ownerScope: String, expectedRevision: UUID, nextRevision: UUID,
         incoming: Data, now: Date) throws -> LocalSwapOriginal {
@@ -337,11 +388,53 @@ actor SwapRecoveryRepository {
             guard receipt.sha256 == value.sha256, receipt.attribution == attribution else { throw BackpackError.invalid("Local transaction receipt conflicts; no content-based global deduplication.") }
             return receipt
         }
-        guard existing.count < 20, existing.reduce(data.count, { $0 + $1.data.count }) <= 50_000_000 else { throw BackpackError.invalid("Received collection is full (20 originals / 50 MB). Remove copies explicitly.") }
+        return try persistReceived(value, existing: existing)
+    }
+    func retainConfirmedGame(data: Data, attribution: Attribution?, sender: LocalMetFriend,
+        receipt: PhoneSwapApplicationReceipt, ownerScope: String) throws -> ReceivedSwapArtwork {
+        try receipt.validate(data: data, peer: sender)
+        let value = ReceivedSwapArtwork(schema: 1, id: UUID(), transactionID: receipt.exchangeID, data: data,
+            sha256: LocalSwapOriginal.digest(data), name: "Received peer GIF", attribution: attribution,
+            transportVerified: true, sender: sender, ownerScope: ownerScope, bilateralConfirmed: true,
+            sentSHA256: receipt.outgoingHash)
+        try value.validate()
+        let existing = try received()
+        if let current = existing.first(where: { $0.transactionID == receipt.exchangeID }) {
+            guard current.isFoundUser(ownerScope: ownerScope), current.sender == sender,
+                  current.sha256 == value.sha256, current.attribution == attribution,
+                  current.sentSHA256 == receipt.outgoingHash else {
+                throw BackpackError.invalid("Confirmed exchange receipt conflicts with the retained GIF/sender; no Found success.")
+            }
+            return current
+        }
+        guard let journal = try load(), journal.ownerScope == ownerScope, journal.peerPurpose == "game-v1",
+              journal.stage == .replacementApplied, journal.gameExchangeID == receipt.exchangeID,
+              journal.gameExchangePeerID == sender.id, journal.replacementSHA256 == value.sha256 else {
+            throw BackpackError.invalid("Confirmed receipts do not match the staged game, peer, bytes and first-original recovery.")
+        }
+        return try persistReceived(value, existing: existing)
+    }
+    private func persistReceived(_ value: ReceivedSwapArtwork, existing: [ReceivedSwapArtwork]) throws -> ReceivedSwapArtwork {
+        try checkReceivedCapacity(data: value.data, existing: existing)
         let folder = root.appendingPathComponent("received", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.complete, .posixPermissions: 0o700])
+        try Task.checkCancellation()
         try encode(value).write(to: folder.appendingPathComponent(value.id.uuidString.lowercased() + ".json"), options: [.atomic, .completeFileProtection])
-        return value
+        guard let checked = try received().first(where: { $0.id == value.id }),
+              checked.sha256 == value.sha256, checked.sender == value.sender,
+              checked.ownerScope == value.ownerScope, checked.bilateralConfirmed == value.bilateralConfirmed,
+              checked.sentSHA256 == value.sentSHA256 else {
+            throw BackpackError.invalid("Received GIF/card write was not durably confirmed; no Found success.")
+        }
+        return checked
+    }
+    func ensureReceivedCapacity(for data: Data) throws {
+        try checkReceivedCapacity(data: data, existing: received())
+    }
+    private func checkReceivedCapacity(data: Data, existing: [ReceivedSwapArtwork]) throws {
+        guard existing.count < 20, existing.reduce(data.count, { $0 + $1.data.count }) <= 50_000_000 else {
+            throw BackpackError.invalid("Received collection is full (20 originals / 50 MB). Remove copies explicitly.")
+        }
     }
     func removeReceived(_ id: UUID) throws {
         guard try received().contains(where: { $0.id == id }) else { throw BackpackError.invalid("Received record no longer exists.") }

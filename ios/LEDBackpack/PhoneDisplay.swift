@@ -52,6 +52,19 @@ struct PhonePeerHandoff: Equatable {
         return sender ? leg == 0 : leg == 1
     }
 }
+struct PhoneGamePlayingSource: Sendable {
+    let data: Data
+    let artworkRevision: UUID
+    let playbackPolicyRevision: UUID
+    @MainActor
+    func requireCurrent(_ phone: PhoneDisplayController) throws {
+        guard phone.canApplyAutomaticPhoneArtwork, phone.isPlaying, !phone.position().finished,
+              phone.artworkRevision == artworkRevision, phone.playbackPolicyRevision == playbackPolicyRevision,
+              phone.data == data else {
+            throw BackpackError.invalid("The currently playing GIF or playback policy changed; no stale game artwork is shared.")
+        }
+    }
+}
 
 struct PhonePlaybackClock {
     private var position = 0.0
@@ -166,6 +179,13 @@ final class PhoneDisplayController: ObservableObject {
     var peerPlaybackPolicyChanged: (() -> Void)?
     var manualPresentationWillChange: (() -> Void)?
     var animated: Bool { (preview?.duration ?? 0) > 0 }
+    func capturePlayingGameGIF() throws -> PhoneGamePlayingSource {
+        guard let data else { throw BackpackError.invalid("Play a phone GIF before enabling automatic swaps.") }
+        let source = PhoneGamePlayingSource(data: data, artworkRevision: artworkRevision,
+            playbackPolicyRevision: playbackPolicyRevision)
+        try source.requireCurrent(self)
+        return source
+    }
     func cancelPendingSelection() { generation = UUID(); decodeTask?.cancel(); preparation?.cancel(); loading = false }
     func showLocalFile(_ url: URL, mediaID: UUID? = nil) async throws {
         guard foreground else { throw BackpackError.invalid("Return to the foreground before choosing phone artwork.") }

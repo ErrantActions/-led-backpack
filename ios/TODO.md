@@ -4,6 +4,35 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Current-GIF automatic swaps / Found Users - source PURPLE
+
+- [x] Actual currently playing, unfinished PHONE capture with exact bytes and
+  artwork/policy revision checks before/after sanitization; received playback
+  becomes the next other-peer source, separate from durable FIRST recovery.
+- [x] Reachable player-menu game sheet keeps playback alive. Social/GPS game
+  entries expose existing local artwork/player paths. Both advance opt-ins,
+  automatic exchanges, no per-encounter popup or friendship requirement.
+- [x] Monotonic 60-second throttle plus durable peer/session suppression in
+  existing recovery journal. Stop/rearm/new controller cannot reset the same
+  journal; newer/manual/unsafe originals are not silently adopted.
+- [x] Atomic owner-scoped received GIF + minimal verified sender after BOTH
+  application receipts and matching staged exchange/bytes/peer/recovery.
+  No premature Met/Received success, legacy retroactive Found, mismatched or
+  conflicting duplicates; identical complete receipts remain idempotent.
+- [x] Found Users reuses ReceivedSwapArtwork/LocalMetFriend. Paired preview,
+  explicit Save/Remove/optional Friend Request/Block/Report/Restore; normal
+  permissions retained, account-scoped recovery reads, no automatic friendship,
+  location/encounter upload, hardware recovery or precise ranging claims.
+- [x] 13 new exact-source/cooldown/rearm/staging/receipt/duplicate/scope/
+  cancellation/removal fixtures and one empty/default-off UI fixture prepared.
+- [ ] Execute native compile/unit/UI validation for this exact source. Local
+  syntax/member-scope/whitespace checks alone are not native runtime proof.
+  No Swift/Xcode/installed WSL on Windows and no new native CI operation was
+  authorized for this slice. Existing TestFlight build8 remains unchanged.
+- [ ] Authorized actual two-phone foreground/background/OS revoke/token/
+  key/ready/disconnect/cooldown/current-GIF/restore acceptance. GPS fixed-target
+  quality/dwell/manual claim and optional supported-phone NI remain separate.
+
 ## Social tab - source PURPLE, validation pending
 
 - [x] Real fifth Social tab grouping personal social/community/events/messages/

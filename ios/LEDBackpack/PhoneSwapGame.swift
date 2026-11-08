@@ -17,6 +17,7 @@ final class PhoneSwapGame: ObservableObject {
     @Published private(set) var status = "Phone swap game off"
     @Published private(set) var failure: String?
     @Published private(set) var met: [LocalMetFriend] = []
+    @Published private(set) var received: [ReceivedSwapArtwork] = []
     @Published private(set) var reportablePeer: LocalMetFriend?
     private weak var phone: PhoneDisplayController?
     private weak var targets: DisplayTargetSelection?
@@ -33,9 +34,9 @@ final class PhoneSwapGame: ObservableObject {
     private var epoch = UUID()
     private var accountEpoch = UUID()
     private var observed: [String: (card: PhoneSwapContact, seen: Date, firstUptime: Double, lastUptime: Double, count: Int)] = [:]
-    private var exchanged: Set<UUID> = []
+    private var throttle = PhoneSwapThrottle()
     private var retiredSessions: Set<UUID> = []
-    private var cooldown = Date.distantPast
+    private var gamePlaybackPolicy: UUID?
     private var polling: Task<Void, Never>?
     private var operation: Task<Void, Never>?
     private var receiveTail: Task<Void, Never>?
@@ -66,6 +67,8 @@ final class PhoneSwapGame: ObservableObject {
         var applied = false
         var appliedSent = false
         var peerApplied = false
+        var peerAppliedHash: String?
+        var confirming = false
         var friendAgreed = false
         var clockPing: Double?
         var clockPong: [Double]?
@@ -128,10 +131,19 @@ final class PhoneSwapGame: ObservableObject {
         if let friendAuthority, friendAuthority.initialRevision != phone.artworkRevision || friendAuthority.ownerAccount != community.user?.id {
             failure = "The phone original/account changed. Prepare a new intent rather than overwrite a newer selection."; return false
         }
-        do { try targets.acquirePhone(ownerLease) } catch { failure = error.localizedDescription; return false }
+        let playing: PhoneGamePlayingSource?
+        do {
+            if friendAuthority == nil && !phone.viewerAutomaticPlaybackAllowed {
+                throw BackpackError.invalid("Saved viewer settings disable automatic phone playback. Enable it explicitly before arming the GIF game.")
+            }
+            playing = friendAuthority == nil ? try phone.capturePlayingGameGIF() : nil
+            try targets.acquirePhone(ownerLease)
+        } catch { failure = error.localizedDescription; return false }
+        let outgoingAttribution = ownedPhoneAttribution ?? attribution
         let stamp = UUID(); epoch = stamp; accountEpoch = community.accountRevision
         let initial = phone.snapshot(), revision = phone.artworkRevision
         ownedRevision = revision; scope = SwapRecoveryStore.ownerScope(community)
+        gamePlaybackPolicy = playing?.playbackPolicyRevision
         failure = nil; busy = true
         operation = Task {
             do {
@@ -144,7 +156,8 @@ final class PhoneSwapGame: ObservableObject {
                     return try PrivateOutgoingGIF.inspectAlreadySanitized(PrivateOutgoingGIF.make(chosen))
                 }
                 _ = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
-                if friendAuthority == nil { _ = try PhoneSwapWire.Credit(attribution) }
+                try playing?.requireCurrent(phone)
+                if friendAuthority == nil { _ = try PhoneSwapWire.Credit(outgoingAttribution) }
                 let client = try CommunityFeatureClient(community)
                 let state: PhoneSwapPresence
                 if let friendAuthority { state = try await friendAuthority.current(client) }
@@ -153,7 +166,7 @@ final class PhoneSwapGame: ObservableObject {
                 let generated = try friendAuthority?.key() ?? Curve25519.KeyAgreement.PrivateKey()
                 let publicKey = PhoneSwapWire.b64(generated.publicKey.rawRepresentation)
                 let purpose = friendAuthority.map { "friend-v1:" + $0.selected.id.uuidString.lowercased() } ?? "game-v1"
-                let recovery = try await localStore().original(snapshot: initial, artworkRevision: revision, scope: scope, attribution: attribution, purpose: purpose)
+                let recovery = try await localStore().original(snapshot: initial, artworkRevision: revision, scope: scope, attribution: outgoingAttribution, purpose: purpose)
                 try checkContext(stamp, requireCanvas: false)
                 original = recovery
                 armingUncertain = true; self.client = client
@@ -168,8 +181,9 @@ final class PhoneSwapGame: ObservableObject {
                 }
                 armingUncertain = false
                 key = generated; presence = armed; clock = try CatalogEventClock(serverTime: armed.serverTimeISO)
-                currentCredit = attribution; enabled = true; busy = false; exchanged = []; retiredSessions = []
-                cooldown = .distantPast
+                guard let clock else { throw BackpackError.invalid("Current game service clock is unavailable.") }
+                try throttle.resume(journal: recovery, now: clock.now(), uptime: ProcessInfo.processInfo.systemUptime)
+                currentCredit = outgoingAttribution; enabled = true; busy = false
                 phone.open()
                 for _ in 0..<60 {
                     try checkContext(stamp, requireCanvas: false)
@@ -196,6 +210,11 @@ final class PhoneSwapGame: ObservableObject {
         try client?.check(.social)
         if let friendAuthority {
             guard phone.playbackPolicyRevision == friendAuthority.phonePolicy else { throw BackpackError.invalid("Phone play/motion/data-saving policy changed; friend interaction needs fresh explicit arming.") }
+        } else {
+            guard phone.playbackPolicyRevision == gamePlaybackPolicy,
+                  exchange?.applied == true || (phone.isPlaying && !phone.position().finished) else {
+                throw BackpackError.invalid("Play/pause/motion policy changed or the outgoing GIF stopped playing; game stopped without sharing stale artwork.")
+            }
         }
         if enabled, let presence, let clock {
             guard let end = presence.expiresAtISO, let tokenEnd = presence.tokenExpiresAtISO,
@@ -252,10 +271,12 @@ final class PhoneSwapGame: ObservableObject {
             }
             return try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
         }
-        guard let phone, let bytes = phone.data else { throw BackpackError.invalid("No chosen phone GIF.") }
-        let worker = Task.detached { try PrivateOutgoingGIF.inspectAlreadySanitized(PrivateOutgoingGIF.make(bytes)) }
+        guard let phone else { throw BackpackError.invalid("No current phone player.") }
+        let source = try phone.capturePlayingGameGIF(), credit = currentCredit
+        let worker = Task.detached { try PrivateOutgoingGIF.inspectAlreadySanitized(PrivateOutgoingGIF.make(source.data)) }
         let value = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
-        return (value, try PhoneSwapWire.Credit(currentCredit))
+        try source.requireCurrent(phone)
+        return (value, try PhoneSwapWire.Credit(credit))
     }
     private func saw(link: UUID, token: String) {
         guard enabled, let client, let id = presence?.presenceId, NearbyTokenPolicy.valid(token) else { radio.close(link); return }
@@ -274,8 +295,9 @@ final class PhoneSwapGame: ObservableObject {
                 } else { observed[token] = (peer, Date(), uptime, uptime, 1) }
                 guard stableObservation(token) else { radio.close(link); status = "Intended friend's hint read once; awaiting another stable foreground observation (not proximity proof)."; return }
                 let own = try selfCard()
-                guard own.publicKey < peer.publicKey, exchange == nil, !exchanged.contains(peer.id),
-                      Date() >= cooldown, retiredSessions.count < 32 else { radio.close(link); return }
+                guard own.publicKey < peer.publicKey, exchange == nil,
+                      throttle.permits(peer.id, uptime: ProcessInfo.processInfo.systemUptime),
+                      retiredSessions.count < 32 else { radio.close(link); return }
                 let (outgoing, credit) = try await candidate()
                 try checkContext(stamp)
                 guard exchange == nil else { radio.close(link); return }
@@ -402,9 +424,10 @@ final class PhoneSwapGame: ObservableObject {
             active.ownReadyAcknowledged = true
             try await applyIfReady(active, stamp: stamp)
         case "applied":
-            guard active.peerReady, message.hash == active.outgoingHash, !active.peerApplied else { throw BackpackError.invalid("Unexpected peer applied receipt.") }
-            active.peerApplied = true
-            finishIfConfirmed(active)
+            guard active.peerReady, message.hash == active.outgoingHash else { throw BackpackError.invalid("Unexpected peer applied receipt.") }
+            if active.peerApplied { return }
+            active.peerApplied = true; active.peerAppliedHash = message.hash
+            try await finishIfConfirmed(active, stamp: stamp)
         default: throw BackpackError.invalid("Unknown game application message; stop and retain recovery.")
         }
     }
@@ -422,11 +445,12 @@ final class PhoneSwapGame: ObservableObject {
                 domain: friendAuthority == nil ? "nyan.phone-swap.v1" : "nyan.accepted-friend.v1",
                 binding: try friendAuthority?.binding() ?? [])
         } else {
-            guard exchange == nil, hello.responderToken == own.token, Date() >= cooldown else { radio.close(link); return }
+            guard exchange == nil, hello.responderToken == own.token else { radio.close(link); return }
             // Both sides must independently have read the other GAME token. A hello is not an observation.
             if observed[hello.initiatorToken] == nil { try await Task.sleep(for: .seconds(2)); try checkContext(stamp) }
             guard stableObservation(hello.initiatorToken), let peer = observed[hello.initiatorToken]?.card, peer.publicKey < own.publicKey,
-                  !exchanged.contains(peer.id), exchange == nil else { radio.close(link); return }
+                  throttle.permits(peer.id, uptime: ProcessInfo.processInfo.systemUptime),
+                  retiredSessions.count < 32, exchange == nil else { radio.close(link); return }
             try await fresh(peer); try checkContext(stamp)
             let (outgoing, credit) = try await candidate(); try checkContext(stamp)
             let second = PhoneSwapWire.Hello(version: 1, sessionID: hello.sessionID, initiatorToken: peer.token,
@@ -494,10 +518,12 @@ final class PhoneSwapGame: ObservableObject {
                     guard self.exchange === active, active.friendAgreed, active.scheduleAcknowledged else { throw BackpackError.invalid("Accepted friend scene was cancelled during decode/schedule; original retained.") }
                 })
             ownedRevision = next; currentCredit = kind == .pass && !sender ? credit : friendAuthority.chosenAttribution
-            active.applied = true; exchanged.insert(active.peer.id); retiredSessions.insert(active.id); cooldown = Date().addingTimeInterval(60)
+            active.applied = true
+            try throttle.applied(active.peer.id, uptime: ProcessInfo.processInfo.systemUptime)
+            retiredSessions.insert(active.id)
             status = "\(kind.rawValue) phone scene started, best-effort clock RTT \(Int(estimate.roundTrip * 1000))ms ±\(Int(estimate.uncertainty * 1000))ms. Relay possible; peer final receipt pending."
             try await send(PhoneSwapWire.Message(kind: "applied", hash: incoming.hash), on: active)
-            active.appliedSent = true; finishIfConfirmed(active); return
+            active.appliedSent = true; try await finishIfConfirmed(active, stamp: stamp); return
         }
         var readiness = SwapPeerReadiness(transactionID: original.transactionID, sessionID: active.id, accountEpoch: accountEpoch,
             expiresAt: try CatalogEventTime.parse(active.peer.tokenExpiresAtISO))
@@ -505,30 +531,49 @@ final class PhoneSwapGame: ObservableObject {
         readiness.peerGameEnabled = true; readiness.peerReady = active.peerReady
         guard let incoming = active.incoming else { throw BackpackError.invalid("Validated incoming transfer disappeared; do not apply.") }
         let credit = try incoming.credit.attribution()
+        guard let clock else { throw BackpackError.invalid("Current game service clock disappeared; no replacement.") }
         let staged = try await localStore().receivedAndStage(bytes, exchangeID: active.id, credit: credit, peer: active.peer,
-            readiness: readiness, scope: scope, expectedRevision: expected, nextRevision: next, now: clock?.now() ?? Date())
+            readiness: readiness, scope: scope, expectedRevision: expected, nextRevision: next, now: clock.now())
         try checkContext(stamp)
         self.original = staged
         try await fresh(active.peer); try checkContext(stamp)
-        try await phone.applyValidatedGameGIF(bytes, expectedRevision: expected, nextRevision: next, validateContext: {
+        try await phone.applyValidatedGameGIF(bytes, expectedRevision: expected, nextRevision: next, reauthorize: {
+            try await self.fresh(active.peer)
+        }, validateContext: {
             try self.checkContext(stamp)
             guard self.exchange === active else { throw BackpackError.invalid("Game exchange was cancelled during decode; initial original retained.") }
         })
         ownedRevision = next; currentCredit = credit; active.applied = true
-        exchanged.insert(active.peer.id); retiredSessions.insert(active.id); cooldown = Date().addingTimeInterval(60)
-        let localCards = try await localStore().cards(scope: scope)
-        try checkContext(stamp)
-        met = localCards
+        try throttle.applied(active.peer.id, uptime: ProcessInfo.processInfo.systemUptime)
+        retiredSessions.insert(active.id)
         status = "Phone GIF applied after bilateral validation/ready acknowledgments. Peer final application receipt is still pending; original retained."
         try await send(PhoneSwapWire.Message(kind: "applied", hash: active.incoming?.hash), on: active)
         active.appliedSent = true
-        finishIfConfirmed(active)
+        try await finishIfConfirmed(active, stamp: stamp)
     }
-    private func finishIfConfirmed(_ active: Exchange) {
-        guard active.applied, active.appliedSent, active.peerApplied, exchange === active else { return }
+    private func finishIfConfirmed(_ active: Exchange, stamp: UUID) async throws {
+        guard active.applied, active.appliedSent, active.peerApplied, !active.confirming, exchange === active else { return }
+        active.confirming = true
+        if friendAuthority == nil {
+            guard let bytes = active.validated, let incoming = active.incoming, let peerAppliedHash = active.peerAppliedHash else {
+                throw BackpackError.invalid("Both receipts arrived but the matching received GIF is unavailable; no Found success.")
+            }
+            try await fresh(active.peer); try checkContext(stamp)
+            guard exchange === active else { throw CancellationError() }
+            let receipt = PhoneSwapApplicationReceipt(exchangeID: active.id, peerID: active.peer.id,
+                outgoingHash: active.outgoingHash, incomingHash: incoming.hash, peerAppliedHash: peerAppliedHash,
+                proved: active.proved, ownReadyAcknowledged: active.ownReadyAcknowledged, peerReady: active.peerReady,
+                ownApplied: active.applied, ownAppliedSent: active.appliedSent)
+            _ = try await localStore().confirmReceived(bytes, credit: incoming.credit.attribution(),
+                peer: active.peer, receipt: receipt, scope: scope)
+            try checkContext(stamp)
+            guard exchange === active else { throw CancellationError() }
+            try await reloadFound()
+            try checkContext(stamp)
+        }
         active.timeout?.cancel(); active.transfer?.cancel(); active.sendTail?.cancel()
         exchange = nil; radio.close(active.link)
-        status = friendAuthority == nil ? "Both application receipts received. Initial original retained; cooldown active, no same-peer ping-pong this game." :
+        status = friendAuthority == nil ? "Swap confirmed: received GIF and verified sender paired in Found Users. Initial original retained; 60-second cooldown and same-peer suppression survive stop/rearm." :
             "Both scene receipts received; best-effort timing only. Initial original retained, no same-encounter retrigger. Leave/restore explicitly; hardware/ranging/offline pairing unsupported."
     }
     private func poll(_ stamp: UUID) {
@@ -573,7 +618,7 @@ final class PhoneSwapGame: ObservableObject {
         exchange?.cipher = nil
         exchange = nil; key = nil; presence = nil; client = nil; clock = nil; observed = [:]
         friendAuthority?.eraseKey()
-        status = reason; armingUncertain = false; queuedFrames = 0; met = []; reportablePeer = nil
+        status = reason; armingUncertain = false; queuedFrames = 0; met = []; received = []; reportablePeer = nil
         if uncertain { failure = friendAuthority == nil ?
             "Radio stopped; game activation/rotation acknowledgment is uncertain. Explicitly reconcile/withdraw service game; no restart or exactly-once claim." :
             "Friend radio/key stopped; identity activation acknowledgment is uncertain. Stop/reload the accepted service session; no replay, renewal or exactly-once claim." }
@@ -629,19 +674,56 @@ final class PhoneSwapGame: ObservableObject {
         } catch { if stamp == epoch && account == community.accountRevision { failure = error.localizedDescription } }
     }
     func loadMet() async {
+        do { try await reloadFound() }
+        catch { failure = error.localizedDescription }
+    }
+    private func reloadFound() async throws {
         guard let community else { return }; let scope = SwapRecoveryStore.ownerScope(community), account = community.accountRevision
+        let found = try await localStore().found(scope: scope)
+        guard account == community.accountRevision else { throw CancellationError() }
+        received = found
+        met = found.compactMap(\.sender).reduce(into: [LocalMetFriend]()) { cards, card in
+            if !cards.contains(where: { $0.id == card.id }) { cards.append(card) }
+        }
+    }
+    func saveFound(_ item: ReceivedSwapArtwork, to library: PhoneArtworkLibrary) async {
+        guard let community else { failure = "Current Found Users account is unavailable."; return }
+        let owner = SwapRecoveryStore.ownerScope(community), account = community.accountRevision
         do {
-            let cards = try await localStore().cards(scope: scope)
-            guard account == community.accountRevision else { return }; met = cards
+            let values = try await localStore().found(scope: owner)
+            guard account == community.accountRevision,
+                  let current = values.first(where: { $0.id == item.id }),
+                  current.sha256 == item.sha256, current.sender == item.sender else {
+                throw BackpackError.invalid("The selected GIF/sender or account changed; no permanent copy was saved.")
+            }
+            _ = try await library.saveReceivedCopy(current.data, name: current.name, attribution: current.attribution)
+            guard account == community.accountRevision else { return }
+            status = "Independent local GIF copy saved with attribution; no automatic friendship or publication."
+        } catch { failure = error.localizedDescription }
+    }
+    func removeFound(_ item: ReceivedSwapArtwork) async {
+        guard let community else { failure = "Current Found Users account is unavailable."; return }
+        let owner = SwapRecoveryStore.ownerScope(community), account = community.accountRevision
+        do {
+            try await localStore().removeFound(item, scope: owner)
+            guard account == community.accountRevision else { return }
+            try await reloadFound()
+            status = "Received GIF/sender record removed; first original and separately saved copies unchanged."
         } catch { failure = error.localizedDescription }
     }
     func contactAction(_ card: LocalMetFriend, action: String) async {
         guard let community else { return }
         let owner = SwapRecoveryStore.ownerScope(community)
         do {
+            guard ["dismiss", "request", "block"].contains(action) else { throw BackpackError.invalid("Unknown contact action.") }
             if action == "dismiss" { try await localStore().dismiss(card.id, scope: owner) }
             else {
                 let current = try CommunityFeatureClient(community)
+                let found = try await localStore().found(scope: owner)
+                try current.check(.social)
+                guard found.contains(where: { $0.sender == card }) else {
+                    throw BackpackError.invalid("Select a current confirmed Found Users card before requesting friendship or blocking.")
+                }
                 if action == "block" { stop(reason: "Contact block requested"); try await current.block(card.id); try await localStore().dismiss(card.id, scope: owner) }
                 else {
                     guard card.canRequestFriendship else { throw BackpackError.invalid("This game participant did not permit friend requests. Game consent does not change it.") }

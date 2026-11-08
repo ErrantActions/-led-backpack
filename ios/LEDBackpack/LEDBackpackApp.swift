@@ -73,6 +73,9 @@ final class AppModel: ObservableObject {
             }
         }
         phoneDisplay.peerPlaybackPolicyChanged = { [weak self] in
+            if self?.phoneSwapGame.enabled == true || self?.phoneSwapGame.busy == true {
+                self?.phoneSwapGame.stop(reason: "Phone play/pause/motion policy changed — explicit game rearm required")
+            }
             if self?.localPairedGame.arming == true || self?.localPairedGame.session.running == true || self?.localPairedGame.session.busy == true { self?.localPairedGame.stop("PHONE playback policy changed — no paired resume") }
             if self?.scopedGlobalPhone.arming == true || self?.scopedGlobalPhone.session.running == true || self?.scopedGlobalPhone.session.busy == true { self?.scopedGlobalPhone.stop("PHONE playback policy changed — explicit rearm required") }
             self?.soloScenes.policyChanged()

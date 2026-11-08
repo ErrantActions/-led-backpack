@@ -58,6 +58,43 @@ final class PhoneSwapGameTests: XCTestCase {
         Data(Array("GIF89a".utf8) + [1,0,1,0,0x80,0,0,0,0,0,255,255,255,
             0x21,0xF9,4,0,0xEE,0x2E,0,0,0x2C,0,0,0,0,1,0,1,0,0,2,2,0x44,1,0,0x3B])
     }
+    private func playingGIF(_ color: UInt8 = 0) -> Data {
+        var bytes = Array(gif())
+        bytes.removeLast()
+        bytes.append(contentsOf: Array(gif()).dropFirst(19).dropLast())
+        bytes.append(0x3B); bytes[13] = color
+        return Data(bytes)
+    }
+    private func localRepository() throws -> SwapRecoveryRepository {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("game-completion-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        addTeardownBlock { try FileManager.default.removeItem(at: root) }
+        return SwapRecoveryRepository(root: root)
+    }
+    private func receipt(_ data: Data, exchange: UUID = UUID(), sender: UUID? = nil,
+        peerHash: String? = nil, sent: Bool = true) -> PhoneSwapApplicationReceipt {
+        let outgoing = LocalSwapOriginal.digest(playingGIF(1))
+        return PhoneSwapApplicationReceipt(exchangeID: exchange, peerID: sender ?? peer,
+            outgoingHash: outgoing, incomingHash: LocalSwapOriginal.digest(data), peerAppliedHash: peerHash ?? outgoing,
+            proved: true, ownReadyAcknowledged: true, peerReady: true, ownApplied: true, ownAppliedSent: sent)
+    }
+    private func minimalCard(_ id: UUID? = nil) -> LocalMetFriend {
+        LocalMetFriend(id: id ?? peer, displayName: "Consented player", canRequestFriendship: false)
+    }
+    private func stage(_ repository: SwapRecoveryRepository, incoming: Data, exchange: UUID,
+        sender: UUID? = nil) async throws -> LocalSwapOriginal {
+        let revision = UUID(), account = UUID(), now = Date()
+        let original = try await repository.prepareGame(
+            snapshot: PhoneDisplaySnapshot(data: playingGIF(1), mediaID: nil, elapsed: 0, wantsPlayback: true,
+                motionOverride: false, keepAwake: false), artworkRevision: revision, ownerScope: "fixture", attribution: nil)
+        var ready = SwapPeerReadiness(transactionID: original.transactionID, sessionID: exchange, accountEpoch: account,
+            expiresAt: now.addingTimeInterval(300))
+        ready.gameEnabled = true; ready.ownReady = true; ready.peerGameEnabled = true; ready.peerReady = true
+        _ = try await repository.stageGameReplacement(readiness: ready, session: exchange, accountEpoch: account,
+            ownerScope: "fixture", expectedRevision: revision, nextRevision: UUID(), incoming: incoming,
+            now: now, peerID: sender ?? peer)
+        return original
+    }
     private func reply(_ raw: String, status: Int = 200) -> CommunityResponse { CommunityResponse(status: status, data: Data(raw.utf8)) }
     private func state() throws -> String {
         let publicKey = PhoneSwapWire.b64(try key(1).publicKey.rawRepresentation)
@@ -242,5 +279,213 @@ final class PhoneSwapGameTests: XCTestCase {
         XCTAssertFalse(try XCTUnwrap(cards.first).canRequestFriendship)
         let requests = await transport.history()
         XCTAssertEqual(requests.count, 3); XCTAssertEqual(requests[2].url?.path, "/api/v1/social/swap-presence/resolve")
+    }
+    func testPlayingCaptureRejectsPausedStillAndChangedPlaybackPolicy() async throws {
+        let phone = PhoneDisplayController(idleTimer: GameIdleFixture(), brightness: GameBrightnessFixture())
+        phone.setForeground(true); phone.open(); phone.setVisible(true)
+        try await phone.show(playingGIF())
+        XCTAssertThrowsError(try phone.capturePlayingGameGIF())
+        phone.play()
+        let captured = try phone.capturePlayingGameGIF()
+        XCTAssertEqual(captured.data, phone.data)
+        phone.pause(); phone.play()
+        XCTAssertThrowsError(try captured.requireCurrent(phone))
+        let current = try phone.capturePlayingGameGIF()
+        phone.setDataSaving(true)
+        XCTAssertThrowsError(try current.requireCurrent(phone))
+        try await phone.show(gif()); phone.setDataSaving(false); phone.play()
+        XCTAssertThrowsError(try phone.capturePlayingGameGIF())
+    }
+    func testPlayingCaptureRejectsNewManualArtworkAndBackground() async throws {
+        let phone = PhoneDisplayController(idleTimer: GameIdleFixture(), brightness: GameBrightnessFixture())
+        phone.setForeground(true); phone.open(); phone.setVisible(true)
+        try await phone.show(playingGIF(1)); phone.play()
+        let source = try phone.capturePlayingGameGIF()
+        try await phone.show(playingGIF(2)); phone.play()
+        XCTAssertThrowsError(try source.requireCurrent(phone))
+        let next = try phone.capturePlayingGameGIF()
+        phone.setForeground(false)
+        XCTAssertThrowsError(try next.requireCurrent(phone))
+    }
+    func testNextOutgoingIsReceivedPlayingGIFNotFirstRecoveryOriginal() async throws {
+        let repository = try localRepository()
+        let phone = PhoneDisplayController(idleTimer: GameIdleFixture(), brightness: GameBrightnessFixture())
+        phone.setForeground(true); phone.open(); phone.setVisible(true)
+        let first = playingGIF(1), incoming = playingGIF(2)
+        try await phone.show(first); phone.play()
+        let revision = phone.artworkRevision, next = UUID(), account = UUID(), session = UUID(), now = Date()
+        let original = try await repository.prepareGame(snapshot: phone.snapshot(), artworkRevision: revision,
+            ownerScope: "fixture", attribution: nil)
+        var ready = SwapPeerReadiness(transactionID: original.transactionID, sessionID: session, accountEpoch: account,
+            expiresAt: now.addingTimeInterval(300))
+        ready.gameEnabled = true; ready.ownReady = true; ready.peerGameEnabled = true; ready.peerReady = true
+        _ = try await repository.stageGameReplacement(readiness: ready, session: session, accountEpoch: account,
+            ownerScope: "fixture", expectedRevision: revision, nextRevision: next, incoming: incoming, now: now, peerID: peer)
+        try await phone.applyValidatedGameGIF(incoming, expectedRevision: revision, nextRevision: next)
+        XCTAssertEqual(try phone.capturePlayingGameGIF().data, incoming)
+        let resumed = try await repository.prepareGame(snapshot: phone.snapshot(), artworkRevision: next,
+            ownerScope: "fixture", attribution: nil)
+        XCTAssertEqual(resumed.phone.data, first)
+        XCTAssertEqual(resumed.gamePeerIDs, [peer])
+        XCTAssertEqual(resumed.transactionID, original.transactionID)
+        let wrong = PhoneDisplaySnapshot(data: first, mediaID: nil, elapsed: 0, wantsPlayback: true,
+            motionOverride: false, keepAwake: false)
+        do {
+            _ = try await repository.prepareGame(snapshot: wrong, artworkRevision: next, ownerScope: "fixture", attribution: nil)
+            XCTFail("Matching revision must not adopt unrelated bytes")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+    }
+    func testCooldownSurvivesRearmClockJumpAndNewController() async throws {
+        let repository = try localRepository(), now = Date(), other = UUID()
+        var journal = try await repository.prepareGame(
+            snapshot: PhoneDisplaySnapshot(data: playingGIF(), mediaID: nil, elapsed: 0, wantsPlayback: true,
+                motionOverride: false, keepAwake: false), artworkRevision: UUID(), ownerScope: "fixture", attribution: nil)
+        var throttle = PhoneSwapThrottle()
+        try throttle.resume(journal: journal, now: now, uptime: 100)
+        try throttle.applied(peer, uptime: 100)
+        journal.gamePeerIDs = [peer]; journal.cooldownUntil = now.addingTimeInterval(60)
+        try throttle.resume(journal: journal, now: now.addingTimeInterval(20), uptime: 120)
+        XCTAssertFalse(throttle.permits(other, uptime: 159.999))
+        XCTAssertTrue(throttle.permits(other, uptime: 160))
+        XCTAssertFalse(throttle.permits(peer, uptime: 1000))
+        try throttle.resume(journal: journal, now: now.addingTimeInterval(1000), uptime: 121)
+        XCTAssertFalse(throttle.permits(other, uptime: 121))
+        var restarted = PhoneSwapThrottle()
+        try restarted.resume(journal: journal, now: now.addingTimeInterval(20), uptime: 1)
+        XCTAssertFalse(restarted.permits(other, uptime: 40.999))
+        XCTAssertTrue(restarted.permits(other, uptime: 41))
+        XCTAssertFalse(restarted.permits(peer, uptime: 1000))
+        XCTAssertFalse(restarted.permits(other, uptime: .nan))
+    }
+    func testSamePeerCannotStageAgainAfterCooldownOrRearm() async throws {
+        let repository = try localRepository(), revision = UUID(), next = UUID(), session = UUID(), account = UUID(), now = Date()
+        let snapshot = PhoneDisplaySnapshot(data: playingGIF(1), mediaID: nil, elapsed: 0, wantsPlayback: true,
+            motionOverride: false, keepAwake: false)
+        let original = try await repository.prepareGame(snapshot: snapshot, artworkRevision: revision, ownerScope: "fixture", attribution: nil)
+        var ready = SwapPeerReadiness(transactionID: original.transactionID, sessionID: session, accountEpoch: account,
+            expiresAt: now.addingTimeInterval(300))
+        ready.gameEnabled = true; ready.ownReady = true; ready.peerGameEnabled = true; ready.peerReady = true
+        _ = try await repository.stageGameReplacement(readiness: ready, session: session, accountEpoch: account,
+            ownerScope: "fixture", expectedRevision: revision, nextRevision: next, incoming: playingGIF(2), now: now, peerID: peer)
+        do {
+            _ = try await repository.stageGameReplacement(readiness: ready, session: session, accountEpoch: account,
+                ownerScope: "fixture", expectedRevision: next, nextRevision: UUID(), incoming: playingGIF(3),
+                now: now.addingTimeInterval(61), peerID: peer)
+            XCTFail("Same-peer suppression must outlive cooldown")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        let retained = try await repository.load()
+        XCTAssertEqual(retained?.gamePeerIDs, [peer])
+        XCTAssertEqual(retained?.phone.data, snapshot.data)
+    }
+    func testPartialAndWrongHashReceiptsDoNotCreateFoundUsers() async throws {
+        let repository = try localRepository(), data = playingGIF(2), card = minimalCard()
+        for proof in [receipt(data, sent: false), receipt(data, peerHash: LocalSwapOriginal.digest(data))] {
+            do {
+                _ = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: card,
+                    receipt: proof, ownerScope: "fixture")
+                XCTFail("Partial or mismatched bilateral receipt")
+            } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        }
+        let values = try await repository.received()
+        XCTAssertTrue(values.isEmpty)
+    }
+    func testConfirmedGIFAndMinimalSenderAreAtomicScopedAndDuplicateSafe() async throws {
+        let repository = try localRepository(), data = playingGIF(2), card = minimalCard(), proof = receipt(playingGIF(2))
+        _ = try await stage(repository, incoming: data, exchange: proof.exchangeID)
+        let credit = Attribution(source: "Peer GIF", author: "Artist", license: "CC0", licenseURL: "")
+        let first = try await repository.retainConfirmedGame(data: data, attribution: credit, sender: card,
+            receipt: proof, ownerScope: "fixture")
+        let second = try await repository.retainConfirmedGame(data: data, attribution: credit, sender: card,
+            receipt: proof, ownerScope: "fixture")
+        XCTAssertEqual(first.id, second.id)
+        XCTAssertEqual(first.data, data); XCTAssertEqual(first.sender, card); XCTAssertEqual(first.attribution, credit)
+        XCTAssertTrue(first.isFoundUser(ownerScope: "fixture"))
+        XCTAssertFalse(first.isFoundUser(ownerScope: "other"))
+        let values = try await repository.received()
+        XCTAssertEqual(values.count, 1)
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(first), encoding: .utf8))
+        for forbidden in ["publicKey", "token", "email", "location", "distance", "timestamp"] {
+            XCTAssertFalse(json.contains(forbidden))
+        }
+    }
+    func testConflictingDuplicateSenderOrPayloadCannotChangeConfirmedPair() async throws {
+        let repository = try localRepository(), data = playingGIF(2), exchange = UUID(), other = UUID()
+        _ = try await stage(repository, incoming: data, exchange: exchange)
+        let first = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: minimalCard(),
+            receipt: receipt(data, exchange: exchange), ownerScope: "fixture")
+        do {
+            _ = try await repository.retainConfirmedGame(data: playingGIF(3), attribution: nil, sender: minimalCard(),
+                receipt: receipt(playingGIF(3), exchange: exchange), ownerScope: "fixture")
+            XCTFail("Conflicting duplicate GIF")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        do {
+            _ = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: minimalCard(other),
+                receipt: receipt(data, exchange: exchange, sender: other), ownerScope: "fixture")
+            XCTFail("Conflicting duplicate verified sender")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        let values = try await repository.received()
+        XCTAssertEqual(values.count, 1); XCTAssertEqual(values.first?.id, first.id)
+        XCTAssertEqual(values.first?.sender, first.sender); XCTAssertEqual(values.first?.data, data)
+    }
+    func testLegacyUnconfirmedReceivedArtworkCannotBecomeFoundRetrospectively() async throws {
+        let repository = try localRepository(), data = playingGIF(2), exchange = UUID()
+        let old = try await repository.retainReceived(data: data, transactionID: exchange,
+            name: "Legacy validated copy", attribution: nil, verifiedGame: true)
+        XCTAssertFalse(old.isFoundUser(ownerScope: "fixture"))
+        do {
+            _ = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: minimalCard(),
+                receipt: receipt(data, exchange: exchange), ownerScope: "fixture")
+            XCTFail("Legacy unconfirmed outcome must not synthesize a Found record")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+    }
+    func testCancelledCompletionDoesNotPersistFoundSuccess() async throws {
+        let repository = try localRepository(), data = playingGIF(2), proof = receipt(playingGIF(2)), card = minimalCard()
+        _ = try await stage(repository, incoming: data, exchange: proof.exchangeID)
+        let task = Task {
+            try await repository.retainConfirmedGame(data: data, attribution: nil, sender: card,
+                receipt: proof, ownerScope: "fixture")
+        }
+        task.cancel()
+        do { _ = try await task.value; XCTFail("Cancelled completion") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        let values = try await repository.received()
+        XCTAssertTrue(values.isEmpty)
+    }
+    func testRemovingConfirmedReceivedCopyPreservesFirstOriginal() async throws {
+        let repository = try localRepository(), bytes = playingGIF(1), proof = receipt(playingGIF(2))
+        let first = try await stage(repository, incoming: playingGIF(2), exchange: proof.exchangeID)
+        let item = try await repository.retainConfirmedGame(data: playingGIF(2), attribution: nil, sender: minimalCard(),
+            receipt: proof, ownerScope: "fixture")
+        try await repository.removeReceived(item.id)
+        let retained = try await repository.load()
+        XCTAssertEqual(retained?.transactionID, first.transactionID); XCTAssertEqual(retained?.phone.data, bytes)
+        let received = try await repository.received()
+        XCTAssertTrue(received.isEmpty)
+    }
+    func testReceiptsWithoutMatchingDurableStagingCannotCreateFoundUsers() async throws {
+        let repository = try localRepository(), data = playingGIF(2)
+        do {
+            _ = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: minimalCard(),
+                receipt: receipt(data), ownerScope: "fixture")
+            XCTFail("Receipt flags cannot substitute for actual staged recovery/game identity")
+        } catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        let values = try await repository.received()
+        XCTAssertTrue(values.isEmpty)
+    }
+    func testFoundProjectionAndRemovalRespectAccountAndPreserveOriginal() async throws {
+        let repository = try localRepository(), data = playingGIF(2), proof = receipt(playingGIF(2))
+        let original = try await stage(repository, incoming: data, exchange: proof.exchangeID)
+        let item = try await repository.retainConfirmedGame(data: data, attribution: nil, sender: minimalCard(),
+            receipt: proof, ownerScope: "fixture")
+        let store = PhoneSwapLocalStore(root: FileManager.default.temporaryDirectory, recovery: repository)
+        let own = try await store.found(scope: "fixture"), other = try await store.found(scope: "other")
+        XCTAssertEqual(own.count, 1); XCTAssertTrue(other.isEmpty)
+        do { try await store.removeFound(item, scope: "other"); XCTFail("Cross-account removal") }
+        catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        try await store.removeFound(item, scope: "fixture")
+        let retained = try await repository.load()
+        XCTAssertEqual(retained?.phone.data, original.phone.data)
+        let remaining = try await store.found(scope: "fixture")
+        XCTAssertTrue(remaining.isEmpty)
     }
 }
