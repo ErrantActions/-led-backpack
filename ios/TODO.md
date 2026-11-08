@@ -69,9 +69,12 @@ availability or that the product backlog is finished.
   timer or automatic claim; both event/route eligibility paths share feedback.
 - [x]2new fresh-dwell/reset feedback fixtures passed: app/test compile and
   95focused native tests/0 at40c9c8b in run42448104253.
-- [ ] Consolidated unsigned full/unit/UI/public regression sweep for the
-  accumulated post-build9 GPS/SOLO/local-pair source. No signing/device/provider
-  permission inferred; uploaded build9 and unrelated firmware remain unchanged.
+- [x] Consolidated unsigned sweep atb0b89d3/app40c9c8b passed run42448942902:
+  portable9/0, priority116/0 plusUI1/0, full989/0/2explicit skips, integratedUI5/0,
+  separate read-only public integration1/0; focused stage also succeeded.
+  Repeated groups are not unique totals. No signing/device/provider permission
+  or physical acceptance inferred; build9/main app1944292 and firmware remain
+  unchanged. Remaining full roadmap is not declared complete.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

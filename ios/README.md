@@ -183,9 +183,15 @@ clear that feedback; no timer predicts arrival or automatically confirms it.
 Both event hunt and route eligibility views share the existing evaluator/
 controller feedback. Two fresh-dwell/reset regressions passed at40c9c8b in
 run42448104253: actual app/test compile and95focused native tests/0failures.
-The accumulated post-build9 source is undergoing a separate consolidated
-unsigned full/unit/UI/public regression sweep; focused passes do not imply
-physical acceptance, a full integration pass or another beta upload.
+The accumulated post-build9 code at40c9c8b (evidence commitb0b89d3) passed
+consolidated unsigned run42448942902: portable9/0, priority116/0 plusUI1/0,
+full native989/0/2explicit skips, integratedUI5/0 and separate read-only public
+integration1/0. The existing focused stage also completed successfully.
+Repeated selections are not additive unique coverage. This is software/
+simulator/public-client evidence, not physical GPS/BLE/UWB, private service,
+provider/enforcement readiness, signing or another beta upload.
+Build9/main app source1944292 remain unchanged; post-beta code stays on
+native-recovery with independently dirty firmware research excluded.
 
 ### Social tab navigation follow-up - source only
 
