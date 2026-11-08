@@ -3,6 +3,18 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Current released checkpoint: TestFlight0.1.0(9)
+
+Committed source1944292 passed native compilation, portable9/0, priority96/0,
+focused528/0, full964/0/2explicit skips, integrated UI5/0 and separate read-only
+public integration in run42435195099 attempt2. The existing protected workflow
+signed/exported/uploaded build9 in run42437873593 and cleaned signing assets.
+App Store Connect browser authentication expired afterward; processing and
+internal availability are not yet visually verified. See TESTFLIGHT.md.
+This software checkpoint supersedes older unexecuted statements only for its
+exact source/scope. Physical GPS/BLE/UWB/backpack and Apple/private-provider
+proof remain separate. Subsequent roadmap source is not part of build9.
+
 ### Automatic current-GIF swap / Found Users - source follow-up
 
 Both players independently opt in to the foreground PHONE game beforehand.
@@ -50,11 +62,12 @@ Nearby Bluetooth is not reliable meters, anti-relay or physical proximity proof.
 No fixed-beacon checkpoint binding, backpack original recovery or fake NI proof
 is added. Existing GPS quality/dwell/lease/manual-private-claim paths remain.
 
-14 new PhoneSwapGameTests and one native navigation fixture are prepared.
-Only local Swift syntax/member-scope and whitespace checks have executed for
-this slice; they are NOT compiler, XCTest, simulator or physical evidence.
-Windows has no Swift/Xcode or installed WSL; no new native CI, signing, device
-or provider operations were started. This source is not in TestFlight build8.
+14 new PhoneSwapGameTests and one native navigation fixture passed within
+the exact1944292 native validation checkpoint above. Initial local syntax/
+scope checks alone were not compiler evidence; subsequent actual Mac validation
+and build9 upload are recorded separately. Windows still has no local Xcode.
+No physical phone/backpack or new provider/key operations were performed.
+These changes are in build9, not the earlier TestFlight build8.
 
 ### Social tab navigation follow-up - source only
 

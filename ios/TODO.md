@@ -4,7 +4,16 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
-## Current-GIF automatic swaps / Found Users - source PURPLE
+## Current-GIF automatic swaps / Found Users - software GREEN at1944292
+
+Current source1944292 passed run42435195099 attempt2: portable9/0,
+priority96/0 plusUI1/0, focused528/0, full964/0/2explicit skips, integratedUI5/0
+and separate read-only public integration. TestFlight0.1.0(9) signed/archive/
+export/upload/cleanup passed run42437873593 with existing signing assets.
+Browser authentication expired afterward: processing/internal availability
+and physical GPS/BLE/UWB/backpack/private-provider acceptance remain unverified.
+Only committed source was released; firmware research dirt was preserved.
+Post-upload source work resumes separately and is not in build9.
 
 Release validation at source1c5035e/run42433392571 compiled app and both test
 bundles, passed priority GPS/swap checks,528focused fixtures and964full units
@@ -30,18 +39,18 @@ Stable route identifiers are now being validated; no TestFlight upload yet.
   permissions retained, account-scoped recovery reads, no automatic friendship,
   location/encounter upload, hardware recovery or precise ranging claims.
 - [x] 14 new exact-source/cooldown/rearm/staging/receipt/duplicate/scope/
-  cancellation/removal fixtures and one empty/default-off UI fixture prepared.
-- [ ] Execute native compile/unit/UI validation for this exact source. Local
+  cancellation/removal fixtures and one empty/default-off UI fixture passed
+  within the exact1944292 validation checkpoint above.
+- [x] Execute native compile/unit/UI validation for source1944292. Local
   syntax/member-scope/whitespace checks alone are not native runtime proof.
-  Owner now requests current changes in TestFlight before further roadmap work:
-  use the existing exact-source native validation and protected upload workflow,
-  not unrelated provider/device operations. Existing build8 remains unchanged
-  until actual archive/export/upload and App Store Connect are verified.
+  Existing exact-source validation/protected upload completed for build9,
+  before further roadmap work. Interactive Apple processing/availability
+  verification is blocked by expired browser authentication, not upload failure.
 - [ ] Authorized actual two-phone foreground/background/OS revoke/token/
   key/ready/disconnect/cooldown/current-GIF/restore acceptance. GPS fixed-target
   quality/dwell/manual claim and optional supported-phone NI remain separate.
 
-## Social tab - source PURPLE, validation pending
+## Social tab - software GREEN at1944292, device acceptance pending
 
 - [x] Real fifth Social tab grouping personal social/community/events/messages/
   activity/games/peer and safety/report functions. Account/security/cloud and
@@ -51,11 +60,11 @@ Stable route identifiers are now being validated; no TestFlight upload yet.
   game consent. Guest community/local Favorites/offline paired modes retained.
   Independent swap consent/keyless receipt withdrawal do not require friends/
   messaging flags. Nested destinations retain their own source permissions.
-- [x]7new gating/tab fixtures +1native Social navigation regression prepared,
-  not executed. Exact scoped files/hunks in README; independent firmware/UI/
+- [x]7new gating/tab fixtures +1native Social navigation regression passed at
+  source1944292. Exact scoped files/hunks in README; independent firmware/UI/
   application lifecycle edits remain unstaged and preserved.
-- [ ] Actual compile/focused/full/UI/public integration and a later signed beta
-  update. This navigation change is not in uploaded build8 or prior test proof.
+- [x] Actual compile/focused/full/UI/public integration and signed build9
+  upload. This navigation change was not in the earlier build8.
 
 ## Current owner priority - GPS/Bluetooth gameplay P0, 2026-11-07
 

@@ -6,6 +6,34 @@ generate credentials, or upload anything by itself.
 
 ## Verified upload - 2026-11-07
 
+Version **0.1.0 build9** was signed, archived, exported and successfully uploaded
+in [run42437873593](https://github.com/ErrantActions/-led-backpack/actions/runs/42437873593).
+Release source `1944292` passed complete native validation in
+[run42435195099, attempt2](https://github.com/ErrantActions/-led-backpack/actions/runs/42435195099):
+portable9/0, priority96/0 plus its UI1/0, focused528/0, full native964/0 with
+2explicit skips, integrated UI5/0 and separate read-only public integration.
+Do not add repeated groups together as a unique coverage total.
+Attempt1 had a simulator UI runner bootstrap crash before UI cases; the fresh
+host retry passed without removing test or release gates.
+
+Build9 includes the Social tab, GPS/private hunt entry, current-playing PHONE
+GIF swaps and paired Found Users, durable cooldown/recovery, direct community/
+private-cloud sending, timing/loops, natural eyes and guided/map-first events.
+Only committed validated source was promoted; independent dirty firmware,
+bitmap/OTA/reserved-slot research was excluded. Existing profile/certificate/
+API key and reviewed OS-provided-encryption declaration remain unchanged.
+The exact-source Linux gate reused validation; signed archive/export/upload
+and temporary signing/keychain/profile cleanup all passed.
+
+The interactive App Store Connect session expired when refreshed after upload.
+Therefore **Apple processing status and internal tester availability have not
+been visually verified for build9**. Successful upload is not physical GPS/
+BLE/UWB/backpack playback, App Attest, APNs, PRF/user-held recovery or external
+beta approval evidence. Remaining roadmap work resumes after this confirmed
+upload; new source work is not silently included in build9.
+
+### Previous build8
+
 Version **0.1.0 build8** was signed, archived and successfully uploaded in
 [run42394340634, attempt2](https://github.com/ErrantActions/-led-backpack/actions/runs/42394340634).
 Release `eead26d` preserves the exact native inputs verified at `30ee227` in
