@@ -462,10 +462,10 @@ final class NavigationTests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true, maximumSwipes: Int = 8) {
         let window = app.windows.firstMatch.frame
         let collection = app.collectionViews.allElementsBoundByIndex.last {
-            $0.isHittable && $0.frame.intersects(window)
+            $0.isHittable && $0.frame.intersects(window) && $0.frame.height > window.height * 0.4
         }
         let scroll = collection ?? app.scrollViews.allElementsBoundByIndex.last {
-            $0.isHittable && $0.frame.intersects(window)
+            $0.isHittable && $0.frame.intersects(window) && $0.frame.height > window.height * 0.4
         }
         let container = scroll ?? app
         var visible = scroll?.frame.intersection(window) ?? window
