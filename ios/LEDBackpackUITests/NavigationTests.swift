@@ -266,6 +266,7 @@ final class NavigationTests: XCTestCase {
         reveal(advanced, in: app); advanced.tap()
         let uniform = app.switches["Use one frame delay"]
         reveal(uniform, in: app); uniform.tap()
+        XCTAssertTrue(app.staticTexts["Base frame delay 0.10s"].waitForExistence(timeout: 5))
         XCTAssertTrue(save.waitForNonExistence(timeout: 5))
         reveal(review, in: app); review.tap()
         XCTAssertTrue(review.waitForNonExistence(timeout: 20))

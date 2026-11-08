@@ -8,7 +8,8 @@ enum GIFRepeatChoice: String, CaseIterable, Identifiable {
 struct GIFTimingControls: View {
     @Binding var timing: GIFTimingAdjustment
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        Group {
+            VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Speed · \(timing.speed, specifier: "%.2f")×")
                 Spacer()
@@ -24,6 +25,7 @@ struct GIFTimingControls: View {
                     }.buttonStyle(.borderless)
                 }
             }
+            }.buttonStyle(.borderless)
             DisclosureGroup("Advanced frame timing") {
                 Toggle("Use one frame delay", isOn: Binding(get: { timing.uniformCentiseconds != nil },
                     set: { timing.uniformCentiseconds = $0 ? 10 : nil }))
@@ -33,8 +35,8 @@ struct GIFTimingControls: View {
                     Text("Base frame delay \(Double(timing.uniformCentiseconds ?? 10) / 100, specifier: "%.2f")s").font(.caption)
                 }
                 Text("Speed changes frames, not playlist duration. Only the new copy changes.").font(.caption)
-            }.buttonStyle(.borderless)
-        }
+            }.toggleStyle(.switch)
+        }.buttonStyle(.borderless)
     }
 }
 @MainActor
