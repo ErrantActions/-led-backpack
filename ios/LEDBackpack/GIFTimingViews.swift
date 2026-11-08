@@ -12,12 +12,16 @@ struct GIFTimingControls: View {
             HStack {
                 Text("Speed · \(timing.speed, specifier: "%.2f")×")
                 Spacer()
-                Button("Reset") { timing.speed = 1; timing.uniformCentiseconds = nil }
+                Button { timing.speed = 1; timing.uniformCentiseconds = nil } label: {
+                    Text("Reset").frame(minHeight: 44)
+                }.buttonStyle(.borderless)
             }
             Slider(value: $timing.speed, in: 0.25...4, step: 0.05)
             HStack {
                 ForEach([0.25,0.5,1.0,2.0,4.0], id: \.self) { value in
-                    Button("\(value, specifier: "%g")×") { timing.speed = value }
+                    Button { timing.speed = value } label: {
+                        Text("\(value, specifier: "%g")×").frame(minWidth: 44, minHeight: 44)
+                    }.buttonStyle(.borderless)
                 }
             }
             DisclosureGroup("Advanced frame timing") {
