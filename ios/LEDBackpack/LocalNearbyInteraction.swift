@@ -18,6 +18,12 @@ final class LocalNearbyInteraction: NSObject, ObservableObject, NISessionDelegat
     func hasFreshStableHint(uptime: Double = ProcessInfo.processInfo.systemUptime) -> Bool {
         session != nil && peer != nil && stableNearby && stability.fresh(uptime: uptime)
     }
+    func requireFreshStableHint(uptime: Double = ProcessInfo.processInfo.systemUptime) throws {
+        guard session != nil, peer != nil, stableNearby else {
+            throw BackpackError.invalid("Current paired NI session/stability is unavailable; no nearby announcement.")
+        }
+        try stability.requireFresh(uptime: uptime)
+    }
     func prepare(consent: Bool, foreground: Bool) throws -> Data {
         guard consent, foreground, NISession.isSupported,
               let usage = Bundle.main.object(forInfoDictionaryKey: "NSNearbyInteractionUsageDescription") as? String,

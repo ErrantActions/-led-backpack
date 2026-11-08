@@ -147,9 +147,17 @@ callbacks are current-session/sample-generation guarded; invalid objects cancel
 older expiry work. The existing paired-game loop reports freshness loss through
 the existing authenticated Boolean message without new protocol fields or
 automatic fallback. Peer claims remain claims, not physical/ranging proof.
-Three new freshness/reset/invalid-clock fixtures are prepared; the targeted
-unsigned selector includes LocalPairingTests. No NI session is initialized by
+Three new freshness/reset/invalid-clock fixtures passed at5cab1ba in
+run42444333653: actual app/test compilation and88focused native tests/0failures.
+The targeted unsigned selector includes LocalPairingTests. No NI session is initialized by
 cold/unconsented fixture checks, and no physical or exact-distance proof is added.
+
+A further unsigned queue-boundary follow-up requires current local NI freshness
+again after previous encrypted sends drain, immediately before dispatching a
+positive nearby announcement to the radio. Expired queued claims fail closed
+with explicit recovery status rather than being silently substituted or sent.
+One new transmission-time regression is prepared; peer protocol fields and
+manual fallback behavior remain unchanged.
 
 ### Social tab navigation follow-up - source only
 

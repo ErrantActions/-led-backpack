@@ -105,10 +105,19 @@ final class LocalPairingTests: XCTestCase {
         XCTAssertFalse(gate.observe(distance: 1, uptime: -1))
         XCTAssertFalse(gate.fresh(uptime: 0))
     }
+    func testQueuedRangeClaimRequiresFreshSampleAtTransmissionTime() throws {
+        var gate = LocalRangeStability()
+        _ = gate.observe(distance: 1, uptime: 1)
+        _ = gate.observe(distance: 1, uptime: 2)
+        XCTAssertNoThrow(try gate.requireFresh(uptime: 3.999))
+        XCTAssertThrowsError(try gate.requireFresh(uptime: 4))
+        XCTAssertThrowsError(try gate.requireFresh(uptime: 5))
+    }
     func testNIColdStopAndUnconsentedPrepareNeverInitializeSession() {
         let ni = LocalNearbyInteraction()
         XCTAssertFalse(ni.initialized); ni.stop(); XCTAssertFalse(ni.initialized)
         XCTAssertFalse(ni.hasFreshStableHint(uptime: 0))
+        XCTAssertThrowsError(try ni.requireFreshStableHint(uptime: 0))
         XCTAssertThrowsError(try ni.prepare(consent: false, foreground: false))
         XCTAssertFalse(ni.initialized)
     }

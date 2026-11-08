@@ -47,7 +47,12 @@ availability or that the product backlog is finished.
   freshness before application/reauthorization, and scopes expiry callbacks
   to current session/generation. Existing authenticated message schema and
   explicit manual fallback behavior retained; no physical/ranging proof.
-- [ ]3new NI freshness/reset/invalid-clock fixtures and targeted validation.
+- [x]3new NI freshness/reset/invalid-clock fixtures passed: app/test compile
+  and88focused native tests/0 at5cab1ba in run42444333653.
+- [x] Further unsigned source rechecks local NI freshness after queued sends
+  drain, before positive nearby announcements reach the radio; stale claims
+  fail explicitly with recovery retained, no silent substitution/fallback.
+- [ ]1new queue/transmission-time regression and targeted validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

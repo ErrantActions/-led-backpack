@@ -139,6 +139,9 @@ final class LocalPairedGame: ObservableObject {
         let job = Task {
             await previous?.value; try checkPair()
             guard active, epoch == stamp, let link, var cipher else { throw BackpackError.invalid("Local paired encrypted channel unavailable.") }
+            if message.kind == "local-range" && message.sceneReady == true {
+                try ranging.requireFreshStableHint()
+            }
             let frame = try cipher.seal(message); self.cipher = cipher
             try await radio.send(frame, to: link)
         }
