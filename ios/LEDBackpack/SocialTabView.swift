@@ -27,38 +27,38 @@ enum SocialFeature {
         case .messageReports: return config?.chatReportsEnabled == true
         case .peerReports: return config?.peerIncidentReportsEnabled == true || config?.peerIncidentWithdrawalEnabled == true
         }
-        enum SocialPrimaryRoute: String, CaseIterable, Identifiable, Hashable {
-            case friends, messages, events, games
-            var id: String { rawValue }
-            var title: String { rawValue.capitalized }
-            var feature: SocialFeature? {
-                switch self {
-                case .friends: return .friends
-                case .messages: return .messages
-                case .events: return .events
-                case .games: return nil
-                }
-            }
-            var symbol: String {
-                switch self {
-                case .friends: return "person.2"
-                case .messages: return "bubble.left.and.bubble.right"
-                case .events: return "calendar"
-                case .games: return "gamecontroller"
-                }
-            }
-            var subtitle: String {
-                switch self {
-                case .friends: return "Your people"
-                case .messages: return "Chats & groups"
-                case .events: return "Meet up & explore"
-                case .games: return "GPS & nearby play"
-                }
-            }
-            func available(_ config: CommunityConfig?, signedIn: Bool) -> Bool {
-                feature?.available(config, signedIn: signedIn) ?? true
-            }
+    }
+}
+enum SocialPrimaryRoute: String, CaseIterable, Identifiable, Hashable {
+    case friends, messages, events, games
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var feature: SocialFeature? {
+        switch self {
+        case .friends: return .friends
+        case .messages: return .messages
+        case .events: return .events
+        case .games: return nil
         }
+    }
+    var symbol: String {
+        switch self {
+        case .friends: return "person.2"
+        case .messages: return "bubble.left.and.bubble.right"
+        case .events: return "calendar"
+        case .games: return "gamecontroller"
+        }
+    }
+    var subtitle: String {
+        switch self {
+        case .friends: return "Your people"
+        case .messages: return "Chats & groups"
+        case .events: return "Meet up & explore"
+        case .games: return "GPS & nearby play"
+        }
+    }
+    func available(_ config: CommunityConfig?, signedIn: Bool) -> Bool {
+        feature?.available(config, signedIn: signedIn) ?? true
     }
 }
 private extension SocialFeature {
