@@ -70,10 +70,10 @@ final class CloudLibraryStore: ObservableObject {
             defer { if moreTicket == ticket { moreTask = nil } }
             await loadMore(community, library: library)
         }
-        func retry(_ community: CommunityController, library: LocalLibrary? = nil) async {
-            if let failedPage, failedPage > 1, nextPage != nil { await loadMore(community, library: library) }
-            else { await refresh(community, library: library) }
-        }
+    }
+    func retry(_ community: CommunityController, library: LocalLibrary? = nil) async {
+        if let failedPage, failedPage > 1, nextPage != nil { await loadMore(community, library: library) }
+        else { await refresh(community, library: library) }
     }
     private func merge(_ incoming: [CommunityCloudItem]) -> Int {
         var indices = Dictionary(uniqueKeysWithValues: items.enumerated().map { ($0.element.id, $0.offset) })
