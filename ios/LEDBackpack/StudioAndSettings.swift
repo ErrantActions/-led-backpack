@@ -269,7 +269,8 @@ struct SettingsView: View {
                         .font(.caption)
                 }
             }.modernScene().navigationTitle("Settings").buttonStyle(.borderless)
-            .toolbar { Button("Done") { dismiss() } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+            .toolbar(.visible, for: .navigationBar)
             .task { preferences = library.state.preferences }
             .fileExporter(isPresented: $exporter, document: document, contentType: .json, defaultFilename: exportName) { result in
                 if case .failure(let error) = result { panel.report(error) }

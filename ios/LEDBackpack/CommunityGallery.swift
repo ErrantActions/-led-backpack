@@ -69,7 +69,8 @@ struct CommunityGallery: View {
                                 description: Text("Try another category or search. Uploaded artwork appears publicly only after moderator approval."))
                         }
                         if catalog.nextPage == nil && !items.isEmpty && items.count < 100 && !catalog.loading && catalog.failure == nil {
-                            Text("You're all caught up").font(.caption).foregroundStyle(.secondary)
+                            Text("\(items.count) GIFs · End of results").font(.caption).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("community-page-count")
                         }
                         if items.count == 100 { Text("Showing the first 100 matches. Refine your search to narrow the results.").font(.caption) }
                     }
@@ -143,9 +144,7 @@ struct CommunityGallery: View {
                                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.white, .cyan)
                                     .font(.title2).padding(8).accessibilityHidden(true)
                             }
-                        }.accessibilityElement(children: .contain)
-                            .accessibilityIdentifier("community-results")
-                            .accessibilityValue("\(items.count) GIFs")
+                        }
                         .overlay { RoundedRectangle(cornerRadius: 12).stroke(selected ? Color.cyan : .clear, lineWidth: 3) }
                 }.buttonStyle(.plain)
                     .onAppear { catalog.nearEnd(item.id) }

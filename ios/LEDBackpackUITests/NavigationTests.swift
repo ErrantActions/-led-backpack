@@ -92,7 +92,11 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["Display on phone"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Edit a copy"].exists)
         XCTAssertFalse(app.buttons["Keep on this iPhone"].exists)
-        app.buttons["Add favorite"].tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.03)).tap()
+        let menuClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !app.buttons["Edit a copy"].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [menuClosed], timeout: 5), .completed)
         returnToHeader(app)
         XCTAssertFalse(app.buttons["On iPhone"].exists)
         XCTAssertFalse(app.buttons["Cloud"].exists)
@@ -260,9 +264,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["Load more"].exists)
         let last = app.buttons["community-gif-cccccccc-1234-4567-89ab-000000000030"]
         reveal(last, in: app); XCTAssertTrue(last.exists)
-        let results = app.descendants(matching: .any).matching(identifier: "community-results").firstMatch
-        XCTAssertEqual(results.value as? String, "30 GIFs")
-        XCTAssertTrue(app.staticTexts["You're all caught up"].exists)
+        let results = app.staticTexts["community-page-count"]
+        reveal(results, in: app)
+        XCTAssertEqual(results.label, "30 GIFs · End of results")
         XCTAssertFalse(app.buttons["Load more"].exists)
         attach(app, name: "Community - next page acknowledged from near-end visibility")
     }
