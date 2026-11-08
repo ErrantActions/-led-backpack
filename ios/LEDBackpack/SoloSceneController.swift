@@ -148,7 +148,8 @@ final class SoloSceneController: ObservableObject {
         io = nil; presentation = nil; schedule = nil; stale = nil
         location.stop(); sensing = false; sensingConsent = false; automationConsent = false; recapConsent = false
         armed = false; offer = nil; busy = false; selectedDaylight = nil
-        evaluators.removeAll(); areaStates.removeAll(); trip.pause()
+        for id in Array(evaluators.keys) { evaluators[id]?.restartSession() }
+        areaStates.removeAll(); trip.pause()
         if targets?.phonePeerOwner == lease { phone?.cancelPendingSelection(); phone?.stopPeerPlayback() }
         targets?.releasePhone(lease); ownedRevision = nil; status = reason
         // A cancelled write may already have committed: require a fresh read before another mutation.
@@ -161,6 +162,10 @@ final class SoloSceneController: ObservableObject {
         if armed || (busy && targets?.phonePeerOwner == lease) { stop("Motion / data-saving / manual playback policy changed — no silent rearm") }
     }
     func report(_ error: Error) { if !(error is CancellationError) { failure = error.localizedDescription } }
+    private func reconcileEvaluators() {
+        let areaIDs = Set(archive.areas.map(\.id))
+        evaluators = evaluators.filter { areaIDs.contains($0.key) }
+    }
     func load() async {
         guard !busy, !armed, !sensing else { return }
         let stamp = epoch; busy = true
@@ -169,6 +174,7 @@ final class SoloSceneController: ObservableObject {
             let value = try await storage().load()
             try Task.checkCancellation(); guard stamp == epoch else { return }
             archive = value?.archive ?? SoloArchive(); revision = value?.revision; loaded = true; failure = nil
+            reconcileEvaluators()
             let retained = try await recovery().load()
             guard stamp == epoch, !Task.isCancelled else { return }
             journal = retained?.peerPurpose == "solo-v1" ? retained : nil
@@ -188,6 +194,7 @@ final class SoloSceneController: ObservableObject {
             try Task.checkCancellation()
             guard stamp == epoch else { throw CancellationError() }
             archive = saved.archive; revision = saved.revision; failure = nil
+            reconcileEvaluators()
         } catch {
             if stamp == epoch { loaded = false; report(error) }
             throw error

@@ -131,6 +131,14 @@ run42442572805: actual app/test compile and71focused native tests/0failures.
 This remains a software fixture checkpoint, not real GPS/permission/device
 acceptance or an additional TestFlight upload.
 
+The next unsigned SOLO area follow-up clears dwell/inside observations on stop
+but retains in-memory configured entry cooldowns. Stop/rearm cannot make a
+recent area entry instantly repeat, and partial dwell never resumes. Evaluators
+are reconciled after reliable configuration loads/saves, so removed targets
+cannot grow an unbounded memory index. No sample/coordinate/entry timeline is
+persisted or uploaded; explicit manual scene choices remain separate.
+Two new cooldown/restart regressions are prepared for targeted validation.
+
 ### Social tab navigation follow-up - source only
 
 A fifth Social tab groups community browsing/Favorites, friends/requests/QR/

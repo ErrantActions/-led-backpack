@@ -130,6 +130,25 @@ final class SoloSourceTests: XCTestCase {
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(200), now: now, uptime: 12), .outside)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 13), .cooldown)
     }
+    func testSessionRestartClearsObservationButPreservesAreaCooldown() {
+        var evaluator = SoloAreaEvaluator()
+        for t in [0.0, 5, 10] { _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: t) }
+        evaluator.restartSession()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .cooldown)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 69), .cooldown)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 70), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 75), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 80), .entered)
+    }
+    func testRestartCannotResumePartiallyAccumulatedDwell() {
+        var evaluator = SoloAreaEvaluator()
+        _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 0)
+        _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 5)
+        evaluator.restartSession()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 6), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 16), .entered)
+    }
     func testTripPauseAndLongGapNeverAddStraightLineCatchupDistance() {
         var trip = SoloTrip(); trip.start()
         _ = trip.sample(fix(), now: now, milestones: [])

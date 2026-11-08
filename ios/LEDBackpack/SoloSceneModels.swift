@@ -87,6 +87,10 @@ struct SoloAreaEvaluator {
     private var inside = false
     private var lastEntry: Double?
     mutating func discardSample() { dwellStart = nil; previous = nil }
+    mutating func restartSession() {
+        discardSample()
+        inside = false
+    }
     mutating func evaluate(area: SoloArea, fix: SoloFix, now: Date, uptime: Double) -> SoloAreaResult {
         guard (try? area.validate()) != nil, fix.usable(at: now), uptime.isFinite,
               previous == nil || uptime >= previous! else { discardSample(); return .unavailable }

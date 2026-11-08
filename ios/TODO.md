@@ -38,6 +38,10 @@ availability or that the product backlog is finished.
   app/test compile and71focused native tests/0 atc71a34f in run42442572805.
 - [ ] Actual device/private acceptance remains unperformed; these post-build9
   source changes have not had another full/UI/public release sweep or beta upload.
+- [x] Next unsigned SOLO source retains configured in-memory area cooldowns
+  across stop/rearm while clearing inside/dwell state. Reliable loads/saves
+  prune removed area evaluators; no sample/coordinate/timeline persistence.
+- [ ]2new area cooldown/restart regressions and targeted native validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
