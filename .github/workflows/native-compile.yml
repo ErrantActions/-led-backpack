@@ -58,7 +58,7 @@ jobs:
           else
             TESTS=()
             if [ "$VALIDATION_MODE" = gps ]; then
-              CLASSES=(EventSocialSourceTests GPSGameEligibilityTests)
+              CLASSES=(EventSocialSourceTests GPSGameEligibilityTests SoloSourceTests)
             else
               CLASSES=(CommunityAdminTests CommunityFeatureTests CommunityChatTests MessageIncidentReportTests)
             fi

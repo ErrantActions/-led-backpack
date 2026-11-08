@@ -34,7 +34,7 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate {
               value.accuracyAuthorization == .fullAccuracy else {
             throw BackpackError.invalid("Fresh full-accuracy When-In-Use access is unavailable. Use manual offers; press Start again after granting. No automatic regrant restart.")
         }
-        value.desiredAccuracy = kCLLocationAccuracyBest; value.distanceFilter = 3
+        value.desiredAccuracy = kCLLocationAccuracyBest; value.distanceFilter = kCLDistanceFilterNone
         running = true; value.startUpdatingLocation()
     }
     func stop() { running = false; manager?.stopUpdatingLocation() }
@@ -83,6 +83,7 @@ final class SoloSceneController: ObservableObject {
     private var ownedRevision: UUID?
     private var evaluators: [UUID: SoloAreaEvaluator] = [:]
     private var stale: Task<Void, Never>?
+    private var latestFix = UUID()
     private var presentation: Task<Void, Never>?
     private var schedule: Task<Void, Never>?
     private var io: Task<Void, Never>?
@@ -215,10 +216,13 @@ final class SoloSceneController: ObservableObject {
     private func receive(_ fix: SoloFix) {
         guard foreground, sensing, sensingConsent, loaded else { return }
         let now = Date(), uptime = ProcessInfo.processInfo.systemUptime
+        let fixStamp = UUID(), sessionStamp = epoch
+        latestFix = fixStamp
         stale?.cancel()
         guard fix.usable(at: now) else { discardSample(); status = "Fix stale/inaccurate — no measured progress; manual fallback"; return }
         stale = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            guard !Task.isCancelled, self?.epoch == sessionStamp, self?.latestFix == fixStamp else { return }
             self?.discardSample()
         }
         var selectedArea: SoloArea?

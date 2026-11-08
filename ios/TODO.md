@@ -24,7 +24,12 @@ availability or that the product backlog is finished.
 - [x] Further source preserves authorized-target hint cooldowns across local
   stop/rearm in a bounded memory-only map; no coordinate/sample/history file or
   upload, no active-deadline eviction to bypass the limit.
-- [ ]3new cooldown regressions and next targeted native validation.
+- [x]3new cooldown regressions executed: app/test compile and55targeted
+  native tests/0failures atf7e9660 in run42440878081.
+- [x] Subsequent SOLO source requests recurring stationary fixes rather than
+  movement-filtered samples; stale callbacks are session/latest-fix guarded.
+  Existing noise, accuracy and gap filters remain; no false distance objective.
+- [ ]2new SOLO stationary-dwell/noise regressions and next focused validation.
   Actual device/private acceptance remains unperformed; no new beta upload.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292

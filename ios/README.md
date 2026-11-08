@@ -106,7 +106,17 @@ memory-only map across sensing stop/rearm. It neither stores coordinates/
 samples nor writes an encounter timeline. A different authorized target is
 independent; active deadlines are not evicted to permit instant reentry.
 Expired entries are pruned and invalid monotonic inputs fail closed.
-Three new cooldown fixtures are prepared; this source is not in build9.
+Three new cooldown fixtures passed: app/test compile and55targeted native
+tests/0failures atf7e9660 in run42440878081. This source is not in build9.
+
+SOLO's subsequent stationary-place follow-up requests recurring authorized
+foreground fixes without a movement distance filter, allowing fresh continuous
+dwell while standing still. Existing accuracy/noise/gap rules still govern
+approximate trip distance; no speed/chase objective is added. Cancelled stale
+callbacks are checked against both current session and latest-fix identities.
+Two new SOLO dwell/noise fixtures are prepared; the targeted gps selector now
+also includes SoloSourceTests. Actual stationary-phone cadence/permission and
+private gameplay/device acceptance remain unverified.
 
 ### Social tab navigation follow-up - source only
 

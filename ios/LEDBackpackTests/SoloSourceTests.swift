@@ -33,6 +33,31 @@ final class SoloSourceTests: XCTestCase {
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 5), .dwelling)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 10), .entered)
     }
+    func testStationaryRecurringFixesCompleteDwellWithoutMovementOrRepeatedEntry() {
+        var evaluator = SoloAreaEvaluator()
+        for second in 0...10 {
+            let current = now.addingTimeInterval(Double(second))
+            let stationary = SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 3, timestamp: current)
+            XCTAssertEqual(evaluator.evaluate(area: area(), fix: stationary, now: current, uptime: Double(second)),
+                second == 10 ? .entered : .dwelling)
+        }
+        let current = now.addingTimeInterval(11)
+        XCTAssertEqual(evaluator.evaluate(area: area(),
+            fix: SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 3, timestamp: current),
+            now: current, uptime: 11), .inside)
+    }
+    func testStationaryFixNoiseDoesNotCreateTripDistanceOrMilestones() {
+        var trip = SoloTrip(); trip.start()
+        let offsets = [0.0, 1.5, -2.0, 2.0]
+        let milestone = SoloMilestone(meters: 100, sceneID: sceneID)
+        for second in 0...30 {
+            let current = now.addingTimeInterval(Double(second))
+            let sample = SoloFix(point: .init(latitude: 0, longitude: offsets[second % offsets.count] / 111195),
+                accuracy: 5, timestamp: current)
+            XCTAssertTrue(trip.sample(sample, now: current, milestones: [milestone]).isEmpty)
+        }
+        XCTAssertEqual(trip.meters, 0); XCTAssertTrue(trip.fired.isEmpty)
+    }
     func testEntryUsesInnerAccuracyBoundaryNotExpandedRadius() {
         var evaluator = SoloAreaEvaluator()
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(95, accuracy: 3), now: now, uptime: 0), .outside)
