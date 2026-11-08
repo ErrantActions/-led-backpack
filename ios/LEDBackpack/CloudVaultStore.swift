@@ -58,8 +58,8 @@ final class CloudVaultStore: ObservableObject {
         if let link = pin.links[item.id.uuidString.lowercased()] {
             return link.generation != state?.generation || link.remoteMissing
         }
-        if let source = item.cloudSource,
-           source.accountID != client.scope.accountID || source.server != client.scope.origin.url.absoluteString { return true }
+        if let source = item.cloudSource, let owner = source.accountID,
+           owner != client.scope.accountID || source.server != client.scope.origin.url.absoluteString { return true }
         guard let ledger else { throw BackpackError.invalid("Private cloud device storage is unavailable.") }
         return try ledger.hasForeignLink(item.id, scope: client.scope)
     }
@@ -465,6 +465,18 @@ final class CloudVaultStore: ObservableObject {
                     let actual = try await plain(remote, client: client)
                     guard actual.data == bytes else { throw BackpackError.invalid("An interrupted upload ID contains different data. Both copies were retained.") }
                     current.version = remote.version
+                }
+                if current.localMetadataHash == nil {
+                    guard remote.version == current.version else {
+                        throw BackpackError.invalid("The older phone copy has no metadata baseline for these remote edits. Both copies were retained.")
+                    }
+                    let original = try await download(remote)
+                    var baseline = item
+                    baseline.name = original.metadata["title"]?.text ?? item.name
+                    baseline.attribution = attribution(original.metadata)
+                    baseline.category = original.metadata["category"]?.text
+                    baseline.favorite = original.metadata["favorite"] == .bool(true)
+                    current.localMetadataHash = CloudVaultWire.digest(try CloudVaultWire.json(localMetadata(baseline, data: original.data)))
                 }
                 let locallyChanged = current.localHash != hash ||
                     (current.localMetadataHash != nil && current.localMetadataHash != localMetadataHash)

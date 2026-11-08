@@ -19,6 +19,9 @@ a local download still retains its cloud copy; sync does not silently infer
 remote deletion from missing local files or re-upload foreign/reset associations.
 Cloud-only deletion remains explicitly confirmed in sync settings.
 These changes require unsigned native validation and are not in TestFlight9.
+The existing unsigned source workflow's `library` mode runs the cloud-sync,
+library, vault/protocol/crypto and direct-cloud-send tests together with all
+navigation UI regressions, followed by the separate read-only public integration.
 
 ### Clean LED interface overhaul - unsigned source in validation
 

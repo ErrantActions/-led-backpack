@@ -340,6 +340,44 @@ final class CloudSynchronizationTests: XCTestCase {
         XCTAssertEqual(writes, 0)
     }
 
+    func testGuestSavedPublicArtworkCanSyncAfterOwnerConsent() async throws {
+        let transport = SynchronizationTransport()
+        let (library, store, _) = try await setup(transport)
+        let id = "33333333-3333-4333-8333-333333333333"
+        let root = SynchronizationTransport.origin
+        let json = """
+        {"id":"\(id)","title":"Public saved GIF","category":"pixel-art","tags":[],
+        "displayAttribution":"Generated fixture","license":"original",
+        "pageUrl":"\(root)/items/\(id)","gifUrl":"\(root)/media/\(id)/original.gif",
+        "previewUrl":"\(root)/media/\(id)/preview.png","width":16,"height":16,"frameCount":2,
+        "byteSize":100,"variants":[],"likeCount":0,
+        "uploader":{"id":"\(SynchronizationTransport.account)","displayName":"Fixture"}}
+        """
+        let item = try JSONDecoder().decode(CommunityItem.self, from: Data(json.utf8))
+        _ = try library.saveCatalogGIF(gif(), item: item, origin: CommunityOrigin.parse(root),
+            accountID: nil, assetURL: item.gifUrl)
+        try await store.synchronize(library)
+        let writes = await transport.writeCount()
+        XCTAssertEqual(writes, 1)
+        XCTAssertNotNil(store.lastSynchronized)
+    }
+
+    func testExistingOwnedSourceLinksWithoutDuplicatingArtwork() async throws {
+        let transport = SynchronizationTransport(), bytes = try gif()
+        let remote = try await transport.put(bytes, favorite: true)
+        let (library, store, _) = try await setup(transport)
+        let saved = try library.savePrivateCloudGIF(bytes, title: "Remote GIF", attribution: nil, category: "Pixel art",
+            origin: CommunityOrigin.parse(SynchronizationTransport.origin),
+            accountID: XCTUnwrap(UUID(uuidString: SynchronizationTransport.account)),
+            itemID: XCTUnwrap(UUID(uuidString: remote.id)), assetURL: remote.downloadUrl, favorite: true)
+        try await store.synchronize(library)
+        XCTAssertEqual(library.state.media.count, 1)
+        XCTAssertEqual(library.state.media.first?.id, saved.id)
+        XCTAssertTrue(store.cloudOnly(local: library.state.media).isEmpty)
+        let writes = await transport.writeCount()
+        XCTAssertEqual(writes, 0)
+    }
+
     func testInvalidRemoteContentHashCannotCreatePhoneArtwork() async throws {
         let transport = SynchronizationTransport()
         try await transport.putInvalidHash(gif())

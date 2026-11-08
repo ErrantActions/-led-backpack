@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps, ui]
+        options: [focused, compile, gps, ui, library]
         default: focused
         required: true
 permissions:
@@ -58,8 +58,11 @@ jobs:
           else
             TESTS=()
             TIMEOUTS=()
-            if [ "$VALIDATION_MODE" = ui ]; then
+            if [ "$VALIDATION_MODE" = ui ] || [ "$VALIDATION_MODE" = library ]; then
               CLASSES=()
+              if [ "$VALIDATION_MODE" = library ]; then
+                CLASSES=(CloudSynchronizationTests CloudLibraryTests CloudVaultProtocolTests CloudVaultCryptoTests CloudBackpackSourceTests)
+              fi
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests")
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
                 "-maximum-test-execution-time-allowance" "900")
@@ -77,7 +80,7 @@ jobs:
               -parallel-testing-enabled NO "${TESTS[@]}" "${TIMEOUTS[@]}" CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           fi
       - name: Verify read-only public integration after UI regressions
-        if: inputs.mode == 'ui'
+        if: inputs.mode == 'ui' || inputs.mode == 'library'
         env:
           TEST_RUNNER_NATIVE_PUBLIC_INTEGRATION: "1"
         run: |
@@ -90,14 +93,14 @@ jobs:
             -maximum-test-execution-time-allowance 300 \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO | tee build/public-integration.log
       - name: Export UI regression screenshots
-        if: always() && inputs.mode == 'ui'
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library')
         run: |
           if test -d build/UnsignedTests.xcresult; then
             xcrun xcresulttool export attachments --path build/UnsignedTests.xcresult \
               --output-path build/UIScreenshots
           fi
       - uses: actions/upload-artifact@v4
-        if: always() && inputs.mode == 'ui'
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library')
         with:
           name: native-ui-screenshots-${{ github.run_id }}-${{ github.run_attempt }}
           path: ios/build/UIScreenshots

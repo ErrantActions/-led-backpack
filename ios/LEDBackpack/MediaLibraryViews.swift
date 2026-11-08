@@ -24,6 +24,7 @@ struct LibraryMediaRow: View {
             Button("Send & Play on backpack") { directSend = BackpackSendRequest(sources: [.local(item)]) }
             Button("Adjust GIF timing / loops") { editingTiming = true }
             Button("Add to send queue") { action(.enqueue) }
+            Button("Cloud sync options") { action(.cloud) }
             Button("Submit to community review") { action(.share) }
             Button(item.isFavorite ? "Remove favorite" : "Add favorite") {
                 app.run { try library.organize(item.id, category: item.category, favorite: !item.isFavorite) }
