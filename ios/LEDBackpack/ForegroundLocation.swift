@@ -3,6 +3,19 @@ import Combine
 import BackpackProtocol
 
 enum CheckpointEligibility: String { case manual = "Manual fallback", outside = "Outside fixed checkpoint", dwelling = "Dwelling locally", eligible = "Locally eligible — manual confirmation required", cooldown = "Cooldown" }
+enum LocalEventSensingLease {
+    static func duration(server: Date, start: Date, end: Date, clock: CatalogEventClock,
+        instant: ContinuousClock.Instant = ContinuousClock().now) throws -> TimeInterval {
+        let elapsed = clock.baseline.duration(to: instant).components
+        let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+        let current = clock.now(instant: instant)
+        guard clock.serverTime == server, end > start, seconds.isFinite, (0...5).contains(seconds),
+              current >= start, current < end else {
+            throw BackpackError.invalid("The authorized event read/window is stale or expired. Refresh explicitly before sensing.")
+        }
+        return min(60, end.timeIntervalSince(current))
+    }
+}
 struct LocalCheckpointEvaluator {
     private var entered: TimeInterval?
     private var lastEligible: TimeInterval?
@@ -89,7 +102,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         activatedLocationManager().requestWhenInUseAuthorization()
     }
     func start(event: CatalogEvent, checkpoint: EventRouteCheckpoint, accountRevision: UUID,
-        consent: Bool, foreground: Bool, capability: Bool) throws {
+        consent: Bool, foreground: Bool, capability: Bool, eventClock: CatalogEventClock) throws {
         stop("Checking foreground eligibility")
         guard consent, foreground, capability, CLLocationManager.locationServicesEnabled(),
               event.access.member, event.rsvpStatus == .going, event.requiresReconfirmation == false,
@@ -99,21 +112,20 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
             throw BackpackError.invalid(status)
         }
         try checkpoint.validate()
-        let server = try CatalogEventTime.parse(event.serverTime), end = try CatalogEventTime.parse(event.endsAtISO)
-        guard server >= (try CatalogEventTime.parse(event.startsAtISO)), server < end else {
-            status = "Outside actual event window — sensing off"; throw BackpackError.invalid(status)
-        }
+        let server = try CatalogEventTime.parse(event.serverTime), start = try CatalogEventTime.parse(event.startsAtISO)
+        let end = try CatalogEventTime.parse(event.endsAtISO)
+        _ = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
         let manager = activatedLocationManager()
         guard [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
               manager.accuracyAuthorization == .fullAccuracy else {
             status = "Unavailable/denied/reduced accuracy — use manual fallback"
             throw BackpackError.invalid(status)
         }
+        let lease = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
         scope = ForegroundLocationScope(accountRevision: accountRevision, eventID: event.id, eventRevision: event.revision,
             participationRevision: revision, checkpointID: checkpoint.id)
         fixed = checkpoint
         // Short lease requires a fresh authorized event read before any explicit restart.
-        let lease = min(60, end.timeIntervalSince(server))
         deadlineUptime = ProcessInfo.processInfo.systemUptime + lease
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = kCLDistanceFilterNone

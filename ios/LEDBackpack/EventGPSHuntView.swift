@@ -145,17 +145,18 @@ private struct EventGPSHuntContent: View {
         epoch = UUID(); work?.cancel(); work = nil; busy = false; gpsConsent = false
         gps.stop("GPS game stopped — no automatic restart")
     }
-    private func fresh(_ event: CatalogEvent, collection: NativeEventCollection) async throws -> (CatalogEvent, NativeEventCollection) {
+    private func fresh(_ event: CatalogEvent, collection: NativeEventCollection) async throws -> (CatalogEvent, NativeEventCollection, CatalogEventClock) {
         guard let client = model.client else { throw BackpackError.invalid("Reload the current hunt account first.") }
         let context = try NativeEventSocialContext(event)
         let current = try await client.currentSocialEvent(context, surface: .collection)
+        let clock = try CatalogEventClock(serverTime: current.serverTime)
         let snapshot = try await client.eventCollection(current)
         try snapshot.plan.validate(event: current)
         guard snapshot.ownEnabled, snapshot.revision == collection.revision,
               snapshot.optinRevision == collection.optinRevision, snapshot.plan == collection.plan else {
             throw BackpackError.invalid("Hunt plan or current own opt-in changed. Stop and reload; no stale GPS confirmation.")
         }
-        return (current,snapshot)
+        return (current,snapshot,clock)
     }
     private func startGPS(_ event: CatalogEvent, collection: NativeEventCollection) {
         guard let checkpoint = selected, gpsConsent, !busy else { return }
@@ -164,11 +165,12 @@ private struct EventGPSHuntContent: View {
         work = Task {
             defer { if epoch == stamp { busy = false } }
             do {
-                let (current,snapshot) = try await fresh(event, collection: collection)
+                let (current,snapshot,clock) = try await fresh(event, collection: collection)
                 guard epoch == stamp, phase == .active, gpsConsent, checkpointID == checkpoint.id,
                       snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
                 try gps.start(event: current, checkpoint: checkpoint, accountRevision: community.accountRevision,
-                    consent: gpsConsent, foreground: phase == .active, capability: model.client?.collectionsAvailable == true)
+                    consent: gpsConsent, foreground: phase == .active, capability: model.client?.collectionsAvailable == true,
+                    eventClock: clock)
             } catch { if epoch == stamp && !Task.isCancelled { handleFailure(error) } }
         }
     }
@@ -182,7 +184,7 @@ private struct EventGPSHuntContent: View {
         work = Task {
             defer { if epoch == stamp { busy = false } }
             do {
-                let (current,snapshot) = try await fresh(event, collection: collection)
+                let (current,snapshot,_) = try await fresh(event, collection: collection)
                 guard epoch == stamp, phase == .active, stationary, checkpointID == checkpoint.id,
                       snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
                 if requiresHint {
@@ -206,7 +208,7 @@ private struct EventGPSHuntContent: View {
         let stamp = epoch
         guard let event = model.event, let collection = model.collection else { stopGPS(); return }
         do {
-            let (current,snapshot) = try await fresh(event, collection: collection)
+            let (current,snapshot,_) = try await fresh(event, collection: collection)
             if let checkpointID, !snapshot.permitsManualCollection(checkpointID, event: current) {
                 throw BackpackError.invalid("This target was already collected or is no longer permitted. Reload the remaining hunt.")
             }

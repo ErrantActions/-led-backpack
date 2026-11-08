@@ -4,7 +4,7 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
-## Post-build9 GPS hunt follow-up - separate source PURPLE
+## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
 
 - [x] Same selected-target manual fallback with explicit private/unverified
   review, current event/plan/own opt-in and stationary/on-foot checks; no
@@ -13,10 +13,14 @@ availability or that the product backlog is finished.
   after successful request plus current context/read-back. Normal targets must
   be collected; finish retains current completion prerequisites.
   Cancellation/clear/reload/partial states do not become false UI success.
-- [x]3new read-back fixtures prepared; existing unsigned workflow gps mode
-  compiles actual app/test source and selects only event/GPS fixture groups.
-- [ ] Targeted native compile/tests for this source; actual device/private
-  acceptance remains unperformed. Changes are not in already uploaded build9.
+- [x]3new read-back fixtures executed: app/test compile and49targeted native
+  tests/0failures in run42439286316 at796c444. No UI/private-device acceptance
+  is inferred; changes are not in already uploaded build9.
+- [x] Subsequent source carries the current monotonic event clock through
+  dependency reads and both GPS start paths; stale/wrong/backwards/expired
+  windows cannot reset a lease. Permission checks do not extend the deadline.
+- [ ]3new lease fixtures and next exact-source targeted native validation.
+  Actual device/private acceptance remains unperformed.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

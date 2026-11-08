@@ -2,6 +2,30 @@ import XCTest
 @testable import LEDBackpack
 
 final class GPSGameEligibilityTests: XCTestCase {
+    func testEventDeadlineIncludesElapsedHuntFetchTime() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server.addingTimeInterval(-10),
+            end: server.addingTimeInterval(2), clock: clock, instant: instant.advanced(by: .seconds(3))))
+        XCTAssertEqual(try LocalEventSensingLease.duration(server: server, start: server.addingTimeInterval(-10),
+            end: server.addingTimeInterval(4), clock: clock, instant: instant.advanced(by: .seconds(3))), 1, accuracy: 0.001)
+    }
+    func testStaleEventReadCannotStartNewSixtySecondLease() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(5.01))))
+        XCTAssertEqual(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(5))), 60)
+    }
+    func testWrongOrBackwardsEventClockFailsClosed() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server.addingTimeInterval(1), start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant))
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(-1))))
+    }
     private func scope(checkpoint: UUID = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!,
         account: UUID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!) -> ForegroundLocationScope {
         .init(accountRevision: account, eventID: UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!,

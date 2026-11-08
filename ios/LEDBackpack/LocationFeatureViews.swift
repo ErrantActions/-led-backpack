@@ -225,13 +225,15 @@ struct EventLocalEligibilityView: View {
                     session.run { client in
                         local.stop("Validating fresh event context")
                         let current = try await client.event(eventID)
+                        let clock = try CatalogEventClock(serverTime: current.serverTime)
                         guard EventProgressContext(current) == EventProgressContext(event),
                               let checkpoint = current.route?.checkpoints.first(where: { $0.id == checkpointID }) else {
                             throw BackpackError.invalid("Current fixed plan changed; select/review again.")
                         }
                         try session.checked(client)
                         try local.start(event: current, checkpoint: checkpoint, accountRevision: community.accountRevision,
-                            consent: consent, foreground: phase == .active, capability: client.progressDeadlinesEnabled(current))
+                            consent: consent, foreground: phase == .active, capability: client.progressDeadlinesEnabled(current),
+                            eventClock: clock)
                     }
                 }.disabled(!consent || checkpointID == nil || session.busy)
             }

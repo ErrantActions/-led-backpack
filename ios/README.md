@@ -84,11 +84,21 @@ request, current client/ticket checks and matching plan/opt-in/event read-back.
 Normal checkpoints must actually be marked collected; finish needs current
 private completion prerequisites. Clear/cancellation/reload/partial responses
 cannot manufacture an acknowledged selected-target UI outcome.
-Three new EventSocialSourceTests are prepared. The existing unsigned native
-workflow adds a bounded gps selector for EventSocialSourceTests and
-GPSGameEligibilityTests; old compile/focused modes remain unchanged.
+Three new EventSocialSourceTests passed with the existing GPS fixtures:
+49native tests/0failures at source796c444 in run42439286316; actual app/test
+source compiled. The existing unsigned workflow's bounded gps selector covers
+EventSocialSourceTests and GPSGameEligibilityTests; old modes remain unchanged.
 This source is not in uploaded build9; physical GPS and private API/device
 acceptance remain separate.
+
+A subsequent lease follow-up carries the existing CatalogEventClock captured
+at the authorized event response through the hunt-state read and both GPS start
+paths. Known local elapsed time reduces the event deadline; a wrong/backwards
+clock, event read older than5s, or event ending during the dependency fetch
+cannot start a new lease. Permission checks are followed by another deadline
+check before updates begin. The maximum remains60s, with no wall-clock reset,
+new sensor permission, stored samples or claims of perfect network clock sync.
+Three new lease regressions are prepared for the next targeted native run.
 
 ### Social tab navigation follow-up - source only
 
