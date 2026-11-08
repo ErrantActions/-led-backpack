@@ -69,6 +69,27 @@ and build9 upload are recorded separately. Windows still has no local Xcode.
 No physical phone/backpack or new provider/key operations were performed.
 These changes are in build9, not the earlier TestFlight build8.
 
+### Post-build9 GPS hunt follow-up - separate source
+
+The selected checkpoint now has a same-screen explicitly reviewed manual
+fallback for denied/reduced/stale/uncertain GPS, without selecting it again.
+It requires the same current event/plan/own opt-in and stopped/on-foot choice,
+uses the existing private collection API, and never supplies GPS proof or
+changes cooperative/profile-sharing consent. GPS confirmation still consumes
+an exact fresh scope-bound hint; manual confirmation does not manufacture one.
+
+Private hunt success is no longer inferred from a busy flag returning false.
+The existing store exposes a transient selected-target receipt only after the
+request, current client/ticket checks and matching plan/opt-in/event read-back.
+Normal checkpoints must actually be marked collected; finish needs current
+private completion prerequisites. Clear/cancellation/reload/partial responses
+cannot manufacture an acknowledged selected-target UI outcome.
+Three new EventSocialSourceTests are prepared. The existing unsigned native
+workflow adds a bounded gps selector for EventSocialSourceTests and
+GPSGameEligibilityTests; old compile/focused modes remain unchanged.
+This source is not in uploaded build9; physical GPS and private API/device
+acceptance remain separate.
+
 ### Social tab navigation follow-up - source only
 
 A fifth Social tab groups community browsing/Favorites, friends/requests/QR/

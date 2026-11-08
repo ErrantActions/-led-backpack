@@ -4,6 +4,20 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Post-build9 GPS hunt follow-up - separate source PURPLE
+
+- [x] Same selected-target manual fallback with explicit private/unverified
+  review, current event/plan/own opt-in and stationary/on-foot checks; no
+  coordinates, fake GPS hint, public progress or cooperative consent change.
+- [x] Existing collection store publishes selected-target acknowledgement only
+  after successful request plus current context/read-back. Normal targets must
+  be collected; finish retains current completion prerequisites.
+  Cancellation/clear/reload/partial states do not become false UI success.
+- [x]3new read-back fixtures prepared; existing unsigned workflow gps mode
+  compiles actual app/test source and selects only event/GPS fixture groups.
+- [ ] Targeted native compile/tests for this source; actual device/private
+  acceptance remains unperformed. Changes are not in already uploaded build9.
+
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
 Current source1944292 passed run42435195099 attempt2: portable9/0,

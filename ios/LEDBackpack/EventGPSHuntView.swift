@@ -27,6 +27,7 @@ private struct EventGPSHuntContent: View {
     @State private var failure: String?
     @State private var notice: String?
     @State private var confirming: UUID?
+    @State private var manualReview = false
     @State private var epoch = UUID()
     @State private var work: Task<Void, Never>?
     private var targets: [EventRouteCheckpoint] {
@@ -64,19 +65,25 @@ private struct EventGPSHuntContent: View {
                 if gps.sensing && !busy && !model.busy { await revalidateSensing() }
             }
         }
-        .onChange(of: checkpointID) { _, _ in stopGPS(); stationary = false; if !model.busy { confirming = nil } }
+        .onChange(of: checkpointID) { _, _ in stopGPS(); stationary = false; manualReview = false; if !model.busy { confirming = nil } }
         .onChange(of: targets.map(\.id)) { _, ids in if let checkpointID, !ids.contains(checkpointID) { self.checkpointID = nil } }
         .onChange(of: gpsConsent) { _, value in if !value { stopGPS() } }
         .onChange(of: model.busy) { _, value in
             if !value, confirming != nil {
-                notice = model.failure == nil ? "Private self-collection acknowledged. Not GPS-certified attendance; no public progress was submitted." :
+                notice = model.failure == nil && model.lastCollectedCheckpointID == confirming ?
+                    "Selected private self-report acknowledged and current hunt reloaded. Not GPS-certified attendance; no public progress was submitted." :
                     "Confirmation outcome not verified. Reload your private hunt before another deliberate action; no automatic retry."
                 confirming = nil
             }
         }
         .onChange(of: model.needsReload) { _, value in if value { gps.stop("Current hunt context requires reload") } }
-        .onChange(of: phase) { _, value in if value != .active { stopGPS(); model.clear(); checkpointID = nil } }
-        .onDisappear { stopGPS(); model.clear() }
+        .onChange(of: phase) { _, value in if value != .active { manualReview = false; stopGPS(); model.clear(); checkpointID = nil } }
+        .onDisappear { manualReview = false; stopGPS(); model.clear() }
+        .confirmationDialog("Manually self-report this selected target privately?", isPresented: $manualReview) {
+            if let event = model.event, let collection = model.collection, let selected {
+                Button("Self-report \(selected.title) — no GPS proof") { confirmGPS(event, collection: collection, requiresHint: false) }
+            }
+        } message: { Text("This is your deliberate private self-report, not a verified GPS/Bluetooth arrival. No coordinates or public progress are uploaded. Your existing cooperative opt-in, if any, remains unchanged.") }
     }
     private var intro: some View {
         Section("Play the current public event hunt") {
@@ -123,6 +130,8 @@ private struct EventGPSHuntContent: View {
                 Button("Confirm this target privately") { confirmGPS(event, collection: collection) }
                     .buttonStyle(.borderedProminent)
                     .disabled(!stationary || busy || model.busy || model.needsReload || !hasCurrentHint)
+                Button("Manual fallback for this target — no GPS proof") { manualReview = true }
+                    .disabled(!stationary || selected == nil || busy || model.busy || model.needsReload)
                 Text("Needs current going RSVP/review/actual event window, published route, private hunt opt-in and fresh≤5s/full-accuracy≤25m fixes with10s continuous dwell. Denied/reduced/stale/uncertain GPS stays manual; nothing silently restarts.").font(.caption)
                 Text("This game HUD does not replace selected PHONE artwork or write a backpack slot. Existing SOLO/peer automatic PHONE scenes require their durable original first.").font(.caption)
             }
@@ -163,20 +172,33 @@ private struct EventGPSHuntContent: View {
             } catch { if epoch == stamp && !Task.isCancelled { handleFailure(error) } }
         }
     }
-    private func confirmGPS(_ event: CatalogEvent, collection: NativeEventCollection) {
-        guard !busy, stationary, let checkpoint = selected, let expected = expectedScope, let hintID = gps.hint?.id else { return }
+    private func confirmGPS(_ event: CatalogEvent, collection: NativeEventCollection, requiresHint: Bool = true) {
+        guard !busy, stationary, let checkpoint = selected, let expected = expectedScope else {
+            failure = "Choose the current target and confirm you can safely make a private self-report."; return
+        }
+        let hintID = gps.hint?.id
+        if requiresHint && hintID == nil { failure = "Current GPS eligibility is unavailable; use the explicitly labelled manual fallback."; return }
         let stamp = UUID(); epoch = stamp; busy = true; failure = nil
         work = Task {
             defer { if epoch == stamp { busy = false } }
             do {
                 let (current,snapshot) = try await fresh(event, collection: collection)
                 guard epoch == stamp, phase == .active, stationary, checkpointID == checkpoint.id,
-                      gps.hint?.id == hintID, snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
-                _ = try gps.consumeHint(expected)
-                gps.stop("Local target hint consumed — awaiting explicit private claim receipt")
+                      snapshot.permitsManualCollection(checkpoint.id, event: current) else { throw CancellationError() }
+                if requiresHint {
+                    guard gps.hint?.id == hintID else { throw BackpackError.invalid("GPS hint changed; review eligibility or use manual fallback.") }
+                    _ = try gps.consumeHint(expected)
+                }
+                gps.stop(requiresHint ? "Local target hint consumed — awaiting explicit private claim receipt" :
+                    "GPS off — deliberate manual self-report, no location proof")
                 gpsConsent = false; confirming = checkpoint.id; model.consent = true
                 model.collect(checkpoint.id)
-                notice = "Private confirmation requested; this is a self-report, not a GPS proof or public progress post."
+                guard model.busy else {
+                    confirming = nil
+                    throw BackpackError.invalid(model.failure ?? "Private collection request did not start; reload current hunt.")
+                }
+                notice = requiresHint ? "Private confirmation requested; this is a self-report, not a GPS proof or public progress post." :
+                    "Manual private self-report requested for the selected target; no GPS/Bluetooth proof or public progress post."
             } catch { if epoch == stamp && !Task.isCancelled { handleFailure(error) } }
         }
     }

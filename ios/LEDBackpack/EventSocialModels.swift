@@ -131,6 +131,22 @@ struct NativeEventCollection: Decodable {
         return checkpoints.contains(where: { $0.id == checkpointID && !$0.collected }) ||
             (ownCompleted && event.route?.checkpoints.contains(where: { $0.id == checkpointID && $0.kind == .finish }) == true)
     }
+    func requireClaimReadback(_ checkpointID: UUID, event: CatalogEvent, previous: NativeEventCollection) throws {
+        try validate(NativeEventSocialContext(event))
+        guard eventId == previous.eventId, eventRevision == previous.eventRevision,
+              participationRevision == previous.participationRevision, revision == previous.revision,
+              optinRevision == previous.optinRevision, plan == previous.plan, ownEnabled,
+              previous.permitsManualCollection(checkpointID, event: event) else {
+            throw BackpackError.invalid("Private hunt context changed before receipt/read-back; no confirmed collection.")
+        }
+        if event.route?.checkpoints.contains(where: { $0.id == checkpointID && $0.kind == .finish }) == true {
+            guard ownCompleted else { throw BackpackError.invalid("Finish prerequisites are no longer confirmed.") }
+        } else {
+            guard checkpoints.contains(where: { $0.id == checkpointID && $0.collected }) else {
+                throw BackpackError.invalid("The selected private target was not confirmed by current hunt read-back.")
+            }
+        }
+    }
 }
 struct NativeDisplayScene: Codable, Identifiable, Equatable {
     enum Kind: String, Codable, CaseIterable { case opening, closing, restStop = "rest-stop" }

@@ -9,6 +9,7 @@ final class NativeEventSocialStore: ObservableObject {
     @Published private(set) var event: CatalogEvent?
     @Published private(set) var teams: NativeEventTeams?
     @Published private(set) var collection: NativeEventCollection?
+    @Published private(set) var lastCollectedCheckpointID: UUID?
     @Published private(set) var display: NativeEventDisplay?
     @Published private(set) var preferences: NativeGuestbookPreferences?
     @Published private(set) var guestbook: NativeGuestbookPage?
@@ -46,7 +47,8 @@ final class NativeEventSocialStore: ObservableObject {
         eraseContent(); withdrawalRevision = nil; page = 1
     }
     private func eraseContent() {
-        event = nil; teams = nil; collection = nil; display = nil; preferences = nil; guestbook = nil; recap = nil
+        event = nil; teams = nil; collection = nil; lastCollectedCheckpointID = nil
+        display = nil; preferences = nil; guestbook = nil; recap = nil
         teamDraft = []; collectionDraft = .init(); displayDraft = .init(); gallery = []
         guestDraft = .init(); submission = nil; submissionPending = false; submissionConflict = false
         consent = false; cooperativeConsent = false; teamID = nil; preview = nil
@@ -117,12 +119,14 @@ final class NativeEventSocialStore: ObservableObject {
         }
         event = current; needsReload = false; consent = false; cooperativeConsent = false; guestDraft.consent = false
     }
-    private func mutate(_ action: @escaping @MainActor (CommunityFeatureClient, CatalogEvent) async throws -> Void) {
+    private func mutate(completion: @escaping @MainActor () throws -> Void = {},
+        _ action: @escaping @MainActor (CommunityFeatureClient, CatalogEvent) async throws -> Void) {
         guard let event, !needsReload else { failure = "Reload and review current revisions first."; return }
         invalidateConsent(); guestDraft.consent = false; needsReload = true
         work { client, ticket in
             try await action(client, event); try self.accept(client, ticket)
             try await self.read(client, ticket)
+            try self.accept(client, ticket); try completion()
         }
     }
     func saveTeams() {
@@ -142,8 +146,20 @@ final class NativeEventSocialStore: ObservableObject {
         mutate { client, event in try await client.consentEventCollection(event, snapshot: collection, consent: accepted, cooperative: cooperative) }
     }
     func collect(_ id: UUID) {
-        guard let collection else { return }; let accepted = consent
-        mutate { client, event in try await client.collectHuntTarget(event, snapshot: collection, checkpointID: id, consent: accepted) }
+        lastCollectedCheckpointID = nil
+        guard let collection, client != nil, !busy, !needsReload else {
+            failure = "Reload the current private hunt before starting a collection request."; return
+        }
+        let accepted = consent
+        mutate(completion: {
+            guard let current = self.collection, let event = self.event else {
+                throw BackpackError.invalid("Current private hunt read-back is unavailable.")
+            }
+            try current.requireClaimReadback(id, event: event, previous: collection)
+            self.lastCollectedCheckpointID = id
+        }) { client, event in
+            try await client.collectHuntTarget(event, snapshot: collection, checkpointID: id, consent: accepted)
+        }
     }
     func saveDisplay() {
         guard let display else { return }; let draft = displayDraft

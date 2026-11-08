@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile completed source and optionally run focused native unit tests
         type: choice
-        options: [focused, compile]
+        options: [focused, compile, gps]
         default: focused
         required: true
 permissions:
@@ -57,7 +57,12 @@ jobs:
               -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           else
             TESTS=()
-            for CLASS in CommunityAdminTests CommunityFeatureTests CommunityChatTests MessageIncidentReportTests; do
+            if [ "$VALIDATION_MODE" = gps ]; then
+              CLASSES=(EventSocialSourceTests GPSGameEligibilityTests)
+            else
+              CLASSES=(CommunityAdminTests CommunityFeatureTests CommunityChatTests MessageIncidentReportTests)
+            fi
+            for CLASS in "${CLASSES[@]}"; do
               TESTS+=("-only-testing:LEDBackpackTests/$CLASS")
             done
             xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
