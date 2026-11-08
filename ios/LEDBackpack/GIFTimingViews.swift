@@ -10,9 +10,9 @@ struct GIFTimingControls: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Animation speed \(timing.speed, specifier: "%.2f")×")
+                Text("Speed · \(timing.speed, specifier: "%.2f")×")
                 Spacer()
-                Button("Original speed") { timing.speed = 1; timing.uniformCentiseconds = nil }
+                Button("Reset") { timing.speed = 1; timing.uniformCentiseconds = nil }
             }
             Slider(value: $timing.speed, in: 0.25...4, step: 0.05)
             HStack {
@@ -20,14 +20,16 @@ struct GIFTimingControls: View {
                     Button("\(value, specifier: "%g")×") { timing.speed = value }
                 }
             }
-            Toggle("Set all frame delays before applying speed", isOn: Binding(get: { timing.uniformCentiseconds != nil },
-                set: { timing.uniformCentiseconds = $0 ? 10 : nil }))
-            if timing.uniformCentiseconds != nil {
-                Slider(value: Binding(get: { Double(timing.uniformCentiseconds ?? 10) / 100 },
-                    set: { timing.uniformCentiseconds = Int(($0 * 100).rounded()) }), in: 0.02...2, step: 0.01)
-                Text("Base frame delay \(Double(timing.uniformCentiseconds ?? 10) / 100, specifier: "%.2f")s").font(.caption)
+            DisclosureGroup("Advanced frame timing") {
+                Toggle("Use one frame delay", isOn: Binding(get: { timing.uniformCentiseconds != nil },
+                    set: { timing.uniformCentiseconds = $0 ? 10 : nil }))
+                if timing.uniformCentiseconds != nil {
+                    Slider(value: Binding(get: { Double(timing.uniformCentiseconds ?? 10) / 100 },
+                        set: { timing.uniformCentiseconds = Int(($0 * 100).rounded()) }), in: 0.02...2, step: 0.01)
+                    Text("Base frame delay \(Double(timing.uniformCentiseconds ?? 10) / 100, specifier: "%.2f")s").font(.caption)
+                }
+                Text("Speed changes frames, not playlist duration. Only the new copy changes.").font(.caption)
             }
-            Text("Speed changes animation frames, not the time before another GIF is selected. Changes apply only to a temporary/new copy. Source pixels, credits and original timing stay intact; GIF delay precision is one centisecond.").font(.caption)
         }
     }
 }
@@ -54,13 +56,12 @@ struct GIFTimingEditorView: View {
         NavigationStack {
             Form {
                 GIFTimingControls(timing: $timing)
-                Picker("New copy repeat policy", selection: $limit) {
-                    Text("Keep source repeats").tag(GIFRepeatChoice.source)
-                    Text("Repeat continuously").tag(GIFRepeatChoice.continuous)
-                    Text("Total GIF loops").tag(GIFRepeatChoice.count)
+                Picker("Repeat", selection: $limit) {
+                    Text("Original").tag(GIFRepeatChoice.source)
+                    Text("Forever").tag(GIFRepeatChoice.continuous)
+                    Text("Loop count").tag(GIFRepeatChoice.count)
                 }
                 if limit == .count { Stepper("\(loops) total loops", value: $loops, in: 1...100) }
-                Text("Repeat metadata is exact in the new GIF copy. Firmware playback may ignore it; a device loop counter is not established.").font(.caption)
                 if let preview {
                     TimelineView(.animation(paused: !playing)) { _ in
                         let t = clock.elapsed(), finished = preview.duration > 0 && preview.cycles.map { t >= preview.duration * Double($0) } == true
@@ -68,7 +69,7 @@ struct GIFTimingEditorView: View {
                             .resizable().interpolation(.none).scaledToFit().frame(height: 180)
                             .onChange(of: finished) { _, value in if value { pause() } }
                     }
-                    Button(playing ? "Pause preview" : "Play edited preview") {
+                    Button(playing ? "Pause preview" : "Play preview") {
                         if playing { pause() }
                         else {
                             do {
@@ -79,18 +80,25 @@ struct GIFTimingEditorView: View {
                     }
                         .disabled(reducedMotion || preview.duration == 0 || busy)
                 }
-                Button("Update timed preview") { update() }.disabled(busy)
+                if bytes == nil {
+                    Button("Review changes") { update() }.disabled(busy).buttonStyle(AuroraPrimaryButton())
+                }
                 TextField("New copy name", text: $name)
-                Button("Save new timed copy") {
+                if bytes != nil {
+                Button("Save copy") {
                     do {
                         guard let bytes else { throw BackpackError.invalid("Update the current timing preview before saving.") }
                         try library.add(name: name, data: bytes, attribution: item.attribution, category: item.category)
                         dismiss()
                     } catch { failure = error.localizedDescription }
-                }.disabled(busy || bytes == nil)
+                }.disabled(busy || bytes == nil).buttonStyle(AuroraPrimaryButton())
+                }
                 if busy { ProgressView() }
                 if let failure { Text(failure).foregroundStyle(.orange) }
-                Text("For individual frame delays, use Edit a copy → GIF Studio → Timing. This screen never uploads, overwrites an original or changes the backpack.").font(.caption)
+                FeatureDetails("Timing details") {
+                    Text("Your original is unchanged. This saves a new local copy without uploading or changing backpack playback.")
+                    Text("Backpack repeat counting may differ. For individual frame delays, use GIF Studio's Timing tools.")
+                }
             }.navigationTitle("GIF timing")
                 .toolbar { Button("Done") { work?.cancel(); dismiss() } }
                 .onAppear { name = item.name + " timed copy"; update() }

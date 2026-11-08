@@ -48,13 +48,18 @@ private struct EventGPSHuntContent: View {
             if let failure = failure ?? model.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice).font(.caption) }
             if busy || model.busy { ProgressView() }
-            Section("Separate choices") {
-                NavigationLink("Review event / RSVP / current route") { CommunityEventDetailView(id: eventID) }
-                NavigationLink("Manual hunt / cooperative choices (no GPS proof)") { EventSocialView(eventID: eventID, surface: .collection) }
-                NavigationLink("Nearby peer games use Bluetooth, not checkpoint GPS") { PhoneDisplayLibraryView() }
-                Button("Reload current hunt") { stopGPS(); checkpointID = nil; model.bind(community); model.load() }.disabled(busy || model.busy)
-                Button("Stop GPS only", role: .destructive) { stopGPS() }
-                Button("Withdraw my hunt/cooperative consent", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
+            Section {
+                if gps.sensing { Button("Stop GPS", role: .destructive) { stopGPS() } }
+                FeatureDetails("Event tools & privacy") {
+                    NavigationLink("Event & route") { CommunityEventDetailView(id: eventID) }
+                    NavigationLink("Manual hunt & cooperative settings") { EventSocialView(eventID: eventID, surface: .collection) }
+                    NavigationLink("Nearby games") { GPSGamesView() }
+                    Button("Reload hunt") { stopGPS(); checkpointID = nil; model.bind(community); model.load() }.disabled(busy || model.busy)
+                    Button("Leave hunt", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
+                    Text("GPS is a broad local hint, not certified arrival or precise peer tagging. Coordinates and samples are not uploaded or saved.")
+                    Text("Fresh fixes need full accuracy within25m and10s dwell. Bluetooth/NI require separate peer consent and do not track backpacks.")
+                    Text("Private self-reports do not publish progress. Cooperative contribution is a separate choice; no other-player counts are shown.")
+                }
             }
         }.navigationTitle("GPS checkpoint hunt").modernScene()
         .task(id: community.accountRevision) { stopGPS(); checkpointID = nil; model.bind(community); model.load() }
@@ -86,68 +91,72 @@ private struct EventGPSHuntContent: View {
         } message: { Text("This is your deliberate private self-report, not a verified GPS/Bluetooth arrival. No coordinates or public progress are uploaded. Your existing cooperative opt-in, if any, remains unchanged.") }
     }
     private var intro: some View {
-        Section("Play the current public event hunt") {
-            Text("Choose a remaining fixed checkpoint, explicitly start foreground GPS, dwell within its confidence bounds, then confirm privately while stopped.").font(.headline)
-            Text("GPS supplies only a broad local hint. It never decides precise peer tagging. Coordinates/samples/routes are discarded, not sent or saved. No automatic check-in, badge/progress upload or certified arrival.").font(.caption)
-            Text("Bluetooth peer interactions require their own observed tokens, authenticated keys and game/session consent; RSSI is rough. Optional NI measures phones, not backpack positions. No friend map, chasing or traffic incentives.").font(.caption)
+        Section {
+            Text(model.event?.title ?? "Checkpoint hunt").font(.title2.bold())
+            Text("Choose a target. Stay still. Confirm privately.").font(.subheadline).foregroundStyle(.secondary)
         }
     }
     @ViewBuilder private var consentSection: some View {
         if let collection = model.collection {
-            Section("Private hunt participation") {
-                Text(collection.ownEnabled ? "Your current hunt opt-in is active." : "Join this hunt deliberately before playing.")
-                Text(collection.ownCompleted ? "All selected private targets collected; finish may be available." : "Select a remaining private target below.")
-                Text("Your private confirmed targets: \(collection.ownCollectedTargetCount) of \(collection.plan.checkpointIds.count)")
-                    .font(.headline)
-                Text("This is your self-reported hunt progress, not other participants' counts or verified attendance. Nothing is shared publicly.").font(.caption)
-                Text(collection.cooperativeReached ? "Cooperative boolean goal reached." : "Cooperative boolean goal not reached or unavailable.").font(.caption)
-                Text(collection.ownCooperativeConsent ? "You separately opted into the cooperative completion boolean." : "Your cooperative completion contribution is off.").font(.caption)
+            Section(collection.ownEnabled ? "Your progress" : "Join this hunt") {
+                HStack {
+                    Text("\(collection.ownCollectedTargetCount) / \(collection.plan.checkpointIds.count)").font(.title.bold()).foregroundStyle(Aurora.mint)
+                    Spacer()
+                    StatusPill(title: collection.ownCompleted ? "Targets complete" : "Private progress", symbol: "flag")
+                }
+                ProgressView(value: Double(collection.ownCollectedTargetCount), total: Double(max(1, collection.plan.checkpointIds.count)))
+                if collection.cooperativeReached { Label("Cooperative goal reached", systemImage: "checkmark.circle").font(.caption) }
                 if !collection.ownEnabled {
-                    Toggle("I join this private hunt", isOn: $joinConsent)
-                    Toggle("Separately include my completion in the cooperative boolean", isOn: $cooperativeConsent)
-                    Button("Join with these separate choices") {
+                    Text("Your claims stay private. GPS is not attendance proof.").font(.caption)
+                    Toggle("Join private hunt", isOn: $joinConsent)
+                    Toggle("Include my completion in the cooperative goal", isOn: $cooperativeConsent)
+                    Button("Join hunt") {
                         model.consent = joinConsent; model.cooperativeConsent = cooperativeConsent
                         model.joinCollection(); joinConsent = false; cooperativeConsent = false
-                    }.disabled(!joinConsent || model.busy || !collection.plan.enabled)
+                    }.buttonStyle(AuroraPrimaryButton()).disabled(!joinConsent || model.busy || !collection.plan.enabled)
                 }
             }
         }
     }
     @ViewBuilder private var gameplay: some View {
         if let collection = model.collection, collection.ownEnabled, let event = model.event {
-            Section("Current target and local GPS") {
-                Picker("Remaining checkpoint", selection: $checkpointID) {
+            Section("Target") {
+                Picker("Choose target", selection: $checkpointID) {
                     Text("Choose target").tag(Optional<UUID>.none)
                     ForEach(targets) { Text($0.title).tag(Optional($0.id)) }
                 }.disabled(busy || model.busy)
                 if checkpointID == nil && !targets.isEmpty {
-                    Button("Choose next remaining target") {
+                    Button("Choose next target") {
                         guard let next = targets.first else { failure = "Remaining targets changed. Reload the current hunt."; return }
                         checkpointID = next.id
                         notice = "Selected \(next.title). GPS and private confirmation still need your separate explicit choices."
                     }.disabled(busy || model.busy || model.needsReload || phase != .active)
                 }
-                if targets.isEmpty { Text("No remaining eligible target. Reload current hunt/event state.") }
-                Toggle("I consent to foreground GPS for this selected checkpoint", isOn: $gpsConsent)
+                if targets.isEmpty { Text("No remaining targets. Reload the hunt.").font(.caption) }
+                Toggle("Use foreground GPS for this target", isOn: $gpsConsent)
                     .disabled(busy || model.busy || selected == nil)
-                Button("Request When In Use permission") { gps.requestWhenInUse(consent: gpsConsent) }
+                Button("Allow location") { gps.requestWhenInUse(consent: gpsConsent) }
                     .disabled(!gpsConsent || phase != .active)
-                Button("Start GPS for this target (at most60s)") { startGPS(event, collection: collection) }
+                if !gps.sensing && !hasCurrentHint {
+                Button("Start GPS · 60 seconds") { startGPS(event, collection: collection) }
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(!gpsConsent || selected == nil || busy || model.busy || model.needsReload)
-                Label(gps.status, systemImage: gps.sensing ? "location.fill" : "location.slash")
-                Text(gps.eligibility.rawValue).font(.headline)
+                }
+                StatusPill(title: gps.eligibility.rawValue, symbol: gps.sensing ? "location.fill" : "location.slash")
+                FeatureDetails("GPS status") { Text(gps.status) }
                 if let remaining = gps.dwellRemaining, gps.sensing, gps.eligibility == .dwelling {
-                    Text("Remain still: about \(Int(ceil(remaining))) more seconds of fresh, stable GPS fixes are needed.")
+                    Text("Stay still · about \(Int(ceil(remaining))) seconds of fresh fixes remaining")
                         .font(.caption)
                 }
-                Toggle("I am stopped / on foot and can safely confirm", isOn: $stationary)
-                Button("Confirm this target privately") { confirmGPS(event, collection: collection) }
+                Toggle("I am stopped and can safely confirm", isOn: $stationary)
+                if hasCurrentHint {
+                Button("Confirm target privately") { confirmGPS(event, collection: collection) }
                     .buttonStyle(.borderedProminent)
                     .disabled(!stationary || busy || model.busy || model.needsReload || !hasCurrentHint)
-                Button("Manual fallback for this target — no GPS proof") { manualReview = true }
+                }
+                Button("Confirm manually · no GPS proof") { manualReview = true }
                     .disabled(!stationary || selected == nil || busy || model.busy || model.needsReload)
-                Text("Needs current going RSVP/review/actual event window, published route, private hunt opt-in and fresh≤5s/full-accuracy≤25m fixes with10s continuous dwell. Denied/reduced/stale/uncertain GPS stays manual; nothing silently restarts.").font(.caption)
-                Text("This game HUD does not replace selected PHONE artwork or write a backpack slot. Existing SOLO/peer automatic PHONE scenes require their durable original first.").font(.caption)
+                Text("Private self-report only. Nothing starts or publishes automatically.").font(.caption).foregroundStyle(.secondary)
             }
         }
     }

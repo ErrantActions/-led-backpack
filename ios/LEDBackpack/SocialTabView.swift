@@ -29,6 +29,45 @@ enum SocialFeature {
         }
     }
 }
+private extension SocialFeature {
+        var title: String {
+            switch self {
+            case .friends: return "Friends"
+            case .invites: return "Invite or scan"
+            case .nearby: return "Nearby people"
+            case .friendSessions: return "Play with a friend"
+            case .events: return "Events"
+            case .playlists: return "Shared playlists"
+            case .messages: return "Messages"
+            case .messageRequests: return "Message requests"
+            case .activity: return "Activity"
+            case .gifSwap: return "GIF swap"
+            case .avatar: return "Avatar"
+            case .badges: return "My badges"
+            case .deviceCards: return "Device cards"
+            case .notifications: return "Notifications"
+            case .appleAlerts: return "Device alerts"
+            case .eventReports: return "Event reports"
+            case .messageReports: return "Message reports"
+            case .peerReports: return "Peer reports"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .friends, .invites, .nearby: return "person.2"
+            case .friendSessions, .gifSwap: return "gamecontroller"
+            case .events: return "calendar"
+            case .playlists: return "rectangle.stack"
+            case .messages, .messageRequests: return "bubble.left.and.bubble.right"
+            case .avatar: return "person.crop.circle"
+            case .badges: return "rosette"
+            case .deviceCards: return "iphone"
+            case .notifications, .appleAlerts: return "bell"
+            case .activity: return "tray"
+            case .eventReports, .messageReports, .peerReports: return "flag"
+            }
+        }
+    }
 @MainActor
 struct SocialTabView: View {
     @EnvironmentObject private var community: CommunityController
@@ -49,17 +88,27 @@ struct SocialTabView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Friends, events, messages and games").font(.title2.bold())
                     if !community.signedIn {
-                        NavigationLink("Sign in for friends, events and messaging") { CommunityAccountView() }
-                        Text("Community GIF browsing, local Favorites and offline paired play do not require an account.").font(.caption)
+                        NavigationLink { CommunityAccountView() } label: {
+                            FeatureRowLabel(title: "Sign in", symbol: "person.crop.circle", subtitle: "Friends, messages and events")
+                        }.accessibilityLabel("Sign in for friends, events and messaging")
                     } else {
-                        NavigationLink("Account / sign out / privacy settings") { CommunityAccountView() }
+                        NavigationLink { CommunityAccountView() } label: {
+                            FeatureRowLabel(title: community.user?.displayName ?? "Account", symbol: "person.crop.circle", subtitle: "Account & privacy")
+                        }
                     }
-                    Text("Browsing never enables GPS, Bluetooth discovery, sharing or a game. Every feature retains its own current service/account/permission and explicit consent checks.").font(.caption)
-                    if refreshing { ProgressView("Refreshing service availability") }
+                    if refreshing { ProgressView() }
                     if let failure { Text(failure).foregroundStyle(.orange) }
-                    Button("Refresh actual service capabilities") { Task { await refresh() } }.disabled(refreshing)
+                }
+                Section {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        SocialLink("Friends / requests / profile", feature: .friends, card: true, subtitle: "Your people") { CommunitySocialView() }
+                        SocialLink("Messages / groups / event conversations", feature: .messages, card: true, subtitle: "Chats & groups") { CommunityMessagesView() }
+                        SocialLink("Events / create / rides / GPS hunts", feature: .events, card: true, subtitle: "Meet up & explore") { CommunityEventsView() }
+                        NavigationLink { GPSGamesView() } label: {
+                            FeatureCardLabel(title: "Games", subtitle: "GPS & nearby play", symbol: "gamecontroller", tint: Aurora.lavender)
+                        }.accessibilityLabel("GPS & nearby games")
+                    }.buttonStyle(.plain).listRowBackground(Color.clear)
                 }
                 communitySection
                 friendsSection
@@ -67,6 +116,13 @@ struct SocialTabView: View {
                 eventsSection
                 gamesSection
                 privacySection
+                Section {
+                    FeatureDetails("Availability & privacy") {
+                        Text("Browsing does not start GPS, Bluetooth or sharing. Each feature asks for its own consent.")
+                        Text("Public GIFs, local Favorites and offline pairing work without an account.")
+                        Button("Refresh availability") { Task { await refresh() } }.disabled(refreshing)
+                    }
+                }
             }.modernScene().navigationTitle("Social")
                 .task(id: community.accountRevision) { await refresh() }
                 .sheet(isPresented: $gallery, onDismiss: {
@@ -88,54 +144,56 @@ struct SocialTabView: View {
         }
     }
     private var communitySection: some View {
-        Section("Community artwork") {
-            Button { gallery = true } label: { Label("Community GIF gallery", systemImage: "square.grid.3x3") }
-            NavigationLink("My Favorites") { CommunityFavoritesView() }
-            NavigationLink("My community uploads / review status") { CommunityUploadsView() }.disabled(!community.signedIn)
+        Section("Artwork") {
+            Button { gallery = true } label: { FeatureRowLabel(title: "Community GIFs", symbol: "square.grid.3x3") }
+                .accessibilityLabel("Community GIF gallery")
+            NavigationLink { CommunityFavoritesView() } label: { FeatureRowLabel(title: "Favorites", symbol: "heart") }
+            NavigationLink { CommunityUploadsView() } label: { FeatureRowLabel(title: "My uploads", symbol: "square.and.arrow.up") }
+                .disabled(!community.signedIn)
         }
     }
     private var friendsSection: some View {
-        Section("Friends & profile") {
-            SocialLink("Friends / requests / profile", feature: .friends) { CommunitySocialView() }
+        Section("People") {
             SocialLink("My friend QR / Scan / invite preview", feature: .invites) { FriendInviteQRView() }
             SocialLink("Nearby discovery / add friends", feature: .nearby) { NearbyDiscoveryView() }
             SocialLink("Accepted-friend greetings / duet / pass sessions", feature: .friendSessions) { FriendLocationFeaturesView() }
-            SocialLink("Profile avatar", feature: .avatar) { CommunityAvatarView() }
-            SocialLink("Private event badges / profile choices", feature: .badges) { EventAwardListView() }
-            SocialLink("Device cards / accepted-friend transfers (unverified)", feature: .deviceCards) { AccountDevicesView() }
+            DisclosureGroup("Profile & devices") {
+                SocialLink("Profile avatar", feature: .avatar) { CommunityAvatarView() }
+                SocialLink("Private event badges / profile choices", feature: .badges) { EventAwardListView() }
+                SocialLink("Device cards / accepted-friend transfers (unverified)", feature: .deviceCards) { AccountDevicesView() }
+            }
         }
     }
     private var communicationSection: some View {
-        Section("Messages & activity") {
-            SocialLink("Messages / groups / event conversations", feature: .messages) { CommunityMessagesView() }
+        Section("Inbox") {
             SocialLink("Nonfriend message requests", feature: .messageRequests) { CommunityMessageRequestsView() }
             SocialLink("Activity inbox", feature: .activity) { CommunityActivityView() }
-            SocialLink("Notifications / event reminders", feature: .notifications) { CommunityNotificationSettingsView() }
-            SocialLink("Apple device alerts", feature: .appleAlerts) { NativeApplePushView() }
+            DisclosureGroup("Alerts & reminders") {
+                SocialLink("Notifications / event reminders", feature: .notifications) { CommunityNotificationSettingsView() }
+                SocialLink("Apple device alerts", feature: .appleAlerts) { NativeApplePushView() }
+            }
         }
     }
     private var eventsSection: some View {
-        Section("Events & shared experiences") {
-            SocialLink("Events / create / rides / GPS hunts", feature: .events) { CommunityEventsView() }
+        Section("Share") {
             SocialLink("Private playlists / public snapshots", feature: .playlists) { OwnerPlaylistsView() }
-            Text("Event tools include current invitations, organizers, route/checkpoints, private hunt/co-op, guestbook, recap and reviewed display plans. Participation and sharing remain separate.").font(.caption)
         }
     }
     private var gamesSection: some View {
-        Section("Games & exchanges — separate opt-ins") {
-            NavigationLink("GPS & nearby games") { GPSGamesView() }
+        Section("Nearby play") {
             SocialLink("Automatic PHONE GIF swap / Found Users", feature: .gifSwap) { PhoneSwapGameView() }
-            NavigationLink("Offline paired calm colors / optional NI") { LocalPairedGameView() }
-            NavigationLink("Received swaps / original recovery") { SwapRecoveryView() }
-            Text("PHONE swap is built; actual two-phone proof remains separate. Unknown backpack originals cannot be safely recovered for automatic hardware swaps.").font(.caption)
+            NavigationLink { LocalPairedGameView() } label: { FeatureRowLabel(title: "Pair offline", symbol: "qrcode", subtitle: "Calm colors & optional ranging") }
+            NavigationLink { SwapRecoveryView() } label: { FeatureRowLabel(title: "Received & recovery", symbol: "arrow.uturn.backward") }
         }
     }
     private var privacySection: some View {
-        Section("Safety & own reports") {
-            NavigationLink("Blocked accounts") { CommunityBlocksView() }.disabled(!community.signedIn)
-            SocialLink("My event reports / withdrawal", feature: .eventReports) { OwnEventReportsView() }
-            SocialLink("My message incidents", feature: .messageReports) { MessageIncidentListView() }
-            SocialLink("My peer incidents / keyless withdrawal receipts", feature: .peerReports) { PeerIncidentOwnerView() }
+        Section {
+            DisclosureGroup("Safety & reports") {
+                NavigationLink("Blocked accounts") { CommunityBlocksView() }.disabled(!community.signedIn)
+                SocialLink("My event reports / withdrawal", feature: .eventReports) { OwnEventReportsView() }
+                SocialLink("My message incidents", feature: .messageReports) { MessageIncidentListView() }
+                SocialLink("My peer incidents / keyless withdrawal receipts", feature: .peerReports) { PeerIncidentOwnerView() }
+            }
             if community.isAdmin {
                 NavigationLink("Administration / incident review") { CommunityAdminView() }
             }
@@ -153,21 +211,28 @@ private struct SocialLink<Destination: View>: View {
     @EnvironmentObject private var community: CommunityController
     let title: String
     let feature: SocialFeature
+    let card: Bool
+    let subtitle: String?
     let destination: () -> Destination
-    init(_ title: String, feature: SocialFeature, @ViewBuilder destination: @escaping () -> Destination) {
-        self.title = title; self.feature = feature; self.destination = destination
+    init(_ title: String, feature: SocialFeature, card: Bool = false, subtitle: String? = nil,
+        @ViewBuilder destination: @escaping () -> Destination) {
+        self.title = title; self.feature = feature; self.card = card; self.subtitle = subtitle; self.destination = destination
     }
     var body: some View {
         let enabled = feature.available(community.config, signedIn: community.signedIn)
         NavigationLink {
             destination()
         } label: {
-            HStack {
-                Text(title)
-                Spacer()
-                if !enabled { Text(community.signedIn ? "Unavailable" : "Sign in").font(.caption).foregroundStyle(.secondary) }
+            if card {
+                FeatureCardLabel(title: feature.title, subtitle: enabled ? (subtitle ?? "") : community.signedIn ? "Unavailable" : "Sign in",
+                    symbol: feature.symbol)
+            } else {
+                FeatureRowLabel(title: feature.title, symbol: feature.symbol,
+                    subtitle: enabled ? subtitle : community.signedIn ? "Unavailable" : "Sign in")
             }
         }.disabled(!enabled)
+            .accessibilityLabel(title)
+            .accessibilityHint(enabled ? "" : community.signedIn ? "Unavailable on this service" : "Sign in to use this feature")
             .accessibilityIdentifier("social-link-\(title)")
     }
 }

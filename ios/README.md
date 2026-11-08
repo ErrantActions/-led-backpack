@@ -3,6 +3,28 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### Clean LED interface overhaul - unsigned source in validation
+
+The five tabs remain Library, Social, Backpack, Create and Live. Compact
+artwork-first cards replace oversized introductions; restrained LED accents,
+short action labels and expandable details reduce reading on entry screens.
+Social keeps its actual capability/sign-in gates, rather than substituting a
+second library. Library, phone playback and nearby games have direct routes.
+
+Flows now show the relevant next action: prepare copies before explicitly
+sending, review changed timing before saving a new copy, pair/compare before
+color-game setup, and start or confirm a hunt according to its current state.
+SOLO's scenes, daylight, badges, recaps and advanced geometry are expandable.
+Consent, destructive confirmations, important sharing/safety warnings,
+errors and original-recovery controls are not replaced with automatic approval.
+No protocol, account, sensor, cloud-access or firmware permission is added.
+
+UI regressions cover default-off games, guest capability gates, expanded scene
+actions and timing invalidation/new-copy preservation. The existing unsigned
+workflow now exports XCTest screenshots for visual review. Native compiler,
+test counts and screenshot results will be recorded after execution; these
+working-source changes are not in TestFlight build9.
+
 ### Unsigned private fixed-point capture follow-up - source only
 
 SOLO area setup now offers a separately consented, foreground-only one-fix

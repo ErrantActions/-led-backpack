@@ -98,7 +98,7 @@ final class NavigationTests: XCTestCase {
 
         app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Create"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Text to GIF"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Text to GIF")).firstMatch.exists)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Create - focused tool chooser")
 
@@ -190,7 +190,15 @@ final class NavigationTests: XCTestCase {
         reveal(permission, in: app); XCTAssertTrue(permission.exists)
         XCTAssertFalse(permission.isEnabled)
         let automation = app.buttons["Capture durable original and arm PHONE"]
+        reveal(automation, in: app, requireHittable: false)
         XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
+        assertNoVisibleEntryForms(app)
+        XCTAssertFalse(app.buttons["Create scene"].isHittable)
+        let scenes = app.buttons["Scenes & playlists"]
+        reveal(scenes, in: app); scenes.tap()
+        let createScene = app.buttons["Create scene"]
+        reveal(createScene, in: app)
+        XCTAssertTrue(createScene.isHittable)
         attach(app, name: "GPS games entry and explicit default-off SOLO consents")
     }
 
@@ -223,12 +231,49 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Phone GIF swap game"].waitForExistence(timeout: 10))
         let found = app.staticTexts["Found Users"]
         reveal(found, in: app); XCTAssertTrue(found.exists)
-        XCTAssertTrue(app.staticTexts["No confirmed swaps for this account yet. Partial exchanges are not Found success."].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "found-users-empty").firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["No swaps yet"].exists)
         XCTAssertFalse(app.buttons["Prepare GAME Bluetooth (explicit)"].exists)
         XCTAssertFalse(app.buttons["Enable 5-minute phone-only game"].exists)
         XCTAssertFalse(app.buttons["Send friend request"].exists)
         XCTAssertTrue(app.buttons["Reload Found Users"].exists)
         attach(app, name: "Found Users - empty verified-pair collection, no sensor or friendship consent")
+    }
+
+    func testCompactTimingFlowRequiresFreshReviewAndSavesOnlyANewCopy() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
+        let artwork = app.buttons["Preview Night ride"]
+        reveal(artwork, in: app); artwork.press(forDuration: 1)
+        app.buttons["Adjust GIF timing / loops"].tap()
+        XCTAssertTrue(app.navigationBars["GIF timing"].waitForExistence(timeout: 10))
+        let save = app.buttons["Save copy"]
+        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Review changes"].exists)
+        XCTAssertFalse(app.switches["Use one frame delay"].isHittable)
+        let faster = app.buttons["2×"]
+        reveal(faster, in: app); faster.tap()
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5))
+        let review = app.buttons["Review changes"]
+        reveal(review, in: app); XCTAssertTrue(review.isEnabled); review.tap()
+        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        let advanced = app.buttons["Advanced frame timing"]
+        reveal(advanced, in: app); advanced.tap()
+        let uniform = app.switches["Use one frame delay"]
+        reveal(uniform, in: app); uniform.tap()
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5))
+        reveal(review, in: app); review.tap()
+        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
+        attach(app, name: "Compact timing - reviewed copy with advanced frame controls")
+        save.tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
+        let copy = app.buttons["Preview Night ride timed copy"]
+        reveal(copy, in: app); XCTAssertTrue(copy.exists)
+        reveal(artwork, in: app); XCTAssertTrue(artwork.exists)
+        attach(app, name: "Timing save - new copy and original both retained")
     }
 
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {

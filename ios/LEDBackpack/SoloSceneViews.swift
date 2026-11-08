@@ -25,12 +25,12 @@ struct SoloScenesView: View {
         List {
             privacy
             consent
-            scenes
             areas
             journey
-            daylight
-            collection
-            recaps
+            DisclosureGroup("Scenes & playlists") { scenes }
+            DisclosureGroup("Daylight plans") { daylight }
+            DisclosureGroup("My badges") { collection }
+            DisclosureGroup("Private recaps") { recaps }
         }
         .navigationTitle("SOLO local scenes").modernScene()
         .task { await solo.load() }
@@ -73,149 +73,187 @@ struct SoloScenesView: View {
         }
     }
     private var privacy: some View {
-        Section("Device-local / account-free · SOURCE ONLY") {
-            Text("Home/work fixed areas and processing remain on this device. No live location, name, route, proximity history, check-in or badge is published. No web tiles, location search, weather or AI service is used.")
-            Text("Approximate foreground offers, not a certified radius, attendance proof or continuous/background service. No speed, traffic, chase or leaderboard objectives. PHONE only; unknown backpack contents and transport are unavailable.")
-                .font(.caption).foregroundStyle(.secondary)
-            Text(solo.status)
+        Section {
+            HStack {
+                Text("My adventures").font(.title2.bold())
+                Spacer()
+                StatusPill(title: solo.sensing ? "GPS on" : "GPS off", symbol: "location")
+            }
+            Text("Private places and milestones. Nothing is published.").font(.subheadline).foregroundStyle(.secondary)
             if let error = localError ?? solo.failure { Text(error).foregroundStyle(.orange) }
             if solo.busy { ProgressView() }
-            Button("Reload owned local state / recovery status") { Task { await solo.load() } }.disabled(solo.busy)
-            if !solo.loaded { Text("State must load reliably before any edit or automation; existing storage is never reset on an error.").foregroundStyle(.orange) }
+            if !solo.loaded {
+                Button("Reload local state") { Task { await solo.load() } }.disabled(solo.busy)
+            }
+            if !solo.loaded { Text("Reload before editing or starting automation.").foregroundStyle(.orange) }
+            FeatureDetails("Status & privacy") {
+                Button("Reload local state") { Task { await solo.load() } }.disabled(solo.busy)
+                Text(solo.status)
+                Text("Fixed places stay on this device. No route, location history, check-in or badge is published.")
+                Text("GPS offers are approximate, not attendance or safety proof. No speed, chase or leaderboard objectives.")
+                Text("Phone only. Unknown backpack originals cannot be restored automatically.")
+            }
         }
     }
     private var consent: some View {
-        Section("Independent foreground consents · off by default") {
-            Toggle("Enable local foreground sensing (not PHONE automation)", isOn: Binding(get: { solo.sensingConsent }, set: solo.setSensingConsent))
-            Button("Request When-In-Use location permission deliberately") { solo.requestPermission() }
+        Section("Start playing") {
+            Text("GPS stays on-device. Phone animation is a separate choice.").font(.caption)
+            Toggle("Use foreground GPS", isOn: Binding(get: { solo.sensingConsent }, set: solo.setSensingConsent))
+            Button("Allow location") { solo.requestPermission() }
                 .disabled(!solo.sensingConsent)
-            Button("Start sensing my saved fixed areas / trip") { solo.startSensing() }
+                .accessibilityLabel("Request When-In-Use location permission deliberately")
+            Button("Start GPS") { solo.startSensing() }.buttonStyle(AuroraPrimaryButton())
                 .disabled(!solo.sensingConsent || !solo.loaded || solo.sensing)
-            Toggle("Allow automatic owned local PHONE scenes", isOn: Binding(get: { solo.automationConsent }, set: solo.setAutomationConsent))
-            Text("Arming requires a selected original open in the PHONE player and no other owner. The first exact original must be durably saved before any change. Local saved/manual motion and data-saving policies still apply.")
+            Toggle("Animate my phone automatically", isOn: Binding(get: { solo.automationConsent }, set: solo.setAutomationConsent))
+            Text("Your original is saved before any automatic change. Open the phone player first.")
                 .font(.caption)
-            Button(solo.armed ? "PHONE automation is armed" : "Capture durable original and arm PHONE") { Task { await solo.arm() } }
+            Button(solo.armed ? "Phone automation on" : "Start phone automation") { Task { await solo.arm() } }
                 .disabled(solo.armed || !solo.automationConsent || solo.busy)
+                .accessibilityLabel(solo.armed ? "PHONE automation is armed" : "Capture durable original and arm PHONE")
             if targets.target != .phone {
-                Text("PHONE is not selected. No automatic target switch or hardware fallback.").foregroundStyle(.orange)
+                Text("Select the phone target first.").foregroundStyle(.orange)
             }
-            Button("Stop all SOLO sensing / schedules / PHONE changes", role: .destructive) { solo.stop() }
-            Button("Explicit original restore and acknowledgment") { restoring = true }
-            Text("Stop releases presentation/brightness leases and retains the original; it never silently restores/rearms or discards recovery. Background, denial, account/target/context changes also stop it.").font(.caption)
+            if solo.sensing || solo.armed || solo.trip.running {
+                Button("Stop playing", role: .destructive) { solo.stop() }
+            }
+            Button("Restore my original") { restoring = true }
         }
     }
     private var scenes: some View {
-        Section("Explicit own local scene copies / playlists") {
-            Button("Choose copies or author a color scene") { addingScene = true }
+        Group {
+            Button("Create scene") { addingScene = true }
             ForEach(solo.archive.scenes) { scene in
                 VStack(alignment: .leading) {
                     Text(scene.name).font(.headline)
                     Text("\(scene.items.count) local items · \(Int(scene.interval)) s playlist interval · \(scene.repeatPlaylist ? "repeat" : "one pass")")
                         .font(.caption)
-                    ForEach(scene.items) { item in
-                        Text(item.name).font(.caption)
-                        if let credit = item.attribution { Text("\(credit.author) · \(credit.license) · \(credit.source)").font(.caption2) }
+                    Button("Preview first GIF") { perform { try await solo.previewManually(scene.id) } }
+                    Menu("Scene actions") {
+                        Button("Play on my phone") { solo.playScene(scene.id) }.disabled(!solo.armed)
+                        Button("Delete scene", role: .destructive) { deletingScene = scene }
                     }
-                    Button("Manual first-item preview — no measured visit") { perform { try await solo.previewManually(scene.id) } }
-                    Button("Play this local scene on armed PHONE") { solo.playScene(scene.id) }.disabled(!solo.armed)
-                    Button("Delete scene copy", role: .destructive) { deletingScene = scene }
+                    FeatureDetails("GIFs & credits") {
+                        ForEach(scene.items) { item in
+                            Text(item.name)
+                            if let credit = item.attribution { Text("\(credit.author) · \(credit.license) · \(credit.source)") }
+                        }
+                        Text("Manual preview does not record a visit.")
+                    }
                 }
             }
             if let offer = solo.offer, let scene = solo.archive.scenes.first(where: { $0.id == offer }) {
                 Text("Offered locally: \(scene.name)").foregroundStyle(.cyan)
-                Button("Accept offered scene on armed PHONE") { solo.playScene(scene.id) }.disabled(!solo.armed)
+                Button("Play offered scene") { solo.playScene(scene.id) }.disabled(!solo.armed)
             }
         }
     }
     private var areas: some View {
-        Section("Places / own adventure targets / personal event areas") {
-            Button("Add a named fixed area (numeric / offline)") { addingArea = true }.disabled(solo.archive.scenes.isEmpty)
+        Section("My places") {
+            Button { addingArea = true } label: { FeatureRowLabel(title: "Add a place", symbol: "plus.circle") }
+                .disabled(solo.archive.scenes.isEmpty)
+            if solo.archive.scenes.isEmpty { Text("Create a scene under Scenes & playlists first.").font(.caption).foregroundStyle(.secondary) }
             ForEach(solo.archive.areas) { area in
                 VStack(alignment: .leading) {
                     Text("\(area.name) · \(area.kind.rawValue)").font(.headline)
-                    Text("Fixed \(area.center.latitude.formatted()), \(area.center.longitude.formatted()); radius \(Int(area.radius)) m; dwell \(Int(area.dwell)) s; hysteresis \(Int(area.hysteresis)) m; cooldown \(Int(area.cooldown)) s").font(.caption)
                     Text(solo.areaStates[area.id]?.rawValue ?? "Not sensing").font(.caption)
-                    Button("Offer chosen local scene manually") { solo.offerScene(area.sceneID) }
-                    if area.kind == .adventure {
-                        Button("Record my own badge manually (not sensed)") {
-                            perform { try await solo.unlock(area, manual: true) }
-                        }.disabled(solo.archive.unlocks.contains { $0.id == area.id })
+                    Button("Offer scene") { solo.offerScene(area.sceneID) }
+                    Menu("Manage") {
+                        Button("Edit place") { editingArea = area }
+                        if area.kind == .adventure {
+                            Button("Record badge manually — not GPS verified") { perform { try await solo.unlock(area, manual: true) } }
+                                .disabled(solo.archive.unlocks.contains { $0.id == area.id })
+                        }
+                        Button("Delete place", role: .destructive) { removingArea = area }
                     }
-                    Button("Edit fixed target") { editingArea = area }
-                    Button("Delete fixed target", role: .destructive) { removingArea = area }
+                    FeatureDetails("Place details") {
+                        Text("Fixed \(area.center.latitude.formatted()), \(area.center.longitude.formatted())")
+                        Text("Radius \(Int(area.radius))m · dwell \(Int(area.dwell))s · cooldown \(Int(area.cooldown))s")
+                        Text("This is a private local target, not certified attendance or a server media grant.")
+                    }
                 }
             }
-            Text("Event areas here are personally entered fixed geometry and your own selected local copies, usable without friends/cloud. No live event authorization is imported; private/event-exclusive server metadata cannot unlock media or become offline permission.").font(.caption)
         }
     }
     private var journey: some View {
-        Section("Approximate on-device trip · never a route") {
-            Text("\(Int(solo.trip.meters)) approximate meters · \(solo.trip.running ? "measuring" : "paused/stopped")")
-            Text("Fresh full-accuracy samples only. Noise, stale fixes, gaps and jumps do not earn measured progress. Pause/resume drops the gap. A selected milestone is one-shot per reset with a local cooldown.").font(.caption)
-            Button("Start / resume trip measurement explicitly") { do { try solo.startTrip() } catch { localError = error.localizedDescription } }
-            Button("Pause trip (discard gap)") { solo.pauseTrip() }
-            Button("Stop trip") { solo.stopTrip() }
-            Button("Reset distance / one-shot milestone state", role: .destructive) { resetTrip = true }
-            TextField("Milestone approximate meters (100…1,000,000)", text: $milestoneMeters).keyboardType(.decimalPad)
-            scenePicker("Chosen local celebration", selection: $milestoneScene)
-            Button("Add selected trip milestone") {
+        Section("My journey") {
+            Text("\(Int(solo.trip.meters)) m").font(.largeTitle.bold()).foregroundStyle(Aurora.mint)
+            Text(solo.trip.running ? "Measuring approximate distance" : "Paused").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                if solo.trip.running {
+                    Button("Pause") { solo.pauseTrip() }
+                    Button("Stop") { solo.stopTrip() }
+                } else {
+                    Button("Start / resume") { do { try solo.startTrip() } catch { localError = error.localizedDescription } }
+                }
+            }.buttonStyle(.bordered)
+            DisclosureGroup("Milestones & reset") {
+                Text("Approximate distance only. Gaps and jumps are discarded; no route or speed is recorded.").font(.caption)
+                Button("Reset journey", role: .destructive) { resetTrip = true }
+                TextField("Milestone meters", text: $milestoneMeters).keyboardType(.decimalPad)
+                scenePicker("Celebration scene", selection: $milestoneScene)
+                Button("Add milestone") {
                 perform {
                     guard let meters = Double(milestoneMeters), let scene = milestoneScene else { throw BackpackError.invalid("Enter a distance and explicitly choose a local celebration.") }
                     let value = SoloMilestone(meters: meters, sceneID: scene)
                     try await solo.edit { $0.milestones.append(value) }
                 }
             }
-            ForEach(solo.archive.milestones) { item in
+                ForEach(solo.archive.milestones) { item in
                 HStack {
                     Text("\(Int(item.meters)) m · \(solo.archive.scenes.first { $0.id == item.sceneID }?.name ?? "Unavailable")")
                     Spacer()
                     Button("Remove", role: .destructive) { perform { try await solo.edit { $0.milestones.removeAll { $0.id == item.id } } } }
                 }
             }
+            }
         }
     }
     private var daylight: some View {
-        Section("Local approximate sunrise / sunset palettes") {
-            Button("Choose fixed/coarse point, time zone and palettes") { addingDaylight = true }.disabled(solo.archive.scenes.isEmpty)
+        Group {
+            Button("Add daylight plan") { addingDaylight = true }.disabled(solo.archive.scenes.isEmpty)
             Text(solo.daylightDescription).font(.caption)
             ForEach(solo.archive.daylight) { plan in
                 VStack(alignment: .leading) {
                     Text(plan.name).font(.headline)
                     Text("\(plan.timeZoneID) · capped \(Int(plan.duration)) s · \(plan.brightness.map { "PHONE brightness \(Int($0 * 100))%" } ?? "no brightness override")").font(.caption)
-                    Button("Schedule while foreground / explicitly armed") {
+                    Button("Schedule on my phone") {
                         do { try solo.scheduleDaylight(plan.id) } catch { localError = error.localizedDescription }
                     }.disabled(!solo.armed)
-                    Button("Preview chosen sunrise palette on armed PHONE") { solo.playScene(plan.sunriseSceneID, brightness: plan.brightness, duration: plan.duration) }.disabled(!solo.armed)
-                    Button("Preview chosen sunset palette on armed PHONE") { solo.playScene(plan.sunsetSceneID, brightness: plan.brightness, duration: plan.duration) }.disabled(!solo.armed)
-                    Button("Delete daylight plan", role: .destructive) { perform { try await solo.edit { $0.daylight.removeAll { $0.id == plan.id } } } }
+                    Menu("Plan actions") {
+                        Button("Preview sunrise") { solo.playScene(plan.sunriseSceneID, brightness: plan.brightness, duration: plan.duration) }.disabled(!solo.armed)
+                        Button("Preview sunset") { solo.playScene(plan.sunsetSceneID, brightness: plan.brightness, duration: plan.duration) }.disabled(!solo.armed)
+                        Button("Delete plan", role: .destructive) { perform { try await solo.edit { $0.daylight.removeAll { $0.id == plan.id } } } }
+                    }
                 }
             }
             Text("Calculation uses your explicit point/time zone and device clock, not weather or continuous GPS. Polar/unavailable cases have no guessed event. Missed/background events never replay. PHONE presentation expires; brightness is separately optional, capped and reversible.").font(.caption)
         }
     }
     private var collection: some View {
-        Section("Own local adventure badges / artwork unlocks") {
+        Group {
             ForEach(solo.archive.unlocks) { item in
                 VStack(alignment: .leading) {
                     Text(item.name)
                     Text(item.manual ? "Manually recorded, not sensed" : "Approximate foreground local eligibility; not certified").font(.caption)
-                    Button("Offer my selected unlocked local artwork") { solo.offerScene(item.sceneID) }
-                    Button("Delete this local badge", role: .destructive) { perform { try await solo.edit { $0.unlocks.removeAll { $0.id == item.id } } } }
+                    Button("Offer artwork") { solo.offerScene(item.sceneID) }
+                    Menu("Badge actions") {
+                        Button("Delete badge", role: .destructive) { perform { try await solo.edit { $0.unlocks.removeAll { $0.id == item.id } } } }
+                    }
                 }
             }
             Text("Only own local choices. Not an event award, public check-in, server permission or historical encounter/GPS timeline.").font(.caption)
         }
     }
     private var recaps: some View {
-        Section("Optional private distance-only recap") {
-            Toggle("Opt in to saving a private recap on this device", isOn: $solo.recapConsent)
-            TextField("Local recap name", text: $recapName)
+        Group {
+            Toggle("Save recaps on this device", isOn: $solo.recapConsent)
+            TextField("Recap name", text: $recapName)
             ForEach(solo.archive.unlocks) { item in
                 Toggle("Include selected summary: \(item.name)", isOn: Binding(
                     get: { recapUnlocks.contains(item.id) },
                     set: { if $0 { recapUnlocks.insert(item.id) } else { recapUnlocks.remove(item.id) } }))
             }
-            Button("Save stopped trip distance and chosen unlock summaries") {
+            Button("Save recap") {
                 let name = recapName, selected = recapUnlocks
                 perform { try await solo.saveRecap(name: name, selectedUnlocks: selected) }
             }
@@ -258,12 +296,12 @@ private struct SoloSceneComposer: View {
     @State private var operation: Task<Void, Never>?
     var body: some View {
         Form {
-            TextField("Scene / playlist name", text: $name)
-            Toggle("Author a local solid-color palette instead", isOn: $colorScene)
+            TextField("Scene name", text: $name)
+            Toggle("Use a solid color", isOn: $colorScene)
             if colorScene {
                 ColorPicker("Chosen color", selection: $color, supportsOpacity: false)
             } else {
-                Text("Deliberately choose local phone originals in playback order. No private library scan or server reference import. Only selected bytes are read at Save.")
+                Text("Choose GIFs in playback order. Only selected copies are read when you Save.").font(.caption)
                 ForEach(originals.items) { item in
                     Button {
                         if selected.contains(item.id) { selected.removeAll { $0 == item.id } }
@@ -276,12 +314,12 @@ private struct SoloSceneComposer: View {
                         }
                     }
                 }
-                TextField("Playlist interval seconds (10…3600)", text: $interval).keyboardType(.decimalPad)
-                Toggle("Repeat chosen playlist while foreground / armed", isOn: $repeats)
+                TextField("Interval (seconds)", text: $interval).keyboardType(.decimalPad)
+                Toggle("Repeat while playing", isOn: $repeats)
             }
-            Text("Copies remain account-free and on device, with attribution. Authored GIF delays/repeats are never changed. Only existing local originals may be selected; protected event metadata grants nothing.")
+            Text("Copies and credits stay on this device. Original timing stays unchanged.").font(.caption)
             if let error = error ?? originals.failure { Text(error).foregroundStyle(.orange) }
-            Button("Save explicit local scene copies", action: save).disabled(saving)
+            Button("Save scene", action: save).disabled(saving).buttonStyle(AuroraPrimaryButton())
             if saving { ProgressView() }
         }
         .navigationTitle("Own local scene")
@@ -368,44 +406,48 @@ private struct SoloAreaEditor: View {
     }
     var body: some View {
         Form {
-            Text("Choose a private fixed point with one explicitly requested fresh foreground GPS fix, or enter geometry manually. No map tiles, search, reverse geocoding or location upload.")
-            TextField("Private area / target name", text: $name)
-            Picker("Local purpose", selection: $kind) {
-                Text("Place preset (home/work stays on device)").tag(SoloAreaKind.place)
-                Text("Own adventure badge / artwork target").tag(SoloAreaKind.adventure)
-                Text("Personal fixed event area (not attendance)").tag(SoloAreaKind.event)
+            TextField("Place name", text: $name)
+            Picker("Type", selection: $kind) {
+                Text("Place").tag(SoloAreaKind.place)
+                Text("Adventure").tag(SoloAreaKind.adventure)
+                Text("Personal event").tag(SoloAreaKind.event)
             }
-            Section("Optional current fixed point — device-local draft") {
-                Toggle("I request one foreground GPS fix for this private fixed point only", isOn: $captureConsent)
+            Section("Fixed point") {
+                Toggle("Use one GPS fix for this private draft", isOn: $captureConsent)
                     .disabled(saving)
-                Text("Stop SOLO sensing/PHONE automation first. Capture does not enable either, save an area, record a route or publish a check-in. Only explicit Save below retains your chosen fixed geometry.").font(.caption)
-                Button("Request When-In-Use permission for this fixed point") {
+                Text("Stop active play first. The point stays in this draft until you Save; no route or visit is recorded.").font(.caption)
+                Button("Allow location") {
                     do {
                         try solo.requestFixedPointPermission(consent: captureConsent)
                         captureNotice = "OS permission requested separately. After granting, press Capture explicitly."
                     } catch { self.error = error.localizedDescription }
                 }.disabled(!captureConsent || capturing || saving || solo.busy || solo.sensing || solo.armed || phase != .active)
-                Button("Capture one fresh fixed point (up to10s)", action: capturePoint)
+                Button("Use current point", action: capturePoint)
                     .disabled(!captureConsent || capturing || saving || solo.busy || solo.sensing || solo.armed || phase != .active)
                 if capturing { ProgressView("Waiting for a fresh, accurate fixed point") }
-                if capturing { Button("Cancel fixed-point capture", role: .destructive) { cancelDraftOperation() } }
+                if capturing { Button("Cancel capture", role: .destructive) { cancelDraftOperation() } }
                 if let captureNotice { Text(captureNotice).font(.caption) }
             }
-            TextField("Fixed latitude −90…90", text: $latitude).keyboardType(.numbersAndPunctuation)
-            TextField("Fixed longitude −180…180", text: $longitude).keyboardType(.numbersAndPunctuation)
-            TextField("Radius meters 50…5000", text: $radius).keyboardType(.decimalPad)
-            TextField("Reliable dwell seconds 10…600", text: $dwell).keyboardType(.decimalPad)
-            TextField("Entry/exit hysteresis meters 5…200", text: $hysteresis).keyboardType(.decimalPad)
-            TextField("Reentry cooldown seconds 60…86400", text: $cooldown).keyboardType(.decimalPad)
-            Picker("Explicit owned local scene", selection: $sceneID) {
-                Text("Choose explicitly").tag(UUID?.none)
+            DisclosureGroup("Enter coordinates manually") {
+                TextField("Latitude", text: $latitude).keyboardType(.numbersAndPunctuation)
+                TextField("Longitude", text: $longitude).keyboardType(.numbersAndPunctuation)
+            }
+            TextField("Radius (meters)", text: $radius).keyboardType(.decimalPad)
+            DisclosureGroup("Advanced limits") {
+                TextField("Dwell (seconds)", text: $dwell).keyboardType(.decimalPad)
+                TextField("Hysteresis (meters)", text: $hysteresis).keyboardType(.decimalPad)
+                TextField("Cooldown (seconds)", text: $cooldown).keyboardType(.decimalPad)
+                Text("GPS is approximate. These private targets don't certify attendance or grant cloud artwork access.").font(.caption)
+            }
+            Picker("Scene", selection: $sceneID) {
+                Text("Choose scene").tag(UUID?.none)
                 ForEach(solo.archive.scenes) { Text($0.name).tag(Optional($0.id)) }
             }
-            if kind == .adventure { TextField("Own local badge name", text: $badge) }
-            Text("Starting foreground sensing explicitly evaluates saved targets. Offers are approximate; automatic PHONE changes require separate arming. Event areas neither import protected media nor certify attendance. Own badges never unlock cloud permissions.")
+            if kind == .adventure { TextField("Private badge name", text: $badge) }
             if let error { Text(error).foregroundStyle(.orange) }
-            Button("Save fixed local target", action: save)
+            Button("Save place", action: save)
                 .disabled(saving || capturing || !solo.loaded || solo.busy || solo.sensing || solo.armed)
+                .buttonStyle(AuroraPrimaryButton())
         }
         .navigationTitle(original == nil ? "New fixed area" : "Edit fixed area")
         .toolbar { Button("Cancel") { operation?.cancel(); dismiss() } }

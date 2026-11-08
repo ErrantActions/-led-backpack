@@ -7,38 +7,30 @@ struct CreateView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    AuroraHeading(eyebrow: "The creative studio", title: "Make something", accent: "worth looking at.")
-                    Text("Pick a tool. Your artwork stays local until you choose to upload.")
-                        .foregroundStyle(.secondary)
+                    Text("Make a GIF").font(.title2.bold())
+                    Text("Choose a tool. Save locally.").font(.subheadline).foregroundStyle(.secondary)
                     NavigationLink {
                         Form { TextArtworkStudio() }.modernScene().navigationTitle("Text artwork")
                     } label: {
-                        tool("Text to GIF", detail: "Crisp letters, exact LED sizing and scrolling.", symbol: "textformat", color: Aurora.mint)
+                        tool("Text to GIF", detail: "Type & animate", symbol: "textformat", color: Aurora.mint)
                     }.buttonStyle(.plain)
                     NavigationLink { PixelAnimationStudio() } label: {
-                        tool("Pixel drawing", detail: "Draw frames, animate, preview and save local GIFs.", symbol: "paintbrush.pointed", color: Aurora.rose)
+                        tool("Pixel drawing", detail: "Draw & animate", symbol: "paintbrush.pointed", color: Aurora.rose)
                     }.buttonStyle(.plain)
                     Button { app.selectedTab = .library } label: {
-                        tool("Images and video", detail: "Open Library, then + to import or convert.", symbol: "film", color: Aurora.lavender)
+                        tool("Images and video", detail: "Import with + in Library", symbol: "film", color: Aurora.lavender)
                     }.buttonStyle(.plain)
-                    NavigationLink { LEDAlphabetView() } label: {
-                        tool("LED font inspector", detail: "Every letter. Every whole-pixel size.", symbol: "character.textbox", color: .mint)
-                    }.buttonStyle(.plain)
+                    DisclosureGroup("More tools") {
+                        NavigationLink { LEDAlphabetView() } label: {
+                            FeatureRowLabel(title: "LED font inspector", symbol: "character.textbox")
+                        }
+                    }
                 }.padding(24).frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity)
             }.modernScene().navigationTitle("Create").navigationBarTitleDisplayMode(.inline)
         }
     }
     private func tool(_ title: String, detail: String, symbol: String, color: Color) -> some View {
-        HStack(spacing: 18) {
-            Image(systemName: symbol).font(.title2).foregroundStyle(color)
-                .frame(width: 52, height: 60)
-                .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.headline).foregroundStyle(.primary)
-                Text(detail).font(.subheadline).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.secondary)
-        }.padding(20).glassPanel()
+        FeatureRowLabel(title: title, symbol: symbol, subtitle: detail, tint: color)
+            .padding(16).glassPanel(radius: 20)
     }
 }

@@ -153,7 +153,7 @@ struct DeviceView: View {
                 if link.connected {
                     BackpackMonitor()
                     VStack(alignment: .leading, spacing: 16) { QuickScenes() }.padding(20).glassPanel()
-                    displayControls
+                    DisclosureGroup("Display settings") { displayControls }
                     BackpackStorageView()
                 }
                 VStack(alignment: .leading, spacing: 16) {
@@ -300,7 +300,7 @@ struct LibraryView: View {
     private var libraryList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                AuroraHeading(eyebrow: "Your collection", title: "Your world.", accent: "On repeat.")
+                Text("Your GIFs").font(.title2.bold())
                 libraryHeader
                 libraryArtwork
                 ViewThatFits(in: .horizontal) {
@@ -367,45 +367,33 @@ struct LibraryView: View {
     }
 
     private var libraryHeader: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Picker("Display target", selection: $targets.target) {
                 ForEach(NativeDisplayTarget.allCases) { Text($0.rawValue).tag($0) }
             }.pickerStyle(.segmented)
-            Text(targets.target == .phone ?
-                "Phone target: local, account-free, no Bluetooth or slot writes." :
-                (app.link.connected ? "Backpack target: transfers still require explicit confirmation. Phone artwork is retained." :
-                    "Backpack controls unavailable: connect explicitly. Phone display still works offline."))
-                .font(.caption).foregroundStyle(.secondary)
+            StatusPill(title: targets.target == .phone ? "Phone · offline" :
+                app.link.connected ? "Backpack connected" : "Connect backpack to send",
+                symbol: targets.target == .phone ? "iphone" : "backpack")
             if targets.target == .hardware, let id = targets.hardwareArtworkID,
                let media = library.state.media.first(where: { $0.id == id }) {
-                Text("Retained hardware selection: \(media.name). Switching targets does not send it.").font(.caption)
+                Text("Selected: \(media.name)").font(.caption).foregroundStyle(.secondary)
             }
             LibraryScopeControl(selection: $scope)
-            NavigationLink { PhoneDisplayLibraryView() } label: {
-                Label("Phone display", systemImage: "iphone")
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(AuroraPrimaryButton())
-            Button { communityGallery = true } label: {
-                HStack {
-                    Image(systemName: "sparkle.magnifyingglass")
-                    Text("Discover GIFs")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                }
-            }.buttonStyle(AuroraPrimaryButton())
-            HStack {
-                Text("Find your next favorite.").font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                Button { gallery = true } label: { Label("Commons", systemImage: "globe") }.font(.caption.weight(.semibold))
-            }
-            NavigationLink { GPSGamesView() } label: {
-                Label("GPS & nearby games", systemImage: "location.circle.fill")
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(AuroraPrimaryButton())
-            if !community.signedIn {
-                Text("Browse and save GIFs freely. Sign in only when you want cloud storage or community actions.")
-                    .font(.caption).foregroundStyle(.secondary)
-                if scope == .cloud { Button("Sign in for your cloud library") { showAccount = true } }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                Button { communityGallery = true } label: {
+                    FeatureCardLabel(title: "Discover", subtitle: "Community GIFs", symbol: "sparkle.magnifyingglass")
+                }.accessibilityLabel("Discover GIFs")
+                NavigationLink { PhoneDisplayLibraryView() } label: {
+                    FeatureCardLabel(title: "Play", subtitle: "On your phone", symbol: "play.fill", tint: Aurora.lavender)
+                }.accessibilityLabel("Phone display")
+                NavigationLink { GPSGamesView() } label: {
+                    FeatureCardLabel(title: "Games", subtitle: "Explore & swap", symbol: "gamecontroller", tint: Aurora.rose)
+                }.accessibilityLabel("GPS & nearby games")
+            }.buttonStyle(.plain)
+            if !community.signedIn && scope == .cloud { Button("Sign in for your cloud library") { showAccount = true } }
+            FeatureDetails("More sources & target details") {
+                Button { gallery = true } label: { Label("Commons", systemImage: "globe") }
+                Text("Changing targets does not send artwork. Backpack transfers still require confirmation; phone playback is local.")
             }
             if videoImporting { ProgressView("Importing artwork...") }
         }
@@ -414,7 +402,7 @@ struct LibraryView: View {
     private var libraryArtwork: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("In your rotation").font(.title3.weight(.semibold))
+                Text("Collection").font(.headline)
                 Spacer()
                 Image(systemName: "square.grid.2x2").foregroundStyle(Aurora.lavender).accessibilityHidden(true)
             }

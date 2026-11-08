@@ -134,6 +134,23 @@ jobs:
             -parallel-testing-enabled NO \
             -only-testing:LEDBackpackTests/NativePublicIntegrationTests CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/Recovery/public-integration.log
+      - name: Export native UI screenshots
+        if: always()
+        run: |
+          set -euo pipefail
+          for RESULT in GamePriority Integrated; do
+            if test -d "build/Recovery/$RESULT.xcresult"; then
+              xcrun xcresulttool export attachments --path "build/Recovery/$RESULT.xcresult" \
+                --output-path "build/Recovery/Screenshots/$RESULT"
+            fi
+          done
+      - name: Retain native UI screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-ui-screenshots-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ios/build/Recovery/Screenshots
+          if-no-files-found: warn
       - name: Retain source provenance and actual validation results
         uses: actions/upload-artifact@v4
         if: always()

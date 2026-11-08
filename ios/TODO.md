@@ -4,6 +4,20 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Clean LED interface overhaul - unsigned validation pending
+
+- [x] Compact shared cards/rows/details and quieter LED styling across the
+  five-tab experience; artwork-first Library, Social and game hubs.
+- [x] Simplified Create/Live, phone playback, pairing, current-GIF swaps,
+  Found Users, private hunt, SOLO setup and timing/send review actions.
+- [x] Preserve actual capability gates, source-copy semantics, explicit
+  sharing/sensor/destructive consent and first-original recovery.
+- [x] Expandable SOLO content avoids nested List Sections inside disclosures.
+- [x] Add timing review/new-copy UI regression and scene-disclosure/default-off
+  assertions; retain actual screenshot export in unsigned validation.
+- [ ] Actual native app/test compilation, full regressions and screenshot
+  review of this exact source. No new TestFlight or physical-device claim.
+
 ## Unsigned private fixed-point capture - source PURPLE
 
 - [x] Explicit one-fix private area draft capture with separate foreground
