@@ -21,11 +21,6 @@ struct CommunityCloudItem: Decodable, Identifiable {
     private enum CodingKeys: String, CodingKey { case visibility, status, moderationReason, aiState, aiError }
 }
 
-enum LibraryScope: String, CaseIterable, Identifiable {
-    case all = "All", device = "On iPhone", cloud = "Cloud"
-    var id: String { rawValue }
-}
-
 struct CommunityCloudPage: Decodable {
     let items: [CommunityCloudItem]
     let page: Int?
@@ -52,7 +47,7 @@ final class CloudLibraryStore: ObservableObject {
         items = []; failure = nil; loading = false; revision = nil; ownerID = nil; server = nil; nextPage = nil
     }
 
-    func refresh(_ community: CommunityController) async {
+    func refresh(_ community: CommunityController, library: LocalLibrary? = nil) async {
         let current = community.accountRevision
         if revision != current { items = []; failure = nil; revision = current; ownerID = nil; server = nil; nextPage = nil }
         guard community.signedIn else { clear(); return }
@@ -64,6 +59,7 @@ final class CloudLibraryStore: ObservableObject {
             }
         }
         do {
+            if library != nil && community.config == nil { try await community.loadConfig() }
             if community.user == nil { try await community.refreshUser() }
             let result = try await community.cloudPage(page: 1)
             try Task.checkCancellation()
@@ -71,13 +67,27 @@ final class CloudLibraryStore: ObservableObject {
             items = result.items.filter { $0.status != "deleted" }
             nextPage = result.nextPage
             ownerID = community.user?.id; server = community.origin
+            if let library {
+                while let page = nextPage {
+                    let result = try await community.cloudPage(page: page)
+                    try Task.checkCancellation()
+                    guard community.accountRevision == current, revision == current, community.signedIn else { return }
+                    var ids = Set(items.map(\.id))
+                    let added = result.items.filter { $0.status != "deleted" && ids.insert($0.id).inserted }
+                    guard result.nextPage == nil || !added.isEmpty else {
+                        throw BackpackError.invalid("Cloud pagination repeated artwork. Retry synchronization.")
+                    }
+                    items += added; nextPage = result.nextPage
+                }
+                try await downloadMissing(community, library: library, revision: current)
+            }
         } catch {
             guard !Task.isCancelled, community.accountRevision == current, revision == current else { return }
             failure = error.localizedDescription
         }
     }
 
-    func loadMore(_ community: CommunityController) async {
+    func loadMore(_ community: CommunityController, library: LocalLibrary? = nil) async {
         guard !loading, let page = nextPage, revision == community.accountRevision, community.signedIn else { return }
         let current = community.accountRevision
         loading = true; failure = nil
@@ -96,9 +106,28 @@ final class CloudLibraryStore: ObservableObject {
             guard result.nextPage == nil || !added.isEmpty else { throw BackpackError.invalid("Cloud pagination repeated the same items. Refresh the library.") }
             items += added
             nextPage = result.nextPage
+            if let library { try await downloadMissing(community, library: library, revision: current) }
         } catch {
             guard !Task.isCancelled, revision == current, community.accountRevision == current else { return }
             failure = error.localizedDescription
+        }
+    }
+
+    private func downloadMissing(_ community: CommunityController, library: LocalLibrary, revision: UUID) async throws {
+        guard let origin = server, let owner = ownerID else {
+            throw BackpackError.invalid("Sign in before synchronizing owned artwork.")
+        }
+        // Protocol 1 owns reconciliation when enabled; never bypass its pause or unlock gates.
+        guard let config = community.config else { throw BackpackError.invalid("Load cloud capabilities before synchronization.") }
+        guard config.cloudLibraryEncryptionEnabled != true else { return }
+        for cloud in cloudOnly(local: library.state.media, origin: origin, owner: owner) {
+            let bytes = try await community.download(cloud.item.gifUrl)
+            try Task.checkCancellation()
+            guard community.accountRevision == revision, community.signedIn,
+                  community.origin == origin, community.user?.id == owner else {
+                throw BackpackError.invalid("Cloud account changed; downloaded artwork was discarded.")
+            }
+            _ = try library.saveCatalogGIF(bytes, item: cloud.item, origin: origin, accountID: owner, assetURL: cloud.item.gifUrl)
         }
     }
 
@@ -162,22 +191,8 @@ struct CloudArtworkDetail: View {
                         systemImage: cloud.visibility == "private" ? "lock.icloud" : "person.2")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text(cloud.item.displayAttribution).font(.caption).foregroundStyle(.secondary)
-                    Button(saved ? "Available offline" : "Keep on this iPhone") {
-                        do {
-                            guard let bytes, let loadedOrigin, let loadedOwner,
-                                  community.origin == loadedOrigin, community.user?.id == loadedOwner else {
-                                throw BackpackError.invalid("Your cloud account changed. Reopen this GIF before saving.")
-                            }
-                            try library.saveCatalogGIF(bytes, item: cloud.item, origin: loadedOrigin,
-                                accountID: loadedOwner, assetURL: cloud.item.gifUrl)
-                            saved = true
-                        } catch { failure = error.localizedDescription }
-                    }.buttonStyle(.borderedProminent).disabled(bytes == nil || saved)
-                    Text("Local and cloud copies are independent. Removing a local copy does not delete the cloud GIF. Saving preserves credits and does not publish private artwork.")
-                        .font(.caption).foregroundStyle(.secondary)
                     Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.legacyCloud(cloud)]) }
                         .buttonStyle(.borderedProminent).disabled(bytes == nil || busy)
-                    Text("Temporarily reads only this current owned GIF; keeping a permanent local copy is optional. Sending to the physical display does not publish it to the community.").font(.caption)
                     if cloud.visibility == "private" && !shared {
                         Button("Share with the community") { sharing = true }.disabled(busy)
                     }

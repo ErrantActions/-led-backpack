@@ -10,7 +10,7 @@ struct Attribution: Codable, Equatable, Sendable {
     var licenseURL: String
 }
 
-struct SavedMedia: Identifiable, Codable {
+struct SavedMedia: Identifiable, Codable, Equatable {
     var id = UUID()
     var name: String
     var attribution: Attribution?
@@ -176,17 +176,50 @@ final class LocalLibrary: ObservableObject {
 
     @discardableResult
     func savePrivateCloudGIF(_ data: Data, title: String, attribution: Attribution?, category: String?,
-        origin: CommunityOrigin, accountID: UUID, itemID: UUID, assetURL: URL) throws -> SavedMedia {
+        origin: CommunityOrigin, accountID: UUID, itemID: UUID, assetURL: URL, favorite: Bool = false) throws -> SavedMedia {
         guard origin.contains(assetURL), assetURL.path == "/api/v1/cloud/items/\(itemID.uuidString.lowercased())/media" else {
             throw BackpackError.invalid("Private GIF source must belong to this account's captured cloud server.")
         }
         let source = MediaCloudSource(server: origin.url.absoluteString, accountID: accountID,
             itemID: itemID, assetURL: assetURL.absoluteString)
-        if let existing = state.media.first(where: { $0.cloudSource == source }) {
+        if let existing = state.media.first(where: {
+            $0.cloudSource?.server == source.server && $0.cloudSource?.accountID == source.accountID &&
+                $0.cloudSource?.itemID == source.itemID
+        }) {
             _ = try self.data(existing)
             return existing
         }
-        return try store(name: title, data: data, attribution: attribution, category: category, cloudSource: source)
+        return try store(name: title, data: data, attribution: attribution, category: category, cloudSource: source, favorite: favorite)
+    }
+
+    func applyCloudUpdate(_ expected: SavedMedia, original: Data, data: Data, title: String,
+        attribution: Attribution?, category: String?, favorite: Bool) throws -> SavedMedia {
+        guard let index = state.media.firstIndex(where: { $0.id == expected.id }),
+              state.media[index] == expected, try self.data(expected) == original else {
+            throw BackpackError.invalid("Artwork changed during synchronization. Both copies were retained.")
+        }
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              data.count <= CloudVaultWire.maxPlaintext else {
+            throw BackpackError.invalid("Cloud artwork has an invalid title or exceeds the phone storage limit.")
+        }
+        let normalized = try checkedCategory(category)
+        _ = try MediaCodec.decode(data)
+        var value = state
+        value.media[index].name = String(title.prefix(100))
+        value.media[index].attribution = attribution
+        value.media[index].category = normalized
+        value.media[index].favorite = favorite
+        if original != data { value.slotPreviews?.removeAll { $0.mediaID == expected.id } }
+        let url = folder.appendingPathComponent(expected.filename)
+        try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        do { try commit(value) }
+        catch {
+            let saveError = error
+            do { try original.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+            catch { throw BackpackError.invalid("Cloud update and original-file recovery failed: \(error.localizedDescription)") }
+            throw saveError
+        }
+        return value.media[index]
     }
 
     @discardableResult

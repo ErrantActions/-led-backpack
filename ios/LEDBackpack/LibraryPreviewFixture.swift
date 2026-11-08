@@ -82,6 +82,16 @@ private actor LibraryPreviewTransport: CommunityTransport {
             return CommunityResponse(status: 200, data: Data("{\"items\":[\(items)],\"page\":1,\"limit\":100,\"total\":2}".utf8))
         }
         if request.httpMethod == "GET",
+           path == "/media/\(LibraryPreviewFixture.linkedItem)/original.gif" ||
+            path == "/media/\(LibraryPreviewFixture.remoteItem)/original.gif" {
+            let bytes = try await MainActor.run {
+                let frame = try TextArtwork.render("LED", size: PanelSize(width: 64, height: 64), font: .pixel,
+                    alignment: .center, color: .magenta, pixelScale: 2)
+                return try MediaCodec.encode([frame], delays: [0.5])
+            }
+            return CommunityResponse(status: 200, data: bytes)
+        }
+        if request.httpMethod == "GET",
            path == "/media/\(LibraryPreviewFixture.linkedItem)/preview.png" ||
             path == "/media/\(LibraryPreviewFixture.remoteItem)/preview.png" {
             let bytes = try await MainActor.run {

@@ -3,6 +3,23 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### One owned library
+
+Library no longer has All / On iPhone / Cloud storage scopes. After the existing
+explicit cloud-sync consent, protocol 1 automatically uploads local imports,
+copies, categories and favorites and downloads owned remote GIFs into the same
+durable phone library. Remote version changes update an unchanged phone copy;
+concurrent edits fail explicitly without overwriting either side. Linked artwork
+appears once. Cached GIFs remain usable offline. Foreground sync retries every
+30 seconds and after local changes; pause, unlock, reset and account boundaries
+remain enforced. Storage limits and failures stay visible, not labeled synced.
+
+Community and Commons remain discovery, not separate owned libraries. Removing
+a local download still retains its cloud copy; sync does not silently infer
+remote deletion from missing local files or re-upload foreign/reset associations.
+Cloud-only deletion remains explicitly confirmed in sync settings.
+These changes require unsigned native validation and are not in TestFlight9.
+
 ### Clean LED interface overhaul - unsigned source in validation
 
 The five tabs remain Library, Social, Backpack, Create and Live. Compact
