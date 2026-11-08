@@ -156,6 +156,7 @@ struct FeatureDetails<Content: View>: View {
         DisclosureGroup {
             VStack(alignment: .leading, spacing: 10) { content }
                 .font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                .buttonStyle(.borderless)
         } label: {
             Label(title, systemImage: "info.circle").font(.subheadline)
         }

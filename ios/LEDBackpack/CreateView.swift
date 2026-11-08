@@ -24,6 +24,11 @@ struct CreateView: View {
                         NavigationLink { LEDAlphabetView() } label: {
                             FeatureRowLabel(title: "LED font inspector", symbol: "character.textbox")
                         }
+                        #if DEBUG
+                        if CommandLine.arguments.contains("--library-ui-fixture") {
+                            NavigationLink("Action isolation fixture") { FeatureActionIsolationFixture() }
+                        }
+                        #endif
                     }
                 }.padding(24).frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity)
             }.modernScene().navigationTitle("Create").navigationBarTitleDisplayMode(.inline)

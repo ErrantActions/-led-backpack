@@ -281,6 +281,27 @@ final class NavigationTests: XCTestCase {
         attach(app, name: "Timing save - new copy and original both retained")
     }
 
+    func testExpandableDetailsButtonsFireOnlyTheChosenAction() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let create = app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch
+        XCTAssertTrue(create.waitForExistence(timeout: 20)); create.tap()
+        let tools = app.buttons["More tools"]
+        reveal(tools, in: app); tools.tap()
+        let fixture = app.buttons["Action isolation fixture"]
+        reveal(fixture, in: app); fixture.tap()
+        XCTAssertTrue(app.navigationBars["Action isolation"].waitForExistence(timeout: 10))
+        app.buttons["Fixture actions"].tap()
+        app.buttons["Primary fixture action"].tap()
+        XCTAssertTrue(app.staticTexts["Primary: 1"].exists)
+        XCTAssertTrue(app.staticTexts["Secondary: 0"].exists)
+        app.buttons["Secondary fixture action"].tap()
+        XCTAssertTrue(app.staticTexts["Primary: 1"].exists)
+        XCTAssertTrue(app.staticTexts["Secondary: 1"].exists)
+        attach(app, name: "Expandable details - chosen action fires independently")
+    }
+
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
         XCTAssertFalse(app.textFields.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.secureTextFields.allElementsBoundByIndex.contains { $0.isHittable })

@@ -32,7 +32,7 @@ struct SoloScenesView: View {
             DisclosureGroup("My badges") { collection }
             DisclosureGroup("Private recaps") { recaps }
         }
-        .navigationTitle("SOLO local scenes").modernScene()
+        .navigationTitle("SOLO local scenes").modernScene().buttonStyle(.borderless)
         .task { await solo.load() }
         .sheet(isPresented: $addingScene) { NavigationStack { SoloSceneComposer() } }
         .sheet(isPresented: $addingArea) { NavigationStack { SoloAreaEditor() } }
@@ -184,6 +184,7 @@ struct SoloScenesView: View {
                     Button("Stop") { solo.stopTrip() }
                 } else {
                     Button("Start / resume") { do { try solo.startTrip() } catch { localError = error.localizedDescription } }
+                    if solo.trip.meters > 0 { Button("Stop") { solo.stopTrip() } }
                 }
             }.buttonStyle(.bordered)
             DisclosureGroup("Milestones & reset") {
