@@ -260,7 +260,14 @@ struct LibraryView: View {
     @State private var video: ImportedVideo?
     @State private var videoImporting = false
     @State private var importing = false
-    @State private var editor = false
+    private struct EditorCopy: Identifiable {
+        let id = UUID()
+        let data: Data
+        let attribution: Attribution?
+        let category: String?
+        let name: String
+    }
+    @State private var editorCopy: EditorCopy?
     @State private var editorData: Data?
     @State private var attribution: Attribution?
     @State private var editorCategory: String?
@@ -529,13 +536,11 @@ struct LibraryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $editor) {
-                if let data = editorData {
-                    MediaEditor(data: data, attribution: attribution, category: editorCategory, initialName: editorName)
-                }
+            .sheet(item: $editorCopy) { copy in
+                MediaEditor(data: copy.data, attribution: copy.attribution, category: copy.category, initialName: copy.name)
             }
             .sheet(isPresented: $gallery, onDismiss: {
-                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+                if openEditorAfterGallery { openEditorAfterGallery = false; presentEditor() }
             }) {
                 GIFGallery { data, credit, category, title in
                     editorData = data; attribution = credit; editorCategory = category
@@ -556,8 +561,14 @@ struct LibraryView: View {
         if let imported = pendingVideo {
             pendingVideo = nil; video = imported
         } else if photoEditorReady {
-            photoEditorReady = false; editor = true
+            photoEditorReady = false; presentEditor()
         }
+    }
+    private func presentEditor() {
+        do {
+            guard let data = editorData else { throw BackpackError.invalid("Choose artwork before opening the editor.") }
+            editorCopy = EditorCopy(data: data, attribution: attribution, category: editorCategory, name: editorName)
+        } catch { panel.report(error) }
     }
 
     private var videoImports: some View {
@@ -574,7 +585,7 @@ struct LibraryView: View {
     private var mediaActions: some View {
         importingContent
             .sheet(isPresented: $communityGallery, onDismiss: {
-                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+                if openEditorAfterGallery { openEditorAfterGallery = false; presentEditor() }
             }) {
                 CommunityGallery { data, credit, category, title in
                     editorData = data; attribution = credit; editorCategory = category; editorName = title
@@ -648,9 +659,8 @@ struct LibraryView: View {
         case .preview: app.run { previewTitle = item.name; previewData = try library.data(item) }
         case .edit:
             app.run {
-                editorData = try library.data(item)
-                attribution = item.attribution; editorCategory = item.category
-                editorName = "\(item.name) edited"; editor = true
+                editorCopy = EditorCopy(data: try library.data(item), attribution: item.attribution,
+                    category: item.category, name: "\(item.name) edited")
             }
         case .send: targets.stageHardware(item.id); selected = item; uploading = true
         case .phone:

@@ -101,7 +101,8 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["On iPhone"].exists)
         XCTAssertFalse(app.buttons["Cloud"].exists)
 
-        app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
+        let createTab = app.buttons["Create"]
+        XCTAssertTrue(createTab.waitForExistence(timeout: 10)); createTab.tap()
         XCTAssertTrue(app.navigationBars["Create"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Text to GIF")).firstMatch.exists)
         assertNoVisibleEntryForms(app)
