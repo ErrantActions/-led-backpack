@@ -4,7 +4,33 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
-## Verified upload - 2026-11-07
+## Verified build10 upload - 2026-11-08
+
+Version **0.1.0 build10** was signed, archived, exported and successfully uploaded
+to App Store Connect in
+[run42506053458](https://github.com/ErrantActions/-led-backpack/actions/runs/42506053458).
+Release commit `1ef59c3` preserves the exact native inputs verified at `0772fd9`.
+The exact-source Linux reuse gate, protected upload and temporary signing
+asset/keychain/profile cleanup all passed. Existing signing assets and the
+reviewed OS-provided-encryption declaration remain unchanged.
+
+Frozen native source `0772fd9` passed
+[run42502718422](https://github.com/ErrantActions/-led-backpack/actions/runs/42502718422):
+app/test compilation, full native1011/0 with2 explicit skips, integrated UI7/0,
+all18 synchronization fixtures and separate read-only public integration1/0.
+The full GPS/nearby priority and consolidated fixture gates also passed.
+The actual exported Library screenshots were reviewed before promotion.
+
+This candidate adds the clean action-first UI, one automatically synchronized
+owned GIF library, remote-edit/preview reconciliation and the verified post-build9
+GPS/SOLO/paired-game fixes. Only reviewed committed source is promoted; dirty
+firmware/bitmap/OTA/reserved-slot work and existing signing assets are unchanged.
+Fastlane explicitly skipped waiting for Apple processing. Therefore build10's
+**processing status and internal tester availability are not verified**.
+Software fixtures/public reads are not private-production sync or physical
+GPS/BLE/UWB/backpack/provider acceptance.
+
+## Verified build9 upload - 2026-11-07
 
 Version **0.1.0 build9** was signed, archived, exported and successfully uploaded
 in [run42437873593](https://github.com/ErrantActions/-led-backpack/actions/runs/42437873593).

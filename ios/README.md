@@ -18,12 +18,22 @@ Community and Commons remain discovery, not separate owned libraries. Removing
 a local download still retains its cloud copy; sync does not silently infer
 remote deletion from missing local files or re-upload foreign/reset associations.
 Cloud-only deletion remains explicitly confirmed in sync settings.
-These changes require unsigned native validation and are not in TestFlight9.
+Frozen source `0772fd9` passed full unsigned native validation in
+[run42502718422](https://github.com/ErrantActions/-led-backpack/actions/runs/42502718422):
+1011 native tests/0 failures/2 explicit skips, all7 UI regressions/0 failures,
+and separate read-only public integration1/0. All18 synchronization fixtures
+passed. Reviewed XCTest screenshots show one artwork collection without storage
+scopes. Remote byte changes also invalidate Library, phone, queue and picker
+previews while preserving artwork identity. Release `1ef59c3` was signed,
+archived, exported and uploaded as **0.1.0 build10** in
+[run42506053458](https://github.com/ErrantActions/-led-backpack/actions/runs/42506053458).
+Signing cleanup passed. Apple processing and internal tester availability are
+not verified; TestFlight9 does not include these changes.
 The existing unsigned source workflow's `library` mode runs the cloud-sync,
 library, vault/protocol/crypto and direct-cloud-send tests together with all
 navigation UI regressions, followed by the separate read-only public integration.
 
-### Clean LED interface overhaul - unsigned source in validation
+### Clean LED interface overhaul - uploaded in TestFlight build10
 
 The five tabs remain Library, Social, Backpack, Create and Live. Compact
 artwork-first cards replace oversized introductions; restrained LED accents,
@@ -42,8 +52,9 @@ No protocol, account, sensor, cloud-access or firmware permission is added.
 UI regressions cover default-off games, guest capability gates, expanded scene
 actions and timing invalidation/new-copy preservation. The existing unsigned
 workflow now exports XCTest screenshots for visual review. Native compiler,
-test counts and screenshot results will be recorded after execution; these
-working-source changes are not in TestFlight build9.
+test counts and screenshot results are recorded above. These changes are
+uploaded in TestFlight build10, not build9; tester/device acceptance remains
+a separate checkpoint.
 
 For UI-only fixture corrections, the existing unsigned source workflow has a
 `ui` mode: compile, run all NavigationTests, run separate read-only public

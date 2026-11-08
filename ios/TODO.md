@@ -4,7 +4,21 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
-## Clean LED interface overhaul - unsigned validation pending
+## Unified library and clean LED interface - build10 uploaded
+
+- [x] One owned GIF collection; no All / On iPhone / Cloud scope chooser or
+  per-GIF Keep-local prerequisite. After existing cloud consent, local imports/
+  organization/favorites upload and owned remote artwork downloads automatically.
+- [x] Offline retries, stable identity/dedup, remote edits and all local preview
+  surfaces reconcile; conflicts, storage limits and account/pause/reset boundaries
+  retain files and surface incomplete synchronization rather than claim success.
+- [x] Frozen source0772fd9 full run42502718422: actual compile, native1011/0/
+  2explicit skips, all18 sync fixtures, UI7/0 and separate public integration1/0.
+  Actual exported Library screenshots reviewed; no test or release gate waived.
+- [x] Exact inputs promoted as1ef59c3; protected run42506053458 signed/archived/
+  exported/uploaded0.1.0(10) and cleaned signing assets successfully.
+- [ ] Apple processing/internal tester availability, physical GPS/BLE/UWB/
+  backpack/private-provider/private-production-sync acceptance remain unverified.
 
 - [x] Compact shared cards/rows/details and quieter LED styling across the
   five-tab experience; artwork-first Library, Social and game hubs.
@@ -15,8 +29,8 @@ availability or that the product backlog is finished.
 - [x] Expandable SOLO content avoids nested List Sections inside disclosures.
 - [x] Add timing review/new-copy UI regression and scene-disclosure/default-off
   assertions; retain actual screenshot export in unsigned validation.
-- [ ] Actual native app/test compilation, full regressions and screenshot
-  review of this exact source. No new TestFlight or physical-device claim.
+- [x] Actual native app/test compilation, full regressions and screenshot
+  review of source0772fd9; uploaded in build10. No physical-device claim.
 
 ## Unsigned private fixed-point capture - source PURPLE
 
@@ -34,7 +48,7 @@ availability or that the product backlog is finished.
 - [x]1new exact capture-window regression passed: app/test compile and
   99focused native tests/0 atf43f6cc in run42453233273.
 - [ ] Physical GPS/permission/private-provider acceptance remains unperformed;
-  no full/UI/public sweep or new beta for these latest capture additions.
+  the full/UI/public sweep and build10 upload do not prove those device behaviors.
 
 ## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
 
