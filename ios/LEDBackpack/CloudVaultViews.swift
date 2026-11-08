@@ -129,7 +129,7 @@ struct CloudVaultSettingsView: View {
                 }
             }
         } message: {
-            Text("Eligible local GIFs will be privately backed up. A remotely deleted/reset library is not restored or re-uploaded automatically. Creating a new library starts server-managed; user-held enrollment is separate.")
+            Text("Your GIFs will sync automatically and stay available offline after download. Deleted or reset cloud libraries are not restored automatically. Storage starts server-managed; user-held encryption is optional.")
         }
         .confirmationDialog("Private sync paused. Existing cloud copies are unchanged.", isPresented: $offerDelete, titleVisibility: .visible) {
             Button("Keep cloud copies", role: .cancel) {}

@@ -81,7 +81,7 @@ jobs:
               -derivedDataPath build -resultBundlePath build/UnsignedTests.xcresult \
               -parallel-testing-enabled NO "${TESTS[@]}" "${TIMEOUTS[@]}" CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           fi
-      - name: Verify read-only public integration after UI regressions
+      - name: Verify read-only public integration
         if: inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'library-units'
         env:
           TEST_RUNNER_NATIVE_PUBLIC_INTEGRATION: "1"

@@ -36,6 +36,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["On iPhone"].exists)
         XCTAssertFalse(app.buttons["Cloud"].exists)
         XCTAssertTrue(app.buttons["Library sync settings"].exists)
+        XCTAssertGreaterThanOrEqual(app.buttons["Library sync settings"].frame.height, 44)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Unified guest library - no storage scopes")
         reveal(app.buttons["Preview Night ride"], in: app)
@@ -376,7 +377,6 @@ final class NavigationTests: XCTestCase {
     }
 
     private func returnToHeader(_ app: XCUIApplication) {
-        reveal(app.buttons["Library sync settings"], in: app)
         reveal(app.buttons["Discover GIFs"], in: app)
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
     }

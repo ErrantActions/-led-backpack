@@ -390,6 +390,8 @@ struct LibraryView: View {
                     vault.syncing ? (vault.locked ? "Unlock to sync" : "Cloud sync on") : "Cloud sync off",
                     systemImage: vault.failure != nil ? "icloud.slash" : "icloud")
                     .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }.accessibilityLabel("Library sync settings")
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 Button { communityGallery = true } label: {
