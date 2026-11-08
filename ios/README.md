@@ -126,7 +126,10 @@ available after granting. It does not silently restart, drop accrued distance
 or create a straight-line catch-up segment. A small location-source interface
 keeps the real lazy CLLocationManager as default and permits deterministic
 controller fixtures without requesting OS/device permissions.
-Two new permission/restart/trip-anchor regressions are prepared.
+Two new permission/restart/trip-anchor regressions passed atc71a34f in
+run42442572805: actual app/test compile and71focused native tests/0failures.
+This remains a software fixture checkpoint, not real GPS/permission/device
+acceptance or an additional TestFlight upload.
 
 ### Social tab navigation follow-up - source only
 

@@ -34,8 +34,10 @@ availability or that the product backlog is finished.
 - [x] Further source aligns controller sensing state with the OS-permission
   pause, retires stale callbacks and discards sample/trip anchors; explicit
   restart remains possible without catch-up distance or automatic rearming.
-- [ ]2new injectable-source permission/restart/trip regressions and focused
-  validation. Actual device/private acceptance remains unperformed; no new beta.
+- [x]2new injectable-source permission/restart/trip regressions executed:
+  app/test compile and71focused native tests/0 atc71a34f in run42442572805.
+- [ ] Actual device/private acceptance remains unperformed; these post-build9
+  source changes have not had another full/UI/public release sweep or beta upload.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
