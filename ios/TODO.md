@@ -41,7 +41,13 @@ availability or that the product backlog is finished.
 - [x] Next unsigned SOLO source retains configured in-memory area cooldowns
   across stop/rearm while clearing inside/dwell state. Reliable loads/saves
   prune removed area evaluators; no sample/coordinate/timeline persistence.
-- [ ]2new area cooldown/restart regressions and targeted native validation.
+- [x]2new area cooldown/restart regressions passed: app/test compile and
+  73focused native tests/0 at9346b00 in run42443394862.
+- [x] Next unsigned paired-NI source checks actual monotonic local sample
+  freshness before application/reauthorization, and scopes expiry callbacks
+  to current session/generation. Existing authenticated message schema and
+  explicit manual fallback behavior retained; no physical/ranging proof.
+- [ ]3new NI freshness/reset/invalid-clock fixtures and targeted validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

@@ -43,8 +43,13 @@ struct LocalRangeStability {
     private var previous: (distance: Float, time: Double)?
     private var start: Double?
     mutating func reset() { previous = nil; start = nil }
+    func fresh(uptime: Double) -> Bool {
+        guard let previous, let start, uptime.isFinite, uptime >= previous.time,
+              uptime < previous.time + 2, previous.time - start >= 1 else { return false }
+        return true
+    }
     mutating func observe(distance: Float?, uptime: Double) -> Bool {
-        guard let distance, distance.isFinite, (0.3...3).contains(distance), uptime.isFinite,
+        guard let distance, distance.isFinite, (0.3...3).contains(distance), uptime.isFinite, uptime >= 0,
               previous == nil || (uptime > previous!.time && uptime - previous!.time <= 2) else {
             reset(); return false
         }

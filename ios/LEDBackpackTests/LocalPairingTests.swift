@@ -81,9 +81,34 @@ final class LocalPairingTests: XCTestCase {
         XCTAssertFalse(gate.observe(distance: .nan, uptime: 6))
         XCTAssertFalse(gate.observe(distance: nil, uptime: 7))
     }
+    func testFreshRangeGateExpiresEvenBeforeTimerCallbackRuns() {
+        var gate = LocalRangeStability()
+        XCTAssertFalse(gate.observe(distance: 1, uptime: 1))
+        XCTAssertFalse(gate.fresh(uptime: 1))
+        XCTAssertTrue(gate.observe(distance: 1.1, uptime: 2.1))
+        XCTAssertTrue(gate.fresh(uptime: 4.099))
+        XCTAssertFalse(gate.fresh(uptime: 4.1))
+        XCTAssertFalse(gate.fresh(uptime: 2))
+    }
+    func testRangeResetOrUnstableMeasurementRevokesFreshGate() {
+        var gate = LocalRangeStability()
+        _ = gate.observe(distance: 1, uptime: 1)
+        _ = gate.observe(distance: 1.1, uptime: 2.1)
+        XCTAssertTrue(gate.fresh(uptime: 2.1))
+        _ = gate.observe(distance: 2, uptime: 2.2)
+        XCTAssertFalse(gate.fresh(uptime: 2.2))
+        gate.reset()
+        XCTAssertFalse(gate.fresh(uptime: 2.3))
+    }
+    func testNegativeRangeClockCannotEstablishStability() {
+        var gate = LocalRangeStability()
+        XCTAssertFalse(gate.observe(distance: 1, uptime: -1))
+        XCTAssertFalse(gate.fresh(uptime: 0))
+    }
     func testNIColdStopAndUnconsentedPrepareNeverInitializeSession() {
         let ni = LocalNearbyInteraction()
         XCTAssertFalse(ni.initialized); ni.stop(); XCTAssertFalse(ni.initialized)
+        XCTAssertFalse(ni.hasFreshStableHint(uptime: 0))
         XCTAssertThrowsError(try ni.prepare(consent: false, foreground: false))
         XCTAssertFalse(ni.initialized)
     }

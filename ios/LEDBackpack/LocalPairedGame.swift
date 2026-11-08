@@ -95,6 +95,7 @@ final class LocalPairedGame: ObservableObject {
                     status = "Waiting for only the explicitly compared peer's observed hint/key; no server/friendship/proximity grant"
                     while active {
                         try await Task.sleep(for: .milliseconds(500)); try checkPair(); try session.check()
+                        rangeChanged()
                         if let deadline, ContinuousClock().now >= deadline { throw BackpackError.invalid("Local pairing window expired — no renewal or replay.") }
                     }
                 } catch { if stamp == epoch { fail(error) } }
@@ -218,8 +219,9 @@ final class LocalPairedGame: ObservableObject {
         ready = true; try await send(.init(kind: "local-ready", hash: hash, sceneReady: true))
     }
     private func rangeChanged() {
-        guard active, agreed, wantsRange, rangeSent != ranging.stableNearby else { return }
-        let state = ranging.stableNearby, stamp = epoch; rangeSent = state
+        let state = ranging.hasFreshStableHint()
+        guard active, agreed, wantsRange, rangeSent != state else { return }
+        let stamp = epoch; rangeSent = state
         Task {
             do {
                 try await send(.init(kind: "local-range", sceneReady: state))
@@ -230,11 +232,11 @@ final class LocalPairedGame: ObservableObject {
     }
     private func applyIfReady() async throws {
         guard agreed, peerReady, acknowledged, !applied, let scene else { return }
-        guard !wantsRange || (ranging.stableNearby && peerRange) else { status = "Both ready; waiting for fresh coarse NI hints, not verified proximity"; return }
+        guard !wantsRange || (ranging.hasFreshStableHint() && peerRange) else { status = "Both ready; waiting for fresh coarse NI hints, not verified proximity"; return }
         applied = true
         try await session.apply(scene, title: "Locally paired complementary calm colors — no private original shared") {
             try self.checkPair()
-            guard self.active, !self.wantsRange || (self.ranging.stableNearby && self.peerRange) else { throw CancellationError() }
+            guard self.active, !self.wantsRange || (self.ranging.hasFreshStableHint() && self.peerRange) else { throw CancellationError() }
         }
         try await send(.init(kind: "local-applied"))
         status = "Local color scene applied after both-ready; peer final outcome may be uncertain"

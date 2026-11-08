@@ -137,7 +137,19 @@ recent area entry instantly repeat, and partial dwell never resumes. Evaluators
 are reconciled after reliable configuration loads/saves, so removed targets
 cannot grow an unbounded memory index. No sample/coordinate/entry timeline is
 persisted or uploaded; explicit manual scene choices remain separate.
-Two new cooldown/restart regressions are prepared for targeted validation.
+Two new cooldown/restart regressions passed at9346b00 in run42443394862:
+actual app/test compilation and73focused native tests/0failures.
+
+The next unsigned paired-NI source follow-up checks coarse local stability
+against its monotonic sample deadline at every application/reauthorization,
+instead of trusting a cached Boolean until an expiry callback runs. Expiry
+callbacks are current-session/sample-generation guarded; invalid objects cancel
+older expiry work. The existing paired-game loop reports freshness loss through
+the existing authenticated Boolean message without new protocol fields or
+automatic fallback. Peer claims remain claims, not physical/ranging proof.
+Three new freshness/reset/invalid-clock fixtures are prepared; the targeted
+unsigned selector includes LocalPairingTests. No NI session is initialized by
+cold/unconsented fixture checks, and no physical or exact-distance proof is added.
 
 ### Social tab navigation follow-up - source only
 

@@ -11,9 +11,13 @@ final class LocalNearbyInteraction: NSObject, ObservableObject, NISessionDelegat
     private var peer: NIDiscoveryToken?
     private var stability = LocalRangeStability()
     private var expiry: Task<Void, Never>?
+    private var generation = UUID()
     var changed: (() -> Void)?
     var failed: ((String) -> Void)?
     var initialized: Bool { session != nil }
+    func hasFreshStableHint(uptime: Double = ProcessInfo.processInfo.systemUptime) -> Bool {
+        session != nil && peer != nil && stableNearby && stability.fresh(uptime: uptime)
+    }
     func prepare(consent: Bool, foreground: Bool) throws -> Data {
         guard consent, foreground, NISession.isSupported,
               let usage = Bundle.main.object(forInfoDictionaryKey: "NSNearbyInteractionUsageDescription") as? String,
@@ -36,21 +40,24 @@ final class LocalNearbyInteraction: NSObject, ObservableObject, NISessionDelegat
         status = "NI active for this explicitly paired foreground peer; no exact-distance/direction UI"
     }
     func stop() {
+        generation = UUID()
         expiry?.cancel(); expiry = nil
         session?.delegate = nil; session?.invalidate(); session = nil
         peer = nil; stableNearby = false; stability.reset(); status = "NI stopped — no automatic resume"
     }
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         guard session === self.session else { return }
+        let stamp = UUID(); generation = stamp
+        expiry?.cancel(); expiry = nil
         guard nearbyObjects.count <= 1, let object = nearbyObjects.first, object.discoveryToken == peer else {
             stability.reset(); stableNearby = false; status = "No matching paired NI object — uncertain"; changed?(); return
         }
         stableNearby = stability.observe(distance: object.distance, uptime: ProcessInfo.processInfo.systemUptime)
         status = stableNearby ? "Coarse stable-nearby hint; not verified identity/proximity/safety" : "Ranging uncertain/outside/stabilizing — game waits"
         changed?()
-        expiry?.cancel()
-        expiry = Task { [weak self] in
+        expiry = Task { [weak self, weak session] in
             do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            guard !Task.isCancelled, let session, self?.session === session, self?.generation == stamp else { return }
             self?.stability.reset(); self?.stableNearby = false
             self?.status = "NI hint stale — game waits/stops, no proximity inference"
             self?.changed?()
