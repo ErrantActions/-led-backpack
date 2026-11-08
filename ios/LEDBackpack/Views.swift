@@ -381,13 +381,13 @@ struct LibraryView: View {
             LibraryScopeControl(selection: $scope)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 Button { communityGallery = true } label: {
-                    FeatureCardLabel(title: "Discover", subtitle: "Community GIFs", symbol: "sparkle.magnifyingglass")
+                    FeatureCardLabel(title: "Discover", subtitle: "Community GIFs", symbol: "sparkle.magnifyingglass", compact: true)
                 }.accessibilityLabel("Discover GIFs")
                 NavigationLink { PhoneDisplayLibraryView() } label: {
-                    FeatureCardLabel(title: "Play", subtitle: "On your phone", symbol: "play.fill", tint: Aurora.lavender)
+                    FeatureCardLabel(title: "Play", subtitle: "On your phone", symbol: "play.fill", tint: Aurora.lavender, compact: true)
                 }.accessibilityLabel("Phone display")
                 NavigationLink { GPSGamesView() } label: {
-                    FeatureCardLabel(title: "Games", subtitle: "Explore & swap", symbol: "gamecontroller", tint: Aurora.rose)
+                    FeatureCardLabel(title: "Games", subtitle: "Explore & swap", symbol: "gamecontroller", tint: Aurora.rose, compact: true)
                 }.accessibilityLabel("GPS & nearby games")
             }.buttonStyle(.plain)
             if !community.signedIn && scope == .cloud { Button("Sign in for your cloud library") { showAccount = true } }

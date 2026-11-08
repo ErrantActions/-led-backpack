@@ -29,7 +29,7 @@ struct GIFTimingControls: View {
                     Text("Base frame delay \(Double(timing.uniformCentiseconds ?? 10) / 100, specifier: "%.2f")s").font(.caption)
                 }
                 Text("Speed changes frames, not playlist duration. Only the new copy changes.").font(.caption)
-            }
+            }.buttonStyle(.borderless)
         }
     }
 }
@@ -85,13 +85,13 @@ struct GIFTimingEditorView: View {
                 }
                 TextField("New copy name", text: $name)
                 if bytes != nil {
-                Button("Save copy") {
-                    do {
-                        guard let bytes else { throw BackpackError.invalid("Update the current timing preview before saving.") }
-                        try library.add(name: name, data: bytes, attribution: item.attribution, category: item.category)
-                        dismiss()
-                    } catch { failure = error.localizedDescription }
-                }.disabled(busy || bytes == nil).buttonStyle(AuroraPrimaryButton())
+                    Button("Save copy") {
+                        do {
+                            guard let bytes else { throw BackpackError.invalid("Update the current timing preview before saving.") }
+                            try library.add(name: name, data: bytes, attribution: item.attribution, category: item.category)
+                            dismiss()
+                        } catch { failure = error.localizedDescription }
+                    }.disabled(busy || bytes == nil).buttonStyle(AuroraPrimaryButton())
                 }
                 if busy { ProgressView() }
                 if let failure { Text(failure).foregroundStyle(.orange) }

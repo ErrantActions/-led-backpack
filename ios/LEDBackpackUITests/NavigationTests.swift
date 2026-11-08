@@ -250,22 +250,25 @@ final class NavigationTests: XCTestCase {
         app.buttons["Adjust GIF timing / loops"].tap()
         XCTAssertTrue(app.navigationBars["GIF timing"].waitForExistence(timeout: 10))
         let save = app.buttons["Save copy"]
-        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
         XCTAssertFalse(app.buttons["Review changes"].exists)
         XCTAssertFalse(app.switches["Use one frame delay"].isHittable)
         let faster = app.buttons["2×"]
         reveal(faster, in: app); faster.tap()
+        XCTAssertTrue(app.staticTexts["Speed · 2.00×"].exists)
+        XCTAssertFalse(app.switches["Use one frame delay"].isHittable)
         XCTAssertTrue(save.waitForNonExistence(timeout: 5))
         let review = app.buttons["Review changes"]
         reveal(review, in: app); XCTAssertTrue(review.isEnabled); review.tap()
-        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        XCTAssertTrue(review.waitForNonExistence(timeout: 20))
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
         let advanced = app.buttons["Advanced frame timing"]
         reveal(advanced, in: app); advanced.tap()
         let uniform = app.switches["Use one frame delay"]
         reveal(uniform, in: app); uniform.tap()
         XCTAssertTrue(save.waitForNonExistence(timeout: 5))
         reveal(review, in: app); review.tap()
-        XCTAssertTrue(save.waitForExistence(timeout: 20))
+        XCTAssertTrue(review.waitForNonExistence(timeout: 20))
         reveal(save, in: app); XCTAssertTrue(save.isEnabled)
         attach(app, name: "Compact timing - reviewed copy with advanced frame controls")
         save.tap()
@@ -303,13 +306,15 @@ final class NavigationTests: XCTestCase {
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true) {
         let window = app.windows.firstMatch.frame
-        let scroll = app.scrollViews.allElementsBoundByIndex.first {
+        let collection = app.collectionViews.allElementsBoundByIndex.first {
+            $0.isHittable && $0.frame.intersects(window)
+        }
+        let scroll = collection ?? app.scrollViews.allElementsBoundByIndex.first {
             $0.isHittable && $0.frame.intersects(window)
         }
         let container = scroll ?? app
         var visible = scroll?.frame.intersection(window) ?? window
-        let navigation = app.navigationBars.firstMatch
-        if navigation.exists && navigation.frame.intersects(visible) {
+        if let navigation = app.navigationBars.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.intersects(visible) }) {
             let top = max(visible.minY, navigation.frame.maxY)
             visible = CGRect(x: visible.minX, y: top, width: visible.width,
                 height: max(0, visible.maxY - top))
@@ -349,10 +354,8 @@ final class NavigationTests: XCTestCase {
     }
 
     private func returnToHeader(_ app: XCUIApplication) {
-        for _ in 0..<3 {
-            if app.buttons["Discover GIFs"].isHittable { return }
-            app.swipeDown()
-        }
+        reveal(app.buttons["All"], in: app)
+        reveal(app.buttons["Discover GIFs"], in: app)
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
     }
 

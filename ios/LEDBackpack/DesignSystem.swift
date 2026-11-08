@@ -102,7 +102,16 @@ struct FeatureCardLabel: View {
     let subtitle: String
     let symbol: String
     var tint = Aurora.mint
-    var body: some View {
+    var compact = false
+    @ViewBuilder var body: some View {
+        if compact {
+            VStack(spacing: 6) {
+                Image(systemName: symbol).font(.title3).foregroundStyle(tint).accessibilityHidden(true)
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: .infinity, minHeight: 40).padding(10).glassPanel(radius: 14)
+                .accessibilityElement(children: .combine)
+        } else {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: symbol).font(.title2).foregroundStyle(tint)
                 .frame(width: 44, height: 44)
@@ -113,6 +122,7 @@ struct FeatureCardLabel: View {
         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .glassPanel(radius: 20)
             .accessibilityElement(children: .combine)
+        }
     }
 }
 
