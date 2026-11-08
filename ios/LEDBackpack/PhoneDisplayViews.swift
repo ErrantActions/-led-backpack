@@ -17,28 +17,21 @@ struct PhoneDisplayLibraryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AuroraHeading(eyebrow: "Your pocket canvas", title: "Your pixels.", accent: "Anywhere.")
-                StatusPill(title: "LOCAL PHONE CANVAS", symbol: "iphone")
-                Text("No backpack, pairing, Bluetooth, location, account or cloud required. Artwork starts paused; press Play yourself.").foregroundStyle(.secondary)
-                NavigationLink("Recovery first / Received swaps (local only)") { SwapRecoveryView() }
-                NavigationLink("Offline pixel & GIF studio (local only)") { LocalPixelStudioView() }
-                NavigationLink("SOLO places / journey / daylight / local event scenes") { SoloScenesView() }
-                NavigationLink("GPS & nearby games") { GPSGamesView() }
-                NavigationLink("Automatic PHONE GIF swap game (separate consent)") { PhoneSwapGameView() }
-                NavigationLink("Offline paired calm colors / optional NI (separate consent)") { LocalPairedGameView() }
+                Text("Choose a GIF").font(.title2.bold())
+                Text("Tap artwork, then Play. No backpack needed.").font(.subheadline).foregroundStyle(.secondary)
                 if recovery.journal?.needsRecovery == true {
-                    Label("A durable original is retained — inspect recovery before any exchange", systemImage: "arrow.uturn.backward")
+                    Label("Original recovery available", systemImage: "arrow.uturn.backward")
                         .font(.caption).foregroundStyle(.orange)
                 }
                 if choose == nil {
-                    Button(phone.hasArtwork ? "Open retained phone artwork" : "Open phone display") {
+                    Button(phone.hasArtwork ? "Open player" : "Open empty player") {
                         targets.target = .phone; phone.open()
                     }.buttonStyle(AuroraPrimaryButton())
                 }
-                Button("Import original still / GIF to this phone") { importing = true }.disabled(originals.busy)
+                Button("Import artwork") { importing = true }.disabled(originals.busy)
                 if let failure = phone.failure ?? originals.failure { Text(failure).foregroundStyle(.orange) }
                 if originals.busy || phone.loading { ProgressView() }
-                Text("Phone originals").font(.headline)
+                Text("On this phone").font(.headline)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)]) {
                     ForEach(originals.items) { item in
                         Button { select(item) } label: {
@@ -48,7 +41,7 @@ struct PhoneDisplayLibraryView: View {
                             .contextMenu { Button("Remove this local phone copy", role: .destructive) { deleting = item } }
                     }
                 }
-                Text("Existing local GIF library").font(.headline)
+                Text("Library").font(.headline)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)]) {
                     ForEach(library.state.media) { item in
                         Button {
@@ -60,14 +53,22 @@ struct PhoneDisplayLibraryView: View {
                                 } catch { if !Task.isCancelled { phone.report(error) } }
                             }
                         } label: {
-                            GIFThumbnail(key: "phone-existing:\(item.id)") {
+                            GIFThumbnail(key: item.previewKey) {
                                 let url = try library.phoneOriginalURL(item)
                                 return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
                             }.aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 16))
                         }.buttonStyle(.plain).accessibilityLabel("Display \(item.name) on phone")
                     }
                 }
-                Text("Original bytes, centiseconds and repeats stay unchanged. Local phone copies are separate; no upload, global deduplication or hardware-slot write.").font(.caption).foregroundStyle(.secondary)
+                FeatureDetails("Tools & games") {
+                    NavigationLink("Pixel studio") { LocalPixelStudioView() }
+                    NavigationLink("My adventures") { SoloScenesView() }
+                    NavigationLink("GPS & nearby games") { GPSGamesView() }
+                    NavigationLink("GIF swap") { PhoneSwapGameView() }
+                    NavigationLink("Pair offline") { LocalPairedGameView() }
+                    NavigationLink("Received & recovery") { SwapRecoveryView() }
+                    Text("Original timing and bytes stay unchanged. Selecting phone artwork does not upload it or write backpack slots.")
+                }
             }.padding(20)
         }.modernScene().navigationTitle("Phone display")
         .task { await originals.load(); await recovery.load() }
@@ -140,14 +141,15 @@ struct PhoneDisplayView: View {
                         Spacer(); StatusPill(title: "ON PHONE", symbol: "iphone"); Spacer()
                         Menu {
                             Button("Automatic GIF swap / Found Users") { gameControls = true }
-                            Button("SOLO local scenes / arm PHONE automation") { soloControls = true }
+                            Button("My adventures") { soloControls = true }
                             Button("Local library") { phone.setVisible(false); choosing = true }
-                            Button("Import original image / GIF") { phone.setVisible(false); importing = true }
+                            Button("Import artwork") { phone.setVisible(false); importing = true }
                         } label: { Image(systemName: "square.grid.2x2").frame(width: 44, height: 44).foregroundStyle(Aurora.mint) }
                     }.padding(8).glassPanel(radius: 24)
                     if game.enabled || game.failure != nil {
-                        Text("\(game.enabled ? "AUTO GIF GAME ACTIVE" : "GAME STOPPED / RECOVERY RETAINED") — \(game.status)").font(.caption2).foregroundStyle(.orange)
-                        Button("Stop game and restore initial phone original") { Task { await game.restoreOriginal() } }
+                        StatusPill(title: game.enabled ? "GIF game on" : "Recovery available", symbol: "gamecontroller", color: .orange)
+                        if let failure = game.failure { Text(failure).font(.caption).foregroundStyle(.orange) }
+                        Button("Restore original GIF") { Task { await game.restoreOriginal() } }
                     }
                     if let peer = game.reportablePeer, community.config?.peerIncidentReportsEnabled == true {
                         Button("Stop game / deliberately explain an incident with this peer") {
@@ -188,7 +190,7 @@ struct PhoneDisplayView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             if phone.loading { ProgressView("Preparing local pixels") }
-                            Text("Awake/brightness are separate opt-ins, restored on exit, background or error. Tap artwork for a pure black canvas.").font(.caption2).foregroundStyle(.secondary)
+                            Text("Tap artwork to hide controls.").font(.caption2).foregroundStyle(.secondary)
                             if let peer = interactions.engine {
                                 FriendPhoneCanvasControls(engine: peer)
                             }

@@ -39,12 +39,30 @@ struct LocalPairCode: Codable, Equatable, Sendable {
             canRequestFriendship: false, publicKey: key, token: hint, tokenExpiresAtISO: expiresAt)
     }
 }
+struct LocalPairApplicationState {
+    var applying = false
+    var localApplied = false
+    var localReceiptSent = false
+    var peerApplied = false
+    var canApply: Bool { !applying && !localApplied }
+    var confirmed: Bool { !applying && localApplied && localReceiptSent && peerApplied }
+}
 struct LocalRangeStability {
     private var previous: (distance: Float, time: Double)?
     private var start: Double?
     mutating func reset() { previous = nil; start = nil }
+    func fresh(uptime: Double) -> Bool {
+        guard let previous, let start, uptime.isFinite, uptime >= previous.time,
+              uptime < previous.time + 2, previous.time - start >= 1 else { return false }
+        return true
+    }
+    func requireFresh(uptime: Double) throws {
+        guard fresh(uptime: uptime) else {
+            throw BackpackError.invalid("The local NI sample expired before its queued operation; no stale nearby claim.")
+        }
+    }
     mutating func observe(distance: Float?, uptime: Double) -> Bool {
-        guard let distance, distance.isFinite, (0.3...3).contains(distance), uptime.isFinite,
+        guard let distance, distance.isFinite, (0.3...3).contains(distance), uptime.isFinite, uptime >= 0,
               previous == nil || (uptime > previous!.time && uptime - previous!.time <= 2) else {
             reset(); return false
         }

@@ -3,6 +3,33 @@ import BackpackProtocol
 @testable import LEDBackpack
 
 @MainActor
+private final class SoloLocationFixture: SoloLocationSource {
+    var received: ((SoloFix) -> Void)?
+    var invalidated: ((String) -> Void)?
+    var hasCreatedManager: Bool { false }
+    private(set) var running = false
+    var captureFix: SoloFix?
+    var captureAction: (() -> Void)?
+    private(set) var captures = 0
+    func requestWhenInUse(consent: Bool, foreground: Bool) throws {
+        guard consent, foreground else { throw BackpackError.invalid("Fixture consent/foreground is off.") }
+        stop()
+    }
+    func start(consent: Bool, foreground: Bool) throws {
+        guard consent, foreground else { throw BackpackError.invalid("Fixture consent/foreground is off.") }
+        running = true
+    }
+    func stop() { running = false }
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix {
+        guard consent, foreground, !running else { throw BackpackError.invalid("Fixture capture requires explicit inactive foreground consent.") }
+        captures += 1; captureAction?()
+        try Task.checkCancellation()
+        guard let captureFix else { throw BackpackError.invalid("Fixture has no current point.") }
+        return captureFix
+    }
+}
+
+@MainActor
 final class SoloSourceTests: XCTestCase {
     private let sceneID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
     private let now = Date(timeIntervalSince1970: 1794000000)
@@ -16,6 +43,86 @@ final class SoloSourceTests: XCTestCase {
     private func scene() -> SoloScene {
         let gif = Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
         return SoloScene(id: sceneID, name: "Own art", items: [.init(id: UUID(), name: "Local original", bytes: gif, attribution: nil)])
+    }
+    private func sensingController() async throws -> (SoloSceneController, SoloLocationFixture) {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("solo-permission-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        addTeardownBlock { try FileManager.default.removeItem(at: root) }
+        let source = SoloLocationFixture()
+        let controller = SoloSceneController(repository: SoloSceneRepository(root: root.appendingPathComponent("solo")),
+            recoveryRepository: SwapRecoveryRepository(root: root.appendingPathComponent("recovery")), location: source)
+        await controller.load()
+        XCTAssertTrue(controller.loaded)
+        controller.setForeground(true); controller.setSensingConsent(true); controller.startSensing()
+        return (controller, source)
+    }
+    func testPermissionRequestPausesControllerAndAllowsExplicitRestart() async throws {
+        let (controller, source) = try await sensingController()
+        XCTAssertTrue(controller.sensing); XCTAssertTrue(source.running)
+        controller.requestPermission()
+        XCTAssertFalse(controller.sensing); XCTAssertFalse(source.running)
+        XCTAssertTrue(controller.sensingConsent); XCTAssertTrue(controller.loaded)
+        controller.startSensing()
+        XCTAssertTrue(controller.sensing); XCTAssertTrue(source.running)
+        XCTAssertFalse(source.hasCreatedManager)
+    }
+    func testPermissionPauseDropsTripAnchorBeforeRestart() async throws {
+        let (controller, source) = try await sensingController()
+        try controller.startTrip()
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-1)))
+        controller.requestPermission(); controller.startSensing()
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 50 / 111195.0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-1)))
+        XCTAssertEqual(controller.trip.meters, 0)
+        source.received?(SoloFix(point: .init(latitude: 0, longitude: 60 / 111195.0), accuracy: 1,
+            timestamp: Date().addingTimeInterval(-0.1)))
+        XCTAssertGreaterThan(controller.trip.meters, 0)
+        controller.stop()
+    }
+    func testFixedPointCaptureNeedsExplicitConsentAndDoesNotStartSensing() async throws {
+        let source = SoloLocationFixture(), controller = SoloSceneController(location: source)
+        controller.setForeground(true)
+        source.captureFix = SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date())
+        do { _ = try await controller.captureFixedPoint(consent: false); XCTFail("Missing capture consent") }
+        catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        XCTAssertEqual(source.captures, 0)
+        let point = try await controller.captureFixedPoint(consent: true)
+        XCTAssertEqual(point, .init(latitude: 1, longitude: 2))
+        XCTAssertEqual(source.captures, 1); XCTAssertFalse(source.running)
+        XCTAssertFalse(controller.sensing); XCTAssertFalse(controller.sensingConsent); XCTAssertFalse(controller.armed)
+        XCTAssertTrue(controller.archive.areas.isEmpty)
+        XCTAssertFalse(source.hasCreatedManager)
+    }
+    func testFixedPointCaptureRejectsStaleCoarseAndChangedContext() async throws {
+        let source = SoloLocationFixture(), controller = SoloSceneController(location: source)
+        controller.setForeground(true)
+        for sample in [
+            SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date().addingTimeInterval(-6)),
+            SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 26, timestamp: Date())
+        ] {
+            source.captureFix = sample
+            do { _ = try await controller.captureFixedPoint(consent: true); XCTFail("Invalid captured quality") }
+            catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        }
+        source.captureFix = SoloFix(point: .init(latitude: 1, longitude: 2), accuracy: 3, timestamp: Date())
+        source.captureAction = { controller.stop() }
+        do { _ = try await controller.captureFixedPoint(consent: true); XCTFail("Stopped capture context") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertTrue(controller.archive.areas.isEmpty); XCTAssertFalse(controller.sensing)
+    }
+    func testUnconsentedOneShotCaptureDoesNotCreateLocationManager() async throws {
+        let location = SoloForegroundLocation()
+        do { _ = try await location.capture(consent: false, foreground: false); XCTFail("Unconsented capture") }
+        catch { XCTAssertFalse(error.localizedDescription.isEmpty) }
+        XCTAssertFalse(location.hasCreatedManager)
+    }
+    func testFixedPointWindowRejectsDeadlineAndLateOrBackwardsCompletion() throws {
+        let now = ContinuousClock().now, window = SoloFixedPointWindow(instant: ContinuousClock().now)
+        XCTAssertNoThrow(try window.require(instant: window.started.advanced(by: .seconds(9.999))))
+        XCTAssertThrowsError(try window.require(instant: window.deadline))
+        XCTAssertThrowsError(try window.require(instant: window.started.advanced(by: .seconds(11))))
+        XCTAssertThrowsError(try window.require(instant: now.advanced(by: .seconds(-1))))
     }
     func testFixedPointRejectsNonfiniteAndInvalidCoordinates() {
         for value in [SoloPoint(latitude: .nan, longitude: 0), .init(latitude: 91, longitude: 0), .init(latitude: 0, longitude: 181)] {
@@ -32,6 +139,31 @@ final class SoloSourceTests: XCTestCase {
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 0), .dwelling)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 5), .dwelling)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 10), .entered)
+    }
+    func testStationaryRecurringFixesCompleteDwellWithoutMovementOrRepeatedEntry() {
+        var evaluator = SoloAreaEvaluator()
+        for second in 0...10 {
+            let current = now.addingTimeInterval(Double(second))
+            let stationary = SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 3, timestamp: current)
+            XCTAssertEqual(evaluator.evaluate(area: area(), fix: stationary, now: current, uptime: Double(second)),
+                second == 10 ? .entered : .dwelling)
+        }
+        let current = now.addingTimeInterval(11)
+        XCTAssertEqual(evaluator.evaluate(area: area(),
+            fix: SoloFix(point: .init(latitude: 0, longitude: 0), accuracy: 3, timestamp: current),
+            now: current, uptime: 11), .inside)
+    }
+    func testStationaryFixNoiseDoesNotCreateTripDistanceOrMilestones() {
+        var trip = SoloTrip(); trip.start()
+        let offsets = [0.0, 1.5, -2.0, 2.0]
+        let milestone = SoloMilestone(meters: 100, sceneID: sceneID)
+        for second in 0...30 {
+            let current = now.addingTimeInterval(Double(second))
+            let sample = SoloFix(point: .init(latitude: 0, longitude: offsets[second % offsets.count] / 111195),
+                accuracy: 5, timestamp: current)
+            XCTAssertTrue(trip.sample(sample, now: current, milestones: [milestone]).isEmpty)
+        }
+        XCTAssertEqual(trip.meters, 0); XCTAssertTrue(trip.fired.isEmpty)
     }
     func testEntryUsesInnerAccuracyBoundaryNotExpandedRadius() {
         var evaluator = SoloAreaEvaluator()
@@ -51,6 +183,25 @@ final class SoloSourceTests: XCTestCase {
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .inside)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(200), now: now, uptime: 12), .outside)
         XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 13), .cooldown)
+    }
+    func testSessionRestartClearsObservationButPreservesAreaCooldown() {
+        var evaluator = SoloAreaEvaluator()
+        for t in [0.0, 5, 10] { _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: t) }
+        evaluator.restartSession()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .cooldown)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 69), .cooldown)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 70), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 75), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 80), .entered)
+    }
+    func testRestartCannotResumePartiallyAccumulatedDwell() {
+        var evaluator = SoloAreaEvaluator()
+        _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 0)
+        _ = evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 5)
+        evaluator.restartSession()
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 6), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 11), .dwelling)
+        XCTAssertEqual(evaluator.evaluate(area: area(), fix: fix(), now: now, uptime: 16), .entered)
     }
     func testTripPauseAndLongGapNeverAddStraightLineCatchupDistance() {
         var trip = SoloTrip(); trip.start()

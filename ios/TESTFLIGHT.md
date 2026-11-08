@@ -4,7 +4,24 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
-## Verified upload - 2026-11-07
+## Validated next release candidate - 2026-11-08
+
+Frozen native source `0772fd9` passed
+[run42502718422](https://github.com/ErrantActions/-led-backpack/actions/runs/42502718422):
+app/test compilation, full native1011/0 with2 explicit skips, integrated UI7/0,
+all18 synchronization fixtures and separate read-only public integration1/0.
+The full GPS/nearby priority and consolidated fixture gates also passed.
+The actual exported Library screenshots were reviewed before promotion.
+
+This candidate adds the clean action-first UI, one automatically synchronized
+owned GIF library, remote-edit/preview reconciliation and the verified post-build9
+GPS/SOLO/paired-game fixes. Only reviewed committed source is promoted; dirty
+firmware/bitmap/OTA/reserved-slot work and existing signing assets are unchanged.
+The next protected TestFlight upload has not yet been performed.
+Software fixtures/public reads are not private-production sync or physical
+GPS/BLE/UWB/backpack/provider acceptance.
+
+## Verified build9 upload - 2026-11-07
 
 Version **0.1.0 build9** was signed, archived, exported and successfully uploaded
 in [run42437873593](https://github.com/ErrantActions/-led-backpack/actions/runs/42437873593).

@@ -17,6 +17,7 @@ final class CloudVaultStore: ObservableObject {
     @Published private(set) var failure: String?
     @Published private(set) var busy = false
     @Published private(set) var progress = ""
+    @Published private(set) var lastSynchronized: Date?
     @Published private(set) var pin = CloudDevicePin()
     @Published private(set) var available = false
     @Published private(set) var locked = true
@@ -57,8 +58,8 @@ final class CloudVaultStore: ObservableObject {
         if let link = pin.links[item.id.uuidString.lowercased()] {
             return link.generation != state?.generation || link.remoteMissing
         }
-        if let source = item.cloudSource,
-           source.accountID != client.scope.accountID || source.server != client.scope.origin.url.absoluteString { return true }
+        if let source = item.cloudSource, let owner = source.accountID,
+           owner != client.scope.accountID || source.server != client.scope.origin.url.absoluteString { return true }
         guard let ledger else { throw BackpackError.invalid("Private cloud device storage is unavailable.") }
         return try ledger.hasForeignLink(item.id, scope: client.scope)
     }
@@ -112,7 +113,7 @@ final class CloudVaultStore: ObservableObject {
         stopWork(); epoch = UUID(); busy = false
         client = nil; state = nil; items = []; titles = [:]; categories = [:]; keys = [:]; migration = nil
         adoption = nil; recipient = nil; receivedQR = nil; locked = true; available = false
-        pin = CloudDevicePin(); config = nil; failure = storageFailure; progress = ""
+        pin = CloudDevicePin(); config = nil; failure = storageFailure; progress = ""; lastSynchronized = nil
         let binding = epoch
         guard let ledger, cache != nil else { return }
         guard community.signedIn else { pin = CloudDevicePin(); return }
@@ -328,11 +329,16 @@ final class CloudVaultStore: ObservableObject {
         let client = try connection()
         let copy = try await download(item)
         _ = try GIFPreviewDecoder.originalFrameCount(copy.data)
+        try await authorizeForBackpack(item)
         try checked(client)
         guard let itemID = UUID(uuidString: item.id) else { throw BackpackError.invalid("Invalid private cloud item identifier.") }
         let saved = try library.savePrivateCloudGIF(copy.data, title: copy.metadata["title"]?.text ?? "Cloud artwork",
             attribution: attribution(copy.metadata), category: copy.metadata["category"]?.text,
-            origin: client.scope.origin, accountID: client.scope.accountID, itemID: itemID, assetURL: item.downloadUrl)
+            origin: client.scope.origin, accountID: client.scope.accountID, itemID: itemID, assetURL: item.downloadUrl,
+            favorite: copy.metadata["favorite"] == .bool(true))
+        guard try library.data(saved) == copy.data else {
+            throw BackpackError.invalid("The phone copy changed during download. Both copies were retained.")
+        }
         pin.links[saved.id.uuidString.lowercased()] = CloudLocalLink(remoteID: item.id, generation: item.generation,
             version: item.version, localHash: CloudVaultWire.digest(copy.data),
             localMetadataHash: CloudVaultWire.digest(try CloudVaultWire.json(localMetadata(saved, data: copy.data))))
@@ -392,9 +398,25 @@ final class CloudVaultStore: ObservableObject {
     }
     func synchronize(_ library: LocalLibrary, selected: Set<UUID>? = nil, allowForeignCopies: Bool = false) async throws {
         let client = try connection()
+        lastSynchronized = nil
         try await refresh()
         guard syncing, !locked, let state, state.enabled, state.migrationId == nil, !state.legacyMigrationPending else {
             throw BackpackError.invalid("Private sync is paused, locked or waiting for migration.")
+        }
+        if selected == nil {
+            let linked = Set(pin.links.values.filter { $0.generation == state.generation }.map(\.remoteID))
+            for remote in items where !linked.contains(remote.id) {
+                let hasLocalSource = library.state.media.contains { media in
+                    guard let source = media.cloudSource, source.accountID == client.scope.accountID,
+                          source.server == client.scope.origin.url.absoluteString else { return false }
+                    let id = source.itemID.uuidString.lowercased()
+                    return remote.id == id || remote.legacyItemId == id
+                }
+                if hasLocalSource { continue }
+                try checked(client)
+                progress = "Downloading artwork"
+                try await keepOffline(remote, library: library)
+            }
         }
         for item in library.state.media where selected == nil || selected?.contains(item.id) == true {
             try checked(client)
@@ -414,10 +436,17 @@ final class CloudVaultStore: ObservableObject {
             if link == nil, let source = item.cloudSource, source.accountID == client.scope.accountID,
                source.server == client.scope.origin.url.absoluteString,
                let remote = items.first(where: { $0.legacyItemId == source.itemID.uuidString.lowercased() || $0.id == source.itemID.uuidString.lowercased() }) {
-                _ = try await plain(remote, client: client)
-                link = CloudLocalLink(remoteID: remote.id, generation: state.generation, version: remote.version, localHash: hash,
-                    localMetadataHash: localMetadataHash)
-                pin.links[localID] = link; try savePin(); continue
+                let actual = try await download(remote)
+                guard actual.data == bytes else {
+                    throw BackpackError.invalid("The existing cloud association contains different artwork. Both copies were retained.")
+                }
+                try await authorizeForBackpack(remote)
+                let saved = try library.applyCloudUpdate(item, original: bytes, data: actual.data,
+                    title: actual.metadata["title"]?.text ?? item.name, attribution: attribution(actual.metadata),
+                    category: actual.metadata["category"]?.text, favorite: actual.metadata["favorite"] == .bool(true))
+                pin.links[localID] = CloudLocalLink(remoteID: remote.id, generation: state.generation, version: remote.version,
+                    localHash: hash, localMetadataHash: CloudVaultWire.digest(try CloudVaultWire.json(localMetadata(saved, data: actual.data))))
+                try savePin(); continue
             }
             if var current = link {
                 if current.remoteMissing { continue }
@@ -429,12 +458,39 @@ final class CloudVaultStore: ObservableObject {
                     current.version = uploaded.version; current.localHash = hash; current.localMetadataHash = localMetadataHash
                     pin.links[localID] = current; try savePin(); continue
                 }
+                guard remote.version >= current.version else {
+                    throw BackpackError.invalid("Cloud artwork version rolled back. Both copies were retained.")
+                }
                 if current.version == 0 {
                     let actual = try await plain(remote, client: client)
                     guard actual.data == bytes else { throw BackpackError.invalid("An interrupted upload ID contains different data. Both copies were retained.") }
                     current.version = remote.version
                 }
-                if current.localHash != hash || (current.localMetadataHash != nil && current.localMetadataHash != localMetadataHash) {
+                if current.localMetadataHash == nil {
+                    guard remote.version == current.version else {
+                        throw BackpackError.invalid("The older phone copy has no metadata baseline for these remote edits. Both copies were retained.")
+                    }
+                    let original = try await download(remote)
+                    var baseline = item
+                    baseline.name = original.metadata["title"]?.text ?? item.name
+                    baseline.attribution = attribution(original.metadata)
+                    baseline.category = original.metadata["category"]?.text
+                    baseline.favorite = original.metadata["favorite"] == .bool(true)
+                    current.localMetadataHash = CloudVaultWire.digest(try CloudVaultWire.json(localMetadata(baseline, data: original.data)))
+                }
+                let locallyChanged = current.localHash != hash ||
+                    (current.localMetadataHash != nil && current.localMetadataHash != localMetadataHash)
+                if remote.version != current.version && !locallyChanged {
+                    let actual = try await download(remote)
+                    try await authorizeForBackpack(remote)
+                    let saved = try library.applyCloudUpdate(item, original: bytes, data: actual.data,
+                        title: actual.metadata["title"]?.text ?? item.name, attribution: attribution(actual.metadata),
+                        category: actual.metadata["category"]?.text, favorite: actual.metadata["favorite"] == .bool(true))
+                    current.version = remote.version; current.localHash = CloudVaultWire.digest(actual.data)
+                    current.localMetadataHash = CloudVaultWire.digest(try CloudVaultWire.json(localMetadata(saved, data: actual.data)))
+                    pin.links[localID] = current; try savePin(); continue
+                }
+                if locallyChanged {
                     guard remote.version == current.version else { throw BackpackError.invalid("Cloud/local edits conflict. Neither copy was overwritten.") }
                     let original = try await plain(remote, client: client)
                     let uploadData = current.localHash == hash ? original.data : bytes
@@ -454,6 +510,8 @@ final class CloudVaultStore: ObservableObject {
             }
         }
         try await refresh()
+        try checked(client)
+        progress = ""; lastSynchronized = Date()
     }
     func deleteCloudOnly(confirmation: String) async throws {
         let client = try connection()

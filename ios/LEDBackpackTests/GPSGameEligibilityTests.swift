@@ -2,6 +2,30 @@ import XCTest
 @testable import LEDBackpack
 
 final class GPSGameEligibilityTests: XCTestCase {
+    func testEventDeadlineIncludesElapsedHuntFetchTime() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server.addingTimeInterval(-10),
+            end: server.addingTimeInterval(2), clock: clock, instant: instant.advanced(by: .seconds(3))))
+        XCTAssertEqual(try LocalEventSensingLease.duration(server: server, start: server.addingTimeInterval(-10),
+            end: server.addingTimeInterval(4), clock: clock, instant: instant.advanced(by: .seconds(3))), 1, accuracy: 0.001)
+    }
+    func testStaleEventReadCannotStartNewSixtySecondLease() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(5.01))))
+        XCTAssertEqual(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(5))), 60)
+    }
+    func testWrongOrBackwardsEventClockFailsClosed() throws {
+        let instant = ContinuousClock().now, server = Date(timeIntervalSince1970: 1000)
+        let clock = try CatalogEventClock(serverTime: "1970-01-01T00:16:40Z", instant: instant)
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server.addingTimeInterval(1), start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant))
+        XCTAssertThrowsError(try LocalEventSensingLease.duration(server: server, start: server,
+            end: server.addingTimeInterval(100), clock: clock, instant: instant.advanced(by: .seconds(-1))))
+    }
     private func scope(checkpoint: UUID = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!,
         account: UUID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!) -> ForegroundLocationScope {
         .init(accountRevision: account, eventID: UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!,
@@ -49,5 +73,48 @@ final class GPSGameEligibilityTests: XCTestCase {
         for t in [0.0,5,10] { _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: t) }
         evaluator.discardSample()
         XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 11), .cooldown)
+    }
+    func testIssuedHintCooldownSurvivesRearmWithoutBlockingAnotherTarget() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        let selected = scope(), other = scope(checkpoint: UUID())
+        try cooldowns.issued(selected, uptime: 10)
+        XCTAssertThrowsError(try cooldowns.requireStart(selected, uptime: 11))
+        XCTAssertNoThrow(try cooldowns.requireStart(other, uptime: 11))
+        XCTAssertThrowsError(try cooldowns.requireStart(selected, uptime: 69.999))
+        XCTAssertNoThrow(try cooldowns.requireStart(selected, uptime: 70))
+    }
+    func testCheckpointCooldownBudgetExpiresRatherThanEvictingActiveTargets() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        for _ in 0..<64 { try cooldowns.issued(scope(checkpoint: UUID()), uptime: 0) }
+        let next = scope(checkpoint: UUID())
+        XCTAssertThrowsError(try cooldowns.issued(next, uptime: 1))
+        XCTAssertNoThrow(try cooldowns.issued(next, uptime: 60))
+        XCTAssertThrowsError(try cooldowns.requireStart(next, uptime: 61))
+    }
+    func testCheckpointCooldownRejectsInvalidMonotonicInput() throws {
+        var cooldowns = LocalCheckpointCooldowns()
+        XCTAssertThrowsError(try cooldowns.requireStart(scope(), uptime: .nan))
+        XCTAssertThrowsError(try cooldowns.issued(scope(), uptime: -1))
+    }
+    func testDwellFeedbackUsesActualFreshSamplesAndClearsAtEligibility() {
+        var evaluator = LocalCheckpointEvaluator()
+        XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 0), .dwelling)
+        XCTAssertEqual(evaluator.dwellRemaining, 10)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 5)
+        XCTAssertEqual(evaluator.dwellRemaining, 5)
+        XCTAssertEqual(evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 10), .eligible)
+        XCTAssertNil(evaluator.dwellRemaining)
+    }
+    func testDwellFeedbackCannotSurviveDriftStaleFixOrReset() {
+        var evaluator = LocalCheckpointEvaluator()
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 0)
+        _ = evaluator.evaluate(distance: 50, accuracy: 1, age: 0, radius: 50, now: 1)
+        XCTAssertNil(evaluator.dwellRemaining)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 2)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 6, radius: 50, now: 3)
+        XCTAssertNil(evaluator.dwellRemaining)
+        _ = evaluator.evaluate(distance: 1, accuracy: 1, age: 0, radius: 50, now: 4)
+        evaluator.discardSample(); XCTAssertNil(evaluator.dwellRemaining)
+        evaluator.reset(); XCTAssertNil(evaluator.dwellRemaining)
     }
 }

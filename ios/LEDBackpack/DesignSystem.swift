@@ -13,13 +13,13 @@ struct AuroraBackground: View {
         ZStack {
             Color(red: 0.025, green: 0.035, blue: 0.055)
             GeometryReader { proxy in
-                Ellipse().fill(Aurora.mint.opacity(0.13))
+                Ellipse().fill(Aurora.mint.opacity(0.04))
                     .frame(width: proxy.size.width, height: proxy.size.height * 0.65)
                     .blur(radius: 85).offset(x: -proxy.size.width * 0.45, y: -100)
-                Ellipse().fill(Aurora.lavender.opacity(0.14))
+                Ellipse().fill(Aurora.lavender.opacity(0.04))
                     .frame(width: proxy.size.width, height: proxy.size.height * 0.7)
                     .blur(radius: 100).offset(x: proxy.size.width * 0.35, y: proxy.size.height * 0.3)
-                Ellipse().fill(Aurora.rose.opacity(0.07)).frame(width: 240, height: 300)
+                Ellipse().fill(Aurora.rose.opacity(0.015)).frame(width: 240, height: 300)
                     .blur(radius: 80).offset(x: -60, y: proxy.size.height * 0.65)
             }
         }.ignoresSafeArea().accessibilityHidden(true)
@@ -55,10 +55,10 @@ struct AuroraPrimaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.semibold))
-            .frame(maxWidth: .infinity, minHeight: 24).padding(16)
+            .frame(maxWidth: .infinity, minHeight: 20).padding(12)
             .foregroundStyle(Color(red: 0.045, green: 0.15, blue: 0.14))
             .background(LinearGradient(colors: [Aurora.mint, Color(red: 0.62, green: 0.94, blue: 0.94)],
-                startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 19))
+                startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 14))
             .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
     }
 }
@@ -91,8 +91,75 @@ extension View {
     func modernScene() -> some View {
         scrollContentBackground(.hidden)
             .background(AuroraBackground())
-            .listRowSpacing(12)
+            .listRowSpacing(6)
             .tint(Aurora.mint)
+    }
+}
+
+@MainActor
+struct FeatureCardLabel: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    var tint = Aurora.mint
+    var compact = false
+    @ViewBuilder var body: some View {
+        if compact {
+            VStack(spacing: 6) {
+                Image(systemName: symbol).font(.title3).foregroundStyle(tint).accessibilityHidden(true)
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: .infinity, minHeight: 40).padding(10).glassPanel(radius: 14)
+                .accessibilityElement(children: .combine)
+        } else {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: symbol).font(.title2).foregroundStyle(tint)
+                .frame(width: 44, height: 44)
+                .background(tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            Text(title).font(.headline).foregroundStyle(.primary)
+            Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            .glassPanel(radius: 20)
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+@MainActor
+struct FeatureRowLabel: View {
+    let title: String
+    let symbol: String
+    var subtitle: String? = nil
+    var tint = Aurora.mint
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).foregroundStyle(tint).frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold))
+                if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+            }.fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }.frame(minHeight: 44)
+    }
+}
+
+@MainActor
+struct FeatureDetails<Content: View>: View {
+    var title = "Details"
+    private let content: Content
+    init(_ title: String = "Details", @ViewBuilder content: () -> Content) {
+        self.title = title; self.content = content()
+    }
+    var body: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 10) { content }
+                .font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                .buttonStyle(.borderless)
+        } label: {
+            Label(title, systemImage: "info.circle").font(.subheadline)
+        }
     }
 }
 
@@ -134,28 +201,14 @@ struct BackpackHero: View {
     let connected: Bool
     let size: String
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("led").bold() + Text("backpack").foregroundColor(.secondary)
-                Spacer()
-                Image(systemName: "backpack.fill").foregroundStyle(Aurora.mint)
+        HStack(spacing: 18) {
+            PixelArtwork().frame(width: 80, height: 80).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your backpack").font(.title2.bold())
+                StatusPill(title: connected ? "Connected" : "Not connected", symbol: "backpack")
+                Text(size).font(.caption.monospaced()).foregroundStyle(.secondary)
             }
-            AuroraHeading(eyebrow: connected ? "Linked & ready" : "Your next canvas",
-                title: "Make your", accent: "pixels move.")
-            Text("Live data. Infinite personality.").font(.subheadline).foregroundStyle(.secondary)
-            ZStack {
-                Circle().fill(Aurora.mint.opacity(0.18)).frame(width: 150, height: 150).blur(radius: 35).offset(x: -45)
-                Circle().fill(Aurora.rose.opacity(0.17)).frame(width: 130, height: 130).blur(radius: 35).offset(x: 55, y: 20)
-                PixelArtwork().padding(16).frame(width: 182, height: 182)
-                    .background(Color(red: 0.025, green: 0.04, blue: 0.06), in: RoundedRectangle(cornerRadius: 24))
-                    .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(0.13)))
-                    .rotation3DEffect(.degrees(-14), axis: (x: 0.3, y: 1, z: 0))
-                    .rotationEffect(.degrees(-7))
-                    .shadow(color: .black.opacity(0.4), radius: 16, y: 12)
-            }
-            .frame(maxWidth: .infinity).frame(height: 215).accessibilityHidden(true)
-            Text(size).font(.caption2.monospaced()).tracking(1).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-        }.padding(24)
+            Spacer(minLength: 0)
+        }.padding(20)
     }
 }

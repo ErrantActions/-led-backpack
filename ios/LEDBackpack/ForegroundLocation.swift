@@ -3,14 +3,29 @@ import Combine
 import BackpackProtocol
 
 enum CheckpointEligibility: String { case manual = "Manual fallback", outside = "Outside fixed checkpoint", dwelling = "Dwelling locally", eligible = "Locally eligible — manual confirmation required", cooldown = "Cooldown" }
+enum LocalEventSensingLease {
+    static func duration(server: Date, start: Date, end: Date, clock: CatalogEventClock,
+        instant: ContinuousClock.Instant = ContinuousClock().now) throws -> TimeInterval {
+        let elapsed = clock.baseline.duration(to: instant).components
+        let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+        let current = clock.now(instant: instant)
+        guard clock.serverTime == server, end > start, seconds.isFinite, (0...5).contains(seconds),
+              current >= start, current < end else {
+            throw BackpackError.invalid("The authorized event read/window is stale or expired. Refresh explicitly before sensing.")
+        }
+        return min(60, end.timeIntervalSince(current))
+    }
+}
 struct LocalCheckpointEvaluator {
     private var entered: TimeInterval?
     private var lastEligible: TimeInterval?
     private var previous: TimeInterval?
-    mutating func reset() { entered = nil; lastEligible = nil; previous = nil }
-    mutating func discardSample() { entered = nil; previous = nil }
+    private(set) var dwellRemaining: TimeInterval?
+    mutating func reset() { entered = nil; lastEligible = nil; previous = nil; dwellRemaining = nil }
+    mutating func discardSample() { entered = nil; previous = nil; dwellRemaining = nil }
     mutating func evaluate(distance: Double, accuracy: Double, age: Double, radius: Double,
         now: TimeInterval, dwell: TimeInterval = 10, cooldown: TimeInterval = 60) -> CheckpointEligibility {
+        dwellRemaining = nil
         guard distance.isFinite, distance >= 0, accuracy.isFinite, accuracy > 0, accuracy <= 25,
               age.isFinite, (0...5).contains(age), radius.isFinite, radius >= 1, now.isFinite,
               dwell.isFinite, dwell >= 10, cooldown.isFinite, cooldown >= 60 else {
@@ -26,16 +41,40 @@ struct LocalCheckpointEvaluator {
             guard distance + accuracy <= max(0, radius - 2) else { return .outside }
             entered = now
         }
-        guard let entered, now - entered >= dwell else { return .dwelling }
+        guard let entered else { return .manual }
+        guard now - entered >= dwell else {
+            dwellRemaining = dwell - (now - entered)
+            return .dwelling
+        }
         lastEligible = now; self.entered = nil; return .eligible
     }
 }
-struct ForegroundLocationScope: Equatable {
+struct ForegroundLocationScope: Hashable {
     let accountRevision: UUID
     let eventID: UUID
     let eventRevision: Int
     let participationRevision: Int
     let checkpointID: UUID
+}
+struct LocalCheckpointCooldowns {
+    private var deadlines: [ForegroundLocationScope: TimeInterval] = [:]
+    private mutating func prune(_ uptime: TimeInterval) throws {
+        guard uptime.isFinite, uptime >= 0 else { throw BackpackError.invalid("Invalid local checkpoint cooldown clock.") }
+        deadlines = deadlines.filter { $0.value > uptime }
+    }
+    mutating func requireStart(_ scope: ForegroundLocationScope, uptime: TimeInterval) throws {
+        try prune(uptime)
+        guard deadlines[scope] == nil else {
+            throw BackpackError.invalid("This authorized checkpoint hint is still cooling down. Stop/rearm does not reset its 60-second limit.")
+        }
+    }
+    mutating func issued(_ scope: ForegroundLocationScope, uptime: TimeInterval) throws {
+        try prune(uptime)
+        guard deadlines[scope] != nil || deadlines.count < 64 else {
+            throw BackpackError.invalid("Local checkpoint cooldown budget is full. Wait for expiry; no state was discarded.")
+        }
+        deadlines[scope] = max(deadlines[scope] ?? 0, uptime + 60)
+    }
 }
 struct LocalCheckpointHint: Equatable {
     let id: UUID
@@ -56,6 +95,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
     @Published private(set) var sensing = false
     @Published private(set) var eligibility = CheckpointEligibility.manual
     @Published private(set) var hint: LocalCheckpointHint?
+    @Published private(set) var dwellRemaining: TimeInterval?
     private var manager: CLLocationManager?
     private var lastAuthorization: CLAuthorizationStatus?
     private var lastAccuracy: CLAccuracyAuthorization?
@@ -63,6 +103,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
     private var fixed: EventRouteCheckpoint?
     private var deadlineUptime: TimeInterval?
     private var evaluator = LocalCheckpointEvaluator()
+    private var cooldowns = LocalCheckpointCooldowns()
     private var expiry: Task<Void, Never>?
     private var stale: Task<Void, Never>?
     private var epoch = UUID()
@@ -89,7 +130,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         activatedLocationManager().requestWhenInUseAuthorization()
     }
     func start(event: CatalogEvent, checkpoint: EventRouteCheckpoint, accountRevision: UUID,
-        consent: Bool, foreground: Bool, capability: Bool) throws {
+        consent: Bool, foreground: Bool, capability: Bool, eventClock: CatalogEventClock) throws {
         stop("Checking foreground eligibility")
         guard consent, foreground, capability, CLLocationManager.locationServicesEnabled(),
               event.access.member, event.rsvpStatus == .going, event.requiresReconfirmation == false,
@@ -99,21 +140,22 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
             throw BackpackError.invalid(status)
         }
         try checkpoint.validate()
-        let server = try CatalogEventTime.parse(event.serverTime), end = try CatalogEventTime.parse(event.endsAtISO)
-        guard server >= (try CatalogEventTime.parse(event.startsAtISO)), server < end else {
-            status = "Outside actual event window — sensing off"; throw BackpackError.invalid(status)
-        }
+        let server = try CatalogEventTime.parse(event.serverTime), start = try CatalogEventTime.parse(event.startsAtISO)
+        let end = try CatalogEventTime.parse(event.endsAtISO)
+        _ = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
+        let selectedScope = ForegroundLocationScope(accountRevision: accountRevision, eventID: event.id,
+            eventRevision: event.revision, participationRevision: revision, checkpointID: checkpoint.id)
+        try cooldowns.requireStart(selectedScope, uptime: ProcessInfo.processInfo.systemUptime)
         let manager = activatedLocationManager()
         guard [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
               manager.accuracyAuthorization == .fullAccuracy else {
             status = "Unavailable/denied/reduced accuracy — use manual fallback"
             throw BackpackError.invalid(status)
         }
-        scope = ForegroundLocationScope(accountRevision: accountRevision, eventID: event.id, eventRevision: event.revision,
-            participationRevision: revision, checkpointID: checkpoint.id)
+        let lease = try LocalEventSensingLease.duration(server: server, start: start, end: end, clock: eventClock)
+        scope = selectedScope
         fixed = checkpoint
         // Short lease requires a fresh authorized event read before any explicit restart.
-        let lease = min(60, end.timeIntervalSince(server))
         deadlineUptime = ProcessInfo.processInfo.systemUptime + lease
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = kCLDistanceFilterNone
@@ -130,7 +172,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         epoch = UUID()
         manager?.stopUpdatingLocation(); expiry?.cancel(); stale?.cancel()
         expiry = nil; stale = nil; scope = nil; fixed = nil; deadlineUptime = nil; hint = nil
-        evaluator.reset(); eligibility = .manual; sensing = false; status = reason
+        evaluator.reset(); dwellRemaining = nil; eligibility = .manual; sensing = false; status = reason
     }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard manager === self.manager else { return }
@@ -155,7 +197,10 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
         let distance = sample.distance(from: target), age = Date().timeIntervalSince(sample.timestamp)
         let evaluated = evaluator.evaluate(distance: distance, accuracy: sample.horizontalAccuracy,
             age: age, radius: fixed.radiusMeters, now: uptime)
+        dwellRemaining = evaluator.dwellRemaining
         if evaluated == .eligible {
+            do { try cooldowns.issued(scope, uptime: uptime) }
+            catch { stop(error.localizedDescription); return }
             hint = LocalCheckpointHint(id: UUID(), scope: scope, observedUptime: uptime, validUntilUptime: min(deadlineUptime, uptime + 5))
         } else if evaluated == .manual || evaluated == .outside {
             hint = nil
@@ -172,6 +217,7 @@ final class ForegroundCheckpointLocation: NSObject, ObservableObject, CLLocation
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
             guard !Task.isCancelled, self?.epoch == stamp else { return }
             self?.evaluator.discardSample(); self?.hint = nil; self?.eligibility = .manual
+            self?.dwellRemaining = nil
             self?.status = "GPS fix stale — manual fallback, no confirmed arrival"
         }
     }

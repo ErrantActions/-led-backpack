@@ -6,32 +6,49 @@ struct GPSGamesView: View {
     @State private var failure: String?
     var body: some View {
         List {
-            Section("GPS adventures and checkpoint games") {
-                NavigationLink("My local places / adventure / distance milestones") { SoloScenesView() }
-                Text("Account-free, foreground GPS and private local progress. No route/encounter history or automatic public check-ins. Start sensing and any PHONE automation separately.").font(.caption)
+            Section {
+                Text("Choose your next game").font(.title2.bold())
+                Text("Stationary, noncontact play. You choose when GPS or Bluetooth starts.").font(.subheadline).foregroundStyle(.secondary)
+            }
+            Section("Explore") {
+                NavigationLink { SoloScenesView() } label: {
+                    FeatureCardLabel(title: "My adventures", subtitle: "Private places & milestones", symbol: "location.circle", tint: Aurora.lavender)
+                }.accessibilityLabel("My local places / adventure / distance milestones")
                 if community.signedIn && community.config?.eventsEnabled == true {
-                    NavigationLink("Event GPS hunts / ride checkpoints") { CommunityEventsView() }
-                    Text("Open an event → Play GPS checkpoint hunt, or Foreground local checkpoint hint for route progress. Private collection and progress sharing are separate explicit choices.").font(.caption)
+                    NavigationLink { CommunityEventsView() } label: {
+                        FeatureCardLabel(title: "Event hunts", subtitle: "Checkpoints & cooperative goals", symbol: "flag.checkered")
+                    }.accessibilityLabel("Event GPS hunts / ride checkpoints")
                 } else {
-                    NavigationLink("Sign in / check event availability") { CommunityAccountView() }
+                    NavigationLink { CommunityAccountView() } label: {
+                        FeatureRowLabel(title: "Event hunts", symbol: "flag.checkered", subtitle: "Sign in to check availability")
+                    }
                 }
             }
-            Section("Nearby games — separate Bluetooth consent") {
-                NavigationLink("Automatic PHONE GIF exchange game") { PhoneSwapGameView() }
-                NavigationLink("Locally paired calm colors / optional NI") { LocalPairedGameView() }
+            Section("Play nearby") {
+                NavigationLink { PhoneSwapGameView() } label: {
+                    FeatureCardLabel(title: "GIF swap", subtitle: "Trade what's playing. Both players opt in.", symbol: "arrow.triangle.2.circlepath")
+                }.accessibilityLabel("Automatic PHONE GIF exchange game")
+                NavigationLink { LocalPairedGameView() } label: {
+                    FeatureCardLabel(title: "Pair & play", subtitle: "Offline calm colors", symbol: "qrcode", tint: Aurora.rose)
+                }.accessibilityLabel("Locally paired calm colors / optional NI")
                 if community.signedIn && community.config?.socialEnabled == true {
-                    NavigationLink("Accepted-friend greetings / duet / pass") { CommunitySocialView() }
+                    NavigationLink { CommunitySocialView() } label: {
+                        FeatureRowLabel(title: "Friend play", symbol: "person.2", subtitle: "Greetings, duet & pass")
+                    }.accessibilityLabel("Accepted-friend greetings / duet / pass")
                 }
-                Text("GPS cannot precisely tag another player. BLE needs an actually observed short-lived token plus authenticated key/session consent. RSSI is rough, not reliable meters. NI measures supported phones, not backpacks; uncertain/unsupported needs an explicit manual choice.").font(.caption)
             }
-            Section("Safety and real availability") {
-                Text("Stationary/noncontact play only; no chasing or traffic interaction. Stop/background/account/OS permission loss stops local work; no silent restart. PHONE originals must be durably saved before automatic replacement; hardware originals remain unknown.").font(.caption)
-                Text("Source and simulator tests are not physical GPS/BLE/UWB proof. Event/player/provider capabilities remain governed by the current service and device permissions.").font(.caption)
-                Button("Refresh actual backend capabilities") {
-                    Task { do { try await community.loadConfig(); failure = nil } catch { failure = error.localizedDescription } }
+            Section {
+                FeatureDetails("Privacy & device support") {
+                    Text("GPS gives broad fixed-target hints, not precise peer tagging. Bluetooth needs observed tokens and authenticated consent; signal strength is not reliable meters.")
+                    Text("Optional NI measures supported phones, not backpacks. Uncertain ranging needs an explicit manual choice.")
+                    Text("Background or permission loss stops play. Automatic phone changes retain your original; unknown backpack originals cannot be restored automatically.")
+                    Text("Device and service availability are checked at use. Software tests are not physical GPS/Bluetooth/UWB proof.")
+                    Button("Refresh availability") {
+                        Task { do { try await community.loadConfig(); failure = nil } catch { failure = error.localizedDescription } }
+                    }
                 }
                 if let failure { Text(failure).foregroundStyle(.orange) }
             }
-        }.navigationTitle("GPS & nearby games").modernScene()
+        }.navigationTitle("GPS & nearby games").modernScene().buttonStyle(.plain)
     }
 }

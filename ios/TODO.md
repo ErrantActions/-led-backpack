@@ -4,6 +4,110 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Clean LED interface overhaul - unsigned validation pending
+
+- [x] Compact shared cards/rows/details and quieter LED styling across the
+  five-tab experience; artwork-first Library, Social and game hubs.
+- [x] Simplified Create/Live, phone playback, pairing, current-GIF swaps,
+  Found Users, private hunt, SOLO setup and timing/send review actions.
+- [x] Preserve actual capability gates, source-copy semantics, explicit
+  sharing/sensor/destructive consent and first-original recovery.
+- [x] Expandable SOLO content avoids nested List Sections inside disclosures.
+- [x] Add timing review/new-copy UI regression and scene-disclosure/default-off
+  assertions; retain actual screenshot export in unsigned validation.
+- [ ] Actual native app/test compilation, full regressions and screenshot
+  review of this exact source. No new TestFlight or physical-device claim.
+
+## Unsigned private fixed-point capture - source PURPLE
+
+- [x] Explicit one-fix private area draft capture with separate foreground
+  consent/OS permission preparation; no sensing/PHONE automation or area save.
+  Existing offline numeric geometry remains available.
+- [x] Fresh≤5s/full-accuracy≤25m valid point,10s timeout, current request/epoch
+  cancellation guards, no silent restart or map/search/provider/server upload.
+- [x] Draft consent removal/background/close cancels capture; explicit Save
+  remains required and guarded against stale/new draft completion.
+- [x]3new injected-source/quality/context/cold-consent fixtures passed:
+  app/test compile and98focused native tests/0 atdf40e46 in run42452361645.
+- [x] Subsequent source enforces the monotonic capture deadline at fix
+  acceptance and source completion, not merely timer callback scheduling.
+- [x]1new exact capture-window regression passed: app/test compile and
+  99focused native tests/0 atf43f6cc in run42453233273.
+- [ ] Physical GPS/permission/private-provider acceptance remains unperformed;
+  no full/UI/public sweep or new beta for these latest capture additions.
+
+## Post-build9 GPS hunt follow-up - focused software GREEN at796c444
+
+- [x] Same selected-target manual fallback with explicit private/unverified
+  review, current event/plan/own opt-in and stationary/on-foot checks; no
+  coordinates, fake GPS hint, public progress or cooperative consent change.
+- [x] Existing collection store publishes selected-target acknowledgement only
+  after successful request plus current context/read-back. Normal targets must
+  be collected; finish retains current completion prerequisites.
+  Cancellation/clear/reload/partial states do not become false UI success.
+- [x]3new read-back fixtures executed: app/test compile and49targeted native
+  tests/0failures in run42439286316 at796c444. No UI/private-device acceptance
+  is inferred; changes are not in already uploaded build9.
+- [x] Subsequent source carries the current monotonic event clock through
+  dependency reads and both GPS start paths; stale/wrong/backwards/expired
+  windows cannot reset a lease. Permission checks do not extend the deadline.
+- [x]3new lease fixtures executed: app/test compile and52targeted native
+  tests/0failures in run42440162550 at15ab177.
+- [x] Further source preserves authorized-target hint cooldowns across local
+  stop/rearm in a bounded memory-only map; no coordinate/sample/history file or
+  upload, no active-deadline eviction to bypass the limit.
+- [x]3new cooldown regressions executed: app/test compile and55targeted
+  native tests/0failures atf7e9660 in run42440878081.
+- [x] Subsequent SOLO source requests recurring stationary fixes rather than
+  movement-filtered samples; stale callbacks are session/latest-fix guarded.
+  Existing noise, accuracy and gap filters remain; no false distance objective.
+- [x]2new SOLO stationary-dwell/noise regressions executed: app/test compile
+  and69focused native tests/0 at2005e72 in run42441726482.
+- [x] Further source aligns controller sensing state with the OS-permission
+  pause, retires stale callbacks and discards sample/trip anchors; explicit
+  restart remains possible without catch-up distance or automatic rearming.
+- [x]2new injectable-source permission/restart/trip regressions executed:
+  app/test compile and71focused native tests/0 atc71a34f in run42442572805.
+- [ ] Actual device/private acceptance remains unperformed; these post-build9
+  source changes have not had another full/UI/public release sweep or beta upload.
+- [x] Next unsigned SOLO source retains configured in-memory area cooldowns
+  across stop/rearm while clearing inside/dwell state. Reliable loads/saves
+  prune removed area evaluators; no sample/coordinate/timeline persistence.
+- [x]2new area cooldown/restart regressions passed: app/test compile and
+  73focused native tests/0 at9346b00 in run42443394862.
+- [x] Next unsigned paired-NI source checks actual monotonic local sample
+  freshness before application/reauthorization, and scopes expiry callbacks
+  to current session/generation. Existing authenticated message schema and
+  explicit manual fallback behavior retained; no physical/ranging proof.
+- [x]3new NI freshness/reset/invalid-clock fixtures passed: app/test compile
+  and88focused native tests/0 at5cab1ba in run42444333653.
+- [x] Further unsigned source rechecks local NI freshness after queued sends
+  drain, before positive nearby announcements reach the radio; stale claims
+  fail explicitly with recovery retained, no silent substitution/fallback.
+- [x]1new queue/transmission-time regression passed: app/test compile and
+  89focused native tests/0 at01bf425 in run42445262344.
+- [x] Next unsigned local-pair source separates preparation/application/
+  receipt-sent state, preventing premature bilateral status and stale async
+  completion across stop/new sessions.
+- [x]2new local-pair outcome-state regressions passed: app/test compile and
+  91focused native tests/0 at87f71b3 in run42446095517.
+- [x] Next unsigned hunt UX exposes own private confirmed target progress and
+  explicit next-remaining-target choice, not automatic sensing/claims, public
+  progress or contributor/peer counts. Finish still requires completion.
+- [x]2new private-progress/remaining-target fixtures passed: app/test compile
+  and93focused native tests/0 at698b0f9 in run42447324717.
+- [x] Next unsigned GPS HUD shows dwell remaining from actual fresh fixes,
+  cleared on drift/invalid/stale/eligible/cooldown/stop. No predicted arrival
+  timer or automatic claim; both event/route eligibility paths share feedback.
+- [x]2new fresh-dwell/reset feedback fixtures passed: app/test compile and
+  95focused native tests/0 at40c9c8b in run42448104253.
+- [x] Consolidated unsigned sweep atb0b89d3/app40c9c8b passed run42448942902:
+  portable9/0, priority116/0 plusUI1/0, full989/0/2explicit skips, integratedUI5/0,
+  separate read-only public integration1/0; focused stage also succeeded.
+  Repeated groups are not unique totals. No signing/device/provider permission
+  or physical acceptance inferred; build9/main app1944292 and firmware remain
+  unchanged. Remaining full roadmap is not declared complete.
+
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 
 Current source1944292 passed run42435195099 attempt2: portable9/0,

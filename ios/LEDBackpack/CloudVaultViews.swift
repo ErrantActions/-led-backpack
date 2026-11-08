@@ -34,8 +34,9 @@ struct CloudVaultSettingsView: View {
                     Text("Off pauses only private cloud on this device. It keeps local files, public catalog access, your account and existing cloud copies.")
                         .font(.caption)
                     if vault.pin.remoteReset { Label("Cloud changed or was disabled remotely. Sync stays off until you explicitly enable it.", systemImage: "pause.circle").font(.caption) }
-                    Button("Refresh private cloud") { vault.run { try await vault.refresh() } }
-                    Button("Sync eligible local GIFs now") { vault.run { try await vault.synchronize(library) } }
+                    Text("Your GIFs download automatically and local changes upload automatically while the app is open.")
+                        .font(.caption)
+                    Button("Retry sync") { vault.requestSynchronization(library) }
                         .disabled(!vault.syncing || vault.locked || vault.busy || vault.state?.migrationId != nil)
                 }
                 if let state = vault.state {
@@ -128,7 +129,7 @@ struct CloudVaultSettingsView: View {
                 }
             }
         } message: {
-            Text("Eligible local GIFs will be privately backed up. A remotely deleted/reset library is not restored or re-uploaded automatically. Creating a new library starts server-managed; user-held enrollment is separate.")
+            Text("Your GIFs will sync automatically and stay available offline after download. Deleted or reset cloud libraries are not restored automatically. Storage starts server-managed; user-held encryption is optional.")
         }
         .confirmationDialog("Private sync paused. Existing cloud copies are unchanged.", isPresented: $offerDelete, titleVisibility: .visible) {
             Button("Keep cloud copies", role: .cancel) {}
@@ -239,12 +240,9 @@ struct CloudVaultArtworkDetail: View {
                 if let bytes { AnimatedPreview(data: bytes).frame(height: 280) }
                 Text(vault.titles[item.id] ?? "Private artwork").font(.title2.bold())
                 NavigationLink("Private cloud settings / unlock") { CloudVaultSettingsView() }
-                Button("Keep on this iPhone") { vault.run { try await vault.keepOffline(item, library: library) } }
-                    .disabled(bytes == nil || library.state.media.count >= 100 || vault.busy)
                 Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.vault(item)]) }
                     .buttonStyle(.borderedProminent).disabled(vault.locked || vault.busy || !vault.syncing)
-                Text("Downloads only this authorized GIF into bounded temporary memory; no Keep local step, new library copy, publication or server key is needed.").font(.caption)
-                Text("The 100-item local capacity never deletes or truncates cloud items. Removing cloud copies never deletes local files.").font(.caption)
+                Text("Artwork downloads automatically when sync is enabled and storage is available.").font(.caption)
                 Button("Delete this private cloud copy", role: .destructive) { deleting = true }.disabled(vault.locked || vault.busy)
                 if let failure = failure ?? vault.failure { Text(failure).foregroundStyle(.orange) }
             }.padding(24)

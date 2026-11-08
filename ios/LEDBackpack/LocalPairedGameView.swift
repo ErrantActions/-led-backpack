@@ -20,37 +20,51 @@ struct LocalPairedGameView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Offline paired calm colors").font(.title2.bold())
-                Text("No account/cloud/server required. Two deliberately compared ephemeral keys, generated colors only; your private original/GIF/library is NOT sent. No friendship, profile, location, encounter record, verified identity/proximity/safety or anti-relay claim.").font(.caption)
-                Text(game.status)
+                Text("Pair & play").font(.title2.bold())
+                Text("Offline calm colors. Your private GIFs are never sent.").font(.subheadline).foregroundStyle(.secondary)
                 if let failure = game.failure ?? failure { Text(failure).foregroundStyle(.orange) }
-                Button("Create fresh two-minute local pairing code") { compared = false; consent = false; game.prepareCode() }.disabled(game.arming)
+                if game.code == nil {
+                    Button("Create pairing code") { compared = false; consent = false; game.prepareCode() }.disabled(game.arming)
+                        .buttonStyle(AuroraPrimaryButton())
+                }
                 if let code = game.code {
                     if let qr { Image(uiImage: qr).interpolation(.none).resizable().scaledToFit().frame(maxHeight: 240).accessibilityLabel("Explicit local ephemeral pairing QR") }
-                    ShareLink("Share this ephemeral local pair code", item: code)
-                    Text(code).font(.caption2).textSelection(.enabled).lineLimit(4)
-                    Text("Each device must import the OTHER device's code, then compare every displayed group out of band. Copied QR codes are not physical proximity proof. Codes/keys are volatile and expire, never a service login or friendship.").font(.caption)
+                    ShareLink("Share code", item: code)
+                    FeatureDetails("Code options") {
+                        Text(code).font(.caption2).textSelection(.enabled)
+                        Button("Create a new code") { compared = false; consent = false; game.prepareCode() }
+                            .disabled(game.arming || game.session.running)
+                    }
                 }
-                TextField("Paste the other device's local pair code", text: $entered, axis: .vertical)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button("Decode explicit peer code") { compared = false; consent = false; game.acceptCode(entered); entered = "" }
-                Button("Scan explicit local-pair QR (camera permission)") { scanning = true }
+                Button("Scan partner's code") { scanning = true }
+                DisclosureGroup("Paste a code instead") {
+                    TextField("Partner's code", text: $entered, axis: .vertical)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Button("Use code") { compared = false; consent = false; game.acceptCode(entered); entered = "" }
+                }
                 if let comparison = game.comparison {
                     Text(comparison).font(.title3.monospaced()).textSelection(.enabled)
-                    Toggle("Both devices display these exact four groups; I compared them", isOn: $compared)
+                    Toggle("I compared all four groups on both phones", isOn: $compared)
                 }
-                Picker("Same public gentle preset on both devices", selection: $preset) { ForEach(FriendScenePreset.allCases) { Text($0.rawValue).tag($0) } }
-                Toggle("Both people are stationary; noncontact only, no chasing/traffic use", isOn: $stationary)
-                Toggle("Use supported NI coarse-range hints (both devices must choose the same)", isOn: $useRange)
-                Text("Optional NI is separately consented, foreground-only and initialized only when explicitly starting this paired NI mode. Unsupported/denied/uncertain ranging stops; explicitly choose manual mode with a new pairing instead of automatic fallback. No exact distance/direction/map is displayed or saved. Stable relative range cannot prove either person is stationary.").font(.caption)
-                Toggle("I enable this paired calm-color game and automatic PHONE display", isOn: $consent)
-                Text("This consent covers only a generated complementary color scene after both devices' authenticated ready/acknowledgments and recoverable original. It does NOT enable the online GIF game, friend discovery or media sharing.").font(.caption)
+                if game.comparison != nil {
+                Picker("Same preset on both phones", selection: $preset) { ForEach(FriendScenePreset.allCases) { Text($0.rawValue).tag($0) } }
+                Toggle("We are stationary and playing without contact", isOn: $stationary)
+                Toggle("Use optional phone ranging on both devices", isOn: $useRange)
+                Text("Ranging needs supported phones and separate OS consent. If unavailable, stop and choose manual pairing—never automatic fallback.").font(.caption)
+                Toggle("Allow this color game to animate my phone", isOn: $consent)
+                Text("Your original is retained. This shares generated colors only, not your GIFs, account, location or friendship.").font(.caption)
                 LocalPairStartControls(game: game, radio: game.radio, compared: compared, consent: consent,
                     stationary: stationary, useRange: useRange, preset: preset)
+                }
                 LocalRangeStatus(ranging: game.ranging)
                 ScopedPhoneCanvasControls(session: game.session, stop: { game.stop() }, restore: { await game.restore() })
                 NavigationLink("Recovery first / Received swaps") { SwapRecoveryView() }
-                Text("One foreground PHONE controller; unknown hardware recovery is unsupported. Stop/background/lock/permission/key expiry clears radio/NI/keys and retains the first original. Never silently renew/replay; restore first, then respect the retained recovery cooldown before a new pair. Both-display application is not atomic; receipt loss is uncertain.").font(.caption)
+                FeatureDetails("Pairing status & support") {
+                    Text(game.status)
+                    Text("Codes expire in two minutes. Compare both phones; copied codes do not prove proximity or identity.")
+                    Text("Ranging measures phones, not backpacks or guaranteed meters. Stay stationary; no chase or traffic play.")
+                    Text("Background, permission loss or expiry stops play. Original recovery remains; no silent restart or guaranteed simultaneous display.")
+                }
             }.padding(20)
         }.navigationTitle("Local pair game").modernScene()
         .sheet(isPresented: $scanning) {
@@ -93,13 +107,22 @@ private struct LocalPairStartControls: View {
     let preset: FriendScenePreset
     var body: some View {
         VStack {
-            Text(radio.status).font(.caption)
-            Button("Prepare this local-pair Bluetooth purpose") { game.prepareBluetooth() }
+            if !radio.ready {
+            Button("Enable Bluetooth") { game.prepareBluetooth() }
                 .disabled(game.arming || game.session.running)
-            Button("Start compared stationary PHONE game") {
+                .accessibilityLabel("Prepare this local-pair Bluetooth purpose")
+            }
+            if !game.session.running {
+            Button("Start color game") {
                 game.start(consent: consent, compared: compared, stationary: stationary, useRange: useRange, preset: preset)
             }.disabled(!radio.ready || game.comparison == nil || !compared || !consent || !stationary || game.arming || game.session.running)
-            Button("Stop local pairing / sensing", role: .destructive) { game.stop() }
+                .buttonStyle(AuroraPrimaryButton())
+                .accessibilityLabel("Start compared stationary PHONE game")
+            }
+            if game.arming || game.session.running {
+                Button("Stop game", role: .destructive) { game.stop() }
+            }
+            FeatureDetails("Bluetooth status") { Text(radio.status) }
         }
     }
 }

@@ -25,6 +25,18 @@ struct SoloFix: Sendable {
             (0...5).contains(now.timeIntervalSince(timestamp))
     }
 }
+struct SoloFixedPointWindow: Sendable {
+    let started: ContinuousClock.Instant
+    let deadline: ContinuousClock.Instant
+    init(instant: ContinuousClock.Instant = ContinuousClock().now) {
+        started = instant; deadline = instant.advanced(by: .seconds(10))
+    }
+    func require(instant: ContinuousClock.Instant = ContinuousClock().now) throws {
+        guard instant >= started, instant < deadline else {
+            throw BackpackError.invalid("The ten-second fixed-point capture window expired or changed. Retry explicitly; no late point is accepted.")
+        }
+    }
+}
 
 struct SoloSceneItem: Codable, Identifiable, Sendable {
     let id: UUID
@@ -87,6 +99,10 @@ struct SoloAreaEvaluator {
     private var inside = false
     private var lastEntry: Double?
     mutating func discardSample() { dwellStart = nil; previous = nil }
+    mutating func restartSession() {
+        discardSample()
+        inside = false
+    }
     mutating func evaluate(area: SoloArea, fix: SoloFix, now: Date, uptime: Double) -> SoloAreaResult {
         guard (try? area.validate()) != nil, fix.usable(at: now), uptime.isFinite,
               previous == nil || uptime >= previous! else { discardSample(); return .unavailable }

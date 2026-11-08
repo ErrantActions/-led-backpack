@@ -31,14 +31,14 @@ struct BatchTransferView: View {
                     Button("Assign empty ordinary slots") { assignEmpty() }
                         .disabled(panel.inventoryDeviceID == nil)
                 }
-                Text("Automatic assignment avoids reserved slots 0 and 1. You can explicitly choose them. Distinct GIF copies stay independent; queue selection is never content-hash deduplication.")
+                Text("Automatic assignment uses slots 2–54. Slots 55–59 are reserved for future features; 0 and 1 retain their existing reservation. Manual selection is allowed with a warning and does not erase existing artwork by itself. Distinct GIF copies stay independent.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Order and destination") {
                 ForEach(queue) { entry in
                     if let media = library.state.media.first(where: { $0.id == entry.mediaID }) {
                         HStack(spacing: 12) {
-                            GIFThumbnail(key: "queued:\(entry.id)") { try library.data(media) }
+                            GIFThumbnail(key: media.previewKey) { try library.data(media) }
                                 .frame(width: 64, height: 64).clipShape(RoundedRectangle(cornerRadius: 10))
                                 .accessibilityLabel(media.name)
                             Picker("Destination slot", selection: Binding(
@@ -142,7 +142,7 @@ private struct BatchMediaPicker: View {
                         Button {
                             if selected.contains(media.id) { selected.remove(media.id) } else { selected.insert(media.id) }
                         } label: {
-                            GIFThumbnail(key: "batch-picker:\(media.id)") { try library.data(media) }
+                            GIFThumbnail(key: media.previewKey) { try library.data(media) }
                                 .aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(alignment: .topTrailing) {
                                     if selected.contains(media.id) { Image(systemName: "checkmark.circle.fill").padding(8).foregroundStyle(Aurora.mint) }

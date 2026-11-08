@@ -4,11 +4,26 @@ import Combine
 import BackpackProtocol
 
 @MainActor
-final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate {
+protocol SoloLocationSource: AnyObject {
+    var received: ((SoloFix) -> Void)? { get set }
+    var invalidated: ((String) -> Void)? { get set }
+    var hasCreatedManager: Bool { get }
+    func requestWhenInUse(consent: Bool, foreground: Bool) throws
+    func start(consent: Bool, foreground: Bool) throws
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix
+    func stop()
+}
+
+@MainActor
+final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate, SoloLocationSource {
     private var manager: CLLocationManager?
     private var running = false
     private var authorization: CLAuthorizationStatus?
     private var accuracy: CLAccuracyAuthorization?
+    private var captureID: UUID?
+    private var captureResult: CheckedContinuation<SoloFix, Error>?
+    private var captureTimeout: Task<Void, Never>?
+    private var captureWindow: SoloFixedPointWindow?
     var received: ((SoloFix) -> Void)?
     var invalidated: ((String) -> Void)?
     var hasCreatedManager: Bool { manager != nil }
@@ -28,28 +43,88 @@ final class SoloForegroundLocation: NSObject, CLLocationManagerDelegate {
         deliberateManager().requestWhenInUseAuthorization()
     }
     func start(consent: Bool, foreground: Bool) throws {
-        guard consent, foreground else { throw BackpackError.invalid("Foreground local sensing consent is off.") }
+        guard consent, foreground, captureID == nil else { throw BackpackError.invalid("Foreground sensing consent is off or a fixed-point capture is active.") }
         let value = deliberateManager()
         guard CLLocationManager.locationServicesEnabled(), value.authorizationStatus == .authorizedWhenInUse || value.authorizationStatus == .authorizedAlways,
               value.accuracyAuthorization == .fullAccuracy else {
             throw BackpackError.invalid("Fresh full-accuracy When-In-Use access is unavailable. Use manual offers; press Start again after granting. No automatic regrant restart.")
         }
-        value.desiredAccuracy = kCLLocationAccuracyBest; value.distanceFilter = 3
+        value.desiredAccuracy = kCLLocationAccuracyBest; value.distanceFilter = kCLDistanceFilterNone
         running = true; value.startUpdatingLocation()
     }
-    func stop() { running = false; manager?.stopUpdatingLocation() }
+    func capture(consent: Bool, foreground: Bool) async throws -> SoloFix {
+        try Task.checkCancellation()
+        guard consent, foreground, !running, captureID == nil else {
+            throw BackpackError.invalid("Explicit foreground fixed-point consent and stopped sensing are required.")
+        }
+        let value = deliberateManager()
+        guard CLLocationManager.locationServicesEnabled(),
+              [.authorizedWhenInUse, .authorizedAlways].contains(value.authorizationStatus),
+              value.accuracyAuthorization == .fullAccuracy else {
+            throw BackpackError.invalid("Grant full-accuracy When-In-Use permission separately, then retry or enter a fixed point manually.")
+        }
+        let id = UUID()
+        let window = SoloFixedPointWindow()
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                captureID = id; captureResult = continuation; captureWindow = window
+                value.desiredAccuracy = kCLLocationAccuracyBest
+                captureTimeout = Task { [weak self] in
+                    do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                    guard !Task.isCancelled else { return }
+                    self?.finishCapture(.failure(BackpackError.invalid("No usable fresh fix arrived within10s. Retry explicitly or use manual geometry.")), id: id)
+                }
+                value.requestLocation()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.finishCapture(.failure(CancellationError()), id: id) }
+        }
+    }
+    private func finishCapture(_ result: Result<SoloFix, Error>, id: UUID) {
+        guard captureID == id, let continuation = captureResult else { return }
+        captureID = nil; captureResult = nil; captureWindow = nil; captureTimeout?.cancel(); captureTimeout = nil
+        if !running { manager?.stopUpdatingLocation() }
+        continuation.resume(with: result)
+    }
+    func stop() {
+        running = false; manager?.stopUpdatingLocation()
+        if let id = captureID { finishCapture(.failure(CancellationError()), id: id) }
+    }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard manager === self.manager else { return }
         let changed = authorization != manager.authorizationStatus || accuracy != manager.accuracyAuthorization
         authorization = manager.authorizationStatus; accuracy = manager.accuracyAuthorization
-        if running && changed { stop(); invalidated?("OS location permission/accuracy changed — explicit enable/start required") }
+        if (running || captureID != nil) && changed {
+            let wasRunning = running
+            if let id = captureID { finishCapture(.failure(BackpackError.invalid("OS permission/accuracy changed during fixed-point capture.")), id: id) }
+            stop()
+            if wasRunning { invalidated?("OS location permission/accuracy changed — explicit enable/start required") }
+        }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard running, let last = locations.last else { return }
-        received?(SoloFix(point: SoloPoint(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude),
-            accuracy: last.horizontalAccuracy, timestamp: last.timestamp))
+        guard manager === self.manager, let last = locations.last else { return }
+        let fix = SoloFix(point: SoloPoint(latitude: last.coordinate.latitude, longitude: last.coordinate.longitude),
+            accuracy: last.horizontalAccuracy, timestamp: last.timestamp)
+        if let id = captureID {
+            do {
+                guard let captureWindow else { throw BackpackError.invalid("Fixed-point capture deadline is unavailable.") }
+                try captureWindow.require()
+            } catch { finishCapture(.failure(error), id: id); return }
+        }
+        if let id = captureID, fix.usable(at: Date()),
+           [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus),
+           manager.accuracyAuthorization == .fullAccuracy {
+            finishCapture(.success(fix), id: id)
+        }
+        if running { received?(fix) }
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        stop(); invalidated?("Local fix unavailable — stopped, manual operation only")
+        guard manager === self.manager else { return }
+        let wasRunning = running
+        if let id = captureID { finishCapture(.failure(error), id: id) }
+        stop()
+        if wasRunning { invalidated?("Local fix unavailable — stopped, manual operation only") }
     }
 }
 
@@ -71,7 +146,7 @@ final class SoloSceneController: ObservableObject {
     @Published private(set) var areaStates: [UUID: SoloAreaResult] = [:]
     @Published private(set) var recoveryAvailable = false
     @Published private(set) var daylightDescription = "No daylight plan selected"
-    let location = SoloForegroundLocation()
+    let location: any SoloLocationSource
     private var repository: SoloSceneRepository?
     private let recoveryRepository: SwapRecoveryRepository?
     private var revision: UUID?
@@ -83,6 +158,7 @@ final class SoloSceneController: ObservableObject {
     private var ownedRevision: UUID?
     private var evaluators: [UUID: SoloAreaEvaluator] = [:]
     private var stale: Task<Void, Never>?
+    private var latestFix = UUID()
     private var presentation: Task<Void, Never>?
     private var schedule: Task<Void, Never>?
     private var io: Task<Void, Never>?
@@ -90,11 +166,13 @@ final class SoloSceneController: ObservableObject {
     private var sessionUnlocks: [SoloUnlock] = []
     private var journal: LocalSwapOriginal?
     private var selectedDaylight: UUID?
-    init(repository: SoloSceneRepository? = nil, recoveryRepository: SwapRecoveryRepository? = nil) {
+    init(repository: SoloSceneRepository? = nil, recoveryRepository: SwapRecoveryRepository? = nil,
+        location: (any SoloLocationSource)? = nil) {
         self.repository = repository
         self.recoveryRepository = recoveryRepository
-        location.received = { [weak self] in self?.receive($0) }
-        location.invalidated = { [weak self] in self?.stop($0) }
+        self.location = location ?? SoloForegroundLocation()
+        self.location.received = { [weak self] in self?.receive($0) }
+        self.location.invalidated = { [weak self] in self?.stop($0) }
     }
     func bind(phone: PhoneDisplayController, targets: DisplayTargetSelection) { self.phone = phone; self.targets = targets }
     private func storage() throws -> SoloSceneRepository {
@@ -118,8 +196,27 @@ final class SoloSceneController: ObservableObject {
     func requestPermission() {
         do {
             try location.requestWhenInUse(consent: sensingConsent, foreground: foreground)
-            status = "OS permission is separate. After granting, deliberately press Start sensing."
+            sensing = false; stale?.cancel(); stale = nil; latestFix = UUID()
+            discardSample()
+            status = "Sensing paused for the separate OS permission step. After granting, deliberately press Start sensing."
         } catch { report(error) }
+    }
+    func requestFixedPointPermission(consent: Bool) throws {
+        guard !sensing, !armed, !busy else { throw BackpackError.invalid("Stop sensing/PHONE automation before preparing a fixed-point capture.") }
+        try location.requestWhenInUse(consent: consent, foreground: foreground)
+    }
+    func captureFixedPoint(consent: Bool) async throws -> SoloPoint {
+        guard consent, foreground, !sensing, !armed, !busy else {
+            throw BackpackError.invalid("Explicit foreground capture consent and stopped sensing/automation are required.")
+        }
+        let stamp = epoch
+        let window = SoloFixedPointWindow()
+        let fix = try await location.capture(consent: consent, foreground: foreground)
+        try Task.checkCancellation()
+        try window.require()
+        guard epoch == stamp, foreground, !sensing, !armed, !busy else { throw CancellationError() }
+        guard fix.usable(at: Date()) else { throw BackpackError.invalid("Captured point is stale, coarse or invalid; manual draft retained.") }
+        return fix.point
     }
     func startSensing() {
         do {
@@ -133,7 +230,8 @@ final class SoloSceneController: ObservableObject {
         io = nil; presentation = nil; schedule = nil; stale = nil
         location.stop(); sensing = false; sensingConsent = false; automationConsent = false; recapConsent = false
         armed = false; offer = nil; busy = false; selectedDaylight = nil
-        evaluators.removeAll(); areaStates.removeAll(); trip.pause()
+        for id in Array(evaluators.keys) { evaluators[id]?.restartSession() }
+        areaStates.removeAll(); trip.pause()
         if targets?.phonePeerOwner == lease { phone?.cancelPendingSelection(); phone?.stopPeerPlayback() }
         targets?.releasePhone(lease); ownedRevision = nil; status = reason
         // A cancelled write may already have committed: require a fresh read before another mutation.
@@ -146,6 +244,10 @@ final class SoloSceneController: ObservableObject {
         if armed || (busy && targets?.phonePeerOwner == lease) { stop("Motion / data-saving / manual playback policy changed — no silent rearm") }
     }
     func report(_ error: Error) { if !(error is CancellationError) { failure = error.localizedDescription } }
+    private func reconcileEvaluators() {
+        let areaIDs = Set(archive.areas.map(\.id))
+        evaluators = evaluators.filter { areaIDs.contains($0.key) }
+    }
     func load() async {
         guard !busy, !armed, !sensing else { return }
         let stamp = epoch; busy = true
@@ -154,6 +256,7 @@ final class SoloSceneController: ObservableObject {
             let value = try await storage().load()
             try Task.checkCancellation(); guard stamp == epoch else { return }
             archive = value?.archive ?? SoloArchive(); revision = value?.revision; loaded = true; failure = nil
+            reconcileEvaluators()
             let retained = try await recovery().load()
             guard stamp == epoch, !Task.isCancelled else { return }
             journal = retained?.peerPurpose == "solo-v1" ? retained : nil
@@ -173,6 +276,7 @@ final class SoloSceneController: ObservableObject {
             try Task.checkCancellation()
             guard stamp == epoch else { throw CancellationError() }
             archive = saved.archive; revision = saved.revision; failure = nil
+            reconcileEvaluators()
         } catch {
             if stamp == epoch { loaded = false; report(error) }
             throw error
@@ -215,10 +319,13 @@ final class SoloSceneController: ObservableObject {
     private func receive(_ fix: SoloFix) {
         guard foreground, sensing, sensingConsent, loaded else { return }
         let now = Date(), uptime = ProcessInfo.processInfo.systemUptime
+        let fixStamp = UUID(), sessionStamp = epoch
+        latestFix = fixStamp
         stale?.cancel()
         guard fix.usable(at: now) else { discardSample(); status = "Fix stale/inaccurate — no measured progress; manual fallback"; return }
         stale = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            guard !Task.isCancelled, self?.epoch == sessionStamp, self?.latestFix == fixStamp else { return }
             self?.discardSample()
         }
         var selectedArea: SoloArea?

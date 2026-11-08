@@ -1,6 +1,23 @@
 #if DEBUG
 import Foundation
+import SwiftUI
 import BackpackProtocol
+
+@MainActor
+struct FeatureActionIsolationFixture: View {
+    @State private var primary = 0
+    @State private var secondary = 0
+    var body: some View {
+        Form {
+            FeatureDetails("Fixture actions") {
+                Button("Primary fixture action") { primary += 1 }
+                Button("Secondary fixture action") { secondary += 1 }
+            }
+            Text("Primary: \(primary)")
+            Text("Secondary: \(secondary)")
+        }.navigationTitle("Action isolation")
+    }
+}
 
 private actor LibraryPreviewTransport: CommunityTransport {
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
@@ -63,6 +80,16 @@ private actor LibraryPreviewTransport: CommunityTransport {
                     """
                 }.joined(separator: ",")
             return CommunityResponse(status: 200, data: Data("{\"items\":[\(items)],\"page\":1,\"limit\":100,\"total\":2}".utf8))
+        }
+        if request.httpMethod == "GET",
+           path == "/media/\(LibraryPreviewFixture.linkedItem)/original.gif" ||
+            path == "/media/\(LibraryPreviewFixture.remoteItem)/original.gif" {
+            let bytes = try await MainActor.run {
+                let frame = try TextArtwork.render("LED", size: PanelSize(width: 64, height: 64), font: .pixel,
+                    alignment: .center, color: .magenta, pixelScale: 2)
+                return try MediaCodec.encode([frame], delays: [0.5])
+            }
+            return CommunityResponse(status: 200, data: bytes)
         }
         if request.httpMethod == "GET",
            path == "/media/\(LibraryPreviewFixture.linkedItem)/preview.png" ||

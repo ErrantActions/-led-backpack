@@ -2,7 +2,6 @@ import XCTest
 import BackpackProtocol
 @testable import LEDBackpack
 
-// Prepared source fixtures only; not executed in this implementation slice.
 @MainActor
 final class EventSocialSourceTests: XCTestCase {
     private let eventID = UUID(uuidString: "10000000-0000-4000-8000-000000000001")!
@@ -57,10 +56,11 @@ final class EventSocialSourceTests: XCTestCase {
             "participantRosterIncluded": roster, "synchronizedPlaybackVerified": false
         ])
     }
-    private func collection(completed: Bool = false, enabled: Bool = true, exact: Bool = false) throws -> NativeEventCollection {
+    private func collection(completed: Bool = false, enabled: Bool = true, exact: Bool = false,
+        optin: Int = 4) throws -> NativeEventCollection {
         try decode(NativeEventCollection.self, [
             "eventId": eventID.uuidString, "eventRevision": 7, "participationRevision": 3,
-            "revision": 2, "optinRevision": 4, "canManage": false,
+            "revision": 2, "optinRevision": optin, "canManage": false,
             "plan": ["enabled": true, "checkpointIds": [targetID.uuidString], "cooperativeGoal": 5,
                      "celebrationColors": ["#55CCAA"], "celebrationPattern": "solid"],
             "ownEnabled": enabled, "ownCooperativeConsent": false, "ownCompleted": completed,
@@ -68,6 +68,32 @@ final class EventSocialSourceTests: XCTestCase {
             "exactContributorCountIncluded": exact, "certified": false, "gpsUsed": false,
             "checkpoints": [["id": targetID.uuidString, "title": "Named target", "collected": completed]]
         ])
+    }
+    func testClaimReadbackRequiresSelectedTargetActuallyCollected() throws {
+        let current = try event(), before = try collection()
+        XCTAssertThrowsError(try before.requireClaimReadback(targetID, event: current, previous: before))
+        XCTAssertNoThrow(try collection(completed: true).requireClaimReadback(targetID, event: current, previous: before))
+        XCTAssertThrowsError(try collection(completed: true).requireClaimReadback(UUID(), event: current, previous: before))
+    }
+    func testClaimReadbackRejectsChangedOptinOrWithdrawnHunt() throws {
+        let current = try event(), before = try collection()
+        XCTAssertThrowsError(try collection(completed: true, optin: 5).requireClaimReadback(targetID, event: current, previous: before))
+        XCTAssertThrowsError(try collection(enabled: false).requireClaimReadback(targetID, event: current, previous: before))
+    }
+    func testFinishReadbackUsesCompletedPrivatePrerequisitesNotGPSProof() throws {
+        let current = try event(), completed = try collection(completed: true)
+        XCTAssertNoThrow(try completed.requireClaimReadback(finishID, event: current, previous: completed))
+        XCTAssertThrowsError(try collection().requireClaimReadback(finishID, event: current, previous: completed))
+    }
+    func testRemainingHuntTargetsExcludeStartAndCollectedTargetsAndUnlockFinish() throws {
+        let current = try event(), incomplete = try collection(), completed = try collection(completed: true)
+        XCTAssertEqual(incomplete.remainingTargets(event: current).map(\.id), [targetID])
+        XCTAssertEqual(completed.remainingTargets(event: current).map(\.id), [finishID])
+        XCTAssertEqual(incomplete.ownCollectedTargetCount, 0)
+        XCTAssertEqual(completed.ownCollectedTargetCount, 1)
+    }
+    func testWithdrawnHuntDoesNotOfferNextTargets() throws {
+        XCTAssertTrue(try collection(enabled: false).remainingTargets(event: event()).isEmpty)
     }
     private func display(own: Bool = true, cues: [[String: Any]] = []) throws -> NativeEventDisplay {
         try decode(NativeEventDisplay.self, [

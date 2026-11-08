@@ -33,9 +33,13 @@ final class NavigationTests: XCTestCase {
         }
         XCTAssertTrue(app.buttons["Discover GIFs"].exists)
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
-        XCTAssertTrue(app.buttons["On iPhone"].exists)
+        XCTAssertFalse(app.buttons["On iPhone"].exists)
+        XCTAssertFalse(app.buttons["Cloud"].exists)
+        XCTAssertTrue(app.buttons["Library sync settings"].exists)
+        // Accessibility rectangles can subtract to 43.99999999999997 for a 44-point control.
+        XCTAssertGreaterThanOrEqual(app.buttons["Library sync settings"].frame.height, 44 - 0.000001)
         assertNoVisibleEntryForms(app)
-        attach(app, name: "Aurora guest library - editorial header and glass scopes")
+        attach(app, name: "Unified guest library - no storage scopes")
         reveal(app.buttons["Preview Night ride"], in: app)
         XCTAssertTrue(app.buttons["Preview Night ride"].exists)
         XCTAssertFalse(app.staticTexts["Night ride"].exists)
@@ -82,23 +86,20 @@ final class NavigationTests: XCTestCase {
         reveal(app.buttons["Preview Cloud demo"], in: app)
         XCTAssertFalse(app.staticTexts["Cloud demo"].exists)
         attach(app, name: "Unified Library - local and private cloud")
-        returnToHeader(app)
-        app.buttons["Cloud"].tap()
+        XCTAssertEqual(app.buttons.matching(identifier: "Preview Cloud demo").count, 1)
         reveal(app.buttons["Preview Cloud demo"], in: app)
-        XCTAssertTrue(app.buttons["Preview Cloud demo"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Preview Meetup glow"].exists)
-        attach(app, name: "Cloud scope - local linked and cloud-only")
+        app.buttons["Preview Cloud demo"].press(forDuration: 1)
+        XCTAssertTrue(app.buttons["Display on phone"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Edit a copy"].exists)
+        XCTAssertFalse(app.buttons["Keep on this iPhone"].exists)
+        app.buttons["Add favorite"].tap()
         returnToHeader(app)
-        app.buttons["On iPhone"].tap()
-        reveal(app.buttons["Preview Meetup glow"], in: app)
-        XCTAssertTrue(app.buttons["Preview Meetup glow"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Preview Cloud demo"].exists)
-        returnToHeader(app)
-        app.buttons["All"].tap()
+        XCTAssertFalse(app.buttons["On iPhone"].exists)
+        XCTAssertFalse(app.buttons["Cloud"].exists)
 
         app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Create"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Text to GIF"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Text to GIF")).firstMatch.exists)
         assertNoVisibleEntryForms(app)
         attach(app, name: "Create - focused tool chooser")
 
@@ -190,7 +191,15 @@ final class NavigationTests: XCTestCase {
         reveal(permission, in: app); XCTAssertTrue(permission.exists)
         XCTAssertFalse(permission.isEnabled)
         let automation = app.buttons["Capture durable original and arm PHONE"]
+        reveal(automation, in: app, requireHittable: false)
         XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
+        assertNoVisibleEntryForms(app)
+        XCTAssertFalse(app.buttons["Create scene"].isHittable)
+        let scenes = app.buttons["Scenes & playlists"]
+        reveal(scenes, in: app); scenes.tap()
+        let createScene = app.buttons["Create scene"]
+        reveal(createScene, in: app)
+        XCTAssertTrue(createScene.isHittable)
         attach(app, name: "GPS games entry and explicit default-off SOLO consents")
     }
 
@@ -223,12 +232,75 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Phone GIF swap game"].waitForExistence(timeout: 10))
         let found = app.staticTexts["Found Users"]
         reveal(found, in: app); XCTAssertTrue(found.exists)
-        XCTAssertTrue(app.staticTexts["No confirmed swaps for this account yet. Partial exchanges are not Found success."].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "found-users-empty").firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["No swaps yet"].exists)
         XCTAssertFalse(app.buttons["Prepare GAME Bluetooth (explicit)"].exists)
         XCTAssertFalse(app.buttons["Enable 5-minute phone-only game"].exists)
         XCTAssertFalse(app.buttons["Send friend request"].exists)
         XCTAssertTrue(app.buttons["Reload Found Users"].exists)
         attach(app, name: "Found Users - empty verified-pair collection, no sensor or friendship consent")
+    }
+
+    func testCompactTimingFlowRequiresFreshReviewAndSavesOnlyANewCopy() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
+        let artwork = app.buttons["Preview Night ride"]
+        reveal(artwork, in: app); artwork.press(forDuration: 1)
+        app.buttons["Adjust GIF timing / loops"].tap()
+        XCTAssertTrue(app.navigationBars["GIF timing"].waitForExistence(timeout: 10))
+        let save = app.buttons["Save copy"]
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
+        XCTAssertFalse(app.buttons["Review changes"].exists)
+        XCTAssertFalse(app.switches["Use one frame delay"].isHittable)
+        let faster = app.buttons["2×"]
+        reveal(faster, in: app); faster.tap()
+        XCTAssertTrue(app.staticTexts["Speed · 2.00×"].exists)
+        XCTAssertFalse(app.switches["Use one frame delay"].isHittable)
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5))
+        let review = app.buttons["Review changes"]
+        reveal(review, in: app); XCTAssertTrue(review.isEnabled); review.tap()
+        XCTAssertTrue(review.waitForNonExistence(timeout: 20))
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
+        let advanced = app.buttons["Advanced frame timing"]
+        reveal(advanced, in: app); advanced.tap()
+        let uniform = app.switches["Use one frame delay"].switches.firstMatch
+        reveal(uniform, in: app); uniform.tap()
+        XCTAssertEqual(uniform.value as? String, "1")
+        XCTAssertTrue(app.staticTexts["Base frame delay 0.10s"].waitForExistence(timeout: 5))
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5))
+        reveal(review, in: app); review.tap()
+        XCTAssertTrue(review.waitForNonExistence(timeout: 20))
+        reveal(save, in: app); XCTAssertTrue(save.isEnabled)
+        attach(app, name: "Compact timing - reviewed copy with advanced frame controls")
+        save.tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
+        let copy = app.buttons["Preview Night ride timed copy"]
+        reveal(copy, in: app); XCTAssertTrue(copy.exists)
+        reveal(artwork, in: app); XCTAssertTrue(artwork.exists)
+        attach(app, name: "Timing save - new copy and original both retained")
+    }
+
+    func testExpandableDetailsButtonsFireOnlyTheChosenAction() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let create = app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch
+        XCTAssertTrue(create.waitForExistence(timeout: 20)); create.tap()
+        let tools = app.buttons["More tools"]
+        reveal(tools, in: app); tools.tap()
+        let fixture = app.buttons["Action isolation fixture"]
+        reveal(fixture, in: app); fixture.tap()
+        XCTAssertTrue(app.navigationBars["Action isolation"].waitForExistence(timeout: 10))
+        app.buttons["Fixture actions"].tap()
+        app.buttons["Primary fixture action"].tap()
+        XCTAssertTrue(app.staticTexts["Primary: 1"].exists)
+        XCTAssertTrue(app.staticTexts["Secondary: 0"].exists)
+        app.buttons["Secondary fixture action"].tap()
+        XCTAssertTrue(app.staticTexts["Primary: 1"].exists)
+        XCTAssertTrue(app.staticTexts["Secondary: 1"].exists)
+        attach(app, name: "Expandable details - chosen action fires independently")
     }
 
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {
@@ -258,13 +330,15 @@ final class NavigationTests: XCTestCase {
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true) {
         let window = app.windows.firstMatch.frame
-        let scroll = app.scrollViews.allElementsBoundByIndex.first {
+        let collection = app.collectionViews.allElementsBoundByIndex.first {
+            $0.isHittable && $0.frame.intersects(window)
+        }
+        let scroll = collection ?? app.scrollViews.allElementsBoundByIndex.first {
             $0.isHittable && $0.frame.intersects(window)
         }
         let container = scroll ?? app
         var visible = scroll?.frame.intersection(window) ?? window
-        let navigation = app.navigationBars.firstMatch
-        if navigation.exists && navigation.frame.intersects(visible) {
+        if let navigation = app.navigationBars.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.intersects(visible) }) {
             let top = max(visible.minY, navigation.frame.maxY)
             visible = CGRect(x: visible.minX, y: top, width: visible.width,
                 height: max(0, visible.maxY - top))
@@ -304,10 +378,7 @@ final class NavigationTests: XCTestCase {
     }
 
     private func returnToHeader(_ app: XCUIApplication) {
-        for _ in 0..<3 {
-            if app.buttons["Discover GIFs"].isHittable { return }
-            app.swipeDown()
-        }
+        reveal(app.buttons["Discover GIFs"], in: app)
         XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
     }
 

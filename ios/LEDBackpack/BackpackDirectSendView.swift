@@ -14,26 +14,30 @@ struct BackpackDirectSendView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Send & Play \(request.sources.count) GIF(s)") {
-                    Text("No mandatory library save or slot-number form. We choose only empty ordinary slots2–54, fit separate copies to the panel and start their ordered loop—even for one GIF. Sources remain unchanged.").font(.caption)
+                Section("\(request.sources.count) GIF(s)") {
+                    Text("Uses empty slots only. Your originals stay unchanged.").font(.caption)
                     if request.usesVault {
-                        Text("This explicitly selected private cloud GIF will be temporarily downloaded/unlocked for your visible backpack display. No cloud scan/publication/friendship/peer-sharing grant or permanent local copy is created; server keys are never app credentials.").font(.caption)
+                        Text("Your selected private GIF is temporarily downloaded for backpack display. No permanent local save or publication.").font(.caption)
                     }
                     if !panel.link.connected { Text("Connect from the Backpack tab, then retry. This screen does not scan or connect automatically.").foregroundStyle(.orange) }
                     GIFTimingControls(timing: $options.timing).disabled(store.busy)
-                    Picker("Switch to next GIF after", selection: $options.limit) {
+                    Picker("Play each GIF for", selection: $options.limit) {
                         Text("Time").tag(BackpackPresentationLimit.time)
                         Text("GIF loops").tag(BackpackPresentationLimit.loops)
                     }.disabled(store.busy)
-                    if options.limit == .time { Stepper("Time on screen \(options.programSeconds)s per GIF", value: $options.programSeconds, in: 1...600).disabled(store.busy) }
+                    if options.limit == .time { Stepper("\(options.programSeconds) seconds", value: $options.programSeconds, in: 1...600).disabled(store.busy) }
                     else {
                         Stepper("\(options.totalLoops) total loops per GIF", value: $options.totalLoops, in: 1...100).disabled(store.busy)
-                        Text("Loop count is encoded in the send copy; program time is derived from its frame timing and rounded up to whole seconds. Device repeat handling/counting is not verified.").font(.caption)
+                        Text("Backpack loop timing is approximate.").font(.caption).foregroundStyle(.secondary)
                     }
-                    Button("Prepare / update send copies") { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
-                        .disabled(store.busy || !panel.link.connected || panel.hasDisplayOwner)
+                    if store.plan == nil {
+                        Button("Review copies") { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
+                            .buttonStyle(AuroraPrimaryButton())
+                            .disabled(store.busy || !panel.link.connected || panel.hasDisplayOwner)
+                            .accessibilityLabel("Prepare / update send copies")
+                    }
                     if store.busy { ProgressView() }
-                    Text(store.status).font(.caption)
+                    FeatureDetails("Preparation details") { Text(store.status) }
                     if let failure = store.failure { Text(failure).foregroundStyle(.orange) }
                 }
                 if store.preview != nil {
@@ -41,13 +45,18 @@ struct BackpackDirectSendView: View {
                 }
                 ForEach(Array(store.warnings.enumerated()), id: \.offset) { _, note in Text(note).font(.caption).foregroundStyle(.orange) }
                 if store.plan != nil && !store.playbackConfirmed {
-                    Button("Send & Play on backpack") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
+                    Button("Send & Play") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
                         .buttonStyle(.borderedProminent).disabled(store.busy)
-                    Text("This button approves the displayed empty destinations and prepared timing. No occupied-slot overwrite is permitted.").font(.caption)
+                        .accessibilityLabel("Send & Play on backpack")
+                    Text("Confirms the prepared copies and empty destinations shown above.").font(.caption)
                 }
                 if store.playbackConfirmed { Label("Backpack playback loop reported", systemImage: "checkmark.circle").foregroundStyle(.green) }
-                if store.sending { Button("Stop remaining transfer", role: .destructive) { store.stop() } }
-                Text("GIF programs repeat in an ordered loop, not an exactly counted physical-frame receipt. No forced power/maximum brightness. A failed transfer may leave its current slot partially written; inspect storage before retrying. Use the advanced Send queue only when you intentionally want to overwrite occupied slots.").font(.caption)
+                if store.sending { Button("Stop transfer", role: .destructive) { store.stop() } }
+                FeatureDetails("Playback & transfer limits") {
+                    Text("Empty ordinary slots2–54 only. Copies are fitted to your panel and played in an ordered loop; no occupied slot is overwritten.")
+                    Text("Loop count is converted to approximate program time. Physical frame/repeat counting is not verified.")
+                    Text("A failed transfer may leave its slot partly written. Inspect storage before retrying. Power/brightness are not forced.")
+                }
             }.navigationTitle("Send & Play")
                 .toolbar { Button("Done") { if store.sending { store.stop() }; dismiss() } }
                 .interactiveDismissDisabled(store.sending)

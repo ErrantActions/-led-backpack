@@ -3,6 +3,89 @@
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 
+### One owned library
+
+Library no longer has All / On iPhone / Cloud storage scopes. After the existing
+explicit cloud-sync consent, protocol 1 automatically uploads local imports,
+copies, categories and favorites and downloads owned remote GIFs into the same
+durable phone library. Remote version changes update an unchanged phone copy;
+concurrent edits fail explicitly without overwriting either side. Linked artwork
+appears once. Cached GIFs remain usable offline. Foreground sync retries every
+30 seconds and after local changes; pause, unlock, reset and account boundaries
+remain enforced. Storage limits and failures stay visible, not labeled synced.
+
+Community and Commons remain discovery, not separate owned libraries. Removing
+a local download still retains its cloud copy; sync does not silently infer
+remote deletion from missing local files or re-upload foreign/reset associations.
+Cloud-only deletion remains explicitly confirmed in sync settings.
+Frozen source `0772fd9` passed full unsigned native validation in
+[run42502718422](https://github.com/ErrantActions/-led-backpack/actions/runs/42502718422):
+1011 native tests/0 failures/2 explicit skips, all7 UI regressions/0 failures,
+and separate read-only public integration1/0. All18 synchronization fixtures
+passed. Reviewed XCTest screenshots show one artwork collection without storage
+scopes. Remote byte changes also invalidate Library, phone, queue and picker
+previews while preserving artwork identity. This release candidate is not in
+TestFlight9; the next protected upload is a separate checkpoint.
+The existing unsigned source workflow's `library` mode runs the cloud-sync,
+library, vault/protocol/crypto and direct-cloud-send tests together with all
+navigation UI regressions, followed by the separate read-only public integration.
+
+### Clean LED interface overhaul - verified unsigned release candidate
+
+The five tabs remain Library, Social, Backpack, Create and Live. Compact
+artwork-first cards replace oversized introductions; restrained LED accents,
+short action labels and expandable details reduce reading on entry screens.
+Social keeps its actual capability/sign-in gates, rather than substituting a
+second library. Library, phone playback and nearby games have direct routes.
+
+Flows now show the relevant next action: prepare copies before explicitly
+sending, review changed timing before saving a new copy, pair/compare before
+color-game setup, and start or confirm a hunt according to its current state.
+SOLO's scenes, daylight, badges, recaps and advanced geometry are expandable.
+Consent, destructive confirmations, important sharing/safety warnings,
+errors and original-recovery controls are not replaced with automatic approval.
+No protocol, account, sensor, cloud-access or firmware permission is added.
+
+UI regressions cover default-off games, guest capability gates, expanded scene
+actions and timing invalidation/new-copy preservation. The existing unsigned
+workflow now exports XCTest screenshots for visual review. Native compiler,
+test counts and screenshot results are recorded above. These changes are not
+in TestFlight build9; signing/upload remains a separate release step.
+
+For UI-only fixture corrections, the existing unsigned source workflow has a
+`ui` mode: compile, run all NavigationTests, run separate read-only public
+integration, and export screenshots. It does not claim a full unit sweep;
+unchanged app source can retain its separately recorded full-unit evidence.
+
+### Unsigned private fixed-point capture follow-up - source only
+
+SOLO area setup now offers a separately consented, foreground-only one-fix
+capture or the existing offline numeric fallback. Permission preparation does
+not enable sensing/PHONE automation. An already-authorized full-accuracy source
+requests one fix, accepts only fresh≤5s/accuracy≤25m valid geometry, and times out
+after10s without silent retry. Source cancellation/stop/background/permission
+changes retire the continuation; request IDs prevent old timers/cancellation
+from finishing a new capture.
+
+The chosen point goes only into the visible private area draft. It neither
+saves an area nor reports a visit/badge or publishes a route. Explicit Save
+still validates local scene/bounds and reliable stopped configuration.
+Draft cancellation/consent removal/background clears capture work; async
+results cannot replace a closed/new draft. No maps, search, provider keys,
+server coordinates or physical device operations are added.
+Three new injected-source/quality/context/cold-consent fixtures passed at
+df40e46 in run42452361645: actual app/test compile and98focused native
+tests/0failures. This source is not in build9; physical capture/permission
+acceptance remains unperformed.
+
+A subsequent source follow-up checks the monotonic ten-second capture window
+when accepting a fix and after awaiting the source, independently of delayed
+timeout callbacks. Late/backwards completions cannot enter the draft.
+The exact-boundary capture-window fixture passed atf43f6cc in run42453233273:
+actual app/test compile and99focused native tests/0failures.
+This remains an unsigned software fixture checkpoint, not real GPS capture/
+permission/private-provider acceptance, a full release sweep or a new beta.
+
 ### Current released checkpoint: TestFlight0.1.0(9)
 
 Committed source1944292 passed native compilation, portable9/0, priority96/0,
@@ -68,6 +151,130 @@ scope checks alone were not compiler evidence; subsequent actual Mac validation
 and build9 upload are recorded separately. Windows still has no local Xcode.
 No physical phone/backpack or new provider/key operations were performed.
 These changes are in build9, not the earlier TestFlight build8.
+
+### Post-build9 GPS hunt follow-up - separate source
+
+The selected checkpoint now has a same-screen explicitly reviewed manual
+fallback for denied/reduced/stale/uncertain GPS, without selecting it again.
+It requires the same current event/plan/own opt-in and stopped/on-foot choice,
+uses the existing private collection API, and never supplies GPS proof or
+changes cooperative/profile-sharing consent. GPS confirmation still consumes
+an exact fresh scope-bound hint; manual confirmation does not manufacture one.
+
+Private hunt success is no longer inferred from a busy flag returning false.
+The existing store exposes a transient selected-target receipt only after the
+request, current client/ticket checks and matching plan/opt-in/event read-back.
+Normal checkpoints must actually be marked collected; finish needs current
+private completion prerequisites. Clear/cancellation/reload/partial responses
+cannot manufacture an acknowledged selected-target UI outcome.
+Three new EventSocialSourceTests passed with the existing GPS fixtures:
+49native tests/0failures at source796c444 in run42439286316; actual app/test
+source compiled. The existing unsigned workflow's bounded gps selector covers
+EventSocialSourceTests and GPSGameEligibilityTests; old modes remain unchanged.
+This source is not in uploaded build9; physical GPS and private API/device
+acceptance remain separate.
+
+A subsequent lease follow-up carries the existing CatalogEventClock captured
+at the authorized event response through the hunt-state read and both GPS start
+paths. Known local elapsed time reduces the event deadline; a wrong/backwards
+clock, event read older than5s, or event ending during the dependency fetch
+cannot start a new lease. Permission checks are followed by another deadline
+check before updates begin. The maximum remains60s, with no wall-clock reset,
+new sensor permission, stored samples or claims of perfect network clock sync.
+Three new lease regressions passed in run42440162550 at15ab177:
+actual app/test compilation and52targeted event/GPS tests/0failures.
+
+A further source follow-up retains scoped hint cooldown deadlines in a bounded,
+memory-only map across sensing stop/rearm. It neither stores coordinates/
+samples nor writes an encounter timeline. A different authorized target is
+independent; active deadlines are not evicted to permit instant reentry.
+Expired entries are pruned and invalid monotonic inputs fail closed.
+Three new cooldown fixtures passed: app/test compile and55targeted native
+tests/0failures atf7e9660 in run42440878081. This source is not in build9.
+
+SOLO's subsequent stationary-place follow-up requests recurring authorized
+foreground fixes without a movement distance filter, allowing fresh continuous
+dwell while standing still. Existing accuracy/noise/gap rules still govern
+approximate trip distance; no speed/chase objective is added. Cancelled stale
+callbacks are checked against both current session and latest-fix identities.
+Two new SOLO dwell/noise fixtures passed at2005e72 in run42441726482:
+actual app/test compile and69focused native event/GPS/SOLO tests/0failures.
+The bounded gps selector includes SoloSourceTests. Actual stationary-phone
+cadence/permission and private gameplay/device acceptance remain unverified.
+
+The next SOLO permission-state source follow-up aligns the controller with the
+location source's deliberate OS-permission pause: sensing is off, stale work
+retired and area/trip sample anchors discarded, while an explicit Start remains
+available after granting. It does not silently restart, drop accrued distance
+or create a straight-line catch-up segment. A small location-source interface
+keeps the real lazy CLLocationManager as default and permits deterministic
+controller fixtures without requesting OS/device permissions.
+Two new permission/restart/trip-anchor regressions passed atc71a34f in
+run42442572805: actual app/test compile and71focused native tests/0failures.
+This remains a software fixture checkpoint, not real GPS/permission/device
+acceptance or an additional TestFlight upload.
+
+The next unsigned SOLO area follow-up clears dwell/inside observations on stop
+but retains in-memory configured entry cooldowns. Stop/rearm cannot make a
+recent area entry instantly repeat, and partial dwell never resumes. Evaluators
+are reconciled after reliable configuration loads/saves, so removed targets
+cannot grow an unbounded memory index. No sample/coordinate/entry timeline is
+persisted or uploaded; explicit manual scene choices remain separate.
+Two new cooldown/restart regressions passed at9346b00 in run42443394862:
+actual app/test compilation and73focused native tests/0failures.
+
+The next unsigned paired-NI source follow-up checks coarse local stability
+against its monotonic sample deadline at every application/reauthorization,
+instead of trusting a cached Boolean until an expiry callback runs. Expiry
+callbacks are current-session/sample-generation guarded; invalid objects cancel
+older expiry work. The existing paired-game loop reports freshness loss through
+the existing authenticated Boolean message without new protocol fields or
+automatic fallback. Peer claims remain claims, not physical/ranging proof.
+Three new freshness/reset/invalid-clock fixtures passed at5cab1ba in
+run42444333653: actual app/test compilation and88focused native tests/0failures.
+The targeted unsigned selector includes LocalPairingTests. No NI session is initialized by
+cold/unconsented fixture checks, and no physical or exact-distance proof is added.
+
+A further unsigned queue-boundary follow-up requires current local NI freshness
+again after previous encrypted sends drain, immediately before dispatching a
+positive nearby announcement to the radio. Expired queued claims fail closed
+with explicit recovery status rather than being silently substituted or sent.
+The transmission-time regression passed at01bf425 in run42445262344:
+actual app/test compile and89focused native tests/0failures. Peer protocol
+fields and manual fallback behavior remain unchanged.
+
+The next unsigned local-pair outcome follow-up separates in-flight display
+preparation from verified local application and successful receipt sending.
+An early peer receipt cannot claim bilateral completion before local display
+commit/receipt; late async completions recheck current epoch/pair and cannot
+change a stopped/new session. Two state-machine regressions passed at87f71b3 in
+run42446095517: actual app/test compilation and91focused native tests/0failures.
+No physical display atomicity, ranging or identity proof is inferred.
+
+The next unsigned hunt UX source shows only the owner's private confirmed
+target count and offers an explicit next-remaining-target choice after a claim.
+Targets remain any-order selectable, and finish is offered only after current
+private completion prerequisites. Selecting a target starts neither GPS nor
+collection, changes no sharing/cooperative consent and computes no peer or
+contributor counts/distances. Two private-progress/remaining-target fixtures
+passed at698b0f9 in run42447324717: actual app/test compilation and93focused
+native tests/0failures. This source is not in uploaded build9.
+
+The next unsigned GPS HUD source reports remaining dwell only from actual
+usable continuous fixes. Outside/invalid/stale/eligible/cooldown/stopped states
+clear that feedback; no timer predicts arrival or automatically confirms it.
+Both event hunt and route eligibility views share the existing evaluator/
+controller feedback. Two fresh-dwell/reset regressions passed at40c9c8b in
+run42448104253: actual app/test compile and95focused native tests/0failures.
+The accumulated post-build9 code at40c9c8b (evidence commitb0b89d3) passed
+consolidated unsigned run42448942902: portable9/0, priority116/0 plusUI1/0,
+full native989/0/2explicit skips, integratedUI5/0 and separate read-only public
+integration1/0. The existing focused stage also completed successfully.
+Repeated selections are not additive unique coverage. This is software/
+simulator/public-client evidence, not physical GPS/BLE/UWB, private service,
+provider/enforcement readiness, signing or another beta upload.
+Build9/main app source1944292 remain unchanged; post-beta code stays on
+native-recovery with independently dirty firmware research excluded.
 
 ### Social tab navigation follow-up - source only
 

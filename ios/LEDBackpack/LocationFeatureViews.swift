@@ -212,6 +212,9 @@ struct EventLocalEligibilityView: View {
             Text("Samples are discarded, never saved, logged, encoded or sent. No peer positions/distances, encounter history, background permission, GPS proof or navigation. Eligibility never records progress or badges.").font(.caption)
             Label(local.status, systemImage: local.sensing ? "location.fill" : "location.slash")
             Text(local.eligibility.rawValue)
+            if let remaining = local.dwellRemaining, local.sensing, local.eligibility == .dwelling {
+                Text("Remain still: about \(Int(ceil(remaining))) more seconds of fresh fixes are needed.").font(.caption)
+            }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             Button("Refresh authorized fixed plan") { local.stop("Plan refresh requires new consent"); consent = false; load() }
             if let event, let route = event.route {
@@ -225,13 +228,15 @@ struct EventLocalEligibilityView: View {
                     session.run { client in
                         local.stop("Validating fresh event context")
                         let current = try await client.event(eventID)
+                        let clock = try CatalogEventClock(serverTime: current.serverTime)
                         guard EventProgressContext(current) == EventProgressContext(event),
                               let checkpoint = current.route?.checkpoints.first(where: { $0.id == checkpointID }) else {
                             throw BackpackError.invalid("Current fixed plan changed; select/review again.")
                         }
                         try session.checked(client)
                         try local.start(event: current, checkpoint: checkpoint, accountRevision: community.accountRevision,
-                            consent: consent, foreground: phase == .active, capability: client.progressDeadlinesEnabled(current))
+                            consent: consent, foreground: phase == .active, capability: client.progressDeadlinesEnabled(current),
+                            eventClock: clock)
                     }
                 }.disabled(!consent || checkpointID == nil || session.busy)
             }

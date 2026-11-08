@@ -81,9 +81,63 @@ final class LocalPairingTests: XCTestCase {
         XCTAssertFalse(gate.observe(distance: .nan, uptime: 6))
         XCTAssertFalse(gate.observe(distance: nil, uptime: 7))
     }
+    func testFreshRangeGateExpiresEvenBeforeTimerCallbackRuns() {
+        var gate = LocalRangeStability()
+        XCTAssertFalse(gate.observe(distance: 1, uptime: 1))
+        XCTAssertFalse(gate.fresh(uptime: 1))
+        XCTAssertTrue(gate.observe(distance: 1.1, uptime: 2.1))
+        XCTAssertTrue(gate.fresh(uptime: 4.099))
+        XCTAssertFalse(gate.fresh(uptime: 4.1))
+        XCTAssertFalse(gate.fresh(uptime: 2))
+    }
+    func testRangeResetOrUnstableMeasurementRevokesFreshGate() {
+        var gate = LocalRangeStability()
+        _ = gate.observe(distance: 1, uptime: 1)
+        _ = gate.observe(distance: 1.1, uptime: 2.1)
+        XCTAssertTrue(gate.fresh(uptime: 2.1))
+        _ = gate.observe(distance: 2, uptime: 2.2)
+        XCTAssertFalse(gate.fresh(uptime: 2.2))
+        gate.reset()
+        XCTAssertFalse(gate.fresh(uptime: 2.3))
+    }
+    func testNegativeRangeClockCannotEstablishStability() {
+        var gate = LocalRangeStability()
+        XCTAssertFalse(gate.observe(distance: 1, uptime: -1))
+        XCTAssertFalse(gate.fresh(uptime: 0))
+    }
+    func testQueuedRangeClaimRequiresFreshSampleAtTransmissionTime() throws {
+        var gate = LocalRangeStability()
+        _ = gate.observe(distance: 1, uptime: 1)
+        _ = gate.observe(distance: 1, uptime: 2)
+        XCTAssertNoThrow(try gate.requireFresh(uptime: 3.999))
+        XCTAssertThrowsError(try gate.requireFresh(uptime: 4))
+        XCTAssertThrowsError(try gate.requireFresh(uptime: 5))
+    }
+    func testPeerReceiptDuringLocalPreparationCannotConfirmBothApplications() {
+        var state = LocalPairApplicationState()
+        state.applying = true; state.peerApplied = true
+        XCTAssertFalse(state.canApply); XCTAssertFalse(state.confirmed)
+        state.localApplied = true
+        XCTAssertFalse(state.confirmed)
+        state.localReceiptSent = true
+        XCTAssertFalse(state.confirmed)
+        state.applying = false
+        XCTAssertTrue(state.confirmed)
+    }
+    func testLocalApplicationWithoutPeerReceiptRemainsUnconfirmedAndResetClearsState() {
+        var state = LocalPairApplicationState()
+        state.localApplied = true; state.localReceiptSent = true
+        XCTAssertFalse(state.canApply); XCTAssertFalse(state.confirmed)
+        state.peerApplied = true
+        XCTAssertTrue(state.confirmed)
+        state = .init()
+        XCTAssertTrue(state.canApply); XCTAssertFalse(state.confirmed)
+    }
     func testNIColdStopAndUnconsentedPrepareNeverInitializeSession() {
         let ni = LocalNearbyInteraction()
         XCTAssertFalse(ni.initialized); ni.stop(); XCTAssertFalse(ni.initialized)
+        XCTAssertFalse(ni.hasFreshStableHint(uptime: 0))
+        XCTAssertThrowsError(try ni.requireFreshStableHint(uptime: 0))
         XCTAssertThrowsError(try ni.prepare(consent: false, foreground: false))
         XCTAssertFalse(ni.initialized)
     }

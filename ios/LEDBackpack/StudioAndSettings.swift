@@ -18,27 +18,25 @@ struct LiveView: View {
         NavigationStack {
             GeometryReader { geometry in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        VStack(alignment: .leading, spacing: 14) {
-                            StatusPill(title: live.mode == nil ? "PREVIEW" : "ON AIR",
-                                symbol: live.mode == nil ? "sparkles" : "dot.radiowaves.left.and.right",
-                                color: Aurora.mint)
-                            AuroraHeading(eyebrow: "Live studio", title: "Your world,", accent: "in pixels.")
-                            Text("A live canvas with your signature.").font(.subheadline).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Live canvas").font(.title2.bold())
+                            Spacer()
+                            StatusPill(title: live.mode == nil ? "Preview" : "Live",
+                                symbol: live.mode == nil ? "sparkles" : "dot.radiowaves.left.and.right")
                         }
                         if geometry.size.width >= 760 {
                             HStack(alignment: .top, spacing: 24) {
                                 controls.frame(minWidth: 280, maxWidth: 370)
                                 VStack(spacing: 20) {
-                                    StatusPill(title: "EXPANDED LIVE STUDIO", symbol: "rectangle.split.2x1")
                                     previewCard
-                                    presetRail
+                                    DisclosureGroup("Presets") { presetRail }
                                 }.frame(maxWidth: .infinity)
                             }
                         } else {
                             previewCard
                             controls
-                            presetRail
+                            DisclosureGroup("Presets") { presetRail }
                         }
                         backgroundNote
                     }
@@ -75,7 +73,7 @@ struct LiveView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Pick your signal").font(.title2.weight(.bold))
+            Text("Choose a mode").font(.headline)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 95), spacing: 10)], spacing: 10) {
                 ForEach(LiveMode.allCases) { mode in
                     Button { selected = mode } label: {
@@ -127,11 +125,6 @@ struct LiveView: View {
 
     private var presetRail: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Instant personality").font(.title3.weight(.bold))
-                Spacer()
-                Button("Make your own") { themeEditor = true }.font(.caption.weight(.semibold))
-            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(LiveTheme.builtins(for: selected), id: \.name) { preset in
@@ -155,10 +148,13 @@ struct LiveView: View {
 
     private var backgroundNote: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Designed to move with you", systemImage: "iphone.radiowaves.left.and.right").font(.headline)
+            Text("Use controls only while stationary. A lost connection can prevent playback restoration.")
+                .foregroundStyle(.orange)
+            FeatureDetails("Sensors & background limits") {
             Text("An explicitly started GPS session can continue with Always location and Background GPS enabled. Other screens refresh on allowed callbacks; iOS suspension or force-quit can stop updates.")
             Text("Weather is opportunistic, marked STALE after five minutes and NO DATA after fifteen. Stop attempts playback restoration; a lost connection can prevent it. Operate controls only while stationary.")
             LabeledContent("Location", value: sensors.authorization == .authorizedAlways ? "Always" : "Check permission")
+            }
         }.font(.caption).foregroundStyle(.secondary).padding(20).glassPanel()
     }
 
