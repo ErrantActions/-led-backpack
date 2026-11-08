@@ -119,7 +119,10 @@ final class PhoneSwapGame: ObservableObject {
     }
     func prepareRadio() {
         do {
-            guard let community, capability(community) else { throw BackpackError.invalid("Current purpose-specific peer service unavailable; game/discovery cannot substitute for accepted-friend identity.") }
+            guard let community, community.signedIn else {
+                throw BackpackError.invalid("Sign in before preparing authenticated peer-game Bluetooth. Friendship is not required for the GIF game.")
+            }
+            guard capability(community) else { throw BackpackError.invalid("Current purpose-specific peer service unavailable; game/discovery cannot substitute for accepted-friend identity.") }
             try radio.prepare()
         } catch { failure = error.localizedDescription }
     }

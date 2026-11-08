@@ -11,6 +11,8 @@ player menu's Automatic GIF swap / Found Users sheet, prepare GAME Bluetooth,
 then enable. This sheet leaves the actual player visible/playing; choosing
 artwork through the old library picker is not treated as current playback.
 Social/GPS game entries also offer the existing local library and player path.
+Signed-out browsing keeps authenticated radio preparation/arming unavailable,
+even when the public config advertises the game; friendship is not required.
 
 Outgoing capture now requires actual playing, unfinished PHONE bytes with
 unchanged artwork/policy revisions before and after sanitization. Pause,

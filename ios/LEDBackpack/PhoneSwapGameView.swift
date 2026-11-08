@@ -37,7 +37,7 @@ struct PhoneSwapGameView: View {
                         }
                     }
                 }
-                if community.config?.gifSwapPresenceEnabled == true {
+                if community.config?.gifSwapPresenceEnabled == true && community.signedIn {
                     Toggle("Enable automatic sharing/display risk for this foreground game", isOn: $consent).disabled(game.enabled || game.busy)
                     Text("Both players opt in beforehand. Nearby Bluetooth exchanges are automatic, without encounter popups or friendship requirements, and share the CURRENTLY PLAYING phone GIF, including a received GIF now playing. Private-library artwork can be copied by other players. Unexpected mature/offensive artwork is possible. The game shares a minimal consented name/card and safe author/license credit, not email, private profile or library access. Private URLs/comments are removed from an outgoing copy, never your original.").font(.caption).foregroundStyle(.orange)
                     Text("Choose a GIF <=128 KiB; still formats remain valid for normal phone playback but are not secretly converted for the game. Both apps must independently enable this game and acknowledge complete validated artwork/readiness. Service access is required at handshake and again before apply; offline fails closed.").font(.caption)
@@ -52,6 +52,8 @@ struct PhoneSwapGameView: View {
                     if !phone.viewerAutomaticPlaybackAllowed {
                         Text("Saved viewer settings disable automatic phone playback. Change that setting explicitly before arming; the game does not override it.").font(.caption)
                     }
+                } else if community.config?.gifSwapPresenceEnabled == true {
+                    Text("Sign in to use authenticated GIF swaps. Friendship is not required; browsing this page does not prepare Bluetooth.")
                 } else { Text("Game service capability is unavailable. Friend discoverability is NOT a fallback.") }
                 Button("Stop game / retain recovery", role: .destructive) { game.stop(); consent = false; Task { await game.loadMet() } }
                 Button("Stop and restore initial phone original") { consent = false; Task { await game.restoreOriginal() } }
