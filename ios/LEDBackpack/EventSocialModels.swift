@@ -131,6 +131,11 @@ struct NativeEventCollection: Decodable {
         return checkpoints.contains(where: { $0.id == checkpointID && !$0.collected }) ||
             (ownCompleted && event.route?.checkpoints.contains(where: { $0.id == checkpointID && $0.kind == .finish }) == true)
     }
+    var ownCollectedTargetCount: Int { checkpoints.filter(\.collected).count }
+    func remainingTargets(event: CatalogEvent) -> [EventRouteCheckpoint] {
+        (event.route?.checkpoints ?? []).filter { permitsManualCollection($0.id, event: event) }
+            .sorted { $0.order < $1.order }
+    }
     func requireClaimReadback(_ checkpointID: UUID, event: CatalogEvent, previous: NativeEventCollection) throws {
         try validate(NativeEventSocialContext(event))
         guard eventId == previous.eventId, eventRevision == previous.eventRevision,

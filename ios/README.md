@@ -164,8 +164,17 @@ The next unsigned local-pair outcome follow-up separates in-flight display
 preparation from verified local application and successful receipt sending.
 An early peer receipt cannot claim bilateral completion before local display
 commit/receipt; late async completions recheck current epoch/pair and cannot
-change a stopped/new session. Two state-machine regressions are prepared.
+change a stopped/new session. Two state-machine regressions passed at87f71b3 in
+run42446095517: actual app/test compilation and91focused native tests/0failures.
 No physical display atomicity, ranging or identity proof is inferred.
+
+The next unsigned hunt UX source shows only the owner's private confirmed
+target count and offers an explicit next-remaining-target choice after a claim.
+Targets remain any-order selectable, and finish is offered only after current
+private completion prerequisites. Selecting a target starts neither GPS nor
+collection, changes no sharing/cooperative consent and computes no peer or
+contributor counts/distances. Two private-progress/remaining-target fixtures
+are prepared; this source is not in uploaded build9.
 
 ### Social tab navigation follow-up - source only
 

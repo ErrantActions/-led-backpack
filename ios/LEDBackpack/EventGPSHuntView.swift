@@ -32,7 +32,7 @@ private struct EventGPSHuntContent: View {
     @State private var work: Task<Void, Never>?
     private var targets: [EventRouteCheckpoint] {
         guard let event = model.event, let collection = model.collection else { return [] }
-        return event.route?.checkpoints.filter { collection.permitsManualCollection($0.id, event: event) } ?? []
+        return collection.remainingTargets(event: event)
     }
     private var selected: EventRouteCheckpoint? { targets.first { $0.id == checkpointID } }
     private var expectedScope: ForegroundLocationScope? {
@@ -97,6 +97,9 @@ private struct EventGPSHuntContent: View {
             Section("Private hunt participation") {
                 Text(collection.ownEnabled ? "Your current hunt opt-in is active." : "Join this hunt deliberately before playing.")
                 Text(collection.ownCompleted ? "All selected private targets collected; finish may be available." : "Select a remaining private target below.")
+                Text("Your private confirmed targets: \(collection.ownCollectedTargetCount) of \(collection.plan.checkpointIds.count)")
+                    .font(.headline)
+                Text("This is your self-reported hunt progress, not other participants' counts or verified attendance. Nothing is shared publicly.").font(.caption)
                 Text(collection.cooperativeReached ? "Cooperative boolean goal reached." : "Cooperative boolean goal not reached or unavailable.").font(.caption)
                 Text(collection.ownCooperativeConsent ? "You separately opted into the cooperative completion boolean." : "Your cooperative completion contribution is off.").font(.caption)
                 if !collection.ownEnabled {
@@ -117,6 +120,13 @@ private struct EventGPSHuntContent: View {
                     Text("Choose target").tag(Optional<UUID>.none)
                     ForEach(targets) { Text($0.title).tag(Optional($0.id)) }
                 }.disabled(busy || model.busy)
+                if checkpointID == nil && !targets.isEmpty {
+                    Button("Choose next remaining target") {
+                        guard let next = targets.first else { failure = "Remaining targets changed. Reload the current hunt."; return }
+                        checkpointID = next.id
+                        notice = "Selected \(next.title). GPS and private confirmation still need your separate explicit choices."
+                    }.disabled(busy || model.busy || model.needsReload || phase != .active)
+                }
                 if targets.isEmpty { Text("No remaining eligible target. Reload current hunt/event state.") }
                 Toggle("I consent to foreground GPS for this selected checkpoint", isOn: $gpsConsent)
                     .disabled(busy || model.busy || selected == nil)

@@ -57,7 +57,12 @@ availability or that the product backlog is finished.
 - [x] Next unsigned local-pair source separates preparation/application/
   receipt-sent state, preventing premature bilateral status and stale async
   completion across stop/new sessions.
-- [ ]2new local-pair outcome-state regressions and targeted native validation.
+- [x]2new local-pair outcome-state regressions passed: app/test compile and
+  91focused native tests/0 at87f71b3 in run42446095517.
+- [x] Next unsigned hunt UX exposes own private confirmed target progress and
+  explicit next-remaining-target choice, not automatic sensing/claims, public
+  progress or contributor/peer counts. Finish still requires completion.
+- [ ]2new private-progress/remaining-target fixtures and targeted validation.
 
 ## Current-GIF automatic swaps / Found Users - software GREEN at1944292
 

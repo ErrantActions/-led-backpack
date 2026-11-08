@@ -85,6 +85,16 @@ final class EventSocialSourceTests: XCTestCase {
         XCTAssertNoThrow(try completed.requireClaimReadback(finishID, event: current, previous: completed))
         XCTAssertThrowsError(try collection().requireClaimReadback(finishID, event: current, previous: completed))
     }
+    func testRemainingHuntTargetsExcludeStartAndCollectedTargetsAndUnlockFinish() throws {
+        let current = try event(), incomplete = try collection(), completed = try collection(completed: true)
+        XCTAssertEqual(incomplete.remainingTargets(event: current).map(\.id), [targetID])
+        XCTAssertEqual(completed.remainingTargets(event: current).map(\.id), [finishID])
+        XCTAssertEqual(incomplete.ownCollectedTargetCount, 0)
+        XCTAssertEqual(completed.ownCollectedTargetCount, 1)
+    }
+    func testWithdrawnHuntDoesNotOfferNextTargets() throws {
+        XCTAssertTrue(try collection(enabled: false).remainingTargets(event: event()).isEmpty)
+    }
     private func display(own: Bool = true, cues: [[String: Any]] = []) throws -> NativeEventDisplay {
         try decode(NativeEventDisplay.self, [
             "eventId": eventID.uuidString, "eventRevision": 7, "participationRevision": 3,
