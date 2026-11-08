@@ -25,6 +25,11 @@ workflow now exports XCTest screenshots for visual review. Native compiler,
 test counts and screenshot results will be recorded after execution; these
 working-source changes are not in TestFlight build9.
 
+For UI-only fixture corrections, the existing unsigned source workflow has a
+`ui` mode: compile, run all NavigationTests, run separate read-only public
+integration, and export screenshots. It does not claim a full unit sweep;
+unchanged app source can retain its separately recorded full-unit evidence.
+
 ### Unsigned private fixed-point capture follow-up - source only
 
 SOLO area setup now offers a separately consented, foreground-only one-fix

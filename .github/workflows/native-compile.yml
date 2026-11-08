@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Compile completed source and optionally run focused native unit tests
+        description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps]
+        options: [focused, compile, gps, ui]
         default: focused
         required: true
 permissions:
@@ -57,7 +57,13 @@ jobs:
               -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           else
             TESTS=()
-            if [ "$VALIDATION_MODE" = gps ]; then
+            TIMEOUTS=()
+            if [ "$VALIDATION_MODE" = ui ]; then
+              CLASSES=()
+              TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests")
+              TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
+                "-maximum-test-execution-time-allowance" "900")
+            elif [ "$VALIDATION_MODE" = gps ]; then
               CLASSES=(EventSocialSourceTests GPSGameEligibilityTests SoloSourceTests LocalPairingTests)
             else
               CLASSES=(CommunityAdminTests CommunityFeatureTests CommunityChatTests MessageIncidentReportTests)
@@ -68,8 +74,34 @@ jobs:
             xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
               -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
               -derivedDataPath build -resultBundlePath build/UnsignedTests.xcresult \
-              -parallel-testing-enabled NO "${TESTS[@]}" CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
+              -parallel-testing-enabled NO "${TESTS[@]}" "${TIMEOUTS[@]}" CODE_SIGNING_ALLOWED=NO | tee build/unsigned-validation.log
           fi
+      - name: Verify read-only public integration after UI regressions
+        if: inputs.mode == 'ui'
+        env:
+          TEST_RUNNER_NATIVE_PUBLIC_INTEGRATION: "1"
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath build/PublicIntegration.xcresult \
+            -only-testing:LEDBackpackTests/NativePublicIntegrationTests \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 120 \
+            -maximum-test-execution-time-allowance 300 \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO | tee build/public-integration.log
+      - name: Export UI regression screenshots
+        if: always() && inputs.mode == 'ui'
+        run: |
+          if test -d build/UnsignedTests.xcresult; then
+            xcrun xcresulttool export attachments --path build/UnsignedTests.xcresult \
+              --output-path build/UIScreenshots
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.mode == 'ui'
+        with:
+          name: native-ui-screenshots-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ios/build/UIScreenshots
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -77,4 +109,6 @@ jobs:
           path: |
             ios/build/unsigned-validation.log
             ios/build/UnsignedTests.xcresult
+            ios/build/public-integration.log
+            ios/build/PublicIntegration.xcresult
           if-no-files-found: warn
