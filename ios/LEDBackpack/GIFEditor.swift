@@ -58,7 +58,14 @@ struct MediaEditor: View {
     var body: some View {
         NavigationStack {
             observedEditor
-                .toolbar { Button("Cancel", action: cancelEditing) }
+                .safeAreaInset(edge: .bottom) {
+                    Button(action: cancelEditing) {
+                        Text("Cancel").frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(8).background(.regularMaterial)
+                    .accessibilityIdentifier("editor-cancel")
+                }
                 .sheet(isPresented: Binding(get: { previewAnimation != nil }, set: { if !$0 { previewAnimation = nil } })) {
                     animationPreview
                 }
@@ -76,7 +83,7 @@ struct MediaEditor: View {
             timing
             manual
             outputActions
-        }.modernScene().navigationTitle("GIF Studio")
+        }.modernScene().navigationTitle("GIF Studio").buttonStyle(.borderless)
     }
 
     private var geometryObservedEditor: some View {
@@ -170,7 +177,7 @@ struct MediaEditor: View {
     }
 
     private var framing: some View {
-        Section("Canvas") {
+        DisclosureGroup("Canvas & framing") {
             Picker("Panel size", selection: $sizeIndex) {
                 ForEach(0..<sizes.count, id: \.self) { Text("\(sizes[$0].width) x \(sizes[$0].height)").tag($0) }
             }
@@ -182,7 +189,7 @@ struct MediaEditor: View {
     }
 
     private var cleanup: some View {
-        Section("Background and edge cleanup") {
+        DisclosureGroup("Background cleanup") {
             Picker("Remove background", selection: $removal) {
                 ForEach(BackgroundRemoval.allCases) { Text($0.rawValue).tag($0) }
             }
@@ -201,7 +208,7 @@ struct MediaEditor: View {
 
     @ViewBuilder private var ghosting: some View {
         if ["GIF87a", "GIF89a"].contains(String(data: data.prefix(6), encoding: .ascii) ?? "") {
-            Section("Ghost trails") {
+            DisclosureGroup("Ghost trails") {
                 Toggle("Reset canvas between GIF frames", isOn: $resetFrameCanvas)
                     .disabled(busy || !touches.isEmpty)
                 Text("Repairs trails caused by frames retaining previous pixels. Some GIFs intentionally update only part of the canvas; resetting may remove wanted details. Preview before saving.")
@@ -216,7 +223,7 @@ struct MediaEditor: View {
     }
 
     private var timing: some View {
-        Section("Timing and looping") {
+        DisclosureGroup("Timing & loops") {
             if let animation {
                 Stepper("First frame \(start + 1)", value: $start, in: 0...(animation.images.count - 1))
                 Stepper("Last frame \(end + 1)", value: $end, in: 0...(animation.images.count - 1))
@@ -237,7 +244,7 @@ struct MediaEditor: View {
     }
 
     private var manual: some View {
-        Section("Manual touch-up") {
+        DisclosureGroup("Brush & eraser") {
             Picker("Tool", selection: $tool) { Text("Off").tag("Off"); Text("Brush").tag("Brush"); Text("Eraser").tag("Eraser") }
             ColorPicker("Brush color", selection: $brushColor, supportsOpacity: false)
             Stepper("Brush radius \(radius) px", value: $radius, in: 0...3)

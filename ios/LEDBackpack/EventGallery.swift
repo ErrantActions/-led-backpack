@@ -197,12 +197,13 @@ final class EventGalleryStore: ObservableObject {
                 let images = try await client.eventImages(id)
                 try self.session.checked(client)
                 guard context == self.contextVersion else { return }
-                if let previous = self.event, previous.revision != current.revision || previous.access.role != current.access.role {
+                let definitionChanged = self.event.map { $0.revision != current.revision } ?? false
+                if let previous = self.event, previous.access.role != current.access.role {
                     self.discard(); self.contextVersion = UUID()
                 }
                 self.event = current; self.gallery = images
                 if let captured = self.captured {
-                    self.conflict = captured.assets.map(\.id) != images.assets.map(\.id) ||
+                    self.conflict = definitionChanged || captured.assets.map(\.id) != images.assets.map(\.id) ||
                         captured.assets.map(\.revision) != images.assets.map(\.revision)
                 }
             } catch {

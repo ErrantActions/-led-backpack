@@ -20,13 +20,17 @@ struct FeatureActionIsolationFixture: View {
 }
 
 private actor LibraryPreviewTransport: CommunityTransport {
+    private let social: Bool
+    private let paging: Bool
+    init(social: Bool = false, paging: Bool = false) { self.social = social; self.paging = paging }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         let path = request.url?.path ?? ""
         if request.httpMethod == "GET", path == "/api/v1/config" {
-            return CommunityResponse(status: 200, data: Data("""
-            {"requireEmailVerification":false,"passwordRecoveryAvailable":false,"privateLibraryEnabled":true,
-            "accountDeletionRetainsSharedGifs":false,"appleSignInEnabled":true}
-            """.utf8))
+            return .init(status: 200, data: try JSONSerialization.data(withJSONObject: [
+                "requireEmailVerification": false, "passwordRecoveryAvailable": false, "privateLibraryEnabled": true,
+                "accountDeletionRetainsSharedGifs": false, "appleSignInEnabled": true,
+                "socialEnabled": social, "messagingEnabled": social, "eventsEnabled": social, "nearbyDiscoveryEnabled": social,
+                "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social]))
         }
         if request.httpMethod == "POST", path == "/api/v1/auth/login",
            let body = request.httpBody, let values = try JSONSerialization.jsonObject(with: body) as? [String: String],
@@ -38,7 +42,8 @@ private actor LibraryPreviewTransport: CommunityTransport {
             """.utf8))
         }
         if request.httpMethod == "GET" {
-            let ids = ["cccccccc-1234-4567-89ab-abcdefabcdef", "dddddddd-1234-4567-89ab-abcdefabcdef"]
+            let ids = paging ? (1...30).map { String(format: "cccccccc-1234-4567-89ab-%012d", $0) } :
+                ["cccccccc-1234-4567-89ab-abcdefabcdef", "dddddddd-1234-4567-89ab-abcdefabcdef"]
             let gif = Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])
             let items: [[String: Any]] = ids.enumerated().map { index, id in
                 ["id":id,"title":"Public fixture \(index + 1)","category":"pixel-art","tags":[],
@@ -48,7 +53,14 @@ private actor LibraryPreviewTransport: CommunityTransport {
                  "uploader":["id":LibraryPreviewFixture.owner,"displayName":"Fixture author"],"likeCount":0]
             }
             if path == "/api/v1/items" {
-                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: ["items":items,"page":1,"limit":24,"total":2]))
+                guard let url = request.url, let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                      let text = components.queryItems?.first(where: { $0.name == "page" })?.value,
+                      let page = Int(text), (1...10000).contains(page) else {
+                    throw BackpackError.invalid("Invalid generated gallery page request.")
+                }
+                let start = min(items.count, max(0, (page - 1) * 24)), end = min(items.count, start + 24)
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: [
+                    "items": Array(items[start..<end]), "page": page, "limit": 24, "total": items.count]))
             }
             if let index = ids.firstIndex(where: { path == "/api/v1/items/\($0)" }) {
                 return .init(status: 200, data: try JSONSerialization.data(withJSONObject: ["item":items[index]]))
@@ -65,6 +77,24 @@ private actor LibraryPreviewTransport: CommunityTransport {
             {"user":{"id":"\(LibraryPreviewFixture.owner)","email":"ui@example.invalid","displayName":"UI Rider","role":"user","verified":true,
             "authMethods":{"apple":false,"password":true,"appleOnly":false}}}
             """.utf8))
+        }
+        if social, request.httpMethod == "GET" {
+            switch path {
+            case "/api/v1/social/me":
+                return .init(status: 200, data: Data("""
+                {"profile":{"id":"\(LibraryPreviewFixture.owner)","displayName":"UI Rider"},
+                "discoverable":false,"allowRequests":true,"messagingEnabled":true,"encryption":"server-managed"}
+                """.utf8))
+            case "/api/v1/social/friends":
+                return .init(status: 200, data: Data(#"{"friends":[],"page":1,"limit":50}"#.utf8))
+            case "/api/v1/social/requests":
+                return .init(status: 200, data: Data(#"{"inbound":[],"outbound":[],"page":1,"limit":50}"#.utf8))
+            case "/api/v1/social/conversations":
+                return .init(status: 200, data: Data(#"{"conversations":[],"page":1,"limit":24}"#.utf8))
+            case "/api/v1/events":
+                return .init(status: 200, data: Data(#"{"events":[],"offset":0,"limit":50,"serverTime":"2026-11-08T18:00:00.000Z"}"#.utf8))
+            default: break
+            }
         }
         if request.httpMethod == "GET", path == "/api/v1/me/items" {
             let items = [("Night ride", LibraryPreviewFixture.linkedItem), ("Cloud demo", LibraryPreviewFixture.remoteItem)]
@@ -120,7 +150,10 @@ enum LibraryPreviewFixture {
     nonisolated static let linkedItem = "abcdefab-1234-4567-89ab-abcdefabcdef"
     nonisolated static let remoteItem = "bbbbbbbb-1234-4567-89ab-abcdefabcdef"
     static func community() -> CommunityController {
-        CommunityController(vault: LibraryPreviewVault(), factory: { _ in LibraryPreviewTransport() })
+        CommunityController(vault: LibraryPreviewVault(), factory: { _ in
+            LibraryPreviewTransport(social: CommandLine.arguments.contains("--social-ui-fixture"),
+                paging: CommandLine.arguments.contains("--pagination-ui-fixture"))
+        })
     }
     static func make() throws -> LocalLibrary {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LEDBackpack-UITest-\(UUID().uuidString)", isDirectory: true)

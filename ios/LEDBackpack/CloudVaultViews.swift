@@ -7,7 +7,6 @@ struct CloudVaultSettingsView: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var library: LocalLibrary
     @State private var enable = false
-    @State private var offerDelete = false
     @State private var deleting = false
     @State private var confirmation = ""
     @State private var failure: String?
@@ -27,20 +26,26 @@ struct CloudVaultSettingsView: View {
                     Toggle("Private cloud synchronization", isOn: Binding(get: { vault.syncing }, set: { value in
                         if value { enable = true }
                         else {
-                            do { try vault.pause(); offerDelete = true }
+                            do { try vault.pause() }
                             catch { failure = error.localizedDescription }
                         }
                     })).disabled(vault.busy && !vault.syncing)
-                    Text("Off pauses only private cloud on this device. It keeps local files, public catalog access, your account and existing cloud copies.")
+                    Text("Pausing keeps your phone and cloud copies.")
                         .font(.caption)
                     if vault.pin.remoteReset { Label("Cloud changed or was disabled remotely. Sync stays off until you explicitly enable it.", systemImage: "pause.circle").font(.caption) }
-                    Text("Your GIFs download automatically and local changes upload automatically while the app is open.")
+                    Text("Changes sync automatically while the app is open.")
                         .font(.caption)
-                    Button("Retry sync") { vault.requestSynchronization(library) }
+                    if vault.failure != nil { Button("Retry sync") { vault.requestSynchronization(library) }
                         .disabled(!vault.syncing || vault.locked || vault.busy || vault.state?.migrationId != nil)
+                    }
                 }
                 if let state = vault.state {
-                    Section("Storage and encryption") {
+                    Text(state.mode == .managed ? "Server-managed encryption: the server can decrypt." : "User-held encryption")
+                        .font(.caption)
+                    if state.mode == .userHeld && vault.locked {
+                        NavigationLink("Unlock library") { CloudVaultPasswordView(mode: .unlock) }
+                    }
+                    DisclosureGroup("Encryption & recovery") {
                         Text(state.enabled ? (state.mode == .userHeld ? "User-held encrypted library" : "Server-managed encrypted storage") : "Cloud is disabled")
                             .font(.headline)
                         Text(state.mode == .managed
@@ -52,9 +57,6 @@ struct CloudVaultSettingsView: View {
                             if let error = state.legacyMigrationError { Text(error).foregroundStyle(.orange) }
                             Button("Request legacy private migration") { vault.run { try await vault.requestLegacyMigration() } }
                                 .disabled(!vault.syncing || vault.busy)
-                        }
-                        if state.mode == .userHeld && vault.locked {
-                            NavigationLink("Unlock with library/recovery password") { CloudVaultPasswordView(mode: .unlock) }
                         }
                         if vault.canEnroll && state.mode == .managed {
                             NavigationLink("Enroll user-held encryption") { CloudVaultPasswordView(mode: .enroll) }
@@ -70,7 +72,7 @@ struct CloudVaultSettingsView: View {
                         }
                     }
                     if state.mode == .userHeld {
-                        Section("Optional passkeys") {
+                        DisclosureGroup("Passkeys") {
                             if #available(iOS 18.0, *), vault.passkeyRP != nil {
                                 ForEach(state.passkeys, id: \.credentialId) { wrapper in
                                     if vault.locked {
@@ -119,7 +121,7 @@ struct CloudVaultSettingsView: View {
             if vault.busy { ProgressView(vault.progress.isEmpty ? "Working with private cloud…" : vault.progress) }
             if let error = failure ?? vault.failure { Text(error).foregroundStyle(.orange) }
         }
-        .modernScene().navigationTitle("Private cloud")
+        .modernScene().navigationTitle("Private cloud").buttonStyle(.borderless)
         .background(CloudVaultWindowReader(holder: anchor).frame(width: 0, height: 0))
         .confirmationDialog("Enable private cloud on this device?", isPresented: $enable, titleVisibility: .visible) {
             Button(vault.pin.userHeld && vault.state?.enabled == false ? "Create NEW server-managed library" : "Enable private cloud") {
@@ -130,10 +132,6 @@ struct CloudVaultSettingsView: View {
             }
         } message: {
             Text("Your GIFs will sync automatically and stay available offline after download. Deleted or reset cloud libraries are not restored automatically. Storage starts server-managed; user-held encryption is optional.")
-        }
-        .confirmationDialog("Private sync paused. Existing cloud copies are unchanged.", isPresented: $offerDelete, titleVisibility: .visible) {
-            Button("Keep cloud copies", role: .cancel) {}
-            Button("Review cloud-only deletion", role: .destructive) { deleting = true }
         }
         .alert("Delete all private cloud copies?", isPresented: $deleting) {
             TextField("Type DELETE CLOUD", text: $confirmation)

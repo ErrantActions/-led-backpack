@@ -4,6 +4,20 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Connected backpack account association - implementation in validation
+
+- [x] Explicit read-only vendor identity/dimensions, case-preserving ID validation,
+  private review and default-off physical-access/account confirmation.
+- [x] Re-read before registration, 120-second monotonic expiry, account/connection/
+  foreground/consent invalidation, one operation at a time and explicit errors.
+- [x] Dedicated gated registration DTO, matching private receipt, duplicate
+  customization preservation and no private ID in incoming transfer records.
+- [ ] Actual native compile, focused state/client/UI regressions and backend
+  deployment evidence (record after execution; source is not acceptance).
+- [ ] Owner device: same ID after reconnect/reboot and across phones; repeat
+  registration creates no duplicate; cancellation/password errors leave hardware
+  artwork, password and ID unchanged. No hardware-verified ownership claim.
+
 ## Unified library and clean LED interface - build10 uploaded
 
 - [x] One owned GIF collection; no All / On iPhone / Cloud scope chooser or
@@ -560,7 +574,7 @@ native execution.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
-The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.
+The replacement APP chat owns native continuation in the repository's `ios` directory.
 The original errored session/history remains retained; the backend parent owns
 only `C:\code\led-backpack-catalog`. The initial worktree inventory had162dirty
 entries. The initial recovery reconciliation, before unpause/publication above,

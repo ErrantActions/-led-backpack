@@ -5,13 +5,18 @@ import BackpackProtocol
 private actor CloudTransport: CommunityTransport {
     var responses: [CommunityResponse]
     var requests: [URLRequest] = []
+    private var held = false
+    private var pending: CheckedContinuation<Void, Never>?
     init(_ responses: [CommunityResponse]) { self.responses = responses }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         requests.append(request)
         guard !responses.isEmpty else { throw BackpackError.invalid("Unexpected cloud request.") }
+        if held { held = false; await withCheckedContinuation { pending = $0 } }
         return responses.removeFirst()
     }
     func history() -> [URLRequest] { requests }
+    func holdNext() { held = true }
+    func release() { pending?.resume(); pending = nil }
 }
 
 @MainActor
@@ -206,5 +211,61 @@ final class CloudLibraryTests: XCTestCase {
         let requests = await transport.history()
         let parts = try XCTUnwrap(URLComponents(url: XCTUnwrap(requests[2].url), resolvingAgainstBaseURL: false))
         XCTAssertEqual(parts.queryItems?.first(where: { $0.name == "page" })?.value, "2")
+    }
+
+    func testOwnedNearEndOneFlightAndExhaustion() async throws {
+        let second = itemJSON.replacingOccurrences(of: itemID.uuidString.lowercased(), with: "bbbbbbbb-1234-4567-89ab-abcdefabcdef")
+        let transport = CloudTransport([login, response("{\"items\":[\(itemJSON)],\"page\":1,\"limit\":1,\"total\":2}"),
+            response("{\"items\":[\(second)],\"page\":2,\"limit\":1,\"total\":2}")])
+        let service = CommunityController(vault: CloudVault(), factory: { _ in transport })
+        service.configure(root); try await service.signIn(email: "example@example.org", password: "example test password")
+        let store = CloudLibraryStore(); await store.refresh(service)
+        for _ in 0..<20 { store.nearEnd(itemID, community: service) }
+        for _ in 0..<200 {
+            if store.nextPage == nil && !store.loading { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(store.items.count, 2); XCTAssertNil(store.failure)
+        let requests = await transport.history(); XCTAssertEqual(requests.count, 3)
+        store.nearEnd(itemID, community: service); await Task.yield()
+        let final = await transport.history(); XCTAssertEqual(final.count, 3)
+    }
+
+    func testOwnedPagingErrorRequiresExplicitRetryWithoutDroppingRows() async throws {
+        let second = itemJSON.replacingOccurrences(of: itemID.uuidString.lowercased(), with: "bbbbbbbb-1234-4567-89ab-abcdefabcdef")
+        let transport = CloudTransport([login, response("{\"items\":[\(itemJSON)],\"page\":1,\"limit\":1,\"total\":2}"),
+            CommunityResponse(status: 503, data: Data(#"{"error":{"code":"offline","message":"Page offline"}}"#.utf8)),
+            response("{\"items\":[\(second)],\"page\":2,\"limit\":1,\"total\":2}")])
+        let service = CommunityController(vault: CloudVault(), factory: { _ in transport })
+        service.configure(root); try await service.signIn(email: "example@example.org", password: "example test password")
+        let store = CloudLibraryStore(); await store.refresh(service)
+        store.nearEnd(itemID, community: service)
+        for _ in 0..<200 {
+            if store.failure != nil && !store.loading { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNotNil(store.failure); XCTAssertEqual(store.items.count, 1)
+        for _ in 0..<20 { store.nearEnd(itemID, community: service) }
+        let failed = await transport.history(); XCTAssertEqual(failed.count, 3)
+        await store.retry(service); XCTAssertEqual(store.items.count, 2); XCTAssertNil(store.failure)
+        let requests = await transport.history()
+        XCTAssertEqual(requests[2].url, requests[3].url)
+    }
+
+    func testOwnedLateAccountResultsAreDiscarded() async throws {
+        let second = itemJSON.replacingOccurrences(of: itemID.uuidString.lowercased(), with: "bbbbbbbb-1234-4567-89ab-abcdefabcdef")
+        let transport = CloudTransport([login, response("{\"items\":[\(itemJSON)],\"page\":1,\"limit\":1,\"total\":2}"),
+            response("{\"items\":[\(second)],\"page\":2,\"limit\":1,\"total\":2}")])
+        let service = CommunityController(vault: CloudVault(), factory: { _ in transport })
+        service.configure(root); try await service.signIn(email: "example@example.org", password: "example test password")
+        let store = CloudLibraryStore(); await store.refresh(service); await transport.holdNext()
+        store.nearEnd(itemID, community: service)
+        for _ in 0..<200 {
+            if await transport.history().count == 3 { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try service.forgetLocalSession(); await store.refresh(service); await transport.release()
+        await Task.yield()
+        XCTAssertTrue(store.items.isEmpty); XCTAssertNil(store.nextPage)
     }
 }

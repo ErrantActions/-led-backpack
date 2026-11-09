@@ -17,9 +17,10 @@ struct BackpackDirectSendView: View {
                 Section("\(request.sources.count) GIF(s)") {
                     Text("Uses empty slots only. Your originals stay unchanged.").font(.caption)
                     if request.usesVault {
-                        Text("Your selected private GIF is temporarily downloaded for backpack display. No permanent local save or publication.").font(.caption)
+                        Text("Private artwork is sent only to your backpack, not published.").font(.caption)
                     }
-                    if !panel.link.connected { Text("Connect from the Backpack tab, then retry. This screen does not scan or connect automatically.").foregroundStyle(.orange) }
+                    if !panel.link.connected { Text("Connect your backpack, then retry.").foregroundStyle(.orange) }
+                    DisclosureGroup("Timing options") {
                     GIFTimingControls(timing: $options.timing).disabled(store.busy)
                     Picker("Play each GIF for", selection: $options.limit) {
                         Text("Time").tag(BackpackPresentationLimit.time)
@@ -29,6 +30,7 @@ struct BackpackDirectSendView: View {
                     else {
                         Stepper("\(options.totalLoops) total loops per GIF", value: $options.totalLoops, in: 1...100).disabled(store.busy)
                         Text("Backpack loop timing is approximate.").font(.caption).foregroundStyle(.secondary)
+                    }
                     }
                     if store.plan == nil {
                         Button("Review copies") { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
@@ -48,7 +50,7 @@ struct BackpackDirectSendView: View {
                     Button("Send & Play") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
                         .buttonStyle(.borderedProminent).disabled(store.busy)
                         .accessibilityLabel("Send & Play on backpack")
-                    Text("Confirms the prepared copies and empty destinations shown above.").font(.caption)
+                    Text("Send the reviewed copies to the empty slots shown above.").font(.caption)
                 }
                 if store.playbackConfirmed { Label("Backpack playback loop reported", systemImage: "checkmark.circle").foregroundStyle(.green) }
                 if store.sending { Button("Stop transfer", role: .destructive) { store.stop() } }
@@ -57,7 +59,7 @@ struct BackpackDirectSendView: View {
                     Text("Loop count is converted to approximate program time. Physical frame/repeat counting is not verified.")
                     Text("A failed transfer may leave its slot partly written. Inspect storage before retrying. Power/brightness are not forced.")
                 }
-            }.navigationTitle("Send & Play")
+            }.navigationTitle("Send & Play").buttonStyle(.borderless)
                 .toolbar { Button("Done") { if store.sending { store.stop() }; dismiss() } }
                 .interactiveDismissDisabled(store.sending)
                 .task { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }

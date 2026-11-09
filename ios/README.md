@@ -1,5 +1,81 @@
 # LED Backpack for iOS
 
+### Peer protocol v2
+
+Local pairing QR codes and phone swap/friend-play cryptographic domains now use
+neutral LED protocol names. **Update both phones and exchange fresh pairing
+codes.** Older peer protocol versions are explicitly rejected; there is no
+fallback or mixed-version pairing. Existing original/recovery journals are
+retained, and Stop/Restore remains available. This changes neither backpack
+firmware commands nor account/cloud storage protocols.
+
+### Erase backpack
+
+Erase review uses an **Allow erase** toggle, off by default, instead of a typed
+phrase. The destructive action still requires a connected, idle backpack and
+the exact captured inventory/device. Confirmation resets on connection or slot
+changes, backgrounding and dismissal. This erases stored programs, not a factory
+reset; local/cloud GIFs and backpack credentials are retained.
+
+### Connected backpack account association
+
+Backpack > Add connected backpack to my account (also available from My devices)
+requires sign-in and the server's `connectedDeviceRegistrationEnabled` capability.
+Read is explicit: the app uses the existing password-bearing vendor identity read
+(`0x0A`) and dimension read (`0x1B`), with no scan, display change or device write.
+The vendor's 10-byte ID is case-sensitive and distinct from iOS's peripheral UUID.
+Malformed IDs, uniform placeholders and the known `TLVDEFIDV5` default are rejected.
+
+Review the private ID/model/firmware/dimensions, enter a nickname and explicitly
+confirm physical access and account association. Save reads the device again.
+A disconnect/reconnect, account change, backgrounding, withdrawn confirmation,
+changed identity/dimensions or a reading aged 120 seconds requires reconfirmation.
+IDs and passwords are not included in Bluetooth diagnostic identity messages.
+Firmware is displayed locally, not submitted to the registration API.
+
+`POST /devices/connected` saves a private **unverified association**, not ownership
+or anti-clone proof. The ID is mutable; different accounts can associate the same
+ID independently. The same account/ID reuses its existing record without changing
+customized labels, sharing, pending transfer or revision. New records have owner
+sharing off. An uncertain receipt requires reloading My devices before deliberate
+retry; the app does not automatically retry registration. Manual device entry is not offered in the app. Only the nickname can be edited;
+model and dimensions remain read-only. Legacy records and their generic API
+remain compatible. Public owner cards and incoming transfers do not reveal the ID.
+Accepting a label transfer removes its private connected-ID binding; the recipient
+must explicitly read/register the backpack. Unlink does not alter hardware or GIFs.
+
+Hardware acceptance still requires the owner's powered backpack. Verify that its
+ID survives reconnect/reboot and matches on another phone; the simulator cannot
+establish factory uniqueness, reset persistence, ownership or BLE security.
+Layout/SVG generation remains paused pending the owner's editor format.
+
+### Post-build10 UX corrections - source in validation
+
+Social's four primary buttons now use explicit distinct destinations instead of
+multiple NavigationLinks competing inside one List row. Add Friends follows the
+owner's rough three-action layout (look nearby, own QR, scan QR), with Find Me
+showing actual armed findability and a separate default-off discovery permission
+step. Opening the page does not activate Bluetooth, GPS or friendship.
+
+Community, Commons, legacy owned-library rows, My Uploads, route artwork and
+admin catalog/moderation lists use guarded near-end paging. Page/cursor identity,
+one in-flight operation, account/filter/generation cancellation, stable-ID
+upserts, preview invalidation, exhaustion and explicit error Retry are retained.
+Local collections and the event's bounded full-order gallery do not invent
+remote paging. Required inventory reconciliation for unified cloud sync remains
+automatic.
+
+Workflow end screens use shorter outcomes and expandable advanced controls.
+The GIF editor keeps Cancel in a fixed bottom action area, independent of the
+system toolbar's placement on Duo.
+Required sharing consent, errors, destructive confirmation, Stop and Restore
+remain available. Gallery definition conflicts retain local drafts; actual
+role/access loss still clears them. The previously unreachable catalog settings
+link was moved out of the backup button's action.
+
+These changes are **not in TestFlight build10**. Actual unsigned native
+compile/unit/UI/screenshot evidence will be recorded after validation.
+
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
 

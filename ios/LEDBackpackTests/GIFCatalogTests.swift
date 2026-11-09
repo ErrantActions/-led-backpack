@@ -96,7 +96,7 @@ final class GIFCatalogTests: XCTestCase {
         }
         catalog.search("cat", topic: .animals)
         await waitForLoading(catalog)
-        catalog.loadMore()
+        catalog.nearEnd(first.id)
         await waitForLoading(catalog)
         XCTAssertEqual(catalog.results.map(\.id), [1, 2])
         XCTAssertEqual(offsets, [0, 20])
@@ -134,5 +134,44 @@ final class GIFCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.results.map(\.id), [2])
         XCTAssertNil(catalog.errorMessage)
         XCTAssertFalse(catalog.loading)
+    }
+
+    func testNearEndRejectsFloodErrorsAndRetriesTheSameOffset() async throws {
+        let first = try result(1), second = try result(2)
+        var offsets: [Int] = [], failure = true
+        let catalog = GIFCatalog { _, _, offset in
+            offsets.append(offset)
+            if offset == 20 && failure { throw BackpackError.invalid("Page offline") }
+            return GIFSearchPage(items: offset == 0 ? [first] : [second],
+                nextOffset: offset == 0 ? 20 : nil, excludedCount: 0, notice: nil)
+        }
+        catalog.search("cat", topic: .animals); await waitForLoading(catalog)
+        for _ in 0..<20 { catalog.nearEnd(first.id) }
+        await waitForLoading(catalog)
+        XCTAssertEqual(offsets, [0, 20]); XCTAssertEqual(catalog.results, [first])
+        for _ in 0..<20 { catalog.nearEnd(first.id) }
+        XCTAssertEqual(offsets, [0, 20])
+        failure = false; catalog.retry(); await waitForLoading(catalog)
+        XCTAssertEqual(offsets, [0, 20, 20]); XCTAssertNil(catalog.errorMessage)
+        for _ in 0..<20 { catalog.nearEnd(second.id) }
+        XCTAssertEqual(offsets, [0, 20, 20])
+    }
+
+    func testNoProgressIsVisibleAndDuplicateBytesInvalidatePreviewKey() async throws {
+        let first = try result(1)
+        let changed = GIFResult(id: first.id, title: "Updated", url: first.url, page: first.page,
+            attribution: first.attribution, previewURL: first.previewURL, width: first.width, height: first.height, bytes: 2000)
+        var offsets: [Int] = []
+        let catalog = GIFCatalog { _, _, offset in
+            offsets.append(offset)
+            return GIFSearchPage(items: [offset == 0 ? first : changed], nextOffset: offset + 20, excludedCount: 0, notice: nil)
+        }
+        catalog.search("cat", topic: .animals); await waitForLoading(catalog)
+        let key = catalog.thumbnailKey(first)
+        catalog.nearEnd(first.id); await waitForLoading(catalog)
+        XCTAssertTrue(catalog.errorMessage?.contains("no new") == true)
+        XCTAssertEqual(catalog.results.first?.bytes, 2000)
+        XCTAssertNotEqual(catalog.thumbnailKey(first), key)
+        catalog.nearEnd(first.id); XCTAssertEqual(offsets, [0, 20])
     }
 }

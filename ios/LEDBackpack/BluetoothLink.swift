@@ -14,6 +14,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     @Published private(set) var state = "Bluetooth idle — scan explicitly for a backpack"
     @Published private(set) var nearby: [NearbyPanel] = []
     @Published private(set) var connected = false
+    @Published private(set) var connectionRevision = UUID()
     @Published private(set) var log: [String] = []
     @Published var showAll = false
     var autoReconnect = true
@@ -119,6 +120,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     }
 
     private func reset(_ error: Error) {
+        connectionRevision = UUID()
         connected = false; writer = nil; notifier = nil; available = [:]
         connectionDeadline?.cancel()
         assembler.reset()
@@ -205,7 +207,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error { discoveryFailed(error); return }
         let services = peripheral.services ?? []
-        guard !services.isEmpty else { discoveryFailed(BackpackError.invalid("No supported Nyan service found.")); return }
+        guard !services.isEmpty else { discoveryFailed(BackpackError.invalid("No supported LED backpack service found.")); return }
         serviceDiscoveries = services.count
         for service in services { peripheral.discoverCharacteristics(nil, for: service) }
     }
@@ -261,7 +263,11 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
             do {
                 let reply = try Wire.reply(frame.body)
                 if case .playback(let value) = reply { onPlayback?(value) }
-                note("RX seq \(frame.sequence) \(String(describing: reply))")
+                if case .identity = reply {
+                    note("RX seq \(frame.sequence) [device identity redacted]")
+                } else {
+                    note("RX seq \(frame.sequence) \(String(describing: reply))")
+                }
                 if case .status(let code) = reply, code != 0 {
                     let error = BackpackError.invalid(code == 14 ? "Panel locked: supply its existing password." : "Panel rejected command: status \(code).")
                     if recentLive.contains(frame.sequence) { liveFailure = error; onLiveError?(error) }

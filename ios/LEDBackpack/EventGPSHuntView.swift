@@ -50,12 +50,16 @@ private struct EventGPSHuntContent: View {
             if busy || model.busy { ProgressView() }
             Section {
                 if gps.sensing { Button("Stop GPS", role: .destructive) { stopGPS() } }
+                if model.collection?.ownEnabled == true {
+                    Button("Leave hunt", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
+                }
+                if model.needsReload || model.failure != nil {
+                    Button("Reload hunt") { stopGPS(); checkpointID = nil; model.bind(community); model.load() }.disabled(busy || model.busy)
+                }
                 FeatureDetails("Event tools & privacy") {
                     NavigationLink("Event & route") { CommunityEventDetailView(id: eventID) }
                     NavigationLink("Manual hunt & cooperative settings") { EventSocialView(eventID: eventID, surface: .collection) }
                     NavigationLink("Nearby games") { GPSGamesView() }
-                    Button("Reload hunt") { stopGPS(); checkpointID = nil; model.bind(community); model.load() }.disabled(busy || model.busy)
-                    Button("Leave hunt", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
                     Text("GPS is a broad local hint, not certified arrival or precise peer tagging. Coordinates and samples are not uploaded or saved.")
                     Text("Fresh fixes need full accuracy within25m and10s dwell. Bluetooth/NI require separate peer consent and do not track backpacks.")
                     Text("Private self-reports do not publish progress. Cooperative contribution is a separate choice; no other-player counts are shown.")
@@ -76,8 +80,8 @@ private struct EventGPSHuntContent: View {
         .onChange(of: model.busy) { _, value in
             if !value, confirming != nil {
                 notice = model.failure == nil && model.lastCollectedCheckpointID == confirming ?
-                    "Selected private self-report acknowledged and current hunt reloaded. Not GPS-certified attendance; no public progress was submitted." :
-                    "Confirmation outcome not verified. Reload your private hunt before another deliberate action; no automatic retry."
+                    "Target confirmed privately. Not attendance proof; nothing was published." :
+                    "Confirmation unverified. Reload before trying again."
                 confirming = nil
             }
         }
@@ -121,6 +125,11 @@ private struct EventGPSHuntContent: View {
     @ViewBuilder private var gameplay: some View {
         if let collection = model.collection, collection.ownEnabled, let event = model.event {
             Section("Target") {
+                if targets.isEmpty {
+                    ContentUnavailableView(collection.ownCompleted ? "Hunt complete" : "No targets available",
+                        systemImage: collection.ownCompleted ? "checkmark.circle" : "flag",
+                        description: Text(collection.ownCompleted ? "Your progress stays private." : "Reload the current hunt plan."))
+                } else {
                 Picker("Choose target", selection: $checkpointID) {
                     Text("Choose target").tag(Optional<UUID>.none)
                     ForEach(targets) { Text($0.title).tag(Optional($0.id)) }
@@ -157,6 +166,7 @@ private struct EventGPSHuntContent: View {
                 Button("Confirm manually · no GPS proof") { manualReview = true }
                     .disabled(!stationary || selected == nil || busy || model.busy || model.needsReload)
                 Text("Private self-report only. Nothing starts or publishes automatically.").font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
     }

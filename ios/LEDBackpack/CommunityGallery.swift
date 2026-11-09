@@ -20,15 +20,11 @@ struct CommunityGallery: View {
     @State private var appliedQuery = ""
     @State private var category = ""
     @State private var reload = UUID()
-    @State private var items: [CommunityItem] = []
-    @State private var page = 1
-    @State private var total = 0
-    @State private var loading = false
-    @State private var failure: String?
+    @StateObject private var catalog = CommunityGalleryStore()
     @StateObject private var selection = CommunitySelectionStore()
     @State private var showingQueue = false
     @State private var directSend: BackpackSendRequest?
-    @State private var moreTask: Task<Void, Never>?
+    private var items: [CommunityItem] { catalog.items }
     @State private var sizes = NativeMatrixFilter()
     private struct Filter: Equatable {
         let server: URL?
@@ -56,28 +52,25 @@ struct CommunityGallery: View {
                         NavigationLink("Configure catalog") { CommunitySettingsView() }
                     } else {
                         controls
-                        if let failure {
+                        if let failure = catalog.failure {
                             Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-                            Button("Refresh results") { reload = UUID() }
+                            Button("Retry") { catalog.retry() }
                             if community.signedIn {
                                 Button("Continue browsing as a guest") {
                                     do { try community.forgetLocalSession(); reload = UUID() }
-                                    catch { self.failure = error.localizedDescription }
+                                    catch { selection.report(error) }
                                 }
                             }
                         }
                         results
-                        if loading { ProgressView("Loading community GIFs...") }
-                        if items.isEmpty && !loading && failure == nil {
+                        if catalog.loading { ProgressView("Loading GIFs…") }
+                        if items.isEmpty && !catalog.loading && catalog.failure == nil {
                             ContentUnavailableView("No published matches", systemImage: "photo.on.rectangle",
                                 description: Text("Try another category or search. Uploaded artwork appears publicly only after moderator approval."))
                         }
-                        if items.count < min(total, 100), page < 10000 {
-                            Button("Load more") {
-                                guard !loading else { return }
-                                loading = true
-                                moreTask = Task { await load(reset: false) }
-                            }.disabled(loading)
+                        if catalog.nextPage == nil && !items.isEmpty && items.count < 100 && !catalog.loading && catalog.failure == nil {
+                            Text("\(items.count) GIFs · End of results").font(.caption).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("community-page-count")
                         }
                         if items.count == 100 { Text("Showing the first 100 matches. Refine your search to narrow the results.").font(.caption) }
                     }
@@ -87,9 +80,15 @@ struct CommunityGallery: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search GIFs")
             .onSubmit(of: .search) { appliedQuery = query; reload = UUID() }
             .toolbar { Button("Done") { dismiss() } }
-            .task(id: filter) { moreTask?.cancel(); selection.invalidate(); await load(reset: true) }
-            .onDisappear { moreTask?.cancel(); selection.cancel() }
-            .onChange(of: phase) { _, state in if state != .active { selection.cancel() } }
+            .task(id: filter) {
+                let stamp = filter
+                selection.invalidate()
+                catalog.search(valid: { stamp == filter && phase == .active }, fetch: {
+                    try await community.items(query: stamp.query, category: stamp.category, page: $0, sizes: stamp.sizes)
+                })
+            }
+            .onDisappear { catalog.cancel(); selection.cancel() }
+            .onChange(of: phase) { _, state in if state != .active { catalog.cancel(); selection.cancel() } else { catalog.resume() } }
             .safeAreaInset(edge: .bottom) {
                 CommunitySelectionControls(store: selection, favorite: {
                     selection.apply(.favorite, items: items, community: community, library: library)
@@ -116,17 +115,18 @@ struct CommunityGallery: View {
                 }
             }
             HStack {
-                Text("Find it. Save it. Make it yours.").font(.headline)
+                Text("Select GIFs").font(.headline)
                 Spacer()
                 NavigationLink(community.signedIn ? "Account" : "Sign in") { CommunityAccountView() }
             }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
-            Text("No account needed to preview or keep a local copy.").font(.caption).foregroundStyle(.secondary)
             NavigationLink { CommunityFavoritesView() } label: { Label("My Favorites", systemImage: "heart.fill") }
-            Button("Advanced Send queue / manual slot review") { showingQueue = true }
-            Text("Tap GIFs to select (up to20), then Favorite or Send to LED. No item page opens.").font(.caption)
-            if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
-            else { Text("Exact multi-matrix filters are unavailable on this server.").font(.caption) }
+            FeatureDetails("Filters & send queue") {
+                Button("Send queue") { showingQueue = true }
+                Text("Select up to20 GIFs. Favorites save owned copies; sending does not publish artwork.")
+                if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
+                else { Text("Exact size filters are unavailable on this server.") }
+            }
         }
     }
     private var results: some View {
@@ -136,7 +136,7 @@ struct CommunityGallery: View {
                 let url = animated ? item.gifUrl : item.previewUrl
                 let selected = selection.selection.ids.contains(item.id)
                 Button { selection.toggle(item.id) } label: {
-                    GIFThumbnail(key: url.absoluteString, cache: false, animationAllowed: animated) {
+                    GIFThumbnail(key: catalog.thumbnailKey(item, url: url), cache: false, animationAllowed: animated) {
                         try await community.download(url)
                     }.aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(alignment: .topTrailing) {
@@ -147,29 +147,12 @@ struct CommunityGallery: View {
                         }
                         .overlay { RoundedRectangle(cornerRadius: 12).stroke(selected ? Color.cyan : .clear, lineWidth: 3) }
                 }.buttonStyle(.plain)
+                    .onAppear { catalog.nearEnd(item.id) }
                     .accessibilityLabel("Select community GIF")
                     .accessibilityIdentifier("community-gif-\(item.id.uuidString.lowercased())")
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .disabled(selection.busy)
             }
-        }
-    }
-    private func load(reset: Bool) async {
-        guard community.origin != nil else { return }
-        let stamp = filter
-        if reset { items = []; page = 1; total = 0 }
-        loading = true; failure = nil
-        defer { if stamp == filter { loading = false } }
-        do {
-            let result = try await community.items(query: stamp.query, category: stamp.category, page: reset ? 1 : page + 1, sizes: stamp.sizes)
-            try Task.checkCancellation()
-            guard stamp == filter else { return }
-            var ids = Set(items.map(\.id))
-            items = Array((items + result.items.filter { ids.insert($0.id).inserted }).prefix(100))
-            page = result.page; total = result.total
-        } catch {
-            guard stamp == filter, !Task.isCancelled else { return }
-            failure = error.localizedDescription
         }
     }
 }

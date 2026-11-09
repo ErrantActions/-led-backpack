@@ -29,6 +29,38 @@ enum SocialFeature {
         }
     }
 }
+enum SocialPrimaryRoute: String, CaseIterable, Identifiable, Hashable {
+    case friends, messages, events, games
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var feature: SocialFeature? {
+        switch self {
+        case .friends: return .friends
+        case .messages: return .messages
+        case .events: return .events
+        case .games: return nil
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .friends: return "person.2"
+        case .messages: return "bubble.left.and.bubble.right"
+        case .events: return "calendar"
+        case .games: return "gamecontroller"
+        }
+    }
+    var subtitle: String {
+        switch self {
+        case .friends: return "Your people"
+        case .messages: return "Chats & groups"
+        case .events: return "Meet up & explore"
+        case .games: return "GPS & nearby play"
+        }
+    }
+    func available(_ config: CommunityConfig?, signedIn: Bool) -> Bool {
+        feature?.available(config, signedIn: signedIn) ?? true
+    }
+}
 private extension SocialFeature {
         var title: String {
             switch self {
@@ -77,6 +109,7 @@ struct SocialTabView: View {
     @State private var failure: String?
     @State private var pendingEditor: SocialGalleryCopy?
     @State private var editor: SocialGalleryCopy?
+    @State private var primaryRoute: SocialPrimaryRoute?
     private struct SocialGalleryCopy: Identifiable {
         let id = UUID()
         let data: Data
@@ -102,13 +135,17 @@ struct SocialTabView: View {
                 }
                 Section {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        SocialLink("Friends / requests / profile", feature: .friends, card: true, subtitle: "Your people") { CommunitySocialView() }
-                        SocialLink("Messages / groups / event conversations", feature: .messages, card: true, subtitle: "Chats & groups") { CommunityMessagesView() }
-                        SocialLink("Events / create / rides / GPS hunts", feature: .events, card: true, subtitle: "Meet up & explore") { CommunityEventsView() }
-                        NavigationLink { GPSGamesView() } label: {
-                            FeatureCardLabel(title: "Games", subtitle: "GPS & nearby play", symbol: "gamecontroller", tint: Aurora.lavender)
-                        }.accessibilityLabel("GPS & nearby games")
-                    }.buttonStyle(.plain).listRowBackground(Color.clear)
+                        ForEach(SocialPrimaryRoute.allCases) { route in
+                            let enabled = route.available(community.config, signedIn: community.signedIn)
+                            Button { primaryRoute = route } label: {
+                                FeatureCardLabel(title: route.title,
+                                    subtitle: enabled ? route.subtitle : community.signedIn ? "Unavailable" : "Sign in",
+                                    symbol: route.symbol)
+                            }.buttonStyle(.borderless).disabled(!enabled)
+                                .accessibilityIdentifier("social-primary-\(route.rawValue)")
+                                .accessibilityLabel(route.title)
+                        }
+                    }.listRowBackground(Color.clear)
                 }
                 communitySection
                 friendsSection
@@ -125,6 +162,14 @@ struct SocialTabView: View {
                 }
             }.modernScene().navigationTitle("Social")
                 .task(id: community.accountRevision) { await refresh() }
+                .navigationDestination(item: $primaryRoute) { route in
+                    switch route {
+                    case .friends: CommunitySocialView()
+                    case .messages: CommunityMessagesView()
+                    case .events: CommunityEventsView()
+                    case .games: GPSGamesView()
+                    }
+                }
                 .sheet(isPresented: $gallery, onDismiss: {
                     if let copy = pendingEditor { pendingEditor = nil; editor = copy }
                 }) {
@@ -136,7 +181,7 @@ struct SocialTabView: View {
                 .sheet(item: $editor) { copy in
                     MediaEditor(data: copy.data, attribution: copy.credit, category: copy.category, initialName: copy.title)
                 }
-                .onChange(of: community.accountRevision) { _, _ in gallery = false; editor = nil; pendingEditor = nil; failure = nil }
+                .onChange(of: community.accountRevision) { _, _ in primaryRoute = nil; gallery = false; editor = nil; pendingEditor = nil; failure = nil }
                 .onChange(of: community.avatarPolicyRevision) { _, _ in editor = nil; pendingEditor = nil }
                 .onReceive(app.$selectedTab.dropFirst()) { tab in
                     if tab == .social { gallery = false; editor = nil; pendingEditor = nil }
@@ -154,8 +199,7 @@ struct SocialTabView: View {
     }
     private var friendsSection: some View {
         Section("People") {
-            SocialLink("My friend QR / Scan / invite preview", feature: .invites) { FriendInviteQRView() }
-            SocialLink("Nearby discovery / add friends", feature: .nearby) { NearbyDiscoveryView() }
+            SocialLink("Add friends / QR / nearby", feature: .invites) { NearbyDiscoveryView() }
             SocialLink("Accepted-friend greetings / duet / pass sessions", feature: .friendSessions) { FriendLocationFeaturesView() }
             DisclosureGroup("Profile & devices") {
                 SocialLink("Profile avatar", feature: .avatar) { CommunityAvatarView() }

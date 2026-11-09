@@ -42,18 +42,61 @@ final class CloudLibraryStore: ObservableObject {
     private var revision: UUID?
     private var ownerID: UUID?
     private var server: CommunityOrigin?
+    private var operation = UUID()
+    private var moreTask: Task<Void, Never>?
+    private var moreTicket = UUID()
+    private var active = true
+    private var contentRevisions: [UUID: UUID] = [:]
+    private var failedPage: Int?
+    private var pageLimit: Int?
 
     func clear() {
+        cancel()
         items = []; failure = nil; loading = false; revision = nil; ownerID = nil; server = nil; nextPage = nil
+        contentRevisions = [:]; failedPage = nil; pageLimit = nil
+    }
+    func cancel() {
+        active = false; operation = UUID(); moreTicket = UUID(); moreTask?.cancel(); moreTask = nil; loading = false
+    }
+    func resume() { active = true }
+    func thumbnailKey(_ item: CommunityCloudItem) -> String {
+        "owned:\(item.id):\(contentRevisions[item.id]?.uuidString ?? "original")"
+    }
+    func nearEnd(_ id: UUID, community: CommunityController, library: LocalLibrary? = nil, visible: [UUID]? = nil) {
+        guard active, !loading, failure == nil, moreTask == nil, nextPage != nil,
+              items.contains(where: { $0.id == id }), (visible ?? items.map(\.id)).suffix(4).contains(id) else { return }
+        let ticket = UUID(); moreTicket = ticket
+        moreTask = Task {
+            defer { if moreTicket == ticket { moreTask = nil } }
+            await loadMore(community, library: library)
+        }
+    }
+    func retry(_ community: CommunityController, library: LocalLibrary? = nil) async {
+        if let failedPage, failedPage > 1, nextPage != nil { await loadMore(community, library: library) }
+        else { await refresh(community, library: library) }
+    }
+    private func merge(_ incoming: [CommunityCloudItem]) -> Int {
+        var indices = Dictionary(uniqueKeysWithValues: items.enumerated().map { ($0.element.id, $0.offset) })
+        var added = 0
+        for item in incoming where item.status != "deleted" {
+            if let index = indices[item.id] { items[index] = item }
+            else { indices[item.id] = items.count; items.append(item); added += 1 }
+            contentRevisions[item.id] = UUID()
+        }
+        return added
     }
 
     func refresh(_ community: CommunityController, library: LocalLibrary? = nil) async {
         let current = community.accountRevision
-        if revision != current { items = []; failure = nil; revision = current; ownerID = nil; server = nil; nextPage = nil }
+        if revision != current { clear(); revision = current }
         guard community.signedIn else { clear(); return }
+        guard !loading else { return }
+        active = true
+        let ticket = UUID(); operation = ticket
+        var requestedPage = 1
         loading = true; failure = nil
         defer {
-            if revision == current {
+            if revision == current && operation == ticket {
                 if community.accountRevision != current { clear() }
                 else { loading = false }
             }
@@ -63,36 +106,42 @@ final class CloudLibraryStore: ObservableObject {
             if community.user == nil { try await community.refreshUser() }
             let result = try await community.cloudPage(page: 1)
             try Task.checkCancellation()
-            guard community.accountRevision == current, revision == current, community.signedIn else { return }
-            items = result.items.filter { $0.status != "deleted" }
+            guard community.accountRevision == current, revision == current, operation == ticket, active, community.signedIn else { return }
+            guard result.page == nil || result.page == 1 else { throw BackpackError.invalid("The owned library returned the wrong first page.") }
+            items = []; contentRevisions = [:]
+            _ = merge(result.items)
+            pageLimit = result.limit
             nextPage = result.nextPage
             ownerID = community.user?.id; server = community.origin
             if let library {
                 while let page = nextPage {
+                    requestedPage = page
                     let result = try await community.cloudPage(page: page)
                     try Task.checkCancellation()
-                    guard community.accountRevision == current, revision == current, community.signedIn else { return }
-                    var ids = Set(items.map(\.id))
-                    let added = result.items.filter { $0.status != "deleted" && ids.insert($0.id).inserted }
-                    guard result.nextPage == nil || !added.isEmpty else {
+                    guard community.accountRevision == current, revision == current, operation == ticket, active, community.signedIn else { return }
+                    guard result.page == page, result.limit == pageLimit else { throw BackpackError.invalid("The owned library returned a different page or page size.") }
+                    let added = merge(result.items)
+                    guard result.nextPage == nil || added > 0 else {
                         throw BackpackError.invalid("Cloud pagination repeated artwork. Retry synchronization.")
                     }
-                    items += added; nextPage = result.nextPage
+                    nextPage = result.nextPage
                 }
-                try await downloadMissing(community, library: library, revision: current)
+                try await downloadMissing(community, library: library, revision: current, ticket: ticket)
             }
         } catch {
-            guard !Task.isCancelled, community.accountRevision == current, revision == current else { return }
+            guard !Task.isCancelled, community.accountRevision == current, revision == current, operation == ticket, active else { return }
             failure = error.localizedDescription
+            failedPage = requestedPage
         }
     }
 
     func loadMore(_ community: CommunityController, library: LocalLibrary? = nil) async {
-        guard !loading, let page = nextPage, revision == community.accountRevision, community.signedIn else { return }
+        guard active, !loading, let page = nextPage, revision == community.accountRevision, community.signedIn else { return }
         let current = community.accountRevision
+        let ticket = UUID(); operation = ticket
         loading = true; failure = nil
         defer {
-            if revision == current {
+            if revision == current && operation == ticket {
                 if community.accountRevision != current { clear() }
                 else { loading = false }
             }
@@ -100,20 +149,20 @@ final class CloudLibraryStore: ObservableObject {
         do {
             let result = try await community.cloudPage(page: page)
             try Task.checkCancellation()
-            guard revision == current, community.accountRevision == current else { return }
-            var ids = Set(items.map(\.id))
-            let added = result.items.filter { $0.status != "deleted" && ids.insert($0.id).inserted }
-            guard result.nextPage == nil || !added.isEmpty else { throw BackpackError.invalid("Cloud pagination repeated the same items. Refresh the library.") }
-            items += added
+            guard revision == current, community.accountRevision == current, operation == ticket, active else { return }
+            guard result.page == page, result.limit == pageLimit else { throw BackpackError.invalid("The owned library returned a different page or page size.") }
+            let added = merge(result.items)
+            guard result.nextPage == nil || added > 0 else { throw BackpackError.invalid("Cloud pagination repeated the same items. Retry or refine the library.") }
             nextPage = result.nextPage
-            if let library { try await downloadMissing(community, library: library, revision: current) }
+            if let library { try await downloadMissing(community, library: library, revision: current, ticket: ticket) }
         } catch {
-            guard !Task.isCancelled, revision == current, community.accountRevision == current else { return }
+            guard !Task.isCancelled, revision == current, community.accountRevision == current, operation == ticket, active else { return }
             failure = error.localizedDescription
+            failedPage = page
         }
     }
 
-    private func downloadMissing(_ community: CommunityController, library: LocalLibrary, revision: UUID) async throws {
+    private func downloadMissing(_ community: CommunityController, library: LocalLibrary, revision: UUID, ticket: UUID) async throws {
         guard let origin = server, let owner = ownerID else {
             throw BackpackError.invalid("Sign in before synchronizing owned artwork.")
         }
@@ -121,9 +170,10 @@ final class CloudLibraryStore: ObservableObject {
         guard let config = community.config else { throw BackpackError.invalid("Load cloud capabilities before synchronization.") }
         guard config.cloudLibraryEncryptionEnabled != true else { return }
         for cloud in cloudOnly(local: library.state.media, origin: origin, owner: owner) {
+            guard operation == ticket, active else { throw CancellationError() }
             let bytes = try await community.download(cloud.item.gifUrl)
             try Task.checkCancellation()
-            guard community.accountRevision == revision, community.signedIn,
+            guard operation == ticket, active, community.accountRevision == revision, community.signedIn,
                   community.origin == origin, community.user?.id == owner else {
                 throw BackpackError.invalid("Cloud account changed; downloaded artwork was discarded.")
             }
@@ -153,9 +203,10 @@ struct CloudArtworkRow: View {
     @EnvironmentObject private var community: CommunityController
     let cloud: CommunityCloudItem
     let open: () -> Void
+    var previewKey: String? = nil
     var body: some View {
         Button(action: open) {
-            GIFThumbnail(key: cloud.item.previewUrl.absoluteString, cache: false) {
+            GIFThumbnail(key: previewKey ?? cloud.item.previewUrl.absoluteString, cache: false) {
                 try await community.download(cloud.item.previewUrl)
             }.aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 19))

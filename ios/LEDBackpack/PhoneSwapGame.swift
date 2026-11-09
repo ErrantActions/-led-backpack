@@ -305,7 +305,7 @@ final class PhoneSwapGame: ObservableObject {
                 try checkContext(stamp)
                 guard exchange == nil else { radio.close(link); return }
                 let nonce = PhoneSwapWire.randomNonce()
-                let hello = PhoneSwapWire.Hello(version: 1, sessionID: UUID(), initiatorToken: own.token,
+                let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: UUID(), initiatorToken: own.token,
                     responderToken: peer.token, nonce: nonce, response: false)
                 let active = Exchange(link: link, peer: peer, initiator: true, first: hello, outgoing: outgoing, credit: credit)
                 exchange = active; startDeadline(active)
@@ -435,7 +435,10 @@ final class PhoneSwapGame: ObservableObject {
         }
     }
     private func handshake(_ hello: PhoneSwapWire.Hello, link: UUID, stamp: UUID) async throws {
-        guard hello.version == 1, NearbyTokenPolicy.valid(hello.nonce), !retiredSessions.contains(hello.sessionID),
+        guard hello.version == PhoneSwapWire.version else {
+            throw BackpackError.invalid("Update both phones to use the current peer protocol.")
+        }
+        guard NearbyTokenPolicy.valid(hello.nonce), !retiredSessions.contains(hello.sessionID),
               let key, let client else { throw BackpackError.invalid("Unsupported/replayed game hello.") }
         let own = try selfCard()
         if hello.response {
@@ -445,7 +448,7 @@ final class PhoneSwapGame: ObservableObject {
             active.second = hello
             active.cipher = try PhoneSwapCipher(privateKey: key, initiator: own, responder: active.peer,
                 first: active.first, second: hello, origin: client.origin.url.absoluteString, isInitiator: true,
-                domain: friendAuthority == nil ? "nyan.phone-swap.v1" : "nyan.accepted-friend.v1",
+                domain: friendAuthority == nil ? "led.phone-swap.v2" : "led.accepted-friend.v2",
                 binding: try friendAuthority?.binding() ?? [])
         } else {
             guard exchange == nil, hello.responderToken == own.token else { radio.close(link); return }
@@ -456,13 +459,13 @@ final class PhoneSwapGame: ObservableObject {
                   retiredSessions.count < 32, exchange == nil else { radio.close(link); return }
             try await fresh(peer); try checkContext(stamp)
             let (outgoing, credit) = try await candidate(); try checkContext(stamp)
-            let second = PhoneSwapWire.Hello(version: 1, sessionID: hello.sessionID, initiatorToken: peer.token,
+            let second = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: hello.sessionID, initiatorToken: peer.token,
                 responderToken: own.token, nonce: PhoneSwapWire.randomNonce(), response: true)
             let active = Exchange(link: link, peer: peer, initiator: false, first: hello, outgoing: outgoing, credit: credit)
             active.second = second
             active.cipher = try PhoneSwapCipher(privateKey: key, initiator: peer, responder: own,
                 first: hello, second: second, origin: client.origin.url.absoluteString, isInitiator: false,
-                domain: friendAuthority == nil ? "nyan.phone-swap.v1" : "nyan.accepted-friend.v1",
+                domain: friendAuthority == nil ? "led.phone-swap.v2" : "led.accepted-friend.v2",
                 binding: try friendAuthority?.binding() ?? [])
             exchange = active; startDeadline(active)
             try await radio.send(PhoneSwapWire.Outer(hello: second, counter: nil, encrypted: nil), to: link)

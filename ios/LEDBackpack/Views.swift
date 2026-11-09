@@ -128,6 +128,7 @@ struct DeviceView: View {
                 LabeledContent("Firmware", value: identity.firmware)
             }
             if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
+            NavigationLink("Add connected backpack to my account") { ConnectedBackpackView() }
             if link.connected {
                 Button("Refresh status") { app.run { try await panel.refresh() } }.disabled(panel.busy || panel.hasDisplayOwner)
                 Button("Disconnect", role: .destructive) {
@@ -260,7 +261,14 @@ struct LibraryView: View {
     @State private var video: ImportedVideo?
     @State private var videoImporting = false
     @State private var importing = false
-    @State private var editor = false
+    private struct EditorCopy: Identifiable {
+        let id = UUID()
+        let data: Data
+        let attribution: Attribution?
+        let category: String?
+        let name: String
+    }
+    @State private var editorCopy: EditorCopy?
     @State private var editorData: Data?
     @State private var attribution: Attribution?
     @State private var editorCategory: String?
@@ -346,10 +354,11 @@ struct LibraryView: View {
         }
         .navigationDestination(isPresented: $showAccount) { CommunityAccountView() }
         .onAppear {
+            cloud.resume()
             libraryVisible = true
             resumeCloudSave()
         }
-        .onDisappear { libraryVisible = false }
+        .onDisappear { cloud.cancel(); libraryVisible = false }
         .onChange(of: showAccount) { _, value in if !value { resumeCloudSave() } }
     }
 
@@ -426,7 +435,10 @@ struct LibraryView: View {
                 if vault.available {
                     ForEach(filteredVault) { item in CloudVaultArtworkRow(item: item) }
                 } else {
-                    ForEach(filteredCloud) { item in CloudArtworkRow(cloud: item) { cloudSelection = item } }
+                    ForEach(filteredCloud) { item in
+                        CloudArtworkRow(cloud: item, open: { cloudSelection = item }, previewKey: cloud.thumbnailKey(item))
+                            .onAppear { cloud.nearEnd(item.id, community: community, library: library, visible: filteredCloud.map(\.id)) }
+                    }
                 }
             }
                 if vault.available && !vault.syncing { Text("Private cloud is paused on this device. Local files are unchanged.").font(.caption) }
@@ -438,12 +450,9 @@ struct LibraryView: View {
                             .disabled(!vault.syncing || vault.locked || vault.busy)
                     }
                 } else if cloud.loading { ProgressView("Updating cloud library...") }
-                if !vault.available && cloud.nextPage != nil {
-                    Button("Load more artwork") { Task { await cloud.loadMore(community, library: library) } }.disabled(cloud.loading)
-                }
                 if !vault.available, let failure = cloud.failure {
                     Label(failure, systemImage: "icloud.slash").font(.caption).foregroundStyle(.orange)
-                    Button("Retry sync") { Task { await cloud.refresh(community, library: library) } }
+                    Button("Retry sync") { Task { await cloud.retry(community, library: library) } }
                 }
             if filteredMedia.isEmpty && (vault.available ? filteredVault.isEmpty : filteredCloud.isEmpty) && !cloud.loading {
                 ContentUnavailableView("Make this space yours", systemImage: "photo.on.rectangle.angled",
@@ -528,13 +537,11 @@ struct LibraryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $editor) {
-                if let data = editorData {
-                    MediaEditor(data: data, attribution: attribution, category: editorCategory, initialName: editorName)
-                }
+            .sheet(item: $editorCopy) { copy in
+                MediaEditor(data: copy.data, attribution: copy.attribution, category: copy.category, initialName: copy.name)
             }
             .sheet(isPresented: $gallery, onDismiss: {
-                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+                if openEditorAfterGallery { openEditorAfterGallery = false; presentEditor() }
             }) {
                 GIFGallery { data, credit, category, title in
                     editorData = data; attribution = credit; editorCategory = category
@@ -555,8 +562,14 @@ struct LibraryView: View {
         if let imported = pendingVideo {
             pendingVideo = nil; video = imported
         } else if photoEditorReady {
-            photoEditorReady = false; editor = true
+            photoEditorReady = false; presentEditor()
         }
+    }
+    private func presentEditor() {
+        do {
+            guard let data = editorData else { throw BackpackError.invalid("Choose artwork before opening the editor.") }
+            editorCopy = EditorCopy(data: data, attribution: attribution, category: editorCategory, name: editorName)
+        } catch { panel.report(error) }
     }
 
     private var videoImports: some View {
@@ -573,7 +586,7 @@ struct LibraryView: View {
     private var mediaActions: some View {
         importingContent
             .sheet(isPresented: $communityGallery, onDismiss: {
-                if openEditorAfterGallery { openEditorAfterGallery = false; editor = true }
+                if openEditorAfterGallery { openEditorAfterGallery = false; presentEditor() }
             }) {
                 CommunityGallery { data, credit, category, title in
                     editorData = data; attribution = credit; editorCategory = category; editorName = title
@@ -647,9 +660,8 @@ struct LibraryView: View {
         case .preview: app.run { previewTitle = item.name; previewData = try library.data(item) }
         case .edit:
             app.run {
-                editorData = try library.data(item)
-                attribution = item.attribution; editorCategory = item.category
-                editorName = "\(item.name) edited"; editor = true
+                editorCopy = EditorCopy(data: try library.data(item), attribution: item.attribution,
+                    category: item.category, name: "\(item.name) edited")
             }
         case .send: targets.stageHardware(item.id); selected = item; uploading = true
         case .phone:

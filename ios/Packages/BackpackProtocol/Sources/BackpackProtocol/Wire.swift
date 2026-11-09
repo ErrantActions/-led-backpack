@@ -121,10 +121,10 @@ public enum Wire {
         switch body[2] {
         case 0x0A:
             let raw = String(bytes: body.dropFirst(3), encoding: .isoLatin1) ?? ""
-            let text = raw.components(separatedBy: "power")[0]
-            let values = text.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+            let values = raw.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
             guard values.count >= 3 else { throw BackpackError.invalid("Malformed identity response.") }
-            return .identity(Identity(serial: values[0], model: values[1], firmware: values[2]))
+            return .identity(Identity(serial: values[0], model: values[1],
+                firmware: values[2].components(separatedBy: "power")[0]))
         case 0x1B:
             let data = try field(body, at: 3)
             let offset = data.count == 22 && data.first == 0 ? 1 : 0

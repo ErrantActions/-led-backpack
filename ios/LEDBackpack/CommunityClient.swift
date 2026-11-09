@@ -42,6 +42,7 @@ struct CommunityConfig: Decodable {
     var nativeSizeFiltersEnabled: Bool? = nil
     var catalogDownloadManifestEnabled: Bool? = nil
     var unverifiedDeviceTagsEnabled: Bool? = nil
+    var connectedDeviceRegistrationEnabled: Bool? = nil
     var firmwareCatalogEnabled: Bool? = nil
     var firmwareMaxUploadBytes: Int? = nil
     var deviceResearchEnabled: Bool? = nil

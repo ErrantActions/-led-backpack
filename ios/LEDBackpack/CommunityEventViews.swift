@@ -33,10 +33,9 @@ struct CommunityEventsView: View {
     var body: some View {
         List {
             if community.signedIn {
-                Section("Own private source tools") {
+                DisclosureGroup("Private event tools") {
                     NavigationLink("Private playlists / foreground schedules") { OwnerPlaylistsView() }
                     NavigationLink("My guestbook receipts / withdraw without event access") { OwnedGuestbookPostsView() }
-                    Text("Each tool checks its own actual server capability. No source-only feature is assumed deployed.").font(.caption)
                 }
             }
             if community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
@@ -44,7 +43,6 @@ struct CommunityEventsView: View {
                 Section {
                     Button { createdEvent = nil; showCreated = false; creating = true } label: { Label("Create event", systemImage: "plus.circle.fill").font(.headline) }
                         .disabled(session.busy)
-                    Text("Basics → Time → Venue → Review. Add gates and route/checkpoints after the event is saved.").font(.caption)
                 }
                 Picker("Events", selection: $list) { ForEach(CatalogEventList.allCases) { Text($0.rawValue).tag($0) } }
                     .disabled(session.busy)
@@ -62,10 +60,13 @@ struct CommunityEventsView: View {
                         }
                     }
                 }
-                HStack {
+                if offset > 0 || events.count == 50 { HStack {
                     Button("Previous") { offset -= 50; load() }.disabled(offset == 0 || session.busy)
                     Spacer()
                     Button("Next") { offset += 50; load() }.disabled(events.count < 50 || offset >= 100000 || session.busy)
+                } }
+                if events.isEmpty && !session.busy && session.failure == nil {
+                    ContentUnavailableView("No events yet", systemImage: "calendar", description: Text("Create an event or accept an invitation."))
                 }
                 Button("Refresh events", action: load).disabled(session.busy)
                 Text("Private event links do not grant an invitation. Venues are fixed organizer coordinates, not participant GPS.")
@@ -192,15 +193,17 @@ struct CommunityEventDetailView: View {
                         Text("Status: \(event.status.rawValue)")
                         if event.rsvpStatus == .going { EventCountdownView(value: loadedEvent) }
                         LabeledContent("Your RSVP", value: event.rsvpStatus?.rawValue ?? "None")
+                        Text("Venue: \(event.location.label)")
+                        FeatureDetails("Venue & access") {
                         LabeledContent("Visibility", value: event.visibility)
                         LabeledContent("Capacity", value: String(event.capacity))
-                        Text("Venue: \(event.location.label)")
                         Text("\(event.location.latitude), \(event.location.longitude) / radius \(event.location.radiusMeters)m").font(.caption)
                         Text("Fixed organizer venue; this view does not access device GPS.").font(.caption).foregroundStyle(.secondary)
+                        }
                         EventInvitationDeadlineView(event: event)
                     }
                     if session.client?.progressDeadlinesEnabled(event) == true, event.moderation?.held != true, event.access.canViewProgress {
-                        Section("Shared-progress retention policy") {
+                        DisclosureGroup("Shared progress") {
                             NavigationLink("Latest shared progress / claim / withdraw") { EventProgressView(eventID: event.id) }
                             NavigationLink("Foreground local checkpoint hint (opt in)") { EventLocalEligibilityView(eventID: event.id) }
                             Text("A deliberately shared latest checkpoint is retained no later than event end + 24 hours, or removed earlier by withdrawal, cancellation, moderation or a shortened schedule.")
@@ -208,7 +211,7 @@ struct CommunityEventDetailView: View {
                             Text("Shared-progress expiry does not delete separately collected private badges. This screen does not collect/share a checkpoint, GPS or arrival proof.").font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Section("Separate optional event choices") {
+                    DisclosureGroup("Games & event activities") {
                         NavigationLink("Own team palette / organizer palette draft") { EventSocialView(eventID: event.id, surface: .teams) }
                             .disabled(community.config?.eventTeamsEnabled != true || event.settings?.eventTeamsEnabled != true || event.moderation?.held == true)
                         NavigationLink("Any-order hunt / separate cooperative consent") { EventSocialView(eventID: event.id, surface: .collection) }
@@ -245,7 +248,7 @@ struct CommunityEventDetailView: View {
                         Text("Reconfirmation never republishes checkpoint progress. Sharing requires a separate explicit action.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Section("Organizers") {
+                    DisclosureGroup("Organizers") {
                         ForEach(event.organizers) { organizer in
                             LabeledContent(organizer.displayName, value: organizer.eventRole.rawValue)
                             if community.config?.messagingEnabled == true, organizer.id != community.user?.id, event.moderation?.held != true {
@@ -269,7 +272,7 @@ struct CommunityEventDetailView: View {
                         }
                     }
                     if event.access.canManage && !event.cancelled {
-                        Section("Organizer tools") {
+                        DisclosureGroup("Organizer tools") {
                             if event.moderation?.held != true {
                                 NavigationLink("Participants & current invitations") { EventRosterView(eventID: event.id) }
                                 NavigationLink("Organizer image gallery") { EventGalleryView(eventID: event.id, organizer: true) }
@@ -560,8 +563,8 @@ struct CommunityEventEditor: View {
                             LabeledContent("Capacity", value: String(capacity))
                             LabeledContent("Timezone", value: zone)
                             Text("Start: \(CatalogEventTime.wire(start))\nEnd: \(CatalogEventTime.wire(end))").font(.caption)
-                            if let venue { Text("Venue: \(venue.label)\n\(venue.latitude), \(venue.longitude) · \(venue.radiusMeters)m").font(.caption) }
-                            Text("Next, add start/finish gates, route guides and ride/game checkpoints using the existing planner. Creating this event does not automatically RSVP, enable sensors, invite friends or publish progress.").font(.caption)
+                            if let venue { Text("Venue: \(venue.label)").font(.caption) }
+                            Text("No RSVP, sensor use or invitations are started automatically.").font(.caption)
                         }
                     }
                     if let failure = session.failure {

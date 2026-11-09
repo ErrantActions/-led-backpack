@@ -203,7 +203,7 @@ struct SettingsView: View {
                     if preferences.speedCapEnabled {
                         Stepper("Maximum: \(preferences.speedCap) \(preferences.mph ? "mph" : "km/h")", value: $preferences.speedCap, in: 1...250)
                     }
-                    Text("The cap affects only numbers sent to the display. It does not alter GPS data, motion measurements, or braking detection. Changing units keeps the entered numeric cap; check it before saving.")
+                    Text("Display cap only. Check its value after changing units.")
                         .font(.caption)
                     Toggle("Fahrenheit weather", isOn: $preferences.fahrenheit)
                     Toggle("Experimental slowdown indicator", isOn: $preferences.brakeDisplay)
@@ -219,7 +219,7 @@ struct SettingsView: View {
                     Toggle("Background GPS during live session", isOn: $preferences.backgroundLocation)
                     Button("Request Always location permission") { app.sensors.requestAlways() }
                     Button("Open iOS Settings") { openSettings() }
-                    Text("Start GPS in the foreground. Restart a live session after changing background permission/settings. Location is not collected solely to keep unrelated screens running. Disconnect alerts require permission; OS/force-quit restrictions still apply.")
+                    Text("Start GPS in the foreground. Restart live playback after permission changes; iOS background limits still apply.")
                         .font(.caption)
                     Button("Save preferences") {
                         app.run {
@@ -235,15 +235,18 @@ struct SettingsView: View {
                         app.run {
                             document = BinaryDocument(data: try library.backup()); exportName = "led-backpack-backup"; exporter = true
                         }
-                        Section("Community") {
-                            NavigationLink("Catalog server and account") { CommunitySettingsView() }
-                        }
                     }
                     Button("Import / merge backup") { importer = true }
+                    FeatureDetails("What's in a backup") {
                     Text("Includes local GIFs, attribution, playlists and preferences, including the optional catalog URL. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords, catalog sessions, deletion receipts and location history are not exported. A backup does not read artwork out of the backpack.")
                         .font(.caption)
+                    }
                 }
-                Section("Diagnostics") {
+                Section("Account & library") {
+                    NavigationLink("Catalog server and account") { CommunitySettingsView() }
+                    NavigationLink("Library sync") { CloudVaultSettingsView() }
+                }
+                DisclosureGroup("Diagnostics") {
                     Button("Export connection log") {
                         app.run {
                             let value: [String: Any] = ["version": 1, "savedAt": Date().ISO8601Format(), "events": link.log]
@@ -260,13 +263,18 @@ struct SettingsView: View {
                         }.navigationTitle("Diagnostics")
                     }
                 }
-                Section("About") {
+                DisclosureGroup("About") {
                     Text("LED Backpack • Independent stock-firmware controller")
                     Text("No vendor account, vendor cloud, firmware flashing, or arbitrary memory commands. iOS hardware compatibility and background behavior require on-device validation.")
                         .font(.caption)
                 }
-            }.modernScene().navigationTitle("Settings")
-            .toolbar { Button("Done") { dismiss() } }
+            }.modernScene().navigationTitle("Settings").buttonStyle(.borderless)
+            .safeAreaInset(edge: .bottom) {
+                Button("Done") { dismiss() }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .padding(8).background(.regularMaterial)
+                    .accessibilityIdentifier("settings-done")
+            }
             .task { preferences = library.state.preferences }
             .fileExporter(isPresented: $exporter, document: document, contentType: .json, defaultFilename: exportName) { result in
                 if case .failure(let error) = result { panel.report(error) }

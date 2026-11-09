@@ -223,6 +223,75 @@ final class AccountNativeParityTests: XCTestCase {
         XCTAssertThrowsError(try AccountDeviceMetadata(nickname: "Line\nBreak", model: "Generic", matrix: nil).validate())
         XCTAssertThrowsError(try AccountDeviceMetadata(nickname: String(repeating: "a", count: 81), model: "Generic", matrix: nil).validate())
     }
+    private func connectedDeviceJSON(vendorID: String = "Ab12345678") -> String {
+        String(deviceJSON().dropLast()) + #","connection":{"kind":"vendor-id","vendorDeviceId":"\#(vendorID)","mutable":true,"ownershipProof":false}}"#
+    }
+    func testConnectedRegistrationEncodesStrictConsentIdentityAndDeviceOnly() async throws {
+        let response = #"{"created":false,"device":\#(connectedDeviceJSON())}"#
+        let (controller, transport) = try await setup(flags: allCapabilities + #","connectedDeviceRegistrationEnabled":true"#,
+            replies: [.init(status: 200, data: data(response))])
+        let scope = try AccountServiceScope(controller, capability: .devices)
+        let identity = ConnectedBackpackIdentity(vendorDeviceId: "Ab12345678", model: "BP10", firmware: "V2.9.1",
+            matrix: NativeMatrixSize(width: 64, height: 64))
+        let result = try await scope.addConnectedDevice(identity,
+            metadata: AccountDeviceMetadata(nickname: "New name", model: identity.model, matrix: identity.matrix), consent: true)
+        XCTAssertEqual(result.nickname, "Private label", "Existing customization must not be overwritten on duplicate registration.")
+        let requests = await transport.history()
+        let request = try XCTUnwrap(requests.last)
+        XCTAssertEqual(request.url?.path, "/api/v1/devices/connected")
+        XCTAssertEqual(request.httpMethod, "POST")
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(request.httpBody)) as? [String: Any])
+        XCTAssertEqual(Set(body.keys), ["consent", "vendorDeviceId", "device"])
+        XCTAssertEqual(body["consent"] as? Bool, true)
+        XCTAssertEqual(body["vendorDeviceId"] as? String, "Ab12345678")
+        XCTAssertFalse(String(decoding: try XCTUnwrap(request.httpBody), as: UTF8.self).contains("firmware"))
+    }
+    func testConnectedRegistrationMissingCapabilityAndConsentNeverReachesServer() async throws {
+        for enabled in [false, true] {
+            let (controller, transport) = try await setup(flags: allCapabilities
+                + (enabled ? #","connectedDeviceRegistrationEnabled":true"# : ""))
+            let scope = try AccountServiceScope(controller, capability: .devices)
+            let identity = ConnectedBackpackIdentity(vendorDeviceId: "Ab12345678", model: "BP10", firmware: "1",
+                matrix: NativeMatrixSize(width: 64, height: 64))
+            do {
+                _ = try await scope.addConnectedDevice(identity,
+                    metadata: AccountDeviceMetadata(nickname: "Mine", model: identity.model, matrix: identity.matrix), consent: false)
+                XCTFail("Missing capability or consent must fail closed")
+            } catch {}
+            let requests = await transport.history()
+            XCTAssertEqual(requests.count, 2)
+        }
+    }
+    func testConnectedReceiptRejectsWrongIdentityAndNewRecordSharingOrMetadataMismatch() throws {
+        let request = ConnectedDeviceRequest(consent: true, vendorDeviceId: "Ab12345678",
+            device: AccountDeviceMetadata(nickname: "Private label", model: "Generic model", matrix: nil))
+        let good = try decode(ConnectedDeviceResult.self, #"{"created":true,"device":\#(connectedDeviceJSON())}"#)
+        XCTAssertNoThrow(try good.validate(request))
+        for value in [
+            #"{"created":true,"device":\#(connectedDeviceJSON(vendorID: "Cd12345678"))}"#,
+            #"{"created":true,"device":\#(connectedDeviceJSON().replacingOccurrences(of: "\"ownerCardEnabled\":false", with: "\"ownerCardEnabled\":true"))}"#,
+            #"{"created":true,"device":\#(connectedDeviceJSON().replacingOccurrences(of: "Private label", with: "Other label"))}"#,
+            #"{"created":false,"device":\#(deviceJSON())}"#
+        ] {
+            XCTAssertThrowsError(try decode(ConnectedDeviceResult.self, value).validate(request))
+        }
+    }
+    func testConnectedRecordCannotClaimImmutableOrProvenOwnership() throws {
+        for json in [
+            connectedDeviceJSON().replacingOccurrences(of: "\"mutable\":true", with: "\"mutable\":false"),
+            connectedDeviceJSON().replacingOccurrences(of: "\"ownershipProof\":false", with: "\"ownershipProof\":true"),
+            connectedDeviceJSON().replacingOccurrences(of: "\"vendor-id\"", with: "\"mac-address\"")
+        ] {
+            XCTAssertThrowsError(try decode(AccountDevice.self, json).validate())
+        }
+    }
+    func testIncomingTransferCannotDisclosePrivateConnectedID() async throws {
+        let pending = connectedDeviceJSON().replacingOccurrences(of: "\"transferPending\":false", with: "\"transferPending\":true")
+        let json = #"{"transfers":[{"device":\#(pending),"from":{"id":"\#(other)","displayName":"Friend"}}]}"#
+        let (controller, _) = try await setup(replies: [.init(status: 200, data: data(json))])
+        let scope = try AccountServiceScope(controller, capability: .devices)
+        do { _ = try await scope.incomingDevices(); XCTFail("Private ID leaked in transfer") } catch {}
+    }
     func testTagLinkRequiresCanonicalConfiguredFragment() throws {
         let origin = try CommunityOrigin.parse("https://catalog.example.invalid")
         XCTAssertEqual(try AccountDeviceTagLink.token("https://catalog.example.invalid/device-card#tag=\(token)", origin: origin), token)

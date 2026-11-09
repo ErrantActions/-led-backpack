@@ -120,25 +120,46 @@ private struct StoredSlotDetail: View {
 }
 
 @MainActor
-private struct EraseBackpackView: View {
+struct EraseBackpackView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var panel: PanelController
+    @EnvironmentObject private var link: BluetoothLink
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     let plan: BackpackErasePlan
-    @State private var confirmation = ""
+    @State private var allowErase = false
     var body: some View {
         NavigationStack {
             Form {
-                Text("Erase \(plan.occupied.count) occupied slots on backpack \(plan.serial)? This cannot be undone. An interrupted erase may leave some slots erased and others unchanged.")
-                Text("This is not a factory reset. Local and cloud files are retained.")
-                TextField("Type ERASE ALL", text: $confirmation).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                if let progress = panel.progress { ProgressView("Erasing backpack slots…", value: progress) }
+                Text("Erase \(plan.occupied.count) stored programs?").font(.headline)
+                LabeledContent("Backpack", value: plan.serial)
+                Text("This cannot be undone. Interrupted erases may be partial. Local and cloud GIFs are kept.")
+                    .font(.caption)
+                Toggle("Allow erase", isOn: $allowErase)
+                    .disabled(panel.busy)
+                    .accessibilityIdentifier("allow-backpack-erase")
+                if let progress = panel.progress { ProgressView("Erasing backpack slotsâ€¦", value: progress) }
                 Button("Erase all stored artwork", role: .destructive) {
+                    guard allowErase else {
+                        panel.report(BackpackError.invalid("Enable Allow erase before erasing backpack artwork."))
+                        return
+                    }
+                    allowErase = false
                     app.run { try await panel.eraseAll(plan); dismiss() }
-                }.disabled(confirmation != "ERASE ALL" || panel.busy || panel.hasDisplayOwner || !panel.link.connected)
+                }
+                .disabled(!allowErase || panel.busy || panel.hasDisplayOwner || !link.connected)
+                .accessibilityIdentifier("erase-backpack-action")
             }.modernScene().navigationTitle("Erase backpack")
-                .toolbar { Button("Cancel") { dismiss() }.disabled(panel.busy) }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }.disabled(panel.busy)
+                    }
+                }
                 .interactiveDismissDisabled(panel.busy)
+                .onChange(of: link.connectionRevision) { _, _ in allowErase = false }
+                .onChange(of: panel.slots) { _, _ in allowErase = false }
+                .onChange(of: phase) { _, value in if value != .active { allowErase = false } }
+                .onDisappear { allowErase = false }
         }
     }
 }

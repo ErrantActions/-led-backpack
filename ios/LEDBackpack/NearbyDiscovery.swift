@@ -9,6 +9,8 @@ final class NearbyDiscoveryCoordinator: ObservableObject {
     @Published private(set) var failure: String?
     @Published private(set) var busy = false
     @Published private(set) var armed = false
+    var looking: Bool { armed && state?.lookForFriends == true }
+    var findable: Bool { armed && state?.discoverable == true }
     private var client: CommunityFeatureClient?
     private var state: NativeNearbyState?
     private var clock: CatalogEventClock?
@@ -212,55 +214,131 @@ struct NearbyDiscoveryView: View {
     @State private var consent = false
     @State private var requesting: SocialPerson?
     @State private var cardClient: CommunityFeatureClient?
+    @State private var activation = false
+    @State private var inviteMode: FriendInviteQRView.EntryMode?
+    private var available: Bool { community.signedIn && community.config?.socialEnabled == true && community.config?.nearbyDiscoveryEnabled == true }
     var body: some View {
-        Form {
-            Text("Add friends — foreground hints only").font(.headline)
-            Text("Independent controls default off. BLE hints can be relayed/copied; they do not prove identity, distance or physical proximity. No location/RSSI, device identifiers, names or encounter history are advertised or uploaded.").font(.caption)
-            if community.config?.nearbyDiscoveryEnabled == true {
-                Toggle("Look for friends", isOn: $look)
-                Toggle("Let nearby people find me", isOn: $discoverable)
-                Toggle("I consent to one foreground 5-minute discovery session", isOn: $consent)
-                Text("Start explicitly takes over any existing discovery session on this account. Token rotation is limited to this foreground consent window and never extends it.").font(.caption)
-                Button("Prepare Bluetooth permission / OS state") { discovery.prepare(community) }
-                Button("Start my selected discovery controls") { discovery.activate(community, look: look, discoverable: discoverable, consent: consent, foreground: phase == .active) }
-                    .disabled(discovery.armed || discovery.busy || !consent || (!look && !discoverable))
-            } else { Text("Nearby discovery is unavailable on this service. Use the existing manual invitation flow.") }
-            Text(discovery.status).font(.caption)
-            NearbyRadioStatus(radio: discovery.radio)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { entryButtons }
+                VStack(spacing: 10) { entryButtons }
+            }
+            HStack {
+                StatusPill(title: discovery.armed ? "Discovery on" : "Discovery off", symbol: "person.2")
+                Spacer()
+                Toggle("Find Me", isOn: Binding(get: { discovery.findable }, set: { value in
+                    if value { beginDiscovery(look: discovery.looking, findable: true) }
+                    else { discovery.stop(); consent = false }
+                })).fixedSize().disabled(!available || discovery.busy)
+                    .accessibilityIdentifier("find-me-toggle")
+            }
+            if !available { Text("Nearby discovery is unavailable. QR invitations still work when signed in.").font(.caption) }
             if let error = discovery.failure { Text(error).foregroundStyle(.orange) }
             if discovery.busy { ProgressView() }
-            Button("Stop scanning / advertising and withdraw presence", role: .destructive) {
+            if discovery.armed || discovery.busy { Button("Stop discovery", role: .destructive) {
                 discovery.stop(); consent = false; requesting = nil
+            } }
+            if discovery.contacts.isEmpty {
+                ContentUnavailableView(discovery.looking ? "No friends found yet" : "Find your people",
+                    systemImage: "person.2", description: Text(discovery.looking ? "Keep both phones nearby with discovery on." : "Look nearby or scan a friend's QR code."))
+                    .frame(maxWidth: .infinity, minHeight: 180).glassPanel()
+                    .accessibilityIdentifier("add-friends-empty")
             }
-            Button("Explicitly reconcile / withdraw current-login presence") {
-                consent = false; requesting = nil; discovery.reconcileAndWithdraw(community)
-            }.disabled(discovery.busy)
             ForEach(discovery.contacts) { contact in
-                HStack {
-                    if let cardClient { CommunityProfileAvatar(person: contact, client: cardClient).frame(width: 44, height: 44) }
+                HStack(alignment: .top, spacing: 16) {
+                    if let cardClient { CommunityProfileAvatar(person: contact, client: cardClient).frame(width: 60, height: 60) }
+                    else { Image(systemName: "person.crop.circle").font(.largeTitle).frame(width: 60, height: 60) }
+                    VStack(alignment: .leading, spacing: 12) {
                     Text(contact.displayName)
-                    Button("Request friendship") { requesting = contact }.disabled(discovery.busy)
-                }
+                        .font(.headline)
+                    Button("Send Request") { requesting = contact }.disabled(discovery.busy)
+                        .buttonStyle(.bordered)
+                    }
+                    Spacer()
+                }.padding(16).glassPanel()
+                    .accessibilityIdentifier("found-friend-\(contact.id.uuidString.lowercased())")
             }
-            Text("Cards are minimal, currently authorized results of actually read tokens, alphabetically ordered—not a public directory or a distance list. Mature/avatar viewing rules still apply.").font(.caption)
-            NavigationLink("Manual invite / existing friend-request controls") { CommunitySocialView() }
-            NavigationLink("My friend QR / Scan / Manual invite") { FriendInviteQRView() }
-            Text("Manual invitation fallback remains available. No automatic friendship, per-friend permission, ranging, game, synchronized playback or GIF swap is enabled.").font(.caption)
-        }.modernScene().navigationTitle("Look for friends")
+            FeatureDetails("Privacy & discovery status") {
+                Text(discovery.status)
+                NearbyRadioStatus(radio: discovery.radio)
+                Text("Cards come only from current authorized Bluetooth tokens, not a public directory. Signals do not prove distance or physical identity.")
+                Text("Find Me and looking are separate choices. No GPS, game or friendship starts when this page opens.")
+                Button("Reconcile / withdraw presence") {
+                    consent = false; requesting = nil; discovery.reconcileAndWithdraw(community)
+                }.disabled(discovery.busy)
+            }
+            }.padding(20)
+        }.modernScene().navigationTitle("Add friends")
+        .sheet(item: $inviteMode) { mode in
+            NavigationStack { FriendInviteQRView(entryMode: mode) }
+        }
+        .sheet(isPresented: $activation) { activationSheet }
         .task(id: community.accountRevision) {
             do { cardClient = try CommunityFeatureClient(community) }
             catch { cardClient = nil; discovery.stop("Account unavailable; cards cleared") }
         }
 
-        .onChange(of: look) { _, _ in discovery.stop("Control choice changed"); consent = false }
-        .onChange(of: discoverable) { _, _ in discovery.stop("Control choice changed"); consent = false }
         .onChange(of: consent) { _, value in if !value { discovery.stop("Consent withdrawn") } }
+        .onChange(of: discovery.armed) { _, armed in if armed { activation = false } }
         .onChange(of: phase) { _, value in if value != .active { discovery.stop("Background — no restart"); consent = false; requesting = nil } }
         .onChange(of: community.accountRevision) { _, _ in discovery.stop("Account changed"); consent = false; requesting = nil; cardClient = nil }
         .onDisappear { discovery.stop("Discovery page closed"); consent = false; requesting = nil; cardClient = nil }
         .confirmationDialog("Send an explicit friend request?", isPresented: Binding(get: { requesting != nil }, set: { if !$0 { requesting = nil } })) {
             if let person = requesting { Button("Request \(person.displayName)") { discovery.requestFriend(person); requesting = nil } }
         } message: { Text("Current observed token authorization is rechecked. This does not accept a friendship or grant location, game, swaps or library access.") }
+    }
+    private var entryButtons: some View {
+        Group {
+            Button("Look for Friends") { beginDiscovery(look: true, findable: discovery.findable) }
+                .disabled(!available || discovery.busy).accessibilityIdentifier("add-friends-look")
+            Button("My QR Code") { openInvite(.myCode) }
+                .disabled(!community.signedIn || community.config?.socialEnabled != true)
+                .accessibilityIdentifier("add-friends-my-qr")
+            Button("Scan QR Code") { openInvite(.scan) }
+                .disabled(!community.signedIn || community.config?.socialEnabled != true)
+                .accessibilityIdentifier("add-friends-scan-qr")
+        }.buttonStyle(.bordered).frame(minHeight: 44)
+    }
+    private func openInvite(_ mode: FriendInviteQRView.EntryMode) {
+        discovery.stop(); consent = false; requesting = nil; inviteMode = mode
+    }
+    private func beginDiscovery(look: Bool, findable: Bool) {
+        discovery.stop(); self.look = look; discoverable = findable; consent = false; activation = true
+    }
+    private var activationSheet: some View {
+        NavigationStack {
+            Form {
+                Text(look && discoverable ? "Look for friends and let people find you" : look ? "Look for friends" : "Let people find you")
+                    .font(.headline)
+                Text("Uses Bluetooth for one foreground5-minute session. Start replaces any existing discovery session on this account.")
+                    .font(.caption)
+                Toggle("Allow this discovery session", isOn: $consent)
+                NearbyStartControls(discovery: discovery, radio: discovery.radio, community: community,
+                    look: look, findable: discoverable, consent: consent, foreground: phase == .active)
+                if let error = discovery.failure { Text(error).foregroundStyle(.orange) }
+                if discovery.busy { ProgressView() }
+            }.navigationTitle("Discovery permission")
+                .toolbar { Button("Cancel") { activation = false; discovery.stop(); consent = false } }
+        }
+    }
+}
+
+@MainActor
+private struct NearbyStartControls: View {
+    @ObservedObject var discovery: NearbyDiscoveryCoordinator
+    @ObservedObject var radio: NearbyPeerRadio
+    let community: CommunityController
+    let look, findable, consent, foreground: Bool
+    var body: some View {
+        if !radio.ready {
+            Button("Enable Bluetooth") { discovery.prepare(community) }
+                .disabled(!consent || discovery.busy || !foreground).buttonStyle(AuroraPrimaryButton())
+        } else {
+            Button("Start discovery") {
+                discovery.activate(community, look: look, discoverable: findable, consent: consent, foreground: foreground)
+            }.disabled(!consent || discovery.busy || !foreground).buttonStyle(AuroraPrimaryButton())
+        }
     }
 }
 

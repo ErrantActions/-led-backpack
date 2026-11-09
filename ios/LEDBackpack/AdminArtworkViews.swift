@@ -21,9 +21,11 @@ struct AdminArtworkView: View {
         Form {
             if community.isAdmin && community.config?.artworkToolsEnabled == true {
                 Section("Owned 64×64 artwork previews") {
-                    Text("Cleanup/upscale are deterministic processing, NOT AI. Explicit input creates a private owned 24-hour preview job. No private cloud scan, overwrite, publication, device action or provider provisioning.")
-                    Text("Media URLs are current authorized routes, not permanent public links. Input/result fetches recheck access before/after I/O. No checksum manifest or atomic revision-CAS is invented.").font(.caption)
-                    Text("One active job;10 submissions/hour;5 MB input/output,1–120 source frames,40 million decoded pixels. AI redraw accepts at most16 frames, never silently truncates. Owned jobs expire after24 hours.").font(.caption)
+                    Text("Private preview jobs expire after24 hours. Cleanup and upscale are not AI.")
+                    FeatureDetails("Processing limits & privacy") {
+                        Text("One active job, up to5 MB and120 frames; optional AI redraw is limited to16 frames.")
+                        Text("Only the selected input is processed. No cloud scan, publication or device change.")
+                    }
                     if store.busy { ProgressView() }
                     if let failure = store.failure ?? exportFailure { Text(failure).foregroundStyle(.orange) }
                     if let message = store.message { Text(message).font(.caption) }
@@ -79,15 +81,13 @@ struct AdminArtworkView: View {
             if let upload = store.upload { ArtworkComparison(input: upload.preview, result: nil).id(store.sourceName + String(upload.data.count)) }
             TextField("Approved community title/tag search", text: $query)
             Button("Search named current community sources") { consent = false; page = 1; store.search(query, page: page) }.disabled(store.busy)
+            if store.canRetryCatalog { Button("Retry catalog page") { store.retryCatalog() } }
             if let catalog = store.catalog {
                 ForEach(catalog.items) { item in
                     Button("\(item.title) (\(item.width)×\(item.height))") { consent = false; store.chooseCommunity(item) }.disabled(store.busy)
+                        .onAppear { store.nearCatalogEnd(item.id) }
                 }
-                HStack {
-                    Button("Previous") { page -= 1; store.search(query, page: page) }.disabled(store.busy || page <= 1)
-                    Spacer()
-                    Button("Next") { page += 1; store.search(query, page: page) }.disabled(store.busy || page * catalog.limit >= catalog.total || page >= 10000)
-                }
+                if catalog.items.count == 100 { Text("Showing 100 matches. Refine your search.").font(.caption) }
             }
         }
     }

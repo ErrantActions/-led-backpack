@@ -88,6 +88,9 @@ extension CommunityFeatureClient {
 
 @MainActor
 struct FriendInviteQRView: View {
+    enum EntryMode: String, Identifiable { case all, myCode, scan; var id: String { rawValue } }
+    let entryMode: EntryMode
+    init(entryMode: EntryMode = .all) { self.entryMode = entryMode }
     @EnvironmentObject private var community: CommunityController
     @Environment(\.scenePhase) private var phase
     @Environment(\.dismiss) private var dismiss
@@ -104,14 +107,17 @@ struct FriendInviteQRView: View {
     @State private var confirming = false
     @State private var notice: String?
     @State private var qrTask: Task<Void, Never>?
+    @State private var openedScanner = false
+    @State private var showOwnCode = false
     var body: some View {
         Form {
-            Text("Friend QR is an invitation, not friendship or location/game/library permission. No credentials, account keys, coordinates or profile data are in the code.").font(.caption)
+            Text("Scan to preview a friend. Sending a request is a separate choice.").font(.caption)
             if let error = session.failure { Text(error).foregroundStyle(.orange) }
             if let notice { Text(notice).font(.caption) }
             if session.busy { ProgressView() }
             if community.config?.socialEnabled == true && community.signedIn {
-                Section("My revocable friend QR") {
+                if entryMode != .scan {
+                DisclosureGroup("My QR Code", isExpanded: $showOwnCode) {
                     Button("Create a new 15-minute invitation") { create() }.disabled(session.busy)
                     if let own, let ownClock {
                         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -127,14 +133,18 @@ struct FriendInviteQRView: View {
                             session.run({ try await $0.revokeInvite(id) }, success: { self.own = nil; notice = "Displayed invitation revoked." })
                         }.disabled(session.busy)
                     }
-                    Text("Each creation is explicit, not renewal. Existing codes remain valid until used/expired/revoked; creating another does not claim to revoke prior codes.").font(.caption)
+                    Text("Codes expire after15 minutes. New codes do not revoke older ones.").font(.caption)
                 }
+                }
+                if entryMode != .myCode {
                 Section("Scan or enter an invitation") {
                     Button("Scan friend QR with camera (explicit)") { scanning = true; clearPreview() }.disabled(session.busy)
+                    DisclosureGroup("Paste an invitation") {
                     TextField("Configured catalog link or invite token", text: Binding(get: { input }, set: {
                         input = $0; clearPreview(); session.bind(community)
                     })).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
                     Button("Preview minimal inviter (do not request yet)") { consume(input) }.disabled(session.busy || input.isEmpty)
+                    }
                     if let preview, let previewClock {
                         TimelineView(.periodic(from: .now, by: 1)) { _ in
                             if previewClock.now() < Date(timeIntervalSince1970: preview.expiresAt / 1000) {
@@ -145,11 +155,18 @@ struct FriendInviteQRView: View {
                         }
                     }
                     Button("Cancel / clear received invitation") { clearPreview(); input = ""; session.bind(community) }
-                    Text("Manual token/link input is always available when camera permission is denied, restricted or unavailable. Opening/scanning never redeems or accepts anything.").font(.caption)
+                    Text("Camera unavailable? Paste the link instead.").font(.caption)
+                }
                 }
             } else { Text("Sign in to this configured catalog and enable the actual social capability to manage/preview friend invitations.") }
-        }.modernScene().navigationTitle("Add friends / My QR")
-        .task(id: community.accountRevision) { session.bind(community) }
+        }.modernScene().navigationTitle(entryMode == .myCode ? "My QR Code" : entryMode == .scan ? "Scan QR Code" : "Friend invitation").buttonStyle(.borderless)
+        .toolbar { if entryMode != .all { Button("Done") { dismiss() } } }
+        .task(id: community.accountRevision) {
+            session.bind(community); showOwnCode = entryMode == .myCode
+            if entryMode == .scan, !openedScanner, community.signedIn, community.config?.socialEnabled == true {
+                openedScanner = true; scanning = true
+            }
+        }
         .onChange(of: community.accountRevision) { _, _ in clearAll(); session.clear(); dismiss() }
         .onChange(of: phase) { _, value in
             if value != .active { scanning = false; clearPreview(); input = ""; qrTask?.cancel(); qr = nil; shareURL = nil; session.clear() }

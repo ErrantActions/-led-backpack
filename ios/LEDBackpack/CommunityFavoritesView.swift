@@ -22,7 +22,7 @@ struct CommunityFavoritesView: View {
                         Button {
                             do { try selection.toggle(item.id); failure = nil } catch { failure = error.localizedDescription }
                         } label: {
-                            GIFThumbnail(key: "favorite:\(item.id)", cache: false, animationAllowed: animate) {
+                            GIFThumbnail(key: "\(item.previewKey):\(animate)", cache: false, animationAllowed: animate) {
                                 let url = try library.phoneOriginalURL(item)
                                 return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
                             }.aspectRatio(1, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))

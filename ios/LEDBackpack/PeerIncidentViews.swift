@@ -20,10 +20,10 @@ struct PeerIncidentComposeView: View {
             Form {
                 Section("Your explicitly selected claimed peer") {
                     Text(selection.label).font(.headline)
-                    Text("Claimed account: \(selection.reportedUserID.uuidString.lowercased())").font(.caption.monospaced())
-                    Text("Selected under your current account/catalog. The service does NOT confirm this target exists or that an exchange, identity, proximity or misconduct occurred. All cases remain UNVERIFIED, including after review.").font(.caption)
+                    Text("Unverified claim. Review does not prove identity, proximity or misconduct.").font(.caption)
+                    FeatureDetails("Selected account") { Text(selection.reportedUserID.uuidString.lowercased()).font(.caption.monospaced()) }
                 }
-                Text("Only the explanation/category you deliberately type is retained, with the claimed account ID. No GIF, bytes/hash, screenshot, chat, private URL, coordinates, scan or encounter history is copied automatically. No account is automatically blocked or changed.").font(.caption)
+                Text("Only your typed explanation and category are sent. No artwork, chats or location history are copied; no account action is automatic.").font(.caption)
                 if community.config?.peerIncidentReportsEnabled == true && submitted == nil && !session.denied {
                     Picker("Category", selection: $category) { ForEach(PeerIncidentCategory.allCases) { Text($0.rawValue).tag($0) } }
                     TextField("Deliberately typed explanation (1–1000 UTF-16 units)", text: $details, axis: .vertical).lineLimit(4...12)
@@ -49,7 +49,9 @@ struct PeerIncidentComposeView: View {
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if session.busy { ProgressView() }
                 NavigationLink("My peer reports / withdrawal receipts") { PeerIncidentOwnerView() }
-                Text("100 cases/account, 5000 service-wide; 20 writes/120 reads per minute. Description reads end at 30 days; cleanup is bounded, not forensic backup erasure.").font(.caption)
+                FeatureDetails("Retention & limits") {
+                    Text("Descriptions expire after30 days. Cleanup is bounded, not forensic erasure.100 cases per account; service rate limits apply.")
+                }
             }
             .modernScene().navigationTitle("Private peer incident")
             .toolbar { Button("Cancel / close") { invalidate(); dismiss() } }

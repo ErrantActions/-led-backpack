@@ -20,7 +20,7 @@ struct PeerIncidentAdminView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 Text("Private peer-incident review").font(.title2.bold())
-                Text("Global-admin-only descriptions of UNVERIFIED allegations. A claimed target UUID does not confirm the account exists. Resolve/reopen never verifies misconduct, identity, proximity or encounter and never changes an account. No target profile, private GIF or general chat grant.").font(.caption)
+                Text("Unverified allegations. Review does not prove misconduct or change an account.").font(.caption)
                 if let failure = store.failure { Text(failure).foregroundStyle(.orange) }
                 if store.busy { ProgressView() }
                 if community.isAdmin && !store.denied {
@@ -77,7 +77,9 @@ struct PeerIncidentAdminView: View {
                         }
                     }
                 } else { Text("Current global-admin access required. Role changes discard descriptions, selection and staff-note drafts.") }
-                Text("30-day descriptions, bounded 500-case cleanup/pass, 100/account/5000 global and 20 write/120 read quotas. Reported UUIDs are allegations, not profile permissions. No automatic ban/block, evidence export or artwork copy.").font(.caption)
+                FeatureDetails("Retention & privacy") {
+                    Text("Descriptions expire after30 days; cleanup is bounded. No automatic account action, profile grant or artwork copy.")
+                }
             }.padding(20)
         }.modernScene().navigationTitle("Peer reports (admin)")
         .task(id: "\(community.accountRevision):\(community.user?.role ?? "")") { clear(); page = 1; store.bind(community); if community.isAdmin && community.config?.peerIncidentReportsEnabled == true { load() } }

@@ -10,12 +10,14 @@ struct AccountDevice: Decodable, Identifiable {
     let ownerCardEnabled, transferPending: Bool
     let claimStatus: String
     let physicalOwnershipVerified, hardwareIdentityVerified, flashingCompatibilityVerified: Bool
+    let connection: AccountDeviceConnection?
     func validate() throws {
         guard revision >= 1, claimStatus == "unverified-tag",
               !physicalOwnershipVerified, !hardwareIdentityVerified, !flashingCompatibilityVerified else {
             throw BackpackError.invalid("Unsupported device ownership claim.")
         }
         try AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix).validate()
+        try connection?.validate()
     }
 }
 struct AccountDeviceMetadata: Encodable {
@@ -97,7 +99,12 @@ extension AccountServiceScope {
     func incomingDevices() async throws -> [AccountDeviceTransfer] {
         let value = try await send(AccountDeviceTransfers.self, "devices/transfers").transfers
         guard value.count <= 50, Set(value.map(\.id)).count == value.count else { throw BackpackError.invalid("Invalid transfer list.") }
-        for transfer in value { try transfer.device.validate(); guard transfer.device.transferPending else { throw BackpackError.invalid("Transfer is no longer pending.") } }
+        for transfer in value {
+            try transfer.device.validate()
+            guard transfer.device.transferPending, transfer.device.connection == nil else {
+                throw BackpackError.invalid("Invalid private transfer payload or transfer is no longer pending.")
+            }
+        }
         return value
     }
     func addDevice(_ metadata: AccountDeviceMetadata) async throws {
@@ -194,10 +201,6 @@ struct AccountDevicesView: View {
     @State private var friendPage = 1
     @State private var editing: AccountDevice?
     @State private var recipient: UUID?
-    @State private var nickname = ""
-    @State private var model = ""
-    @State private var width = ""
-    @State private var height = ""
     @State private var tag: AccountDeviceTag?
     @State private var qr: CGImage?
     @State private var pending: DeviceAction?
@@ -210,31 +213,25 @@ struct AccountDevicesView: View {
     private var identity: String { "\(community.accountRevision):\(community.avatarPolicyRevision):\(community.config?.unverifiedDeviceTagsEnabled == true)" }
     var body: some View {
         Form {
-            Text("Unverified service labels only — not physical ownership, hardware identity or compatibility. No connection or device command occurs. Owner lookup is off until you explicitly issue a revocable tag. Unlink/transfer never deletes local GIFs.")
+            NavigationLink("Add connected backpack") { ConnectedBackpackView() }
+            Text("Device details come from your connected backpack. Account records are not verified ownership.")
                 .font(.caption)
             if session.scope != nil {
-                Section("Add private generic label") {
-                    TextField("Nickname", text: $nickname); TextField("Generic model", text: $model)
-                    HStack { TextField("Optional width", text: $width); TextField("Optional height", text: $height) }.keyboardType(.numberPad)
-                    Button("Add label (card off)") { session.run { scope in
-                        let matrix: NativeMatrixSize?
-                        if width.isEmpty && height.isEmpty { matrix = nil }
-                        else {
-                            guard let w = Int(width), let h = Int(height) else { throw BackpackError.invalid("Provide both optional dimensions.") }
-                            matrix = NativeMatrixSize(width: w, height: h)
-                        }
-                        try await scope.addDevice(AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix))
-                        try await reload(scope); nickname = ""; model = ""; width = ""; height = ""; return "Private unverified label added."
-                    } }
-                }
                 Section("My devices (\(devices.count)/20)") {
-                    if devices.isEmpty { Text("No service labels.") }
+                    if devices.isEmpty { Text("No backpacks yet. Connect one to add it.") }
                     ForEach(devices) { device in
                         VStack(alignment: .leading) {
                             Text(device.nickname).font(.headline)
                             Text("\(device.model) · \(device.matrix?.id ?? "unknown matrix") · unverified · revision \(device.revision)").font(.caption)
+                            if let connection = device.connection {
+                                DisclosureGroup("Private connected ID") {
+                                    LabeledContent("Vendor ID", value: connection.vendorDeviceId)
+                                    Text("Mutable ID, not ownership proof. Other accounts may associate the same ID independently. Unlink removes this account's record; transfer moves only the label and drops the private ID.")
+                                        .font(.caption)
+                                }
+                            }
                             if !device.transferPending {
-                                Button("Edit private label / dimensions") { editing = device }
+                                Button("Rename") { editing = device }
                                 Button(device.ownerCardEnabled ? "Replace/revoke old QR and share owner" : "Issue unverified owner QR") { confirm(device, "tag") }
                                 if device.ownerCardEnabled { Button("Revoke owner card", role: .destructive) { confirm(device, "revoke") } }
                                 Button("Offer transfer to selected friend") { confirm(device, "transfer") }.disabled(recipient == nil)
@@ -249,6 +246,8 @@ struct AccountDevicesView: View {
                         ForEach(friends) { Text($0.displayName).tag(Optional($0.id)) }
                     }
                     Text("The recipient receives this private label's model/matrix/nickname and must accept. Existing tags revoke immediately and never return after decline/cancel.")
+                        .font(.caption)
+                    Text("Connected vendor IDs are never sent with transfer offers. Accepting a transfer drops the old private binding; the recipient must explicitly read and register the backpack.")
                         .font(.caption)
                     HStack {
                         Button("Previous friends") { friendPage = max(1, friendPage - 1); loadFriends() }.disabled(friendPage == 1)
@@ -341,35 +340,26 @@ struct AccountDeviceEditView: View {
     let device: AccountDevice
     let revision: UUID
     @State private var nickname = ""
-    @State private var model = ""
-    @State private var width = ""
-    @State private var height = ""
     var body: some View {
         Form {
-            Text("Captured label revision \(device.revision). Generic metadata only, never hardware identity or compatibility. No physical commands.")
-            TextField("Private nickname", text: $nickname); TextField("Generic model", text: $model)
-            HStack { TextField("Optional width", text: $width); TextField("Optional height", text: $height) }.keyboardType(.numberPad)
-            Button("Save this captured revision") {
+            TextField("Nickname", text: $nickname)
+            LabeledContent("Model", value: device.model)
+            LabeledContent("Panel", value: device.matrix?.id ?? "Unknown")
+            Button("Save") {
                 session.run { scope in
                     guard scope.revision == revision else { throw BackpackError.invalid("Captured account changed; reopen the label.") }
-                    let matrix: NativeMatrixSize?
-                    if width.isEmpty && height.isEmpty { matrix = nil }
-                    else {
-                        guard let w = Int(width), let h = Int(height) else { throw BackpackError.invalid("Both optional dimensions are required.") }
-                        matrix = NativeMatrixSize(width: w, height: h)
-                    }
-                    try await scope.editDevice(device, metadata: AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix))
+                    try await scope.editDevice(device, metadata: AccountDeviceMetadata(nickname: nickname,
+                        model: device.model, matrix: device.matrix))
                     try session.checked(scope); dismiss(); return nil
                 }
             }.disabled(session.scope == nil)
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-        }.disabled(session.busy).navigationTitle("Edit unverified label")
+        }.disabled(session.busy).navigationTitle("Rename backpack")
             .task(id: community.accountRevision) {
                 session.bind(community, .devices)
                 guard community.accountRevision == revision else { session.clear(); return }
-                nickname = device.nickname; model = device.model
-                width = device.matrix.map { String($0.width) } ?? ""; height = device.matrix.map { String($0.height) } ?? ""
+                nickname = device.nickname
             }
             .onDisappear { session.clear() }
             .toolbar { Button("Cancel") { dismiss() } }

@@ -362,7 +362,7 @@ struct EventSocialView: View {
                     .disabled(!model.consent || model.teamID == nil || event.access.canChooseTeam != true || model.teamDraft != snapshot.teams)
             }
             if event.access.canManage && snapshot.canManage {
-                Section("Organizer palette draft") {
+                DisclosureGroup("Edit team palettes") {
                     ForEach($model.teamDraft) { $team in
                         VStack(alignment: .leading) {
                             TextField("Team name", text: $team.name)
@@ -380,28 +380,42 @@ struct EventSocialView: View {
     @ViewBuilder private func collection(_ event: CatalogEvent) -> some View {
         if let snapshot = model.collection {
             Section("Private any-order hunt") {
-                Text(snapshot.ownEnabled ? "Current own hunt consent is active." : "Not currently opted in.")
-                Text(snapshot.ownCompleted ? "Your selected targets are self-collected." : "Your private hunt is incomplete or not opted in.")
-                Text(snapshot.cooperativeReached ? "Server's cooperative goal boolean: reached." : "Server's cooperative goal boolean: not reached or disabled.")
-                Text("No exact contributor counts, identities, arrivals or GPS. Private badges do not share progress. Finish requires all selected targets.").font(.caption)
+                Text(snapshot.ownEnabled ? "Hunt on" : "Hunt off").font(.headline)
+                Text("\(snapshot.ownCollectedTargetCount) / \(snapshot.plan.checkpointIds.count) targets")
+                if snapshot.ownCompleted { Label("Your targets are complete", systemImage: "checkmark.circle") }
+                if snapshot.cooperativeReached { Text("Cooperative goal reached").font(.caption) }
                 NavigationLink("Play GPS checkpoint hunt — private confirmation") { EventGPSHuntView(eventID: event.id) }
                     .disabled(!snapshot.plan.enabled || event.route?.published != true)
+                DisclosureGroup("Participation & manual claims") {
                 Toggle("I explicitly opt in to this private any-order collection", isOn: $model.consent)
                 Toggle("Separately include my completion in the cooperative boolean", isOn: $model.cooperativeConsent)
                 Button("Save these separate consent choices") { model.joinCollection() }
                     .disabled(!model.consent || !snapshot.plan.enabled || model.collectionDraft != snapshot.plan)
-                ForEach(snapshot.checkpoints) { checkpoint in
-                    Text("\(checkpoint.title): \(checkpoint.collected ? "self-collected" : "not collected")")
-                    Button("Manually self-report \(checkpoint.title) privately") { model.collect(checkpoint.id) }
-                        .disabled(!snapshot.ownEnabled || checkpoint.collected || !model.consent || model.collectionDraft != snapshot.plan)
+                Picker("Selected target", selection: $model.manualCheckpointID) {
+                    Text("Choose a target").tag(Optional<UUID>.none)
+                    ForEach(snapshot.checkpoints.filter { !$0.collected }) { checkpoint in
+                        Text(checkpoint.title).tag(Optional(checkpoint.id))
+                    }
+                    if snapshot.ownCompleted {
+                        ForEach(event.route?.checkpoints.filter { $0.kind == .finish } ?? []) { checkpoint in
+                            Text(checkpoint.title).tag(Optional(checkpoint.id))
+                        }
+                    }
                 }
-                ForEach(event.route?.checkpoints.filter { $0.kind == .finish } ?? []) { checkpoint in
-                    Button("Manually self-report finish: \(checkpoint.title)") { model.collect(checkpoint.id) }
-                        .disabled(!snapshot.ownCompleted || !model.consent || model.collectionDraft != snapshot.plan)
+                let selectable = Set(snapshot.checkpoints.filter { !$0.collected }.map(\.id) +
+                    (snapshot.ownCompleted ? event.route?.checkpoints.filter { $0.kind == .finish }.map(\.id) ?? [] : []))
+                Button("Confirm selected target privately") {
+                    if let id = model.manualCheckpointID { model.collect(id) }
+                }.disabled(!snapshot.ownEnabled || !model.consent || model.collectionDraft != snapshot.plan ||
+                    model.manualCheckpointID.map { !selectable.contains($0) } != false)
+                    .onChange(of: selectable) { _, ids in
+                        if let id = model.manualCheckpointID, !ids.contains(id) { model.manualCheckpointID = nil }
+                    }
+                Text("Manual self-report only, not GPS-certified attendance or public progress.").font(.caption)
                 }
             }
             if snapshot.canManage && event.access.canManage {
-                Section("Organizer public hunt draft") {
+                DisclosureGroup("Edit hunt plan") {
                     Toggle("Enable public any-order plan", isOn: $model.collectionDraft.enabled)
                     ForEach(event.route?.checkpoints.filter { $0.kind == .checkpoint } ?? []) { checkpoint in
                         Toggle(checkpoint.title, isOn: Binding(get: { model.collectionDraft.checkpointIds.contains(checkpoint.id) }, set: { selected in

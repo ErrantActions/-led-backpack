@@ -81,15 +81,19 @@ struct FriendPlaybackView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("\(selected.kind.rawValue) with \(selected.peer.displayName)").font(.title2.bold())
                 Text("PHONE target only • \(selected.direction == "outgoing" ? "session sender / left scene" : "session recipient / right scene") • ends \(selected.expiresAtISO)").font(.caption)
-                Text("This is an accepted-friend interaction, NOT the automatic GIF game or discoverability. A session ID is only a locator. Current service permission, both independently armed apps and intended peer-key possession are required. Stable radio hints can be relayed; they do not prove proximity.").font(.caption)
+                FeatureDetails("Peer verification") {
+                    Text("Both friends must arm this session and verify their keys. Radio hints do not prove proximity.")
+                }
                 Picker("Supported matching preset", selection: $preset) { ForEach(FriendScenePreset.allCases) { Text($0.rawValue).tag($0) } }
                     .disabled(interactions.engine?.enabled == true || interactions.engine?.busy == true || interactions.consumed.contains(selected.id))
                 if selectsArtwork {
                     if let choice = media.choice {
                         Text("Interaction artwork: \(choice.name) — \(choice.data.count) bytes").font(.caption)
                     } else { Text("Select interaction artwork separately. Your current phone artwork remains the recovery original.").font(.caption) }
-                    Button("Choose / import a separate local greeting or pass GIF") { media.pause(); choosing = true }.disabled(!canEdit)
-                    Button("Explicitly use a copy of my displayed phone artwork") { useDisplayedArtwork() }.disabled(!canEdit || !phone.hasArtwork)
+                    Button("Choose GIF") { media.pause(); choosing = true }.disabled(!canEdit)
+                    FeatureDetails("Use what's playing") {
+                        Button("Use my displayed GIF") { useDisplayedArtwork() }.disabled(!canEdit || !phone.hasArtwork)
+                    }
                 } else if selected.kind == .palette || selected.kind == .duet {
                     Button("Prepare isolated LOCAL preset preview — paused") {
                         selectionTask?.cancel()
@@ -98,10 +102,12 @@ struct FriendPlaybackView: View {
                     }.disabled(!canEdit)
                 } else { Text("Recipient's current artwork is recovery only and is never sent. Remote GIF preview is unavailable until validated transfer.").font(.caption) }
                 FriendArtworkPreview(selection: media)
-                Text("Greeting plays only your chosen local still/GIF, never sends it. Palette uses matching soft colors; duet renders complementary left/right halves. Pass sends ONLY the session sender's explicitly chosen sanitized GIF ≤128 KiB and alternates visible/black 2-second legs. Recipient's current artwork is never sent. Original bytes/timing/repeats stay local and unchanged.").font(.caption)
+                FeatureDetails("How this scene works") {
+                    Text("Greeting stays local. Palette and duet use generated colors. Pass sends only the sender's chosen GIF (up to128KiB). Your original is retained.")
+                }
                 Toggle("I explicitly arm this kind/preset and its media-sharing/display intent", isOn: $consent)
                     .disabled(interactions.consumed.contains(selected.id) || media.reading)
-                Text("Both participants must separately approve here; old control-session acceptance is not permission to transmit private art. Pass can share a private-origin chosen GIF; the accepted recipient may retain a copy. Received content may be unexpected/mature/offensive. No cloud/library access, permission expansion or game enabling. No encounter popup after both arm this exact intent.").font(.caption).foregroundStyle(.orange)
+                Text("Both friends must opt in here. Pass shares your chosen GIF—even private artwork—and the recipient can keep it. Incoming content may be explicit.").font(.caption).foregroundStyle(.orange)
                 Button("Prepare this friend's Bluetooth (explicit OS permission)") {
                     media.pause()
                     interactions.prepare(selected, preset: preset, consent: consent, attribution: credit, artwork: media.choice)
@@ -118,8 +124,11 @@ struct FriendPlaybackView: View {
                     Button("Leave and restore my initial original") { consent = false; Task { await engine.restoreOriginal() } }
                 }
                 NavigationLink("Recovery first / Received swaps — explicit Save/remove") { SwapRecoveryView() }
-                Text("Both complete validation/ready acknowledgments and durable original are required before replacement. Timing is local-monotonic, authenticated and best-effort, with error/RTT bounds and server expiry anchor — never GPS or verified sync. Stop/background/account/permission/expiry clears keys and stops locally before remote session withdrawal. No auto renew/resume; a fresh accepted session is required after Stop. Failures retain explicit recovery and never overwrite a newer manual selection.").font(.caption)
-                Text("Preview needs no current service proof and makes no live-friendship claim. Standalone offline pairing, UWB/ranging, hardware playback/recovery and actual radio/timing validation remain pending. Motion/data-saving remain authoritative; brightness/awake are separate opt-ins. No traffic/chase incentive or safety certification.").font(.caption).foregroundStyle(.secondary)
+                FeatureDetails("Timing & recovery") {
+                    Text("Both apps verify readiness before replacing artwork. Timing is best-effort, not certified synchronization or proximity.")
+                    Text("Stopping, expiry or leaving the foreground stops locally; no automatic restart. Your original remains available for explicit Restore.")
+                    Text("Phone only. Stay stationary; no chase or traffic play. Motion and data-saving settings still apply.")
+                }
             }.padding(20)
         }.modernScene().navigationTitle("Friend phone scene")
         .sheet(isPresented: $choosing) {
