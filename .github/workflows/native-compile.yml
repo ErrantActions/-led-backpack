@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps, ui, library, library-units]
+        options: [focused, compile, gps, ui, library, library-units, layouts]
         default: focused
         required: true
 permissions:
@@ -58,7 +58,12 @@ jobs:
           else
             TESTS=()
             TIMEOUTS=()
-            if [ "$VALIDATION_MODE" = ui ] || [ "$VALIDATION_MODE" = library ]; then
+            if [ "$VALIDATION_MODE" = layouts ]; then
+              CLASSES=()
+              TESTS+=("-only-testing:LEDBackpackUITests/ScreenLayoutTests")
+              TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
+                "-maximum-test-execution-time-allowance" "900")
+            elif [ "$VALIDATION_MODE" = ui ] || [ "$VALIDATION_MODE" = library ]; then
               CLASSES=()
               if [ "$VALIDATION_MODE" = library ]; then
                 CLASSES=(CloudSynchronizationTests CloudLibraryTests CloudVaultProtocolTests CloudVaultCryptoTests CloudBackpackSourceTests)
@@ -95,14 +100,14 @@ jobs:
             -maximum-test-execution-time-allowance 300 \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO | tee build/public-integration.log
       - name: Export UI regression screenshots
-        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library')
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'layouts')
         run: |
           if test -d build/UnsignedTests.xcresult; then
             xcrun xcresulttool export attachments --path build/UnsignedTests.xcresult \
               --output-path build/UIScreenshots
           fi
       - uses: actions/upload-artifact@v4
-        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library')
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'layouts')
         with:
           name: native-ui-screenshots-${{ github.run_id }}-${{ github.run_attempt }}
           path: ios/build/UIScreenshots
