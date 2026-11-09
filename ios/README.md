@@ -1,5 +1,13 @@
 # LED Backpack for iOS
 
+### Erase backpack
+
+Erase review uses an **Allow erase** toggle, off by default, instead of a typed
+phrase. The destructive action still requires a connected, idle backpack and
+the exact captured inventory/device. Confirmation resets on connection or slot
+changes, backgrounding and dismissal. This erases stored programs, not a factory
+reset; local/cloud GIFs and backpack credentials are retained.
+
 ### Connected backpack account association
 
 Backpack > Add connected backpack to my account (also available from My devices)
@@ -21,8 +29,9 @@ or anti-clone proof. The ID is mutable; different accounts can associate the sam
 ID independently. The same account/ID reuses its existing record without changing
 customized labels, sharing, pending transfer or revision. New records have owner
 sharing off. An uncertain receipt requires reloading My devices before deliberate
-retry; the app does not automatically retry registration. Generic manual labels
-remain available. Public owner cards and incoming transfers do not reveal the ID.
+retry; the app does not automatically retry registration. Manual device entry is not offered in the app. Only the nickname can be edited;
+model and dimensions remain read-only. Legacy records and their generic API
+remain compatible. Public owner cards and incoming transfers do not reveal the ID.
 Accepting a label transfer removes its private connected-ID binding; the recipient
 must explicitly read/register the backpack. Unlink does not alter hardware or GIFs.
 

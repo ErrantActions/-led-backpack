@@ -201,10 +201,6 @@ struct AccountDevicesView: View {
     @State private var friendPage = 1
     @State private var editing: AccountDevice?
     @State private var recipient: UUID?
-    @State private var nickname = ""
-    @State private var model = ""
-    @State private var width = ""
-    @State private var height = ""
     @State private var tag: AccountDeviceTag?
     @State private var qr: CGImage?
     @State private var pending: DeviceAction?
@@ -218,25 +214,11 @@ struct AccountDevicesView: View {
     var body: some View {
         Form {
             NavigationLink("Add connected backpack") { ConnectedBackpackView() }
-            Text("Private unverified records — not physical ownership, hardware identity or compatibility. Adding a connected backpack explicitly reads its vendor ID; generic labels do not contact hardware. Owner lookup stays off until you issue a revocable tag. Unlink/transfer never deletes local GIFs.")
+            Text("Device details come from your connected backpack. Account records are not verified ownership.")
                 .font(.caption)
             if session.scope != nil {
-                Section("Add private generic label") {
-                    TextField("Nickname", text: $nickname); TextField("Generic model", text: $model)
-                    HStack { TextField("Optional width", text: $width); TextField("Optional height", text: $height) }.keyboardType(.numberPad)
-                    Button("Add label (card off)") { session.run { scope in
-                        let matrix: NativeMatrixSize?
-                        if width.isEmpty && height.isEmpty { matrix = nil }
-                        else {
-                            guard let w = Int(width), let h = Int(height) else { throw BackpackError.invalid("Provide both optional dimensions.") }
-                            matrix = NativeMatrixSize(width: w, height: h)
-                        }
-                        try await scope.addDevice(AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix))
-                        try await reload(scope); nickname = ""; model = ""; width = ""; height = ""; return "Private unverified label added."
-                    } }
-                }
                 Section("My devices (\(devices.count)/20)") {
-                    if devices.isEmpty { Text("No service labels.") }
+                    if devices.isEmpty { Text("No backpacks yet. Connect one to add it.") }
                     ForEach(devices) { device in
                         VStack(alignment: .leading) {
                             Text(device.nickname).font(.headline)
@@ -249,7 +231,7 @@ struct AccountDevicesView: View {
                                 }
                             }
                             if !device.transferPending {
-                                Button("Edit private label / dimensions") { editing = device }
+                                Button("Rename") { editing = device }
                                 Button(device.ownerCardEnabled ? "Replace/revoke old QR and share owner" : "Issue unverified owner QR") { confirm(device, "tag") }
                                 if device.ownerCardEnabled { Button("Revoke owner card", role: .destructive) { confirm(device, "revoke") } }
                                 Button("Offer transfer to selected friend") { confirm(device, "transfer") }.disabled(recipient == nil)
@@ -358,35 +340,26 @@ struct AccountDeviceEditView: View {
     let device: AccountDevice
     let revision: UUID
     @State private var nickname = ""
-    @State private var model = ""
-    @State private var width = ""
-    @State private var height = ""
     var body: some View {
         Form {
-            Text("Captured label revision \(device.revision). Generic metadata only, never hardware identity or compatibility. No physical commands.")
-            TextField("Private nickname", text: $nickname); TextField("Generic model", text: $model)
-            HStack { TextField("Optional width", text: $width); TextField("Optional height", text: $height) }.keyboardType(.numberPad)
-            Button("Save this captured revision") {
+            TextField("Nickname", text: $nickname)
+            LabeledContent("Model", value: device.model)
+            LabeledContent("Panel", value: device.matrix?.id ?? "Unknown")
+            Button("Save") {
                 session.run { scope in
                     guard scope.revision == revision else { throw BackpackError.invalid("Captured account changed; reopen the label.") }
-                    let matrix: NativeMatrixSize?
-                    if width.isEmpty && height.isEmpty { matrix = nil }
-                    else {
-                        guard let w = Int(width), let h = Int(height) else { throw BackpackError.invalid("Both optional dimensions are required.") }
-                        matrix = NativeMatrixSize(width: w, height: h)
-                    }
-                    try await scope.editDevice(device, metadata: AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix))
+                    try await scope.editDevice(device, metadata: AccountDeviceMetadata(nickname: nickname,
+                        model: device.model, matrix: device.matrix))
                     try session.checked(scope); dismiss(); return nil
                 }
             }.disabled(session.scope == nil)
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-        }.disabled(session.busy).navigationTitle("Edit unverified label")
+        }.disabled(session.busy).navigationTitle("Rename backpack")
             .task(id: community.accountRevision) {
                 session.bind(community, .devices)
                 guard community.accountRevision == revision else { session.clear(); return }
-                nickname = device.nickname; model = device.model
-                width = device.matrix.map { String($0.width) } ?? ""; height = device.matrix.map { String($0.height) } ?? ""
+                nickname = device.nickname
             }
             .onDisappear { session.clear() }
             .toolbar { Button("Cancel") { dismiss() } }

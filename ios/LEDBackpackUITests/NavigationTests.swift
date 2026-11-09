@@ -455,7 +455,7 @@ final class NavigationTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture"]
         app.launch()
-        let create = app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch
+        let create = app.buttons["paintbrush.pointed"]
         XCTAssertTrue(create.waitForExistence(timeout: 20)); create.tap()
         let tools = app.buttons["More tools"]
         reveal(tools, in: app); tools.tap()
@@ -470,6 +470,30 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Primary: 1"].exists)
         XCTAssertTrue(app.staticTexts["Secondary: 1"].exists)
         attach(app, name: "Expandable details - chosen action fires independently")
+    }
+
+    func testEraseReviewUsesDefaultOffToggleInsteadOfTypingAndStillRequiresConnectedHardware() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        let create = app.buttons["paintbrush.pointed"]
+        XCTAssertTrue(create.waitForExistence(timeout: 20)); create.tap()
+        let tools = app.buttons["More tools"]
+        reveal(tools, in: app); tools.tap()
+        let fixture = app.buttons["Erase review fixture"]
+        reveal(fixture, in: app); fixture.tap()
+        XCTAssertTrue(app.navigationBars["Erase backpack"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.textFields["Type ERASE ALL"].exists)
+        let allow = app.switches["allow-backpack-erase"].switches.firstMatch
+        reveal(allow, in: app)
+        XCTAssertEqual(allow.value as? String, "0")
+        let erase = app.buttons["erase-backpack-action"]
+        reveal(erase, in: app, requireHittable: false)
+        XCTAssertFalse(erase.isEnabled)
+        reveal(allow, in: app); allow.tap()
+        XCTAssertEqual(allow.value as? String, "1")
+        XCTAssertFalse(erase.isEnabled, "An opt-in toggle cannot substitute for a real connected backpack.")
+        attach(app, name: "Erase backpack - explicit default-off toggle, disconnected safety gate")
     }
 
     private func assertNoVisibleEntryForms(_ app: XCUIApplication) {

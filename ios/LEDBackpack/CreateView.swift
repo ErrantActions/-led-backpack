@@ -27,6 +27,7 @@ struct CreateView: View {
                         #if DEBUG
                         if CommandLine.arguments.contains("--library-ui-fixture") {
                             NavigationLink("Action isolation fixture") { FeatureActionIsolationFixture() }
+                            NavigationLink("Erase review fixture") { BackpackEraseReviewFixture() }
                         }
                         #endif
                     }
