@@ -387,15 +387,17 @@ final class NavigationTests: XCTestCase {
         reveal(mode, in: app); mode.tap()
         let field = app.textFields["live-message"]
         reveal(field, in: app); field.tap(); field.typeText("Reflow keeps this message")
+        let draft = try XCTUnwrap(field.value as? String)
+        XCTAssertTrue(draft.contains("Reflow keeps this message"))
         for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
             XCUIDevice.shared.orientation = orientation
             XCTAssertTrue(field.waitForExistence(timeout: 10))
-            XCTAssertEqual(field.value as? String, "Reflow keeps this message")
+            XCTAssertEqual(field.value as? String, draft)
             let customize = app.buttons["Customize"]
             reveal(customize, in: app); customize.tap()
             XCTAssertTrue(app.navigationBars["Make it yours"].waitForExistence(timeout: 10))
             app.buttons["Done"].tap()
-            XCTAssertEqual(field.value as? String, "Reflow keeps this message")
+            XCTAssertEqual(field.value as? String, draft)
             let start = app.buttons["live-start"]
             reveal(start, in: app, requireHittable: false)
             XCTAssertTrue(start.exists)
