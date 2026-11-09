@@ -62,10 +62,7 @@ struct ConnectedDeviceResult: Decodable {
 extension AccountServiceScope {
     func addConnectedDevice(_ identity: ConnectedBackpackIdentity, metadata: AccountDeviceMetadata,
         consent: Bool) async throws -> AccountDevice {
-        try check()
-        guard capability == .devices, community.config?.connectedDeviceRegistrationEnabled == true else {
-            throw BackpackError.invalid("Connected backpack registration is unavailable for this account.")
-        }
+        try checkDeviceRegistry()
         try identity.validate()
         guard metadata.model == identity.model, metadata.matrix == identity.matrix else {
             throw BackpackError.invalid("Connected device metadata must match its fresh hardware reading.")

@@ -47,12 +47,14 @@ final class AccountServiceScope {
         return try JSONDecoder().decode(type, from: data)
     }
     func bytes(_ path: String, method: String = "GET", body: Data? = nil, query: [URLQueryItem] = [],
-        maxBytes: Int = 2_000_000, contentType: String = "application/json", tag: String? = nil, expectedStatus: Int? = nil) async throws -> Data {
+        maxBytes: Int = 2_000_000, contentType: String = "application/json", tag: String? = nil,
+        recoveryToken: String? = nil, expectedStatus: Int? = nil) async throws -> Data {
         try check()
         guard !path.contains(".."), !path.contains("\\"), !path.contains("?"), !path.contains("#") else { throw BackpackError.invalid("Invalid account service path.") }
         let allowed: Bool
         switch capability {
-        case .devices: allowed = path == "devices" || path.hasPrefix("devices/") || (tag != nil && path.hasPrefix("social/avatars/"))
+        case .devices: allowed = path == "devices" || path.hasPrefix("devices/") ||
+            ((tag != nil || recoveryToken != nil) && path.hasPrefix("social/avatars/"))
         case .firmware: allowed = admin ? path == "admin/firmware" || path.hasPrefix("admin/firmware/") : path == "firmware" || path.hasPrefix("firmware/")
         case .research: allowed = admin ? path == "admin/device-research" || path.hasPrefix("admin/device-research/") : path.hasPrefix("device-research/")
         case .bulk: allowed = path == "admin/items" || path == "admin/items/bulk"
@@ -62,7 +64,8 @@ final class AccountServiceScope {
         guard allowed, !path.hasPrefix("admin/") || admin else { throw BackpackError.invalid("This scope does not grant that endpoint.") }
         let policy = community.avatarPolicyRevision
         let result = try await community.request(path, method: method, body: body, query: query, contentType: contentType,
-            maxBytes: maxBytes, expectedAccountRevision: revision, expectedAccountID: accountID, deviceTag: tag)
+            maxBytes: maxBytes, expectedAccountRevision: revision, expectedAccountID: accountID,
+            deviceTag: tag, deviceRecoveryToken: recoveryToken)
         try check()
         guard policy == community.avatarPolicyRevision, !community.avatarPolicyChanging else { throw BackpackError.invalid("Viewer content preferences changed. Discarding the response.") }
         if let expectedStatus, result.status != expectedStatus { throw BackpackError.invalid("Unexpected account-service receipt status. Reconcile current state before any deliberate retry.") }

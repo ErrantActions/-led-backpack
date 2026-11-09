@@ -11,13 +11,17 @@ struct AccountDevice: Decodable, Identifiable {
     let claimStatus: String
     let physicalOwnershipVerified, hardwareIdentityVerified, flashingCompatibilityVerified: Bool
     let connection: AccountDeviceConnection?
+    let recoveryEnabled: Bool?
     func validate() throws {
-        guard revision >= 1, claimStatus == "unverified-tag",
+        guard (1...9_007_199_254_740_991).contains(revision), claimStatus == "unverified-tag",
               !physicalOwnershipVerified, !hardwareIdentityVerified, !flashingCompatibilityVerified else {
             throw BackpackError.invalid("Unsupported device ownership claim.")
         }
         try AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix).validate()
         try connection?.validate()
+        guard connection != nil || recoveryEnabled != true else {
+            throw BackpackError.invalid("A generic label cannot enable connected-device recovery.")
+        }
     }
 }
 struct AccountDeviceMetadata: Encodable {

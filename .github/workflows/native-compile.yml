@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps, ui, library, library-units, connected-device, peer-protocol, ux-endpoints]
+        options: [focused, compile, gps, ui, library, library-units, connected-device, peer-protocol, ux-endpoints, device-recovery]
         default: focused
         required: true
 permissions:
@@ -66,6 +66,8 @@ jobs:
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests")
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
                 "-maximum-test-execution-time-allowance" "900")
+            elif [ "$VALIDATION_MODE" = device-recovery ]; then
+              CLASSES=(DeviceRecoveryTests AccountNativeParityTests ConnectedBackpackTests)
             elif [ "$VALIDATION_MODE" = ux-endpoints ]; then
               CLASSES=()
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable"

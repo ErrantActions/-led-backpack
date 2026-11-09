@@ -43,6 +43,8 @@ struct CommunityConfig: Decodable {
     var catalogDownloadManifestEnabled: Bool? = nil
     var unverifiedDeviceTagsEnabled: Bool? = nil
     var connectedDeviceRegistrationEnabled: Bool? = nil
+    var connectedDeviceRegistrationVersion: Int? = nil
+    var deviceRecoveryEnabled: Bool? = nil
     var firmwareCatalogEnabled: Bool? = nil
     var firmwareMaxUploadBytes: Int? = nil
     var deviceResearchEnabled: Bool? = nil
@@ -566,7 +568,8 @@ final class CommunityController: ObservableObject {
         query: [URLQueryItem] = [], authenticated: Bool = true, allowServerChange: Bool = false,
         contentType: String = "application/json", communityUpload: Bool = false,
         bodyFile: URL? = nil, maxBytes: Int = 2_000_000, expectedAccountRevision: UUID? = nil,
-        expectedAccountID: UUID? = nil, deviceTag: String? = nil) async throws -> CommunityResponse {
+        expectedAccountID: UUID? = nil, deviceTag: String? = nil,
+        deviceRecoveryToken: String? = nil) async throws -> CommunityResponse {
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("The account changed before this request. Refresh first.")
         }
@@ -591,6 +594,15 @@ final class CommunityController: ObservableObject {
                 throw BackpackError.invalid("Tag scope is valid only for current-account avatar reads.")
             }
             request.setValue(deviceTag, forHTTPHeaderField: "X-Catalog-Device-Tag")
+        }
+        if let deviceRecoveryToken {
+            guard deviceTag == nil, method == "GET", authenticated, expectedAccountID != nil,
+                  path.hasPrefix("social/avatars/"), NearbyTokenPolicy.valid(deviceRecoveryToken),
+                  config?.deviceRecoveryEnabled == true,
+                  (config?.connectedDeviceRegistrationVersion ?? 0) >= 2 else {
+                throw BackpackError.invalid("Recovery authorization is valid only for current-account scoped avatar reads.")
+            }
+            request.setValue(deviceRecoveryToken, forHTTPHeaderField: "X-Catalog-Device-Recovery-Token")
         }
         if let bodyFile {
             guard path == "admin/imports", method == "POST", authenticated, isAdmin, communityUpload, body == nil,

@@ -228,7 +228,7 @@ final class AccountNativeParityTests: XCTestCase {
     }
     func testConnectedRegistrationEncodesStrictConsentIdentityAndDeviceOnly() async throws {
         let response = #"{"created":false,"device":\#(connectedDeviceJSON())}"#
-        let (controller, transport) = try await setup(flags: allCapabilities + #","connectedDeviceRegistrationEnabled":true"#,
+        let (controller, transport) = try await setup(flags: allCapabilities + #","connectedDeviceRegistrationEnabled":true,"connectedDeviceRegistrationVersion":2"#,
             replies: [.init(status: 200, data: data(response))])
         let scope = try AccountServiceScope(controller, capability: .devices)
         let identity = ConnectedBackpackIdentity(vendorDeviceId: "Ab12345678", model: "BP10", firmware: "V2.9.1",
@@ -249,7 +249,7 @@ final class AccountNativeParityTests: XCTestCase {
     func testConnectedRegistrationMissingCapabilityAndConsentNeverReachesServer() async throws {
         for enabled in [false, true] {
             let (controller, transport) = try await setup(flags: allCapabilities
-                + (enabled ? #","connectedDeviceRegistrationEnabled":true"# : ""))
+                + (enabled ? #","connectedDeviceRegistrationEnabled":true,"connectedDeviceRegistrationVersion":2"# : ""))
             let scope = try AccountServiceScope(controller, capability: .devices)
             let identity = ConnectedBackpackIdentity(vendorDeviceId: "Ab12345678", model: "BP10", firmware: "1",
                 matrix: NativeMatrixSize(width: 64, height: 64))
