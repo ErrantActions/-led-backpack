@@ -358,7 +358,7 @@ final class NavigationTests: XCTestCase {
         app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
-        app.buttons["Backpack"].tap()
+        app.buttons["backpack"].tap()
         let add = app.buttons["Add connected backpack to my account"]
         reveal(add, in: app); add.tap()
         XCTAssertTrue(app.navigationBars["Add connected backpack"].waitForExistence(timeout: 10))
@@ -374,7 +374,7 @@ final class NavigationTests: XCTestCase {
         app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
         app.launch()
         signInFixture(app)
-        app.buttons["Backpack"].tap()
+        app.buttons["backpack"].tap()
         let add = app.buttons["Add connected backpack to my account"]
         reveal(add, in: app); add.tap()
         XCTAssertTrue(app.navigationBars["Add connected backpack"].waitForExistence(timeout: 10))
