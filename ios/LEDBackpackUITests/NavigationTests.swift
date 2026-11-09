@@ -353,6 +353,41 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
     }
 
+    func testConnectedBackpackRegistrationRequiresSignInBeforeReadingHardware() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
+        app.buttons["Backpack"].tap()
+        let add = app.buttons["Add connected backpack to my account"]
+        reveal(add, in: app); add.tap()
+        XCTAssertTrue(app.navigationBars["Add connected backpack"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Sign in to add a backpack"].exists)
+        XCTAssertFalse(app.buttons["connected-backpack-read"].exists)
+        XCTAssertFalse(app.textFields["connected-backpack-nickname"].exists)
+        XCTAssertFalse(app.buttons["connected-backpack-add"].exists)
+        attach(app, name: "Connected backpack - account consent before any identity read")
+    }
+
+    func testConnectedBackpackRegistrationDoesNotScanOrInventIdentityWhileDisconnected() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
+        app.launch()
+        signInFixture(app)
+        app.buttons["Backpack"].tap()
+        let add = app.buttons["Add connected backpack to my account"]
+        reveal(add, in: app); add.tap()
+        XCTAssertTrue(app.navigationBars["Add connected backpack"].waitForExistence(timeout: 10))
+        let read = app.buttons["connected-backpack-read"]
+        reveal(read, in: app, requireHittable: false)
+        XCTAssertTrue(read.exists)
+        XCTAssertFalse(read.isEnabled)
+        XCTAssertFalse(app.textFields["connected-backpack-nickname"].exists)
+        XCTAssertFalse(app.switches["connected-backpack-consent"].exists)
+        XCTAssertFalse(app.buttons["connected-backpack-add"].exists)
+        attach(app, name: "Connected backpack - disconnected, no scan or fabricated vendor ID")
+    }
+
     func testFoundUsersIsReachableWithoutStartingBluetoothOrInventingSwapSuccess() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture"]

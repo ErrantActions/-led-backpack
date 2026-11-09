@@ -10,12 +10,14 @@ struct AccountDevice: Decodable, Identifiable {
     let ownerCardEnabled, transferPending: Bool
     let claimStatus: String
     let physicalOwnershipVerified, hardwareIdentityVerified, flashingCompatibilityVerified: Bool
+    let connection: AccountDeviceConnection?
     func validate() throws {
         guard revision >= 1, claimStatus == "unverified-tag",
               !physicalOwnershipVerified, !hardwareIdentityVerified, !flashingCompatibilityVerified else {
             throw BackpackError.invalid("Unsupported device ownership claim.")
         }
         try AccountDeviceMetadata(nickname: nickname, model: model, matrix: matrix).validate()
+        try connection?.validate()
     }
 }
 struct AccountDeviceMetadata: Encodable {
@@ -97,7 +99,12 @@ extension AccountServiceScope {
     func incomingDevices() async throws -> [AccountDeviceTransfer] {
         let value = try await send(AccountDeviceTransfers.self, "devices/transfers").transfers
         guard value.count <= 50, Set(value.map(\.id)).count == value.count else { throw BackpackError.invalid("Invalid transfer list.") }
-        for transfer in value { try transfer.device.validate(); guard transfer.device.transferPending else { throw BackpackError.invalid("Transfer is no longer pending.") } }
+        for transfer in value {
+            try transfer.device.validate()
+            guard transfer.device.transferPending, transfer.device.connection == nil else {
+                throw BackpackError.invalid("Invalid private transfer payload or transfer is no longer pending.")
+            }
+        }
         return value
     }
     func addDevice(_ metadata: AccountDeviceMetadata) async throws {
@@ -210,7 +217,8 @@ struct AccountDevicesView: View {
     private var identity: String { "\(community.accountRevision):\(community.avatarPolicyRevision):\(community.config?.unverifiedDeviceTagsEnabled == true)" }
     var body: some View {
         Form {
-            Text("Unverified service labels only — not physical ownership, hardware identity or compatibility. No connection or device command occurs. Owner lookup is off until you explicitly issue a revocable tag. Unlink/transfer never deletes local GIFs.")
+            NavigationLink("Add connected backpack") { ConnectedBackpackView() }
+            Text("Private unverified records — not physical ownership, hardware identity or compatibility. Adding a connected backpack explicitly reads its vendor ID; generic labels do not contact hardware. Owner lookup stays off until you issue a revocable tag. Unlink/transfer never deletes local GIFs.")
                 .font(.caption)
             if session.scope != nil {
                 Section("Add private generic label") {
@@ -233,6 +241,13 @@ struct AccountDevicesView: View {
                         VStack(alignment: .leading) {
                             Text(device.nickname).font(.headline)
                             Text("\(device.model) · \(device.matrix?.id ?? "unknown matrix") · unverified · revision \(device.revision)").font(.caption)
+                            if let connection = device.connection {
+                                DisclosureGroup("Private connected ID") {
+                                    LabeledContent("Vendor ID", value: connection.vendorDeviceId)
+                                    Text("Mutable ID, not ownership proof. Other accounts may associate the same ID independently. Unlink removes this account's record; transfer moves only the label and drops the private ID.")
+                                        .font(.caption)
+                                }
+                            }
                             if !device.transferPending {
                                 Button("Edit private label / dimensions") { editing = device }
                                 Button(device.ownerCardEnabled ? "Replace/revoke old QR and share owner" : "Issue unverified owner QR") { confirm(device, "tag") }
@@ -249,6 +264,8 @@ struct AccountDevicesView: View {
                         ForEach(friends) { Text($0.displayName).tag(Optional($0.id)) }
                     }
                     Text("The recipient receives this private label's model/matrix/nickname and must accept. Existing tags revoke immediately and never return after decline/cancel.")
+                        .font(.caption)
+                    Text("Connected vendor IDs are never sent with transfer offers. Accepting a transfer drops the old private binding; the recipient must explicitly read and register the backpack.")
                         .font(.caption)
                     HStack {
                         Button("Previous friends") { friendPage = max(1, friendPage - 1); loadFriends() }.disabled(friendPage == 1)

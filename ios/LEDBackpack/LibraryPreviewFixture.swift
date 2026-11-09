@@ -29,7 +29,8 @@ private actor LibraryPreviewTransport: CommunityTransport {
             return .init(status: 200, data: try JSONSerialization.data(withJSONObject: [
                 "requireEmailVerification": false, "passwordRecoveryAvailable": false, "privateLibraryEnabled": true,
                 "accountDeletionRetainsSharedGifs": false, "appleSignInEnabled": true,
-                "socialEnabled": social, "messagingEnabled": social, "eventsEnabled": social, "nearbyDiscoveryEnabled": social]))
+                "socialEnabled": social, "messagingEnabled": social, "eventsEnabled": social, "nearbyDiscoveryEnabled": social,
+                "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social]))
         }
         if request.httpMethod == "POST", path == "/api/v1/auth/login",
            let body = request.httpBody, let values = try JSONSerialization.jsonObject(with: body) as? [String: String],

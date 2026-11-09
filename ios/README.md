@@ -1,5 +1,36 @@
 # LED Backpack for iOS
 
+### Connected backpack account association
+
+Backpack > Add connected backpack to my account (also available from My devices)
+requires sign-in and the server's `connectedDeviceRegistrationEnabled` capability.
+Read is explicit: the app uses the existing password-bearing vendor identity read
+(`0x0A`) and dimension read (`0x1B`), with no scan, display change or device write.
+The vendor's 10-byte ID is case-sensitive and distinct from iOS's peripheral UUID.
+Malformed IDs, uniform placeholders and the known `TLVDEFIDV5` default are rejected.
+
+Review the private ID/model/firmware/dimensions, enter a nickname and explicitly
+confirm physical access and account association. Save reads the device again.
+A disconnect/reconnect, account change, backgrounding, withdrawn confirmation,
+changed identity/dimensions or a reading aged 120 seconds requires reconfirmation.
+IDs and passwords are not included in Bluetooth diagnostic identity messages.
+Firmware is displayed locally, not submitted to the registration API.
+
+`POST /devices/connected` saves a private **unverified association**, not ownership
+or anti-clone proof. The ID is mutable; different accounts can associate the same
+ID independently. The same account/ID reuses its existing record without changing
+customized labels, sharing, pending transfer or revision. New records have owner
+sharing off. An uncertain receipt requires reloading My devices before deliberate
+retry; the app does not automatically retry registration. Generic manual labels
+remain available. Public owner cards and incoming transfers do not reveal the ID.
+Accepting a label transfer removes its private connected-ID binding; the recipient
+must explicitly read/register the backpack. Unlink does not alter hardware or GIFs.
+
+Hardware acceptance still requires the owner's powered backpack. Verify that its
+ID survives reconnect/reboot and matches on another phone; the simulator cannot
+establish factory uniqueness, reset persistence, ownership or BLE security.
+Layout/SVG generation remains paused pending the owner's editor format.
+
 ### Post-build10 UX corrections - source in validation
 
 Social's four primary buttons now use explicit distinct destinations instead of
