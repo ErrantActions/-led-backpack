@@ -47,6 +47,22 @@ same exact inviter/token/expiry server recheck, rather than a second dialog.
 Incident reports retain the entered explanation/consent form but no duplicate
 submission dialog. Original private messages are not copied automatically.
 
+Live uses the native iOS 27.1 arrangement container for wide or actively divided
+windows, with independent preview/action and mode/preset scrolling surfaces.
+The primary surface keeps mode selection, mode-specific notices and Start/Stop
+even when the secondary surface is hidden. Current reserved regions determine
+fold handling; there are no fixed hinge gaps. Compact windows and iOS 17 retain
+the single-flow fallback, and operational/message state stays outside reflow.
+
+Private cloud's sync toggle is its explicit opt-in, without a second same-purpose
+dialog. Replacing a reset user-held library remains a separately named action;
+ordinary enable cannot silently authorize that replacement. Encryption enrollment,
+system authentication and destructive deletion retain their distinct boundaries.
+Chat has a keyboard-safe composer with attachment/typing tools in Add, diagnostics
+under Delivery details, automatic local outbox inspection and automatic archival
+after a confirmed send. Uncertain replies retain visible same-ID retry/clear.
+Stale delivery receipts cannot clear a newer pending message.
+
 Native validation and deployment of this newer source are tracked in
 [TODO](TODO.md). Do not infer live v2 availability or physical-device acceptance
 from the build-11 upload.

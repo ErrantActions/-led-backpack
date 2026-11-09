@@ -64,6 +64,15 @@ struct NativeChatOutboxRecord: Codable {
             throw BackpackError.invalid("This intent is retired, inaccessible or outside its recovery window. Never replace its ID to resend it.")
         }
     }
+    func requireCurrentTerminal(_ current: Self?) throws {
+        try validate()
+        guard state != .uncertain, let current,
+              current.accountID == accountID, current.origin == origin, current.context == context,
+              current.purpose == purpose, current.clientID == clientID, current.bytes == bytes,
+              current.state == state, current.acknowledgedMessageID == acknowledgedMessageID else {
+            throw BackpackError.invalid("The current outbox changed. A stale delivery receipt cannot clear another message.")
+        }
+    }
     mutating func recordFailure(_ failure: CommunityFailure) {
         acknowledgedMessageID = nil
         if failure.status == 409 && ["message_retired", "message_expired", "message_id_conflict", "chat_request_intent_changed", "chat_request_exists"].contains(failure.code) {
@@ -173,7 +182,7 @@ enum NativeChatOutbox {
         guard status == errSecSuccess || status == errSecItemNotFound else { throw BackpackError.invalid("Unable to clear the private outbox (\(status)).") }
     }
     static func archiveTerminal(_ value: NativeChatOutboxRecord) throws {
-        guard value.state != .uncertain else { throw BackpackError.invalid("An uncertain send must be reconciled, not replaced.") }
+        try value.requireCurrentTerminal(load(origin: value.origin, account: value.accountID, context: value.context, purpose: value.purpose))
         let receipt = NativeChatClientReceipt(accountID: value.accountID, clientID: value.clientID, state: value.state, forgetAfter: value.forgetAfter)
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service + ".receipts", kSecAttrAccount as String: "\(value.accountID):\(value.clientID)"]

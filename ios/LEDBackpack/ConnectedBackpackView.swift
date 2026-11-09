@@ -75,7 +75,7 @@ struct ConnectedBackpackPanel: View {
                             Text("Sends one introduction. You can exchange recovery replies if this person responds, without becoming friends.")
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
-                            Text("The registered account has not enabled found-device contact.")
+                            Text("Found-device contact is unavailable for this backpack.")
                                 .font(.subheadline)
                         }
                     case .ambiguous:
@@ -121,7 +121,10 @@ struct ConnectedBackpackPanel: View {
         .onChange(of: registration.registered?.id) { _, _ in
             if let device = registration.registered { onRegistered(device) }
         }
-        .onChange(of: registration.contactConversationID) { _, value in conversationID = value }
+        .onChange(of: registration.contactConversationID) { _, value in
+            if let value { conversationID = value }
+        }
+        .onChange(of: community.accountRevision) { _, _ in conversationID = nil }
         .navigationDestination(item: $conversationID) { DeviceRecoveryThreadView(id: $0) }
         .onDisappear { reset() }
     }

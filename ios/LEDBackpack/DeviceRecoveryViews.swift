@@ -9,7 +9,7 @@ struct DeviceRecoveryInboxView: View {
     @State private var conversations: [DeviceRecoveryConversation] = []
     @State private var retry = UUID()
     private var context: String {
-        "\(community.accountRevision):\(community.config?.deviceRecoveryEnabled == true):\(community.config?.connectedDeviceRegistrationVersion ?? 0):\(phase):\(retry)"
+        "\(community.accountRevision):\(community.config?.deviceRecoveryEnabled == true):\(community.config?.unverifiedDeviceTagsEnabled == true):\(community.config?.connectedDeviceRegistrationEnabled == true):\(community.config?.connectedDeviceRegistrationVersion ?? 0):\(phase):\(retry)"
     }
 
     var body: some View {
@@ -42,6 +42,12 @@ struct DeviceRecoveryInboxView: View {
             guard phase == .active else { return }
             session.bind(community, .devices)
             load()
+            while !Task.isCancelled, session.failure == nil {
+                do { try await Task.sleep(for: .seconds(15)) }
+                catch is CancellationError { return }
+                catch { session.run { _ in throw error }; return }
+                if !session.busy, session.failure == nil { load() }
+            }
         }
         .onDisappear { session.clear(); conversations = [] }
     }
@@ -101,9 +107,7 @@ struct DeviceRecoveryThreadView: View {
                                 if message.senderId == community.user?.id { Spacer(minLength: 32) }
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(verbatim: message.text).textSelection(.enabled)
-                                    if let date = ISO8601DateFormatter().date(from: message.createdAtISO) {
-                                        Text(date.formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
-                                    }
+                                    Text(timestamp(message.createdAtISO)).font(.caption2).foregroundStyle(.secondary)
                                 }
                                 .padding(12)
                                 .background(message.senderId == community.user?.id ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.12),
@@ -142,7 +146,9 @@ struct DeviceRecoveryThreadView: View {
             }
             .defaultScrollAnchor(.bottom)
             .onChange(of: store.messages.last?.id) { _, value in
-                if let value { reader.scrollTo(value, anchor: .bottom) }
+                if let value, store.messages.last?.senderId == community.user?.id {
+                    reader.scrollTo(value, anchor: .bottom)
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -153,7 +159,7 @@ struct DeviceRecoveryThreadView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         TextField("Reply", text: $store.text, axis: .vertical)
                             .lineLimit(1...6).textFieldStyle(.roundedBorder)
-                            .disabled(store.busy)
+                            .disabled(store.writing)
                             .accessibilityIdentifier("device-recovery-reply")
                         if store.text.utf16.count > 900 {
                             Text("\(store.text.utf16.count) / 1,000").font(.caption)
@@ -178,7 +184,7 @@ struct DeviceRecoveryThreadView: View {
             }
         }
         .task(id: context) {
-            actions.clear()
+            actions.clear(); reporting = nil; closing = false; blocking = false
             guard phase == .active else { saveAndClear(); return }
             actions.bind(community)
             await store.bind(community, id: id)
@@ -186,7 +192,7 @@ struct DeviceRecoveryThreadView: View {
                 do { try await Task.sleep(for: .seconds(10)) }
                 catch is CancellationError { return }
                 catch { panel.report(error); return }
-                await store.refresh()
+                if store.failure == nil { await store.refresh() }
             }
         }
         .onChange(of: store.text) { _, _ in store.saveDraft() }
@@ -211,5 +217,13 @@ struct DeviceRecoveryThreadView: View {
         do { try store.flushDraft() }
         catch { panel.report(error) }
         store.clear()
+    }
+    private func timestamp(_ value: String) -> String {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value) else {
+            return "Time unavailable (\(value))"
+        }
+        return date.formatted(date: .omitted, time: .shortened)
     }
 }

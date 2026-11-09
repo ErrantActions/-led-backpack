@@ -188,24 +188,28 @@ struct CommunityConversationView: View {
                     }
                     if !typing.isEmpty { Text("\(typing.map(\.displayName).joined(separator: ", ")) typing...").font(.caption) }
                     if let client = session.client {
-                        composer(client)
                         if client.chatNotificationPreferencesEnabled {
                             NavigationLink("Alerts for this conversation") { ConversationNotificationView(context: context) }
                         }
                     }
                     if let room { Button("Room information / members") { roomInfo = true }.disabled(session.busy || room.archived) }
-                    Button("Reload retained authorized history / access") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)
+                    Button("Refresh conversation") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)
                     DisclosureGroup("Privacy & history") {
                         Text("Messages use server-managed encryption, not E2EE. Direct/organizer recovery reloads only authorized history less than 30 days old with the same server messaging key. Deleted/expired messages, lost keys and private libraries cannot be restored. Minimal sender/client-ID receipts last at most 60 days, not forever. Room history follows its invitation choice. Screenshots cannot be recalled.")
                             .font(.caption)
                     }
                 }
             }.padding(20)
-        }
+        }.defaultScrollAnchor(.bottom)
     }
     private var conversationLifecycle: some View {
         conversationContent
         .modernScene().navigationTitle(revoked || session.denied ? "Messages" : room?.title ?? title)
+        .safeAreaInset(edge: .bottom) {
+            if !revoked, !session.denied, community.config?.messagingEnabled == true, let client = session.client {
+                composer(client)
+            }
+        }
         .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatMediaEnabled == true):\(community.config?.chatPinsEnabled == true):\(community.config?.directMessageRetentionDays.map(String.init) ?? "missing"):\(community.config?.directMessageRecovery ?? "missing")") {
             clear(); session.clear()
             guard phase == .active, community.config?.messagingEnabled == true else { return }
@@ -320,7 +324,7 @@ struct CommunityConversationView: View {
                             guard let event else { throw BackpackError.invalid("Missing event context.") }
                             let value = try await client.organizerContact(event)
                             try session.checked(client); contactPreference = value
-                        }
+                        }.disabled(session.busy)
                     }
                 }
                 if let contactPreference {
@@ -329,51 +333,59 @@ struct CommunityConversationView: View {
                             guard case .direct(_, let eventID) = context, let eventID else { throw BackpackError.invalid("Missing event context.") }
                             let value = try await client.saveOrganizerContact(eventID, original: contactPreference, enabled: !contactPreference.enabled)
                             try session.checked(client); self.contactPreference = value
-                        }
+                        }.disabled(session.busy)
                     }
                 }
             }
             if let outbox {
-                Text("Stored exact intent: \(outbox.state.rawValue). Retry deadline: \(outbox.retryBefore.formatted()).").font(.caption)
+                Text(outbox.state == .uncertain ? "Delivery uncertain" : outbox.state == .acknowledged ? "Delivered" : "Delivery stopped").font(.headline)
                 if outbox.state == .uncertain {
-                    Button("Explicitly retry stored exact bytes / ID") { retryOutbox(outbox) }
-                    Text("First recheck retained history. Similar text is not an acknowledgment; history does not expose client-ID receipts.").font(.caption)
-                    Button("Abandon uncertain intent and clear draft (may have delivered)", role: .destructive) {
+                    Button("Retry same message") { retryOutbox(outbox) }.disabled(session.busy)
+                    Button("Clear pending message", role: .destructive) {
                         var abandoned = outbox; abandoned.state = .abandoned; abandoned.acknowledgedMessageID = nil
                         do { try NativeChatOutbox.save(abandoned); dismissAcknowledgedOutbox(abandoned) }
                         catch { outboxFailure = error.localizedDescription }
-                    }
+                    }.disabled(session.busy)
                 } else {
-                    Button("Archive terminal receipt and clear draft (not resend)") { dismissAcknowledgedOutbox(outbox) }
+                    Button("Clear delivery record") { dismissAcknowledgedOutbox(outbox) }.disabled(session.busy)
                 }
-                Text("No automatic retries or new-ID replacement. Retired/inaccessible intents cannot be resent.").font(.caption)
+                Text("Clearing local delivery state does not recall a message already received.").font(.caption)
             }
-            Button("Inspect this account's private outbox", action: restoreOutbox)
             TextField("Message", text: $text, axis: .vertical).lineLimit(1...6).disabled(intent != nil || outbox != nil)
             HStack {
-                if client.chatMediaEnabled { Button("Attach image / GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || attachment != nil) }
-                if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil) }
-                if client.chatReferencesEnabled { Button("Share GIF / event / published playlist") { choosingReference = true }.disabled(intent != nil || outbox != nil) }
+                Menu {
+                    if client.chatMediaEnabled { Button("Image or GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || attachment != nil) }
+                    if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil) }
+                    if client.chatReferencesEnabled { Button("GIF, event or playlist") { choosingReference = true }.disabled(intent != nil || outbox != nil) }
+                    if client.chatLiveEnabled { Toggle("Share typing indicator", isOn: $shareTyping) }
+                } label: { Label("Add", systemImage: "plus.circle").frame(minWidth: 44, minHeight: 44) }
+                .disabled(session.busy)
                 Spacer()
-                Button("Send deliberate new message") { send() }.buttonStyle(.borderedProminent)
-                    .disabled(outbox != nil || !newQuestionsAllowed)
+                Button("Send") { send() }.buttonStyle(.borderedProminent)
+                    .disabled(session.busy || outbox != nil || !newQuestionsAllowed ||
+                        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachment == nil && pin == nil && reference == nil)
             }
-            if intent != nil {
-                Text("The finalized intent remains in the private outbox. Reconcile or retry that same intent; do not replace its ID.").font(.caption)
-                Text("A failed connection may have accepted the message. Retry retains the same ID/bytes; check history before starting a different intent.").font(.caption)
+            DisclosureGroup("Delivery details") {
+                Button("Check saved delivery state", action: restoreOutbox).disabled(session.busy)
+                if let outbox {
+                    Text("State: \(outbox.state.rawValue). Retry before \(outbox.retryBefore.formatted()).").font(.caption)
+                }
+                Text("Retries keep the original ID and exact content. Similar text in history is not a delivery receipt.")
+                    .font(.caption)
             }
-            if client.chatLiveEnabled { Toggle("Share ephemeral typing indicator", isOn: $shareTyping) }
             if session.busy { ProgressView() }
-        }.padding(16).glassPanel().disabled(session.busy || room?.canSend == false)
+        }.padding(16).glassPanel().disabled(room?.canSend == false)
     }
     private func send() {
+        let capturedText = text, capturedAttachment = attachment?.attachment.id
+        let capturedPin = pin, capturedReference = reference
         session.run({ client in
             guard !referencePolicyStale else { throw BackpackError.invalid("Media policy changed. Discard the captured failed intent and reselect current references explicitly.") }
             guard newQuestionsAllowed else { throw BackpackError.invalid("Current new-message permission is unavailable.") }
             guard try NativeChatOutbox.load(origin: client.origin.url.absoluteString, account: client.accountID, context: context) == nil else {
                 throw BackpackError.invalid("Inspect and reconcile the existing private outbox before creating another intent.")
             }
-            if intent == nil { intent = try ChatSendIntent(context: context, text: text, attachmentID: attachment?.attachment.id, pin: pin, reference: reference) }
+            if intent == nil { intent = try ChatSendIntent(context: context, text: capturedText, attachmentID: capturedAttachment, pin: capturedPin, reference: capturedReference) }
             guard let intent else { throw BackpackError.invalid("Prepare a valid send intent.") }
             let record = try NativeChatOutboxRecord(account: client.accountID, origin: client.origin.url.absoluteString,
                 context: context, clientID: intent.clientMessageID, bytes: intent.data, consent: true)
@@ -381,6 +393,7 @@ struct CommunityConversationView: View {
             do {
                 let result = try await client.submitOutbox(record)
                 try session.checked(client); outbox = result
+                try NativeChatOutbox.archiveTerminal(result); outbox = nil
             } catch {
                 try session.checked(client); messages = []; referencesVerified = false; newQuestionsAllowed = false
                 restoreOutbox(); throw error
@@ -392,7 +405,11 @@ struct CommunityConversationView: View {
         do {
             try client.check(.messaging)
             outbox = try NativeChatOutbox.load(origin: client.origin.url.absoluteString, account: client.accountID, context: context)
-            outboxFailure = outbox == nil ? "No retained outbox intent for this conversation." : nil
+            if let outbox, outbox.state == .acknowledged, intent == nil {
+                try NativeChatOutbox.archiveTerminal(outbox)
+                self.outbox = nil
+            }
+            outboxFailure = nil
         } catch { outboxFailure = error.localizedDescription }
     }
     private func retryOutbox(_ record: NativeChatOutboxRecord) {
@@ -401,6 +418,7 @@ struct CommunityConversationView: View {
             do {
                 let result = try await client.submitOutbox(record)
                 try session.checked(client); outbox = result; intent = nil; text = ""; reference = nil; pin = nil; attachment = nil
+                try NativeChatOutbox.archiveTerminal(result); outbox = nil
             } catch {
                 try session.checked(client); restoreOutbox(); throw error
             }
@@ -457,6 +475,7 @@ struct CommunityConversationView: View {
                 messages += rows.filter { ids.insert($0.id).inserted }
                 messages.sort { ($0.sequence.map(Double.init) ?? $0.createdAt) < ($1.sequence.map(Double.init) ?? $1.createdAt) }
                 referencesVerified = true
+                restoreOutbox()
             } catch let error as CommunityFailure where [401, 403, 404, 409].contains(error.status) {
                 clear(); revoked = true
                 throw error

@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class NavigationTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
@@ -372,6 +373,35 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.textFields["connected-backpack-nickname"].exists)
         XCTAssertFalse(app.buttons["connected-backpack-add"].exists)
         attach(app, name: "Connected backpack - account consent before any identity read")
+    }
+
+    func testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
+        app.buttons.matching(NSPredicate(format: "label == %@", "Live")).firstMatch.tap()
+        let mode = app.buttons["Scrolling message"]
+        reveal(mode, in: app); mode.tap()
+        let field = app.textFields["live-message"]
+        reveal(field, in: app); field.tap(); field.typeText("Reflow keeps this message")
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(field.waitForExistence(timeout: 10))
+            XCTAssertEqual(field.value as? String, "Reflow keeps this message")
+            let customize = app.buttons["Customize"]
+            reveal(customize, in: app); customize.tap()
+            XCTAssertTrue(app.navigationBars["Make it yours"].waitForExistence(timeout: 10))
+            app.buttons["Done"].tap()
+            XCTAssertEqual(field.value as? String, "Reflow keeps this message")
+            let start = app.buttons["live-start"]
+            reveal(start, in: app, requireHittable: false)
+            XCTAssertTrue(start.exists)
+            XCTAssertFalse(start.isEnabled, "Reflow must not bypass the connected-hardware gate.")
+            attach(app, name: "Live message reflow - \(orientation.rawValue), primary controls and draft")
+        }
     }
 
     func testConnectedBackpackRegistrationDoesNotScanOrInventIdentityWhileDisconnected() throws {

@@ -14,38 +14,71 @@ struct LiveView: View {
     @State private var starting = false
     @State private var themeEditor = false
     @State private var idlePreview: UIImage?
+    @FocusState private var messageFocused: Bool
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Live canvas").font(.title2.bold())
-                            Spacer()
-                            StatusPill(title: live.mode == nil ? "Preview" : "Live",
-                                symbol: live.mode == nil ? "sparkles" : "dot.radiowaves.left.and.right")
+                if #available(iOS 27.1, *),
+                   geometry.size.width >= 700 || !geometry.reservedRegions(kind: .division).isEmpty {
+                    ArrangementView {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                status
+                                previewCard
+                                Picker("Mode", selection: $selected) {
+                                    ForEach(LiveMode.allCases) { Text($0.rawValue).tag($0) }
+                                }
+                                .pickerStyle(.menu).disabled(live.mode != nil)
+                                .accessibilityIdentifier("live-mode-picker")
+                                modeDetails
+                                transportControls
+                                backgroundNote
+                            }.padding(24)
                         }
-                        if geometry.size.width >= 760 {
-                            HStack(alignment: .top, spacing: 24) {
-                                controls.frame(minWidth: 280, maxWidth: 370)
-                                VStack(spacing: 20) {
-                                    previewCard
-                                    DisclosureGroup("Presets") { presetRail }
-                                }.frame(maxWidth: .infinity)
-                            }
-                        } else {
-                            previewCard
-                            controls
-                            DisclosureGroup("Presets") { presetRail }
+                    } secondary: {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 20) {
+                                modePicker
+                                DisclosureGroup("Presets") { presetRail }
+                            }.padding(24)
                         }
-                        backgroundNote
                     }
-                    .padding(24).frame(maxWidth: 1300, alignment: .leading).frame(maxWidth: .infinity)
+                    .arrangementViewStyle(.split)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            status
+                            if geometry.size.width >= 760 {
+                                HStack(alignment: .top, spacing: 24) {
+                                    controls.frame(minWidth: 280, maxWidth: 370)
+                                    VStack(spacing: 20) {
+                                        previewCard
+                                        DisclosureGroup("Presets") { presetRail }
+                                    }.frame(maxWidth: .infinity)
+                                }
+                            } else {
+                                previewCard
+                                controls
+                                DisclosureGroup("Presets") { presetRail }
+                            }
+                            backgroundNote
+                        }
+                        .padding(24).frame(maxWidth: 1300, alignment: .leading).frame(maxWidth: .infinity)
+                    }
                 }
             }.background(AuroraBackground()).tint(Aurora.mint)
             .navigationTitle("Live").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $themeEditor) { ThemeEditor(mode: selected, theme: library.theme(for: selected)) }
             .task(id: "\(selected.rawValue)-\(library.theme(for: selected))-\(panel.size?.width ?? 64)") { updatePreview() }
+        }
+    }
+
+    private var status: some View {
+        HStack {
+            Text("Live canvas").font(.title2.bold())
+            Spacer()
+            StatusPill(title: live.mode == nil ? "Preview" : "Live",
+                symbol: live.mode == nil ? "sparkles" : "dot.radiowaves.left.and.right")
         }
     }
 
@@ -73,6 +106,14 @@ struct LiveView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
+            modePicker
+            modeDetails
+            transportControls
+        }
+    }
+
+    private var modePicker: some View {
+        VStack(alignment: .leading, spacing: 18) {
             Text("Choose a mode").font(.headline)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 95), spacing: 10)], spacing: 10) {
                 ForEach(LiveMode.allCases) { mode in
@@ -90,7 +131,15 @@ struct LiveView: View {
                         .disabled(live.mode != nil)
                 }
             }
-            if selected == .message { TextField("Your message", text: $live.message).textFieldStyle(.roundedBorder) }
+        }
+    }
+
+    private var modeDetails: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if selected == .message {
+                TextField("Your message", text: $live.message).textFieldStyle(.roundedBorder)
+                    .focused($messageFocused).accessibilityIdentifier("live-message")
+            }
             if selected == .speed {
                 Text(library.state.preferences.speedCapEnabled
                     ? "Display cap: \(library.state.preferences.speedCap) \(library.state.preferences.mph ? "mph" : "km/h"). Raw GPS is unchanged."
@@ -105,6 +154,11 @@ struct LiveView: View {
             if selected == .motion || selected == .compass {
                 Text("Phone measurements, not validated motorcycle lean or heading.").font(.caption).foregroundStyle(.orange)
             }
+        }
+    }
+
+    private var transportControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if live.mode == nil {
                 Button {
                     starting = true
@@ -116,9 +170,11 @@ struct LiveView: View {
                 } label: { Label("Go live", systemImage: "play.fill").frame(maxWidth: .infinity) }
                     .buttonStyle(AuroraPrimaryButton())
                     .disabled(starting || !app.link.connected || panel.busy || panel.hasDisplayOwner || panel.size == nil)
+                    .accessibilityIdentifier("live-start")
             } else {
                 Button("Stop & restore playback", role: .destructive) { app.run { await live.stop() } }
                     .buttonStyle(.bordered).controlSize(.large)
+                    .accessibilityIdentifier("live-stop")
             }
         }
     }

@@ -39,6 +39,7 @@ final class DeviceRecoveryThreadStore: ObservableObject {
     @Published private(set) var pending: DeviceRecoveryIntent?
     @Published private(set) var pendingElsewhere: UUID?
     @Published private(set) var busy = false
+    @Published private(set) var writing = false
     @Published private(set) var failure: String?
     @Published private(set) var draftFailure: String?
     @Published private(set) var closed = false
@@ -53,11 +54,11 @@ final class DeviceRecoveryThreadStore: ObservableObject {
     }
 
     var canCompose: Bool {
-        guard let conversation, !closed, pending == nil, !busy else { return false }
+        guard let conversation, !closed, pending == nil, !writing else { return false }
         return conversation.state == .accepted || conversation.role == .owner && conversation.state == .pending
     }
     var canSend: Bool {
-        canCompose && pendingElsewhere == nil
+        canCompose && !busy && pendingElsewhere == nil
             && (1...1000).contains(text.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count)
     }
 
@@ -76,7 +77,7 @@ final class DeviceRecoveryThreadStore: ObservableObject {
     func clear() {
         generation = UUID(); scope = nil; id = nil
         conversation = nil; messages = []; text = ""; pending = nil; pendingElsewhere = nil
-        busy = false; closed = false; failure = nil; draftFailure = nil
+        busy = false; writing = false; closed = false; failure = nil; draftFailure = nil
     }
 
     func bind(_ community: CommunityController, id: UUID) async {
@@ -140,8 +141,9 @@ final class DeviceRecoveryThreadStore: ObservableObject {
     func send(retry: Bool = false) async {
         guard !busy, let scope, let id else { return }
         let stamp = generation
-        busy = true; failure = nil
-        defer { if generation == stamp { busy = false } }
+        let capturedText = text
+        busy = true; writing = true; failure = nil
+        defer { if generation == stamp { busy = false; writing = false } }
         var receipt: DeviceRecoveryMessage?
         do {
             try checked(scope, stamp)
@@ -165,7 +167,7 @@ final class DeviceRecoveryThreadStore: ObservableObject {
                     try outbox.clearResolved(resolved)
                 }
                 intent = try DeviceRecoveryIntent(account: scope.accountID, origin: scope.origin.url.absoluteString,
-                    peer: context.peer.id, kind: .message, conversationID: id, text: text,
+                    peer: context.peer.id, kind: .message, conversationID: id, text: capturedText,
                     expiresAt: CatalogEventTime.parse(context.expiresAtISO))
                 try outbox.save(intent)
                 pending = intent; text = intent.text
@@ -209,8 +211,8 @@ final class DeviceRecoveryThreadStore: ObservableObject {
     func close() async {
         guard !busy, let scope, let conversation else { return }
         let stamp = generation
-        busy = true; failure = nil
-        defer { if generation == stamp { busy = false } }
+        busy = true; writing = true; failure = nil
+        defer { if generation == stamp { busy = false; writing = false } }
         do {
             try checked(scope, stamp)
             _ = try await scope.closeRecovery(conversation)

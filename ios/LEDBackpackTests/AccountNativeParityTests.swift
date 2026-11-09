@@ -623,4 +623,34 @@ final class AccountNativeParityTests: XCTestCase {
         XCTAssertNil(store.conversation); XCTAssertTrue(store.messages.isEmpty)
         XCTAssertEqual(store.text, ""); XCTAssertNil(store.pending)
     }
+    func testRecoverySendCapturesTextBeforeAwaitingFreshHistory() async throws {
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [
+            recoveryHistory(), recoveryHistory(), recoveryReceipt()
+        ])
+        let store = DeviceRecoveryThreadStore(outbox: DeviceRecoveryOutbox(vault: AccountParityVault()))
+        await store.bind(controller, id: itemID); store.text = "Thank you"
+        await transport.armSuspension()
+        let task = Task { await store.send() }
+        await transport.waitUntilSuspended()
+        XCTAssertTrue(store.writing)
+        store.text = "Changed while awaiting transport"
+        await transport.resume(); await task.value
+        XCTAssertNil(store.failure)
+        let sends = await transport.history().filter { $0.url?.lastPathComponent == "messages" }
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(sends.first?.httpBody)) as? [String: Any])
+        XCTAssertEqual(body["text"] as? String, "Thank you")
+    }
+    func testRecoveryHistoryRefreshDoesNotLockOrReplaceAnUnsentDraft() async throws {
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [recoveryHistory(), recoveryHistory()])
+        let store = DeviceRecoveryThreadStore(outbox: DeviceRecoveryOutbox(vault: AccountParityVault()))
+        await store.bind(controller, id: itemID)
+        await transport.armSuspension()
+        let task = Task { await store.refresh() }
+        await transport.waitUntilSuspended()
+        XCTAssertTrue(store.busy); XCTAssertFalse(store.writing); XCTAssertTrue(store.canCompose)
+        store.text = "Typing while history refreshes"
+        await transport.resume(); await task.value
+        XCTAssertEqual(store.text, "Typing while history refreshes")
+        XCTAssertNil(store.failure)
+    }
 }

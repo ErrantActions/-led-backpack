@@ -234,6 +234,21 @@ final class CommunityChatSourceParityTests: XCTestCase {
         var value = try record(); value.state = .acknowledged
         XCTAssertThrowsError(try value.validate())
     }
+    func testOnlyMatchingCurrentTerminalReceiptCanClearTheOutbox() throws {
+        var delivered = try record()
+        delivered.state = .acknowledged; delivered.acknowledgedMessageID = UUID()
+        XCTAssertNoThrow(try delivered.requireCurrentTerminal(delivered))
+        XCTAssertThrowsError(try delivered.requireCurrentTerminal(nil))
+        XCTAssertThrowsError(try delivered.requireCurrentTerminal(record()))
+        var changedReceipt = delivered; changedReceipt.acknowledgedMessageID = UUID()
+        XCTAssertThrowsError(try delivered.requireCurrentTerminal(changedReceipt))
+        let nextID = UUID(), context = delivered.context
+        let nextBytes = try ChatSendIntent(context: context, text: "Next message", attachmentID: nil, pin: nil, clientID: nextID).data
+        let next = try NativeChatOutboxRecord(account: account, origin: origin, context: context,
+            clientID: nextID, bytes: nextBytes, consent: true, now: now)
+        XCTAssertThrowsError(try delivered.requireCurrentTerminal(next))
+        XCTAssertThrowsError(try next.requireCurrentTerminal(next))
+    }
     func testOutboxMissingCreationAndDeadlinesCannotDecode() throws {
         let value = try record()
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? [String: Any])

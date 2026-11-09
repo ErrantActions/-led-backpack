@@ -15,18 +15,22 @@ Older checkpoints below are historical evidence, not the current release board.
   research documented, with 41 attributed local image references.
 - [x] Recovery transport foundation323caaf compiled;97 focused native tests
   passed in42588981367. This does not validate later view/store changes.
-- [ ] Validate integrated My devices automatic connected read, v2 adoption gate,
-  per-backpack opt-in and scoped recovery profile/contact UI.
-- [ ] Validate contextual recovery inbox/history/replies, private drafts,
-  immutable retry IDs, close/block/report and lifecycle revocation.
+- [x] Integrated source4dd4d1c compiled;124 focused native tests and2 UI
+  regressions passed in42592497858. Includes v2-gated My devices, recovery
+  DTOs/history/drafts and owner-reply acceptance, no second finder introduction,
+  exact-ID receipt-write retry and stale-account response rejection.
+- [ ] Physical connected-device adoption/contact and complete native recovery
+  interaction acceptance; simulator proof is not hardware ownership proof.
 - [ ] Complete native adaptive/reserved-region layouts and verify state/actions
   across current Duo arrangements, narrow windows and accessibility settings.
 - [ ] Complete remaining low-friction upload/discovery/chat workflows; preserve
   distinct system/privacy/destructive boundaries, not repeated intent dialogs.
 - [ ] Reconcile the remaining historical roadmap against current software proof.
 - [ ] Full release-eligible native gate and next authorized beta promotion.
-- [ ] Backend v2 full validation, preservation-checked deployment and public
-  recovery/revocation smoke proof. The last confirmed deployment is v1.
+- [x] Backend v2 strict build and full653tests/0fail/0skip locally. An initial
+  Windows avatar-fixture directory-rename error passed focused and full reruns.
+- [ ] Preservation-checked backend v2 deployment and public recovery/revocation
+  smoke proof. The last confirmed deployment is v1.
 - [ ] Physical BLE/GPS/UWB acceptance, private provider/system-auth acceptance,
   and Apple processing/internal tester availability remain separate checks.
 
