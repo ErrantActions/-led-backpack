@@ -63,6 +63,13 @@ under Delivery details, automatic local outbox inspection and automatic archival
 after a confirmed send. Uncertain replies retain visible same-ID retry/clear.
 Stale delivery receipts cannot clear a newer pending message.
 
+Backpack Scan now keeps a bounded explicit request while Bluetooth initializes,
+instead of requiring a second tap. It waits at most 30 seconds for readiness and
+an active app, then scans for 15 seconds. Stop, backgrounding, denial, power-off
+and expiry cancel the request; returning later does not start a scan. Initial
+system permission interruption can resume only that still-current request.
+Opening the app, My devices or a discovery page creates no scan intent.
+
 Native validation and deployment of this newer source are tracked in
 [TODO](TODO.md). Do not infer live v2 availability or physical-device acceptance
 from the build-11 upload.

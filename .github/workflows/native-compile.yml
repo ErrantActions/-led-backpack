@@ -73,7 +73,7 @@ jobs:
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "180"
                 "-maximum-test-execution-time-allowance" "300")
             elif [ "$VALIDATION_MODE" = ux-endpoints ]; then
-              CLASSES=(CloudSynchronizationTests CommunityChatTests CommunityChatSourceParityTests AccountNativeParityTests DeviceRecoveryTests)
+              CLASSES=(CloudSynchronizationTests CommunityChatTests CommunityChatSourceParityTests AccountNativeParityTests DeviceRecoveryTests BluetoothScanIntentTests ConnectedBackpackTests)
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable"
                 "-only-testing:LEDBackpackUITests/NavigationTests/testExpandableDetailsButtonsFireOnlyTheChosenAction"
                 "-only-testing:LEDBackpackUITests/NavigationTests/testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable")
@@ -82,7 +82,7 @@ jobs:
             elif [ "$VALIDATION_MODE" = peer-protocol ]; then
               CLASSES=(PhoneSwapGameTests FriendPlaybackTests LocalPairingTests AutomaticPhoneSessionTests)
             elif [ "$VALIDATION_MODE" = connected-device ]; then
-              CLASSES=(ConnectedBackpackTests AccountNativeParityTests BackpackFeatureTests)
+              CLASSES=(ConnectedBackpackTests AccountNativeParityTests BackpackFeatureTests BluetoothScanIntentTests)
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testConnectedBackpackRegistrationRequiresSignInBeforeReadingHardware"
                 "-only-testing:LEDBackpackUITests/NavigationTests/testConnectedBackpackRegistrationDoesNotScanOrInventIdentityWhileDisconnected"
                 "-only-testing:LEDBackpackUITests/NavigationTests/testEraseReviewUsesDefaultOffToggleInsteadOfTypingAndStillRequiresConnectedHardware")

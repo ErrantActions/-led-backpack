@@ -136,9 +136,13 @@ struct DeviceView: View {
                     app.run { await app.batch.stop(); await app.drawing.stop(); await live.stop(); await app.playlist.stop(); link.disconnect() }
                 }
             } else {
-                Button { app.run { try link.scan() } } label: {
-                    HStack { Text("Scan for backpacks"); Spacer(); Image(systemName: "arrow.right") }
-                }.buttonStyle(AuroraPrimaryButton()).accessibilityLabel("Scan for backpacks")
+                if link.scanning {
+                    Button("Stop scan") { link.stopScan() }.buttonStyle(.bordered)
+                } else {
+                    Button { app.run { try link.scan() } } label: {
+                        HStack { Text("Scan for backpacks"); Spacer(); Image(systemName: "arrow.right") }
+                    }.buttonStyle(AuroraPrimaryButton()).accessibilityLabel("Scan for backpacks")
+                }
                 DisclosureGroup("Discovery options") { Toggle("Show all BLE devices", isOn: $link.showAll) }
                 ForEach(link.nearby) { item in
                     Button { app.run { try await app.connect(item.id) } } label: {

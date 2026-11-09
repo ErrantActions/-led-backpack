@@ -14,6 +14,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     @Published private(set) var state = "Bluetooth idle — scan explicitly for a backpack"
     @Published private(set) var nearby: [NearbyPanel] = []
     @Published private(set) var connected = false
+    @Published private(set) var scanning = false
     @Published private(set) var connectionRevision = UUID()
     @Published private(set) var log: [String] = []
     @Published var showAll = false
@@ -42,6 +43,9 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     private var connectionDeadline: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
     private var scanDeadline: Task<Void, Never>?
+    private var scanIntent = BluetoothScanIntent()
+    private var scanForeground = false
+    private var scanStarted = false
     private var responseDeadline: Task<Void, Never>?
     private var writeDeadline: Task<Void, Never>?
     private var recentLive: [UInt16] = []
@@ -69,20 +73,71 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     }
 
     func scan() throws {
-        guard ![CBManagerState.unknown, .resetting].contains(central.state) else {
-            throw BackpackError.invalid("Bluetooth is preparing after your explicit request. Wait for its OS state, then tap Scan again.")
-        }
-        guard central.state == .poweredOn else { throw BackpackError.invalid("Enable Bluetooth and allow access in Settings.") }
+        guard scanForeground else { throw BackpackError.invalid("Open the app before scanning.") }
         guard peripheral == nil else { throw BackpackError.invalid("Disconnect before scanning for another panel.") }
-        nearby = []; found = [:]
-        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
-        state = "Scanning"
+        stopScan()
+        try scanIntent.request(now: ProcessInfo.processInfo.systemUptime)
+        scanning = true
+        let manager = central
+        switch manager.state {
+        case .unknown, .resetting:
+            state = "Preparing Bluetooth"
+            scanDeadline = Task { [weak self] in
+                do { try await Task.sleep(for: .seconds(30)) }
+                catch is CancellationError { return }
+                catch { self?.scanFailed(error); return }
+                guard !Task.isCancelled else { return }
+                self?.stopScan("Bluetooth preparation expired. Choose Scan again.")
+            }
+        case .poweredOn:
+            try startPendingScan(manager)
+        default:
+            let error = BackpackError.invalid("Enable Bluetooth and allow access in Settings, then choose Scan.")
+            scanFailed(error)
+            throw error
+        }
+    }
+
+    func setScanActivity(active: Bool, backgrounded: Bool) {
+        scanForeground = active
+        if backgrounded || !active && scanStarted { stopScan("Scan stopped"); return }
+        guard active, scanIntent.pending else { return }
+        do {
+            if central.state == .poweredOn { try startPendingScan(central) }
+        } catch { scanFailed(error) }
+    }
+
+    func stopScan(_ reason: String? = nil) {
+        let wasScanning = scanning
+        scanIntent.cancel(); scanDeadline?.cancel(); scanDeadline = nil
+        if scanStarted { central.stopScan() }
+        scanStarted = false; scanning = false
+        if wasScanning { state = reason ?? "Scan stopped" }
+    }
+
+    private func scanFailed(_ error: Error) {
+        stopScan(error.localizedDescription)
+        state = error.localizedDescription
+        note("Scan failed: \(error.localizedDescription)")
+    }
+
+    private func startPendingScan(_ manager: CBCentralManager) throws {
+        guard peripheral == nil else {
+            throw BackpackError.invalid("A connection started before Bluetooth scanning was ready.")
+        }
+        guard try scanIntent.consume(now: ProcessInfo.processInfo.systemUptime, foreground: scanForeground) else { return }
         scanDeadline?.cancel()
-        scanDeadline = Task {
-            try? await Task.sleep(for: .seconds(15))
+        nearby = []; found = [:]
+        manager.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        scanStarted = true; scanning = true
+        state = "Scanning"
+        scanDeadline = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(15)) }
+            catch is CancellationError { return }
+            catch { self?.scanFailed(error); return }
+            guard let self else { return }
             guard !Task.isCancelled else { return }
-            central.stopScan()
-            state = "Scan finished"
+            stopScan("Scan finished")
             note("Scan finished: \(nearby.count) matching device(s).")
         }
     }
@@ -95,7 +150,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     }
 
     private func beginConnection(_ candidate: CBPeripheral) {
-        central.stopScan(); scanDeadline?.cancel(); reconnectTask?.cancel()
+        stopScan(); reconnectTask?.cancel()
         peripheral = candidate; candidate.delegate = self
         state = "Connecting to \(candidate.name ?? "panel")"
         central.connect(candidate, options: [
@@ -112,6 +167,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     }
 
     func disconnect() {
+        stopScan()
         manualDisconnect = true
         reconnectTask?.cancel()
         if let peripheral { central.cancelPeripheralConnection(peripheral) }
@@ -132,7 +188,11 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
-        case .poweredOn: state = "Ready to scan"
+        case .poweredOn:
+            if scanIntent.pending {
+                do { try startPendingScan(central) }
+                catch { scanFailed(error) }
+            } else if !scanning, peripheral == nil { state = "Ready to scan" }
         case .poweredOff: state = "Bluetooth is off"
         case .unauthorized: state = "Bluetooth permission denied"
         case .unsupported: state = "Bluetooth LE is unavailable"
@@ -140,6 +200,9 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
         default: state = "Bluetooth unavailable"
         }
         if central.state != .poweredOn {
+            if ![CBManagerState.unknown, .resetting].contains(central.state) || scanStarted {
+                stopScan(state)
+            }
             let notify = connected && !manualDisconnect
             let name = peripheral?.name ?? "LED backpack"
             reset(BackpackError.invalid(state))

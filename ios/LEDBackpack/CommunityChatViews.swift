@@ -324,8 +324,8 @@ struct CommunityConversationView: View {
                             guard let event else { throw BackpackError.invalid("Missing event context.") }
                             let value = try await client.organizerContact(event)
                             try session.checked(client); contactPreference = value
-                        }.disabled(session.busy)
-                    }
+                        }
+                    }.disabled(session.busy)
                 }
                 if let contactPreference {
                     Button(contactPreference.enabled ? "Stop new visitor questions to me" : "Enable new visitor questions to me") {
@@ -333,8 +333,8 @@ struct CommunityConversationView: View {
                             guard case .direct(_, let eventID) = context, let eventID else { throw BackpackError.invalid("Missing event context.") }
                             let value = try await client.saveOrganizerContact(eventID, original: contactPreference, enabled: !contactPreference.enabled)
                             try session.checked(client); self.contactPreference = value
-                        }.disabled(session.busy)
-                    }
+                        }
+                    }.disabled(session.busy)
                 }
             }
             if let outbox {

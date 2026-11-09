@@ -291,6 +291,7 @@ struct LEDBackpackApp: App {
             .preferredColorScheme(.dark)
             .tint(.cyan)
             .onChange(of: scenePhase) { _, value in
+                app.link.setScanActivity(active: value == .active, backgrounded: value == .background)
                 app.soloScenes.setForeground(value == .active)
                 app.setBackground(value == .background)
                 app.phoneDisplay.setForeground(value == .active)
@@ -306,6 +307,7 @@ struct LEDBackpackApp: App {
                 if value == .active && app.community.nativeApplePushAvailable { app.applePush.refresh() }
             }
             .task {
+                app.link.setScanActivity(active: scenePhase == .active, backgrounded: scenePhase == .background)
                 app.soloScenes.setForeground(scenePhase == .active)
                 app.phoneDisplay.setForeground(scenePhase == .active)
                 do { try await app.community.checkAppleCredentialState() } catch { app.panel.report(error) }
