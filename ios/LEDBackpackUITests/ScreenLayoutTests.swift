@@ -232,6 +232,7 @@ final class ScreenLayoutTests: XCTestCase {
             pan(-180, in: app)
             if signature(app) == before { exhausted = true; break }
         }
+        note("{\"complete\":\(exhausted)}", name: "layout--\(page)--\(state)--result")
         XCTAssertTrue(exhausted, "Capture truncated: \(page) / \(state)")
     }
 
