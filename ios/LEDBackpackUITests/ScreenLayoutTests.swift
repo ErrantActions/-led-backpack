@@ -14,6 +14,8 @@ final class ScreenLayoutTests: XCTestCase {
         capture(app, page: "settings", state: "expanded")
         tap(app.buttons["Catalog server and account"], in: app)
         capture(app, page: "catalog-settings", state: "default")
+        expand(["Advanced server settings"], in: app)
+        capture(app, page: "catalog-settings", state: "expanded")
         back(app)
         tap(app.buttons["Library sync"], in: app)
         capture(app, page: "library-sync", state: "guest")
@@ -126,6 +128,20 @@ final class ScreenLayoutTests: XCTestCase {
         capture(app, page: "live-theme", state: "default")
     }
 
+    func testTextAndDrawingStudioLayouts() throws {
+        let app = launch()
+        tap(app.buttons["Create"], in: app)
+        let textTool = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Text to GIF")).firstMatch
+        tap(textTool, in: app)
+        XCTAssertTrue(app.navigationBars["Text artwork"].waitForExistence(timeout: 10))
+        capture(app, page: "text-artwork", state: "default")
+        back(app)
+        let drawingTool = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Pixel drawing")).firstMatch
+        tap(drawingTool, in: app)
+        XCTAssertTrue(app.navigationBars["Drawing & animation"].waitForExistence(timeout: 10))
+        capture(app, page: "drawing-animation", state: "default")
+    }
+
     private func launch() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]
@@ -186,13 +202,14 @@ final class ScreenLayoutTests: XCTestCase {
     private func pan(_ distance: CGFloat, in app: XCUIApplication) {
         let area = viewport(app)
         let origin = app.coordinate(withNormalizedOffset: .zero)
-        let start = origin.withOffset(CGVector(dx: area.midX, dy: area.midY))
+        let start = origin.withOffset(CGVector(dx: area.minX + 14, dy: area.midY))
         let end = start.withOffset(CGVector(dx: 0, dy: distance))
         start.press(forDuration: 0, thenDragTo: end,
             withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.1)
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        if !element.exists { seekTop(app) }
         for _ in 0..<25 {
             let area = viewport(app)
             if element.exists {
@@ -205,18 +222,11 @@ final class ScreenLayoutTests: XCTestCase {
     }
 
     private func signature(_ app: XCUIApplication) -> String {
-        let area = viewport(app)
-        return app.staticTexts.allElementsBoundByIndex.filter {
-            $0.frame.intersects(area) && $0.frame.width > 0
-        }.map { "\($0.label)|\(Int($0.frame.minY.rounded()))" }.joined(separator: "\n")
+        app.debugDescription.replacingOccurrences(of: "0x[0-9a-fA-F]+", with: "0x", options: .regularExpression)
     }
 
     private func capture(_ app: XCUIApplication, page: String, state: String) {
-        for _ in 0..<20 {
-            let before = signature(app)
-            pan(180, in: app)
-            if signature(app) == before { break }
-        }
+        seekTop(app)
         var exhausted = false
         for segment in 0..<30 {
             let name = String(format: "layout--%@--%@--%03d", page, state, segment)
@@ -234,6 +244,14 @@ final class ScreenLayoutTests: XCTestCase {
         }
         note("{\"complete\":\(exhausted)}", name: "layout--\(page)--\(state)--result")
         XCTAssertTrue(exhausted, "Capture truncated: \(page) / \(state)")
+    }
+
+    private func seekTop(_ app: XCUIApplication) {
+        for _ in 0..<20 {
+            let before = signature(app)
+            pan(180, in: app)
+            if signature(app) == before { break }
+        }
     }
 
     private func note(_ value: String, name: String) {
