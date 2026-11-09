@@ -217,20 +217,42 @@ struct AccountDevicesView: View {
     private var identity: String { "\(community.accountRevision):\(community.avatarPolicyRevision):\(community.config?.unverifiedDeviceTagsEnabled == true)" }
     var body: some View {
         Form {
-            NavigationLink("Add connected backpack") { ConnectedBackpackView() }
-            Text("Device details come from your connected backpack. Account records are not verified ownership.")
-                .font(.caption)
+            Section("Connected backpack") {
+                ConnectedBackpackPanel { device in
+                    if let index = devices.firstIndex(where: { $0.id == device.id }) { devices[index] = device }
+                    else { devices.append(device) }
+                }
+            }
+            if community.config?.deviceRecoveryEnabled == true {
+                NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
+            }
             if session.scope != nil {
                 Section("My devices (\(devices.count)/20)") {
                     if devices.isEmpty { Text("No backpacks yet. Connect one to add it.") }
                     ForEach(devices) { device in
                         VStack(alignment: .leading) {
                             Text(device.nickname).font(.headline)
-                            Text("\(device.model) · \(device.matrix?.id ?? "unknown matrix") · unverified · revision \(device.revision)").font(.caption)
+                            Text("\(device.model) · \(device.matrix?.id ?? "unknown matrix")").font(.caption)
+                            if device.connection != nil, !device.transferPending,
+                               (community.config?.connectedDeviceRegistrationVersion ?? 0) >= 2,
+                               community.config?.deviceRecoveryEnabled == true || device.recoveryEnabled == true {
+                                Toggle("Let finders contact me", isOn: Binding(
+                                    get: { device.recoveryEnabled == true },
+                                    set: { enabled in
+                                        session.run { scope in
+                                            let updated = try await scope.setDeviceRecovery(device, enabled: enabled, consent: enabled)
+                                            try session.checked(scope)
+                                            if let index = devices.firstIndex(where: { $0.id == updated.id }) { devices[index] = updated }
+                                            return nil
+                                        }
+                                    }))
+                                Text("Shares your screen name and avatar with someone checking this connected backpack. Replies stay in a private recovery thread.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                             if let connection = device.connection {
                                 DisclosureGroup("Private connected ID") {
                                     LabeledContent("Vendor ID", value: connection.vendorDeviceId)
-                                    Text("Mutable ID, not ownership proof. Other accounts may associate the same ID independently. Unlink removes this account's record; transfer moves only the label and drops the private ID.")
+                                    Text("Mutable ID, not ownership proof. Existing ID collisions cannot identify one owner. Unlink removes this account's record; transfer moves only the label and drops the private ID.")
                                         .font(.caption)
                                 }
                             }

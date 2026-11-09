@@ -31,6 +31,9 @@ struct CommunityMessagesView: View {
                 if community.config?.chatMessageRequestsEnabled == true {
                     NavigationLink("Non-friend message requests / stop") { CommunityMessageRequestsView() }
                 }
+                if community.config?.deviceRecoveryEnabled == true {
+                    NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
+                }
                 Section("Friends") {
                     ForEach(friends) { person in
                         Button(person.displayName) { selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName) }

@@ -14,6 +14,43 @@ and registration, nickname-only editing, erase opt-in toggle and peer protocol
 v2. The newer visual-editor redesign and found-device recovery messaging are
 separate follow-up work, not features claimed shipped in this build.
 
+### Current source: adoption and recovery redesign (not in build 11)
+
+Backpack > My devices lists saved backpacks and checks an already-connected
+backpack directly. There is no manual device entry or scan on page entry.
+The check reads identity/dimensions and sends the ID privately to the configured
+registry; only **Adopt this backpack** creates an association. Adoption re-reads
+the connected device and uses its model/dimensions, with Rename available later.
+An existing own record keeps its customization. Another account's association
+cannot be taken over. Ambiguous IDs disclose no person.
+
+This requires `connectedDeviceRegistrationVersion >= 2`, not just the old
+registration flag. When the single registered account opted into finder contact,
+the check can display its screen name and scoped avatar plus **I found your
+device**. Finder contact defaults off per backpack; the owner's toggle is the
+explicit choice, without an additional confirmation dialog.
+
+**Found-device messages** is available from My devices and Messages when enabled.
+Pending finders can send only their introduction. An owner's first reply accepts
+the contextual conversation and sends the reply; it does not create friendship,
+general messaging, device control, library or location access. Accepted
+participants can reply later without a Bluetooth connection. History is bounded
+to 100 messages and read in ascending order across at most two pages.
+Retries retain the exact recipient, text and request UUID in device-only
+Keychain. Drafts are account/server/conversation/peer scoped. Explicit delivery
+errors, same-ID Retry and local Clear remain available; Clear is not a recall.
+Close, account blocking and purpose-specific message reporting remain separate
+controls. Recovery expires after 30 days and is revoked by server policy.
+
+The friend-invite preview now has one **Send friend request** action with the
+same exact inviter/token/expiry server recheck, rather than a second dialog.
+Incident reports retain the entered explanation/consent form but no duplicate
+submission dialog. Original private messages are not copied automatically.
+
+Native validation and deployment of this newer source are tracked in
+[TODO](TODO.md). Do not infer live v2 availability or physical-device acceptance
+from the build-11 upload.
+
 ### Peer protocol v2
 
 Local pairing QR codes and phone swap/friend-play cryptographic domains now use
@@ -31,7 +68,7 @@ the exact captured inventory/device. Confirmation resets on connection or slot
 changes, backgrounding and dismissal. This erases stored programs, not a factory
 reset; local/cloud GIFs and backpack credentials are retained.
 
-### Connected backpack account association
+### Connected backpack account association in build 11
 
 Backpack > Add connected backpack to my account (also available from My devices)
 requires sign-in and the server's `connectedDeviceRegistrationEnabled` capability.
@@ -2841,8 +2878,9 @@ No third-party artwork is bundled in this source tree.
   endpoint is involved.
 - Commons search terms and downloads go to Wikimedia.
 - Music metadata is rendered locally.
-- Catalog sessions and account-deletion receipts stay in Keychain. No Bluetooth
-  identity or GPS data is sent to the catalog by these features.
+- Catalog sessions and account-deletion receipts stay in Keychain. The connected
+  backpack ID is sent privately when checking/adopting that device; firmware,
+  passwords and GPS are not included in that request.
 - No location history is persisted by this implementation.
 - Stored files use protection compatible with operation after the first
   device unlock. Keychain items do not migrate to another device.

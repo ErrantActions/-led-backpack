@@ -153,7 +153,7 @@ extension AccountServiceScope {
         try checkDeviceRegistry(recovery: true)
         try result.validate(account: accountID)
         guard result.id == conversation.id, result.revision == conversation.revision + 1,
-              result.peer == conversation.peer, result.role == conversation.role,
+              result.peer.id == conversation.peer.id, result.role == conversation.role,
               result.state == (accept ? .accepted : .closed) else {
             throw BackpackError.invalid("The recovery response was not confirmed. Refresh the conversation.")
         }
@@ -192,7 +192,7 @@ extension AccountServiceScope {
             body: JSONEncoder().encode(Body(expectedRevision: conversation.revision))).conversation
         try checkDeviceRegistry(recovery: true)
         try result.validate(account: accountID)
-        guard result.id == conversation.id, result.peer == conversation.peer, result.role == conversation.role,
+        guard result.id == conversation.id, result.peer.id == conversation.peer.id, result.role == conversation.role,
               result.revision == conversation.revision + 1, result.state == .closed else {
             throw BackpackError.invalid("Closing the recovery conversation was not confirmed.")
         }

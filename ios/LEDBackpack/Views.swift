@@ -128,7 +128,8 @@ struct DeviceView: View {
                 LabeledContent("Firmware", value: identity.firmware)
             }
             if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
-            NavigationLink("Add connected backpack to my account") { ConnectedBackpackView() }
+            NavigationLink("My devices") { AccountDevicesView() }
+                .accessibilityIdentifier("connected-backpack-my-devices")
             if link.connected {
                 Button("Refresh status") { app.run { try await panel.refresh() } }.disabled(panel.busy || panel.hasDisplayOwner)
                 Button("Disconnect", role: .destructive) {

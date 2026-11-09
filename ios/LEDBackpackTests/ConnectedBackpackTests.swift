@@ -19,6 +19,15 @@ private final class RegistrationReader: ConnectedBackpackReading {
 
 @MainActor
 final class ConnectedBackpackTests: XCTestCase {
+    private func startRead(_ model: ConnectedBackpackRegistration, using reader: RegistrationReader,
+        authorize: @escaping () throws -> Void = {}) {
+        model.read(using: reader, registryLookup: { _ in
+            let time = CatalogEventTime.wire(Date())
+            let lookup = DeviceRegistryLookup(status: .available, device: nil, recoveryEnabled: false,
+                serverTimeISO: time, recovery: nil)
+            return try DeviceRegistryReview(lookup: lookup, clock: CatalogEventClock(serverTime: time))
+        }, authorize: authorize)
+    }
     private func settle(_ model: ConnectedBackpackRegistration) async {
         for _ in 0..<100 {
             if !model.busy { return }
@@ -76,7 +85,7 @@ final class ConnectedBackpackTests: XCTestCase {
     func testMissingConsentNeverReadsAgainOrSubmits() async {
         let reader = RegistrationReader()
         let model = ConnectedBackpackRegistration()
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         await settle(model)
         var submissions = 0
         model.register(nickname: "Mine", consent: false, using: reader, authorize: {}) { _, _ in
@@ -91,7 +100,7 @@ final class ConnectedBackpackTests: XCTestCase {
     func testRegistrationRereadsAndSendsOnlyCapturedValidatedMetadata() async {
         let reader = RegistrationReader()
         let model = ConnectedBackpackRegistration()
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         await settle(model)
         var submissions = 0
         model.register(nickname: "My backpack", consent: true, using: reader, authorize: {}) { identity, metadata in
@@ -113,7 +122,7 @@ final class ConnectedBackpackTests: XCTestCase {
         for changeID in [true, false] {
             let reader = RegistrationReader()
             let model = ConnectedBackpackRegistration()
-            model.read(using: reader, authorize: {})
+            startRead(model, using: reader)
             await settle(model)
             reader.identity = .init(vendorDeviceId: changeID ? "Cd12345678" : "Ab12345678", model: "BP10",
                 firmware: "V2.9.1", matrix: NativeMatrixSize(width: changeID ? 64 : 32, height: 64))
@@ -133,7 +142,7 @@ final class ConnectedBackpackTests: XCTestCase {
         var time: TimeInterval = 100
         let reader = RegistrationReader()
         let model = ConnectedBackpackRegistration(now: { time })
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         await settle(model)
         time = 220
         var submissions = 0
@@ -150,7 +159,7 @@ final class ConnectedBackpackTests: XCTestCase {
         let reader = RegistrationReader()
         reader.suspend = true
         let model = ConnectedBackpackRegistration()
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         for _ in 0..<100 { if reader.suspended != nil { break }; await Task.yield() }
         reader.connection = nil
         reader.suspended?.resume(returning: reader.identity)
@@ -163,7 +172,7 @@ final class ConnectedBackpackTests: XCTestCase {
         let reader = RegistrationReader()
         reader.suspend = true
         let model = ConnectedBackpackRegistration()
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         for _ in 0..<100 { if reader.suspended != nil { break }; await Task.yield() }
         model.invalidate("Background")
         reader.suspended?.resume(returning: reader.identity)
@@ -176,7 +185,7 @@ final class ConnectedBackpackTests: XCTestCase {
     func testOneFlightAndNetworkFailureRemainExplicitWithoutAutomaticRetry() async {
         let reader = RegistrationReader()
         let model = ConnectedBackpackRegistration()
-        model.read(using: reader, authorize: {})
+        startRead(model, using: reader)
         await settle(model)
         var submissions = 0
         let failingSubmit: (ConnectedBackpackIdentity, AccountDeviceMetadata) async throws -> AccountDevice = { _, _ in
@@ -196,7 +205,7 @@ final class ConnectedBackpackTests: XCTestCase {
         let model = ConnectedBackpackRegistration()
         var authorized = true
         let authorize = { if !authorized { throw BackpackError.invalid("Account changed") } }
-        model.read(using: reader, authorize: authorize)
+        startRead(model, using: reader, authorize: authorize)
         await settle(model)
         reader.suspend = true
         var submissions = 0

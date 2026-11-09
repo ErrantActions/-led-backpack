@@ -165,17 +165,28 @@ final class ConnectedBackpackRegistration: ObservableObject {
     @Published private(set) var registering = false
     @Published private(set) var failure: String?
     @Published private(set) var registered: AccountDevice?
+    @Published private(set) var registryReview: DeviceRegistryReview?
+    @Published private(set) var contactConversationID: UUID?
+    @Published private(set) var pendingContact: DeviceRecoveryIntent?
     private var task: Task<Void, Never>?
+    private var expiryTask: Task<Void, Never>?
     private var generation = UUID()
     private let now: () -> TimeInterval
-    init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) { self.now = now }
-
-    func invalidate(_ reason: String? = nil) {
-        task?.cancel(); task = nil; generation = UUID()
-        observation = nil; registered = nil; busy = false; registering = false; failure = reason
+    private let outbox: DeviceRecoveryOutbox
+    init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        outbox: DeviceRecoveryOutbox? = nil) {
+        self.now = now; self.outbox = outbox ?? DeviceRecoveryOutbox(vault: CommunityKeychain())
     }
 
-    func read(using reader: ConnectedBackpackReading, authorize: @escaping () throws -> Void) {
+    func invalidate(_ reason: String? = nil) {
+        task?.cancel(); task = nil; expiryTask?.cancel(); expiryTask = nil; generation = UUID()
+        observation = nil; registered = nil; busy = false; registering = false; failure = reason
+        registryReview = nil; contactConversationID = nil; pendingContact = nil
+    }
+
+    func read(using reader: ConnectedBackpackReading,
+        registryLookup: ((ConnectedBackpackIdentity) async throws -> DeviceRegistryReview)? = nil,
+        authorize: @escaping () throws -> Void) {
         guard !busy else { return }
         invalidate()
         let generation = self.generation
@@ -193,8 +204,21 @@ final class ConnectedBackpackRegistration: ObservableObject {
                 guard reader.connection == connection else {
                     throw BackpackError.invalid("The backpack connection changed. Read it again.")
                 }
+                let captured = ConnectedBackpackObservation(identity: identity, connection: connection, readAt: now())
+                let review = try await registryLookup?(identity)
+                try authorize()
+                try Task.checkCancellation()
+                try captured.validate(connection: reader.connection, now: now())
                 guard self.generation == generation else { return }
-                observation = ConnectedBackpackObservation(identity: identity, connection: connection, readAt: now())
+                observation = captured; registryReview = review
+                let remaining = min(120 - (now() - captured.readAt), review?.recoverySecondsRemaining ?? 120)
+                expiryTask = Task { [weak self] in
+                    do { try await Task.sleep(for: .seconds(max(0, remaining))) }
+                    catch is CancellationError { return }
+                    catch { self?.invalidate(error.localizedDescription); return }
+                    guard let self, self.generation == generation else { return }
+                    self.invalidate("Device check expired. Check the connected backpack again.")
+                }
             } catch {
                 guard self.generation == generation, !Task.isCancelled else { return }
                 failure = error.localizedDescription
@@ -210,6 +234,10 @@ final class ConnectedBackpackRegistration: ObservableObject {
         failure = nil; registered = nil
         guard let captured = observation else {
             failure = "Read the connected backpack before adding it."
+            return
+        }
+        guard registryReview?.lookup.status == .available else {
+            failure = "Check the registry first. A backpack already adopted by another account cannot be taken over."
             return
         }
         let generation = self.generation
@@ -234,12 +262,90 @@ final class ConnectedBackpackRegistration: ObservableObject {
                 try Task.checkCancellation()
                 try captured.validate(connection: reader.connection, now: now())
                 guard self.generation == generation else { return }
-                registered = result; observation = nil
+                expiryTask?.cancel(); expiryTask = nil
+                registered = result; observation = nil; registryReview = nil
             } catch {
                 guard self.generation == generation, !Task.isCancelled else { return }
                 failure = "\(error.localizedDescription) Reload My devices after an uncertain response; retrying the same ID will not add another record."
             }
             if self.generation == generation { busy = false; registering = false }
         }
+    }
+
+    func contactOwner(using reader: ConnectedBackpackReading, scope: AccountServiceScope,
+        authorize: @escaping () throws -> Void) {
+        guard !busy else { return }
+        failure = nil; contactConversationID = nil
+        guard let captured = observation, let review = registryReview else {
+            failure = "Check the connected backpack before contacting its registered account."
+            return
+        }
+        let stamp = generation
+        busy = true
+        task = Task {
+            var attempted: DeviceRecoveryIntent?
+            do {
+                try authorize(); try scope.checkDeviceRegistry(recovery: true)
+                try captured.validate(connection: reader.connection, now: now())
+                let recovery = try review.recovery()
+                var saved = try outbox.load(account: scope.accountID, origin: scope.origin.url.absoluteString, kind: .contact)
+                if let prior = saved {
+                    pendingContact = prior
+                    if prior.state == .acknowledged {
+                        if prior.peerID == recovery.owner.id, prior.vendorID == captured.identity.vendorDeviceId,
+                           let id = prior.receiptID {
+                            try authorize()
+                            contactConversationID = id; busy = false
+                            return
+                        }
+                        try outbox.clearResolved(prior); saved = nil; pendingContact = nil
+                    } else {
+                        try prior.requireRetry(account: scope.accountID, origin: scope.origin.url.absoluteString,
+                            peer: recovery.owner.id, vendorID: captured.identity.vendorDeviceId)
+                    }
+                }
+                let fresh = try await reader.read()
+                try authorize(); try scope.checkDeviceRegistry(recovery: true)
+                try Task.checkCancellation()
+                try captured.validate(connection: reader.connection, now: now())
+                guard fresh == captured.identity else {
+                    observation = nil; registryReview = nil
+                    throw BackpackError.invalid("The connected backpack changed. Check it again before sending.")
+                }
+                _ = try review.recovery()
+                let intent = try saved ?? DeviceRecoveryIntent(account: scope.accountID,
+                    origin: scope.origin.url.absoluteString, peer: recovery.owner.id, kind: .contact,
+                    vendorID: fresh.vendorDeviceId, text: "I found your device.")
+                if saved == nil { try outbox.save(intent) }
+                try outbox.requireCurrent(intent)
+                attempted = intent; pendingContact = intent
+                let conversation = try await scope.contactDeviceOwner(review, identity: fresh, intent: intent)
+                try authorize(); try Task.checkCancellation()
+                guard generation == stamp else { return }
+                try outbox.acknowledge(intent, receipt: conversation.id)
+                pendingContact = nil; contactConversationID = conversation.id
+            } catch {
+                guard generation == stamp, !Task.isCancelled else { return }
+                if var attempted, let error = error as? CommunityFailure,
+                   [401, 403, 404].contains(error.status) ||
+                    error.status == 409 && ["device_recovery_closed", "device_recovery_contact_exists"].contains(error.code) {
+                    attempted.state = .retired
+                    do { try outbox.save(attempted); pendingContact = attempted }
+                    catch { failure = "Recovery state could not be saved: \(error.localizedDescription)" }
+                }
+                if failure == nil {
+                    failure = "\(error.localizedDescription) Check recovery messages before starting a new request."
+                }
+            }
+            if generation == stamp { busy = false }
+        }
+    }
+
+    func discardPendingContact() {
+        guard !busy, let pendingContact else { return }
+        do {
+            try outbox.discard(pendingContact)
+            self.pendingContact = nil; failure = nil
+        } catch { failure = error.localizedDescription }
     }
 }

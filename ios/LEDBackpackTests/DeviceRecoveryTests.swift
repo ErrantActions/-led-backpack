@@ -22,6 +22,7 @@ final class DeviceRecoveryTests: XCTestCase {
     private let vendor = "Ab12345678"
     private let origin = "https://catalog.example.invalid"
     private let token = String(repeating: "A", count: 43)
+    private let recoveryCreated = Date().addingTimeInterval(-60)
 
     private func decode<T: Decodable>(_ type: T.Type, _ value: [String: Any]) throws -> T {
         try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: value))
@@ -154,5 +155,67 @@ final class DeviceRecoveryTests: XCTestCase {
         XCTAssertThrowsError(try decode(DeviceRecoveryConversation.self, leaked).validate(account: account))
         var invalid = base; invalid["expiresAtISO"] = CatalogEventTime.wire(now.addingTimeInterval(31 * 86400))
         XCTAssertThrowsError(try decode(DeviceRecoveryConversation.self, invalid).validate(account: account))
+    }
+
+    private func context(peer: UUID? = nil, revision: Int = 1) -> DeviceRecoveryConversation {
+        DeviceRecoveryConversation(id: conversation, revision: revision, state: .accepted, role: .finder,
+            peer: DeviceRecoveryPerson(id: peer ?? owner, displayName: "Person"),
+            createdAtISO: CatalogEventTime.wire(recoveryCreated),
+            expiresAtISO: CatalogEventTime.wire(recoveryCreated.addingTimeInterval(30 * 86400)), deviceId: nil)
+    }
+    private func messages(_ range: ClosedRange<Int>) -> [DeviceRecoveryMessage] {
+        range.map { DeviceRecoveryMessage(id: UUID(), senderId: owner, text: "Reply \($0)",
+            sequence: $0, createdAtISO: CatalogEventTime.wire(recoveryCreated.addingTimeInterval(1))) }
+    }
+    func testDraftRestoresOnlyExactAccountOriginConversationAndPeer() throws {
+        let outbox = DeviceRecoveryOutbox(vault: RecoveryTestVault()), context = context()
+        try outbox.saveDraft("Unsent reply", account: account, origin: origin, conversation: context)
+        XCTAssertEqual(try outbox.draft(account: account, origin: origin, conversation: context), "Unsent reply")
+        XCTAssertNil(try outbox.draft(account: account, origin: "https://other.example.invalid", conversation: context))
+        XCTAssertThrowsError(try outbox.draft(account: account, origin: origin, conversation: self.context(peer: UUID())))
+        XCTAssertThrowsError(try outbox.draft(account: account, origin: origin + "/", conversation: context))
+        XCTAssertThrowsError(try outbox.saveDraft(String(repeating: "A", count: 1001),
+            account: account, origin: origin, conversation: context))
+        try outbox.saveDraft("", account: account, origin: origin, conversation: context)
+        XCTAssertNil(try outbox.draft(account: account, origin: origin, conversation: context))
+    }
+    func testExpiredDraftIsRemovedInsteadOfRestored() throws {
+        let vault = RecoveryTestVault(), outbox = DeviceRecoveryOutbox(vault: vault), context = context()
+        try outbox.saveDraft("Unsent", account: account, origin: origin, conversation: context)
+        XCTAssertNil(try outbox.draft(account: account, origin: origin, conversation: context,
+            now: CatalogEventTime.parse(context.expiresAtISO)))
+        XCTAssertTrue(vault.values.isEmpty)
+    }
+    func testHistoryCollectsExactly100MessagesInAscendingOrderAcrossTwoPages() throws {
+        var timeline = DeviceRecoveryTimeline(account: account, id: conversation)
+        try timeline.append(DeviceRecoveryHistory(conversation: context(), messages: messages(51...100), hasMore: true, nextBefore: 51))
+        try timeline.append(DeviceRecoveryHistory(conversation: context(), messages: messages(1...50), hasMore: false, nextBefore: 1))
+        XCTAssertEqual(timeline.messages.map(\.sequence), Array(1...100))
+        XCTAssertFalse(timeline.hasMore)
+        XCTAssertThrowsError(try timeline.append(DeviceRecoveryHistory(conversation: context(), messages: [], hasMore: false, nextBefore: nil)))
+    }
+    func testHistoryRejectsChangingRevisionAndCrossPageRepeatedID() throws {
+        let newer = messages(51...100)
+        var timeline = DeviceRecoveryTimeline(account: account, id: conversation)
+        try timeline.append(DeviceRecoveryHistory(conversation: context(), messages: newer, hasMore: true, nextBefore: 51))
+        XCTAssertThrowsError(try timeline.append(DeviceRecoveryHistory(conversation: context(revision: 2),
+            messages: messages(1...50), hasMore: false, nextBefore: 1)))
+        let duplicate = DeviceRecoveryMessage(id: newer[0].id, senderId: owner, text: "Repeated ID",
+            sequence: 1, createdAtISO: CatalogEventTime.wire(recoveryCreated.addingTimeInterval(1)))
+        XCTAssertThrowsError(try timeline.append(DeviceRecoveryHistory(conversation: context(),
+            messages: [duplicate], hasMore: false, nextBefore: 1)))
+    }
+    func testRecoveryIncidentUsesItsOwnPurposeAndNeverCopiesOriginalText() throws {
+        let message = try XCTUnwrap(messages(1...1).first)
+        let intent = try MessageIncidentIntent(recoveryMessage: message, context: context(), account: account,
+            category: .harassment, details: "My explanation", consent: true)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: intent.data) as? [String: Any])
+        XCTAssertEqual(body["kind"] as? String, "device-recovery")
+        XCTAssertEqual(body["messageId"] as? String, message.id.uuidString.lowercased())
+        XCTAssertEqual(body["details"] as? String, "My explanation")
+        XCTAssertNil(body["text"])
+        XCTAssertFalse(String(decoding: intent.data, as: UTF8.self).contains(message.text))
+        XCTAssertThrowsError(try MessageIncidentIntent(recoveryMessage: message, context: context(), account: account,
+            category: .other, details: "Explanation", consent: false))
     }
 }

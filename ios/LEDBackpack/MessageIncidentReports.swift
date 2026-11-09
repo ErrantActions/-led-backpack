@@ -13,7 +13,7 @@ struct NativeMessageIncident: Decodable, Identifiable {
     let resolved: Bool
     let reporterId, subjectId: UUID?
     func validate(staff: Bool) throws {
-        guard ["direct", "room"].contains(kind), revision >= 1, (1...1000).contains(details.utf16.count),
+        guard ["direct", "room", "device-recovery"].contains(kind), revision >= 1, (1...1000).contains(details.utf16.count),
               staff ? reporterId != nil && subjectId != nil : reporterId == nil && subjectId == nil else {
             throw BackpackError.invalid("Invalid retained incident/explanation/review scope.")
         }
@@ -37,6 +37,21 @@ struct MessageIncidentIntent {
     let category: MessageIncidentCategory
     let details: String
     let data: Data
+    init(recoveryMessage: DeviceRecoveryMessage, context: DeviceRecoveryConversation, account: UUID,
+        category: MessageIncidentCategory, details: String, consent: Bool) throws {
+        try context.validate(account: account)
+        try recoveryMessage.validate(conversation: context, account: account)
+        let explanation = details.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard consent, context.state != .closed, recoveryMessage.senderId == context.peer.id,
+              (1...1000).contains(explanation.utf16.count) else {
+            throw BackpackError.invalid("Choose an incoming recovery message and enter your incident explanation.")
+        }
+        kind = "device-recovery"; messageID = recoveryMessage.id
+        self.category = category; self.details = explanation
+        struct Body: Encodable { let kind, messageId: String; let category: MessageIncidentCategory; let details: String; let consent = true }
+        data = try JSONEncoder().encode(Body(kind: kind, messageId: messageID.uuidString.lowercased(),
+            category: category, details: explanation))
+    }
     init(message: NativeChatMessage, context: ChatConversation, account: UUID,
         category: MessageIncidentCategory, details: String, consent: Bool) throws {
         let explanation = details.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -91,14 +106,18 @@ struct MessageIncidentComposeView: View {
     @EnvironmentObject private var community: CommunityController
     @Environment(\.dismiss) private var dismiss
     @StateObject private var session = CommunityFeatureSession()
-    let message: NativeChatMessage
-    let context: ChatConversation
+    private enum Source {
+        case chat(NativeChatMessage, ChatConversation)
+        case recovery(DeviceRecoveryMessage, DeviceRecoveryConversation)
+    }
+    private let source: Source
+    init(message: NativeChatMessage, context: ChatConversation) { source = .chat(message, context) }
+    init(recoveryMessage: DeviceRecoveryMessage, context: DeviceRecoveryConversation) { source = .recovery(recoveryMessage, context) }
     @State private var category = MessageIncidentCategory.other
     @State private var details = ""
     @State private var consent = false
     @State private var intent: MessageIncidentIntent?
     @State private var submitted: NativeMessageIncident?
-    @State private var confirming = false
     var body: some View {
         NavigationStack {
             Form {
@@ -108,7 +127,7 @@ struct MessageIncidentComposeView: View {
                     Picker("Reason", selection: $category) { ForEach(MessageIncidentCategory.allCases) { Text($0.rawValue.capitalized).tag($0) } }
                     TextField("Your deliberate explanation (1–1000 characters)", text: $details, axis: .vertical).lineLimit(4...12)
                     Toggle("I consent to retaining my entered explanation for incident review", isOn: $consent)
-                    Button("Review deliberate submission") { confirming = true }.disabled(!consent || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.busy || intent != nil)
+                    Button("Submit report") { submit() }.disabled(!consent || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.busy || intent != nil)
                 }
                 if submitted != nil { Label("Your incident explanation was retained; original message unchanged.", systemImage: "checkmark.shield") }
                 if intent != nil && submitted == nil {
@@ -122,15 +141,20 @@ struct MessageIncidentComposeView: View {
                 .task { session.bind(community) }
                 .onChange(of: community.accountRevision) { _, _ in details = ""; intent = nil; submitted = nil; session.clear(); dismiss() }
                 .onDisappear { session.clear() }
-                .confirmationDialog("Retain only the explanation you deliberately entered?", isPresented: $confirming) {
-                    Button("Consent and submit explanation") { submit() }
-                } message: { Text("No original private content is included automatically. Category and explanation use server-managed protection; this is not a general moderator chat-access grant.") }
         }
     }
     private func submit() {
         session.run { client in
             guard intent == nil else { throw BackpackError.invalid("Review/discard the existing captured request explicitly.") }
-            let captured = try MessageIncidentIntent(message: message, context: context, account: client.accountID, category: category, details: details, consent: consent)
+            let captured: MessageIncidentIntent
+            switch source {
+            case .chat(let message, let context):
+                captured = try MessageIncidentIntent(message: message, context: context, account: client.accountID,
+                    category: category, details: details, consent: consent)
+            case .recovery(let message, let context):
+                captured = try MessageIncidentIntent(recoveryMessage: message, context: context, account: client.accountID,
+                    category: category, details: details, consent: consent)
+            }
             intent = captured
             let report = try await client.submitMessageIncident(captured)
             try session.checked(client); submitted = report; intent = nil

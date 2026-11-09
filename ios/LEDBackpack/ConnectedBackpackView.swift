@@ -2,127 +2,162 @@ import SwiftUI
 import BackpackProtocol
 
 @MainActor
-struct ConnectedBackpackView: View {
+struct ConnectedBackpackPanel: View {
+    var onRegistered: (AccountDevice) -> Void = { _ in }
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var panel: PanelController
     @EnvironmentObject private var link: BluetoothLink
     @Environment(\.scenePhase) private var phase
     @StateObject private var registration = ConnectedBackpackRegistration()
-    @State private var nickname = ""
-    @State private var consent = false
+    @State private var avatarScope: AccountServiceScope?
+    @State private var avatarEpoch = UUID()
+    @State private var conversationID: UUID?
     @State private var availabilityError: String?
 
     private var available: Bool {
         community.signedIn && community.config?.unverifiedDeviceTagsEnabled == true
             && community.config?.connectedDeviceRegistrationEnabled == true
+            && (community.config?.connectedDeviceRegistrationVersion ?? 0) >= 2
+    }
+    private var context: String {
+        "\(community.accountRevision):\(community.avatarPolicyRevision):\(available):\(community.config?.deviceRecoveryEnabled == true):\(link.connectionRevision):\(link.connected):\(phase)"
     }
 
     var body: some View {
-        Form {
-            Section {
-                Text("Add the backpack connected to this phone. Its vendor ID links a private account record across phones.")
-                Text("This ID can be changed or cloned. Adding it does not prove ownership, lock the backpack, or verify firmware compatibility.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 12) {
             if !community.signedIn {
-                NavigationLink("Sign in to add a backpack") { CommunityAccountView() }
+                NavigationLink("Sign in to manage your backpacks") { CommunityAccountView() }
             } else if !available {
-                Text("Connected backpack registration is unavailable on this server.")
+                Text("Device adoption is unavailable on this server.")
                 Button("Refresh availability") {
                     Task {
                         do { try await community.loadConfig(); availabilityError = nil }
                         catch { availabilityError = error.localizedDescription }
                     }
                 }
-            } else if let device = registration.registered {
-                Section("Added to your account") {
-                    Text(device.nickname).font(.headline)
-                    Text("Private association · ownership unverified")
-                    Text("Owner sharing stays off for new records. Existing records keep their settings. No backpack settings or artwork changed.")
-                        .font(.caption)
-                    NavigationLink("My devices") { AccountDevicesView() }
-                    Button("Read another backpack") { reset() }
-                }
             } else {
-                Section("1. Read connected backpack") {
-                    if !link.connected {
-                        Text("Connect on the Backpack tab first. If it is locked, enter its existing password there. Then return here.")
-                    }
-                    Button(registration.observation == nil ? "Read connected backpack" : "Read again") {
-                        consent = false
-                        do {
-                            let scope = try AccountServiceScope(community, capability: .devices)
-                            registration.read(using: PanelConnectedBackpackReader(panel: panel, link: link)) {
-                                try authorize(scope)
+                if let device = registration.registered {
+                    Label("\(device.nickname) is in My devices", systemImage: "checkmark.circle.fill")
+                } else if let review = registration.registryReview {
+                    switch review.lookup.status {
+                    case .available:
+                        Label("Ready to adopt", systemImage: "backpack")
+                        if let identity = registration.observation?.identity {
+                            Text("\(identity.model) · \(identity.matrix.id)").font(.subheadline)
+                        }
+                        Text("Saves this connection privately to your account. The device ID is mutable and is not ownership proof.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Adopt this backpack") { adopt() }
+                            .buttonStyle(AuroraPrimaryButton())
+                            .disabled(registration.busy || !link.connected || panel.busy || panel.hasDisplayOwner)
+                            .accessibilityIdentifier("connected-backpack-add")
+                    case .owned:
+                        if let device = review.lookup.device {
+                            Label("\(device.nickname) is already in My devices", systemImage: "checkmark.circle")
+                        }
+                    case .registeredElsewhere:
+                        Text("Already adopted").font(.headline)
+                        if let recovery = review.lookup.recovery, let scope = avatarScope {
+                            HStack {
+                                if recovery.owner.avatarPreviewUrl != nil {
+                                    GIFThumbnail(key: "device-recovery:\(avatarEpoch)", cache: false) {
+                                        guard let data = try await scope.recoveryAvatar(review) else {
+                                            throw BackpackError.invalid("The recovery avatar is no longer available.")
+                                        }
+                                        return data
+                                    }.frame(width: 56, height: 56).clipShape(Circle())
+                                }
+                                Text(recovery.owner.displayName).font(.headline)
                             }
-                        } catch { registration.invalidate(error.localizedDescription) }
+                            Button(registration.pendingContact == nil ? "I found your device" : "Retry found-device message") {
+                                contact()
+                            }.disabled(registration.busy || !link.connected || panel.busy || panel.hasDisplayOwner)
+                            Text("Sends one introduction. You can exchange recovery replies if this person responds, without becoming friends.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Text("The registered account has not enabled found-device contact.")
+                                .font(.subheadline)
+                        }
+                    case .ambiguous:
+                        Text("This ID matches more than one account.")
+                        Text("We cannot safely identify one person or adopt this connection. No account details are shared.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
+                } else if !link.connected {
+                    Text("Connect a backpack on the Backpack tab to check it here.")
+                } else if !registration.busy {
+                    Text("Check the connected backpack to see whether it is already adopted.")
+                }
+                if registration.busy { ProgressView("Checking backpack…") }
+                Button(registration.observation == nil ? "Check connected backpack" : "Check again") { check() }
                     .disabled(!link.connected || panel.busy || panel.hasDisplayOwner || registration.busy)
                     .accessibilityIdentifier("connected-backpack-read")
-                    Text("Reads device information and dimensions only. No scanning, password changes, ID writes, firmware writes or display changes.")
+                if registration.pendingContact != nil {
+                    Button("Clear pending introduction", role: .destructive) { registration.discardPendingContact() }
+                        .disabled(registration.busy)
+                    Text("Clearing local delivery state does not recall a message already received.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if let observation = registration.observation {
-                    Section("2. Confirm this backpack") {
-                        LabeledContent("Vendor ID", value: observation.identity.vendorDeviceId)
-                        LabeledContent("Model", value: observation.identity.model)
-                        LabeledContent("Firmware", value: observation.identity.firmware)
-                        LabeledContent("Panel", value: observation.identity.matrix.id)
-                        TextField("Backpack nickname", text: $nickname)
-                            .accessibilityIdentifier("connected-backpack-nickname")
-                        Toggle("I have physical access to this backpack and want its ID saved privately to my account", isOn: $consent)
-                            .accessibilityIdentifier("connected-backpack-consent")
-                        Text("Only continue if this is your intended backpack. Bluetooth proximity and this confirmation are not ownership proof. Its ID is not included in public owner cards.")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Button("Add to my account") {
-                            do {
-                                let scope = try AccountServiceScope(community, capability: .devices)
-                                registration.register(nickname: nickname, consent: consent,
-                                    using: PanelConnectedBackpackReader(panel: panel, link: link),
-                                    authorize: { try authorize(scope) },
-                                    submit: { identity, metadata in
-                                        try await scope.addConnectedDevice(identity, metadata: metadata, consent: true)
-                                    })
-                            } catch { registration.invalidate(error.localizedDescription); consent = false }
-                        }
-                        .buttonStyle(AuroraPrimaryButton())
-                        .disabled(!consent || nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            || registration.busy || panel.busy || panel.hasDisplayOwner || !link.connected)
-                        .accessibilityIdentifier("connected-backpack-add")
-                        Text("The app reads the backpack again before saving. Repeated registration of the same ID on this account reuses its record; an ID collision does not prove that two backpacks are the same.")
-                            .font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("Device details") {
+                    if let identity = registration.observation?.identity {
+                        LabeledContent("Vendor ID", value: identity.vendorDeviceId).privacySensitive()
+                        LabeledContent("Model", value: identity.model)
+                        LabeledContent("Firmware", value: identity.firmware)
+                        LabeledContent("Panel", value: identity.matrix.id)
                     }
+                    Text("Checks read device information only. No scanning, display changes, ID writes or firmware writes.")
+                        .font(.caption)
                 }
             }
-            if registration.busy { ProgressView("Checking backpack…") }
             if let error = registration.failure ?? availabilityError {
                 Text(error).foregroundStyle(.orange).accessibilityIdentifier("connected-backpack-error")
             }
         }
-        .modernScene().navigationTitle("Add connected backpack")
-        .onChange(of: registration.observation) { _, _ in consent = false }
-        .onChange(of: consent) { _, value in
-            if !value && registration.registering {
-                registration.invalidate("Confirmation withdrawn. Reload My devices if a request was already sent.")
-            }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task(id: context) {
+            reset()
+            if available, phase == .active, link.connected, !panel.busy, !panel.hasDisplayOwner { check() }
         }
-        .onChange(of: community.accountRevision) { _, _ in reset() }
-        .onChange(of: community.config?.connectedDeviceRegistrationEnabled) { _, _ in reset() }
-        .onChange(of: community.config?.unverifiedDeviceTagsEnabled) { _, _ in reset() }
-        .onChange(of: link.connectionRevision) { _, _ in reset("Connection changed. Read and confirm the backpack again.") }
-        .onChange(of: link.connected) { _, connected in if !connected { reset("Backpack disconnected. Read it again after reconnecting.") } }
-        .onChange(of: phase) { _, value in if value != .active { reset("Registration paused. Read and confirm again when you return.") } }
+        .onChange(of: registration.registered?.id) { _, _ in
+            if let device = registration.registered { onRegistered(device) }
+        }
+        .onChange(of: registration.contactConversationID) { _, value in conversationID = value }
+        .navigationDestination(item: $conversationID) { DeviceRecoveryThreadView(id: $0) }
         .onDisappear { reset() }
     }
 
     private func authorize(_ scope: AccountServiceScope) throws {
-        try scope.check()
+        try scope.checkDeviceRegistry()
         guard available, phase == .active else {
-            throw BackpackError.invalid("Registration is no longer available for this account or foreground session.")
+            throw BackpackError.invalid("This account or foreground session changed. Check the backpack again.")
         }
     }
-
-    private func reset(_ reason: String? = nil) {
-        registration.invalidate(reason); consent = false; nickname = ""; availabilityError = nil
+    private func check() {
+        do {
+            let scope = try AccountServiceScope(community, capability: .devices)
+            avatarScope = scope; avatarEpoch = UUID(); availabilityError = nil
+            registration.read(using: PanelConnectedBackpackReader(panel: panel, link: link),
+                registryLookup: { try await scope.lookupConnectedDevice($0, consent: true) },
+                authorize: { try authorize(scope) })
+        } catch { registration.invalidate(error.localizedDescription); avatarScope = nil }
+    }
+    private func adopt() {
+        do {
+            let scope = try AccountServiceScope(community, capability: .devices)
+            registration.register(nickname: "My backpack", consent: true,
+                using: PanelConnectedBackpackReader(panel: panel, link: link),
+                authorize: { try authorize(scope) },
+                submit: { try await scope.addConnectedDevice($0, metadata: $1, consent: true) })
+        } catch { registration.invalidate(error.localizedDescription) }
+    }
+    private func contact() {
+        do {
+            let scope = try AccountServiceScope(community, capability: .devices)
+            registration.contactOwner(using: PanelConnectedBackpackReader(panel: panel, link: link),
+                scope: scope, authorize: { try authorize(scope) })
+        } catch { registration.invalidate(error.localizedDescription) }
+    }
+    private func reset() {
+        registration.invalidate(); avatarScope = nil; avatarEpoch = UUID(); availabilityError = nil
     }
 }

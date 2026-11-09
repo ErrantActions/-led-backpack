@@ -30,7 +30,8 @@ private actor LibraryPreviewTransport: CommunityTransport {
                 "requireEmailVerification": false, "passwordRecoveryAvailable": false, "privateLibraryEnabled": true,
                 "accountDeletionRetainsSharedGifs": false, "appleSignInEnabled": true,
                 "socialEnabled": social, "messagingEnabled": social, "eventsEnabled": social, "nearbyDiscoveryEnabled": social,
-                "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social]))
+                "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social,
+                "connectedDeviceRegistrationVersion": 2, "deviceRecoveryEnabled": false]))
         }
         if request.httpMethod == "POST", path == "/api/v1/auth/login",
            let body = request.httpBody, let values = try JSONSerialization.jsonObject(with: body) as? [String: String],
@@ -80,6 +81,10 @@ private actor LibraryPreviewTransport: CommunityTransport {
         }
         if social, request.httpMethod == "GET" {
             switch path {
+            case "/api/v1/devices":
+                return .init(status: 200, data: Data(#"{"devices":[]}"#.utf8))
+            case "/api/v1/devices/transfers":
+                return .init(status: 200, data: Data(#"{"transfers":[]}"#.utf8))
             case "/api/v1/social/me":
                 return .init(status: 200, data: Data("""
                 {"profile":{"id":"\(LibraryPreviewFixture.owner)","displayName":"UI Rider"},

@@ -4,6 +4,32 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
+## Current redesign board (not shipped in build 11)
+
+Research and attributed reference images are retained in the ignored local
+scratch research folder, not bundled or published as application artwork.
+Older checkpoints below are historical evidence, not the current release board.
+
+- [x] Build-11 upload completed before the new research/redesign phase.
+- [x] Primary-source messaging, social, riding/GPS, LED apps, iOS systems and Duo
+  research documented, with 41 attributed local image references.
+- [x] Recovery transport foundation323caaf compiled;97 focused native tests
+  passed in42588981367. This does not validate later view/store changes.
+- [ ] Validate integrated My devices automatic connected read, v2 adoption gate,
+  per-backpack opt-in and scoped recovery profile/contact UI.
+- [ ] Validate contextual recovery inbox/history/replies, private drafts,
+  immutable retry IDs, close/block/report and lifecycle revocation.
+- [ ] Complete native adaptive/reserved-region layouts and verify state/actions
+  across current Duo arrangements, narrow windows and accessibility settings.
+- [ ] Complete remaining low-friction upload/discovery/chat workflows; preserve
+  distinct system/privacy/destructive boundaries, not repeated intent dialogs.
+- [ ] Reconcile the remaining historical roadmap against current software proof.
+- [ ] Full release-eligible native gate and next authorized beta promotion.
+- [ ] Backend v2 full validation, preservation-checked deployment and public
+  recovery/revocation smoke proof. The last confirmed deployment is v1.
+- [ ] Physical BLE/GPS/UWB acceptance, private provider/system-auth acceptance,
+  and Apple processing/internal tester availability remain separate checks.
+
 ## Build 11 - verified upload
 
 - [x] Source191d8af full run42577133898: native1,044/0fail/2explicit skips,

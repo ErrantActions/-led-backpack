@@ -142,4 +142,49 @@ final class DeviceRecoveryOutbox {
         }
         try vault.remove(key(account: value.accountID, origin: value.origin, kind: value.kind))
     }
+
+    private struct Draft: Codable {
+        let account, conversation, peer: UUID
+        let origin, text: String
+        let expiresAt: Date
+    }
+    private func draftKey(account: UUID, origin: String, conversation: UUID) -> String {
+        let digest = SHA256.hash(data: Data("\(origin)\n\(account.uuidString)\n\(conversation.uuidString)".utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        return "device-recovery.draft.v1:\(digest)"
+    }
+    func draft(account: UUID, origin: String, conversation: DeviceRecoveryConversation,
+        now: Date = Date()) throws -> String? {
+        try conversation.validate(account: account)
+        guard try CommunityOrigin.parse(origin).url.absoluteString == origin else {
+            throw BackpackError.invalid("Recovery draft has an invalid server origin.")
+        }
+        let key = draftKey(account: account, origin: origin, conversation: conversation.id)
+        guard let data = try vault.read(key) else { return nil }
+        guard data.count <= 16_384 else { throw BackpackError.invalid("Recovery draft exceeds its storage limit.") }
+        let value = try JSONDecoder().decode(Draft.self, from: data)
+        let expiry = try CatalogEventTime.parse(conversation.expiresAtISO)
+        guard value.account == account, value.origin == origin, value.conversation == conversation.id,
+              value.peer == conversation.peer.id, value.expiresAt == expiry,
+              value.text.utf16.count <= 1000 else {
+            throw BackpackError.invalid("The saved recovery draft has a different account or conversation.")
+        }
+        if now >= expiry { try vault.remove(key); return nil }
+        return value.text
+    }
+    func saveDraft(_ text: String, account: UUID, origin: String,
+        conversation: DeviceRecoveryConversation) throws {
+        try conversation.validate(account: account)
+        guard try CommunityOrigin.parse(origin).url.absoluteString == origin else {
+            throw BackpackError.invalid("Recovery draft has an invalid server origin.")
+        }
+        guard text.utf16.count <= 1000 else { throw BackpackError.invalid("Recovery messages allow up to 1,000 characters.") }
+        let key = draftKey(account: account, origin: origin, conversation: conversation.id)
+        if text.isEmpty { try vault.remove(key); return }
+        let value = Draft(account: account, conversation: conversation.id, peer: conversation.peer.id,
+            origin: origin, text: text, expiresAt: try CatalogEventTime.parse(conversation.expiresAtISO))
+        let data = try JSONEncoder().encode(value)
+        guard data.count <= 16_384 else { throw BackpackError.invalid("Recovery draft exceeds its storage limit.") }
+        try vault.save(data, key: key)
+    }
 }

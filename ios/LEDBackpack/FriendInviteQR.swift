@@ -104,7 +104,6 @@ struct FriendInviteQRView: View {
     @State private var previewClock: CatalogEventClock?
     @State private var capture = FriendInvitePreviewState()
     @State private var scanning = false
-    @State private var confirming = false
     @State private var notice: String?
     @State private var qrTask: Task<Void, Never>?
     @State private var openedScanner = false
@@ -150,7 +149,7 @@ struct FriendInviteQRView: View {
                             if previewClock.now() < Date(timeIntervalSince1970: preview.expiresAt / 1000) {
                                 Text(preview.profile.displayName).font(.headline)
                                 Text("Authenticated minimal inviter preview only; no avatar/profile lookup or new grant.").font(.caption)
-                                Button("Review explicit friend request") { confirming = true }.disabled(session.busy)
+                                Button("Send friend request") { requestFriend() }.disabled(session.busy)
                             } else { Text("Preview expired. Enter/scan and preview a fresh invitation explicitly.") }
                         }
                     }
@@ -187,14 +186,14 @@ struct FriendInviteQRView: View {
                     .toolbar { Button("Cancel") { scanning = false } }
             }
         }
-        .confirmationDialog("Send only a friend request to this inviter?", isPresented: $confirming) {
-            if let token = capture.token, let inviter = capture.inviter, capture.accountEpoch == community.accountRevision {
-                Button("Send deliberate request") {
-                    session.run({ client in try await client.requestFromPreview(token: token, inviter: inviter) },
-                        success: { clearPreview(); notice = "Explicit request processed. Recipient acceptance/existing relationship is independent; no new location/game/library grant." })
-                }
-            }
-        } message: { Text("The authenticated preview is checked again for the exact inviter/expiry/revocation. No automatic redeem, acceptance, discovery or game activation.") }
+    }
+    private func requestFriend() {
+        guard let token = capture.token, let inviter = capture.inviter, capture.accountEpoch == community.accountRevision else {
+            session.run { _ in throw BackpackError.invalid("Invitation preview changed. Scan or preview it again.") }
+            return
+        }
+        session.run({ client in try await client.requestFromPreview(token: token, inviter: inviter) },
+            success: { clearPreview(); notice = "Friend request sent." })
     }
     private func consume(_ raw: String) {
         clearPreview(); input = "" // The consumed fragment never becomes native navigation/history.
@@ -240,6 +239,6 @@ struct FriendInviteQRView: View {
             }
         }
     }
-    private func clearPreview() { preview = nil; previewClock = nil; capture.clear(); confirming = false }
+    private func clearPreview() { preview = nil; previewClock = nil; capture.clear() }
     private func clearAll() { clearPreview(); input = ""; own = nil; qr = nil; shareURL = nil; qrTask?.cancel(); scanning = false }
 }

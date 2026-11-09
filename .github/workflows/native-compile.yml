@@ -67,7 +67,11 @@ jobs:
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
                 "-maximum-test-execution-time-allowance" "900")
             elif [ "$VALIDATION_MODE" = device-recovery ]; then
-              CLASSES=(DeviceRecoveryTests AccountNativeParityTests ConnectedBackpackTests)
+              CLASSES=(DeviceRecoveryTests AccountNativeParityTests ConnectedBackpackTests FriendInviteQRTests MessageIncidentReportTests)
+              TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testConnectedBackpackRegistrationRequiresSignInBeforeReadingHardware"
+                "-only-testing:LEDBackpackUITests/NavigationTests/testConnectedBackpackRegistrationDoesNotScanOrInventIdentityWhileDisconnected")
+              TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "180"
+                "-maximum-test-execution-time-allowance" "300")
             elif [ "$VALIDATION_MODE" = ux-endpoints ]; then
               CLASSES=()
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable"

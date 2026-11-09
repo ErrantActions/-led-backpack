@@ -35,8 +35,14 @@ private actor AccountParityTransport: CommunityTransport {
 @MainActor
 private final class AccountParityVault: CommunityVault {
     private var values: [String: Data] = [:]
+    var failSaveNumber: Int?
+    private var saves = 0
     func read(_ key: String) throws -> Data? { values[key] }
-    func save(_ value: Data, key: String) throws { values[key] = value }
+    func save(_ value: Data, key: String) throws {
+        saves += 1
+        guard saves != failSaveNumber else { throw BackpackError.invalid("Synthetic Keychain write failure") }
+        values[key] = value
+    }
     func remove(_ key: String) throws { values[key] = nil }
 }
 
@@ -46,6 +52,7 @@ final class AccountNativeParityTests: XCTestCase {
     private let itemID = UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!
     private let other = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!
     private let token = String(repeating: "A", count: 43)
+    private let recoveryCreated = Date().addingTimeInterval(-60)
     private let allCapabilities = #""unverifiedDeviceTagsEnabled":true,"firmwareCatalogEnabled":true,"firmwareMaxUploadBytes":16777216,"deviceResearchEnabled":true,"adminBulkModerationEnabled":true,"uploadAbuseMonitoringEnabled":true,"avatarsEnabled":true,"avatarUploadsEnabled":true,"avatarApprovalMode":"ai","avatarCropsEnabled":true,"socialEnabled":true,"viewerMediaPreferencesEnabled":true,"nativeSizeFiltersEnabled":true"#
     private func data(_ text: String) -> Data { Data(text.utf8) }
     private func digest(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() }
@@ -533,5 +540,87 @@ final class AccountNativeParityTests: XCTestCase {
         let second = try NativeAvatarSelection(bytes: gif(), expectedVersion: itemID, scope: account)
         XCTAssertNotEqual(first.id, second.id); XCTAssertEqual(first.bytes, second.bytes)
         XCTAssertNotEqual(NativeAvatarCrop(), NativeAvatarCrop(widthPercent: 50))
+    }
+
+    private var recoveryFlags: String {
+        #""unverifiedDeviceTagsEnabled":true,"connectedDeviceRegistrationEnabled":true,"connectedDeviceRegistrationVersion":2,"deviceRecoveryEnabled":true,"messagingEnabled":true"#
+    }
+    private func recoveryContext(state: String = "accepted", role: String = "owner", revision: Int = 1) -> String {
+        #"{"id":"\#(itemID)","revision":\#(revision),"state":"\#(state)","role":"\#(role)","peer":{"id":"\#(other)","displayName":"Recovery peer"},"createdAtISO":"\#(CatalogEventTime.wire(recoveryCreated))","expiresAtISO":"\#(CatalogEventTime.wire(recoveryCreated.addingTimeInterval(30 * 86400)))"}"#
+    }
+    private func recoveryHistory(state: String = "accepted", role: String = "owner", revision: Int = 1) -> CommunityResponse {
+        .init(status: 200, data: data(#"{"conversation":\#(recoveryContext(state: state, role: role, revision: revision)),"messages":[],"hasMore":false,"nextBefore":null}"#))
+    }
+    private func recoveryReceipt(text: String = "Thank you") -> CommunityResponse {
+        .init(status: 200, data: data(#"{"message":{"id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd","senderId":"\#(account)","text":"\#(text)","sequence":1,"createdAtISO":"\#(CatalogEventTime.wire(recoveryCreated.addingTimeInterval(1)))"}}"#))
+    }
+    func testRecoveryOwnerReplyAcceptsThenSendsWithoutCreatingFriendship() async throws {
+        let accepted = CommunityResponse(status: 200, data: data(#"{"conversation":\#(recoveryContext(revision: 2))}"#))
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [
+            recoveryHistory(state: "pending"), recoveryHistory(state: "pending"), accepted, recoveryReceipt()
+        ])
+        let outbox = DeviceRecoveryOutbox(vault: AccountParityVault())
+        let store = DeviceRecoveryThreadStore(outbox: outbox)
+        await store.bind(controller, id: itemID)
+        store.text = "Thank you"
+        XCTAssertTrue(store.canSend)
+        await store.send()
+        XCTAssertNil(store.failure)
+        XCTAssertEqual(store.conversation?.state, .accepted)
+        XCTAssertEqual(store.messages.last?.text, "Thank you")
+        XCTAssertNil(store.pending)
+        XCTAssertEqual(store.text, "")
+        let writes = await transport.history().filter { $0.httpMethod == "POST" && $0.url?.path.contains("/devices/") == true }
+        XCTAssertEqual(writes.map { $0.url?.lastPathComponent }, ["respond", "messages"])
+        XCTAssertFalse(writes.contains { $0.url?.path.contains("friend") == true })
+        XCTAssertNil(try outbox.load(account: account, origin: "https://catalog.example.invalid", kind: .message))
+    }
+    func testRecoveryFinderCannotSendSecondIntroductionWhilePending() async throws {
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [
+            recoveryHistory(state: "pending", role: "finder"), recoveryHistory(state: "pending", role: "finder")
+        ])
+        let outbox = DeviceRecoveryOutbox(vault: AccountParityVault())
+        let store = DeviceRecoveryThreadStore(outbox: outbox)
+        await store.bind(controller, id: itemID)
+        store.text = "Another introduction"
+        XCTAssertFalse(store.canSend)
+        await store.send()
+        XCTAssertNotNil(store.failure)
+        XCTAssertNil(try outbox.load(account: account, origin: "https://catalog.example.invalid", kind: .message))
+        let writes = await transport.history().filter { $0.httpMethod == "POST" && $0.url?.path.contains("/devices/") == true }
+        XCTAssertTrue(writes.isEmpty)
+    }
+    func testRecoveryReceiptPersistenceFailureRetriesTheExactSameIDAndText() async throws {
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [
+            recoveryHistory(), recoveryHistory(), recoveryReceipt(), recoveryHistory(), recoveryReceipt()
+        ])
+        let vault = AccountParityVault()
+        vault.failSaveNumber = 2
+        let outbox = DeviceRecoveryOutbox(vault: vault), store = DeviceRecoveryThreadStore(outbox: DeviceRecoveryOutbox(vault: vault))
+        await store.bind(controller, id: itemID); store.text = "Thank you"
+        await store.send()
+        XCTAssertTrue(store.failure?.hasPrefix("Sent, but") == true)
+        let first = try XCTUnwrap(store.pending)
+        XCTAssertEqual(try outbox.load(account: account, origin: "https://catalog.example.invalid", kind: .message)?.state, .uncertain)
+        await store.send(retry: true)
+        XCTAssertNil(store.failure); XCTAssertNil(store.pending)
+        let sends = await transport.history().filter { $0.url?.lastPathComponent == "messages" }
+        XCTAssertEqual(sends.count, 2)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(sends[0].httpBody)) as? [String: Any])
+        let retryBody = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(sends[1].httpBody)) as? [String: Any])
+        XCTAssertEqual(body["clientMessageId"] as? String, first.clientID.uuidString.lowercased())
+        XCTAssertEqual(body["clientMessageId"] as? String, retryBody["clientMessageId"] as? String)
+        XCTAssertEqual(body["text"] as? String, retryBody["text"] as? String)
+    }
+    func testRecoveryLateHistoryCannotReappearAfterAccountOrScreenClears() async throws {
+        let (controller, transport) = try await setup(flags: recoveryFlags, replies: [recoveryHistory()])
+        let store = DeviceRecoveryThreadStore(outbox: DeviceRecoveryOutbox(vault: AccountParityVault()))
+        await transport.armSuspension()
+        let task = Task { await store.bind(controller, id: itemID) }
+        await transport.waitUntilSuspended()
+        store.clear(); try controller.forgetLocalSession()
+        await transport.resume(); await task.value
+        XCTAssertNil(store.conversation); XCTAssertTrue(store.messages.isEmpty)
+        XCTAssertEqual(store.text, ""); XCTAssertNil(store.pending)
     }
 }
