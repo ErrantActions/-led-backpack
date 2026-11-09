@@ -233,6 +233,7 @@ struct AccountDevicesView: View {
                         VStack(alignment: .leading) {
                             Text(device.nickname).font(.headline)
                             Text("\(device.model) · \(device.matrix?.id ?? "unknown matrix")").font(.caption)
+                            if !device.transferPending { Button("Rename") { editing = device } }
                             if device.connection != nil, !device.transferPending,
                                (community.config?.connectedDeviceRegistrationVersion ?? 0) >= 2,
                                community.config?.deviceRecoveryEnabled == true || device.recoveryEnabled == true {
@@ -249,20 +250,21 @@ struct AccountDevicesView: View {
                                 Text("Shares your screen name and avatar with someone checking this connected backpack. Replies stay in a private recovery thread.")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
-                            if let connection = device.connection {
-                                DisclosureGroup("Private connected ID") {
-                                    LabeledContent("Vendor ID", value: connection.vendorDeviceId)
-                                    Text("Mutable ID, not ownership proof. Existing ID collisions cannot identify one owner. Unlink removes this account's record; transfer moves only the label and drops the private ID.")
-                                        .font(.caption)
+                            DisclosureGroup("Sharing & device options") {
+                                if let connection = device.connection {
+                                    LabeledContent("Private vendor ID", value: connection.vendorDeviceId).privacySensitive()
+                                    Text("Mutable ID, not ownership proof. Transfers move only the label and drop its private ID.")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
+                                if !device.transferPending {
+                                    Button(device.ownerCardEnabled ? "Replace/revoke old QR and share owner" : "Issue unverified owner QR") { confirm(device, "tag") }
+                                    if device.ownerCardEnabled { Button("Revoke owner card", role: .destructive) { confirm(device, "revoke") } }
+                                    Button("Offer transfer to selected friend") { confirm(device, "transfer") }.disabled(recipient == nil)
+                                } else {
+                                    Button("Cancel pending transfer") { confirm(device, "cancel") }
+                                }
+                                Button("Unlink backpack", role: .destructive) { confirm(device, "remove") }
                             }
-                            if !device.transferPending {
-                                Button("Rename") { editing = device }
-                                Button(device.ownerCardEnabled ? "Replace/revoke old QR and share owner" : "Issue unverified owner QR") { confirm(device, "tag") }
-                                if device.ownerCardEnabled { Button("Revoke owner card", role: .destructive) { confirm(device, "revoke") } }
-                                Button("Offer transfer to selected friend") { confirm(device, "transfer") }.disabled(recipient == nil)
-                            } else { Button("Cancel pending transfer") { confirm(device, "cancel") } }
-                            Button("Unlink label and revoke tags", role: .destructive) { confirm(device, "remove") }
                         }
                     }
                 }

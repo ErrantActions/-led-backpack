@@ -23,6 +23,10 @@ struct CommunityMessagesView: View {
     @State private var creating = false
     @State private var pendingInvite: NativeChatInvitation?
     @State private var inviteScope: UUID?
+    private var newConversationContacts: [SocialPerson] {
+        let existing = Set(recent.filter { $0.eventId == nil }.map { $0.profile.id })
+        return friends.filter { !existing.contains($0.id) }
+    }
     var body: some View {
         List {
             if community.config?.messagingEnabled == true && !session.denied {
@@ -34,11 +38,6 @@ struct CommunityMessagesView: View {
                 if community.config?.deviceRecoveryEnabled == true {
                     NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
                 }
-                Section("Friends") {
-                    ForEach(friends) { person in
-                        Button(person.displayName) { selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName) }
-                    }
-                }
                 Section("Recent conversations") {
                     ForEach(recent) { contact in
                         Button {
@@ -49,6 +48,13 @@ struct CommunityMessagesView: View {
                                 Text(contact.profile.displayName)
                                 Spacer()
                                 if contact.eventId != nil { Text("Private event question").font(.caption) }
+                            }
+                        }
+                        if !newConversationContacts.isEmpty {
+                            Section("Start a conversation") {
+                                ForEach(newConversationContacts) { person in
+                                    Button(person.displayName) { selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName) }
+                                }
                             }
                         }
                     }

@@ -200,6 +200,8 @@ struct DeviceView: View {
                 .padding(20).frame(maxWidth: 900, alignment: .leading).frame(maxWidth: .infinity)
             }.modernScene()
             .navigationTitle("LED Backpack").navigationBarTitleDisplayMode(.inline)
+            .onDisappear { link.stopScan() }
+            .onChange(of: settings) { _, shown in if shown { link.stopScan() } }
             .toolbar { Button("Settings", systemImage: "gearshape") { settings = true } }
             .sheet(isPresented: $settings) { SettingsView() }
             .confirmationDialog(disablePassword ? "Disable the panel password?" : "Change the panel password?", isPresented: $confirmPassword) {

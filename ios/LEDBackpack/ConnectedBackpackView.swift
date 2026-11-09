@@ -57,7 +57,9 @@ struct ConnectedBackpackPanel: View {
                         }
                     case .registeredElsewhere:
                         Text("Already adopted").font(.headline)
-                        if let recovery = review.lookup.recovery, let scope = avatarScope {
+                        if community.config?.deviceRecoveryEnabled == true,
+                           let recovery = review.lookup.recovery, let scope = avatarScope,
+                           scope.revision == community.accountRevision {
                             HStack {
                                 if recovery.owner.avatarPreviewUrl != nil {
                                     GIFThumbnail(key: "device-recovery:\(avatarEpoch)", cache: false) {
