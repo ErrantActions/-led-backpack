@@ -198,7 +198,7 @@ final class NavigationTests: XCTestCase {
         let phoneOptions = app.buttons["Phone animation"]
         reveal(phoneOptions, in: app); phoneOptions.tap()
         let automation = app.buttons["Capture durable original and arm PHONE"]
-        reveal(automation, in: app, requireHittable: false, maximumSwipes: 20)
+        reveal(automation, in: app, requireHittable: false)
         XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
         assertNoVisibleEntryForms(app)
         XCTAssertFalse(app.buttons["Create scene"].isHittable)
@@ -493,8 +493,11 @@ final class NavigationTests: XCTestCase {
                     if XCTWaiter.wait(for: [ready], timeout: 1) == .completed { return }
                     continue
                 }
-                if distance > 0 { container.swipeDown() }
-                else { container.swipeUp() }
+                let start = app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: visible.midX, dy: visible.midY))
+                let end = start.withOffset(CGVector(dx: 0, dy: distance))
+                start.press(forDuration: 0, thenDragTo: end,
+                    withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0)
             } else {
                 container.swipeUp()
             }
