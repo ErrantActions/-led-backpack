@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps, ui, library, library-units, connected-device]
+        options: [focused, compile, gps, ui, library, library-units, connected-device, peer-protocol]
         default: focused
         required: true
 permissions:
@@ -66,6 +66,8 @@ jobs:
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests")
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
                 "-maximum-test-execution-time-allowance" "900")
+            elif [ "$VALIDATION_MODE" = peer-protocol ]; then
+              CLASSES=(PhoneSwapGameTests FriendPlaybackTests LocalPairingTests AutomaticPhoneSessionTests)
             elif [ "$VALIDATION_MODE" = connected-device ]; then
               CLASSES=(ConnectedBackpackTests AccountNativeParityTests BackpackFeatureTests)
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testConnectedBackpackRegistrationRequiresSignInBeforeReadingHardware"

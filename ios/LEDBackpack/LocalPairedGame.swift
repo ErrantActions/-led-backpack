@@ -52,7 +52,7 @@ final class LocalPairedGame: ObservableObject {
             guard !arming, !active, !session.hasRecovery else { throw BackpackError.invalid("Stop/restore the prior original before preparing a new local pairing; no recovery copy is deleted.") }
             stop()
             let key = Curve25519.KeyAgreement.PrivateKey()
-            let own = LocalPairCode(version: 1, id: UUID(), key: PhoneSwapWire.b64(key.publicKey.rawRepresentation),
+            let own = LocalPairCode(version: LocalPairCode.currentVersion, id: UUID(), key: PhoneSwapWire.b64(key.publicKey.rawRepresentation),
                 hint: PhoneSwapWire.randomNonce(), expiresAt: CatalogEventTime.wire(Date().addingTimeInterval(120)))
             self.key = key; self.own = own; code = try own.text()
             deadline = ContinuousClock().now.advanced(by: .seconds(120)); failure = nil
@@ -113,7 +113,7 @@ final class LocalPairedGame: ObservableObject {
         observed = true
         guard own.key < peer.key, link == nil else { radio.close(observedLink); return }
         link = observedLink
-        let hello = PhoneSwapWire.Hello(version: 1, sessionID: UUID(), initiatorToken: own.hint,
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: UUID(), initiatorToken: own.hint,
             responderToken: peer.hint, nonce: PhoneSwapWire.randomNonce(), response: false)
         first = hello
         let stamp = epoch
@@ -151,6 +151,9 @@ final class LocalPairedGame: ObservableObject {
         try checkPair()
         guard active, let own, let peer, let key else { throw CancellationError() }
         if let hello = outer.hello {
+            guard hello.version == PhoneSwapWire.version else {
+                throw BackpackError.invalid("Update both phones to use the current peer protocol.")
+            }
             guard hello.initiatorToken == (own.key < peer.key ? own.hint : peer.hint),
                   hello.responderToken == (own.key < peer.key ? peer.hint : own.hint) else {
                 if incomingLink == link { throw BackpackError.invalid("Bound local channel attempted a different pairing transcript.") }
@@ -172,12 +175,12 @@ final class LocalPairedGame: ObservableObject {
             } else {
                 guard link == nil, peer.key < own.key, cipher == nil else { throw BackpackError.invalid("Unsolicited local-pair initiator.") }
                 link = incomingLink; first = hello
-                second = .init(version: 1, sessionID: hello.sessionID, initiatorToken: peer.hint,
+                second = .init(version: PhoneSwapWire.version, sessionID: hello.sessionID, initiatorToken: peer.hint,
                     responderToken: own.hint, nonce: PhoneSwapWire.randomNonce(), response: true)
             }
             cipher = try PhoneSwapCipher(privateKey: key, initiator: a.contact(), responder: b.contact(),
                 first: first, second: second, origin: "local-manually-compared-keys",
-                isInitiator: own.key < peer.key, domain: "nyan.local-pair.v1",
+                isInitiator: own.key < peer.key, domain: "led.local-pair.v2",
                 binding: [try LocalPairCode.comparison(own, peer), try a.text(), try b.text()])
             if !hello.response { try await radio.send(.init(hello: second, counter: nil, encrypted: nil), to: incomingLink) }
             try await send(.init(kind: "proof", hash: cipher?.transcriptHash)); return

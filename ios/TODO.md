@@ -574,7 +574,7 @@ native execution.
 
 ## Replacement APP recovery reconciliation - 2026-11-06, PURPLE
 
-The replacement APP chat owns native continuation in `C:\code\nyan-gear\ios`.
+The replacement APP chat owns native continuation in the repository's `ios` directory.
 The original errored session/history remains retained; the backend parent owns
 only `C:\code\led-backpack-catalog`. The initial worktree inventory had162dirty
 entries. The initial recovery reconciliation, before unpause/publication above,

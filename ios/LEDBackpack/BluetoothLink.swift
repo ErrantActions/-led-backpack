@@ -207,7 +207,7 @@ final class BluetoothLink: NSObject, ObservableObject, CBCentralManagerDelegate,
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error { discoveryFailed(error); return }
         let services = peripheral.services ?? []
-        guard !services.isEmpty else { discoveryFailed(BackpackError.invalid("No supported Nyan service found.")); return }
+        guard !services.isEmpty else { discoveryFailed(BackpackError.invalid("No supported LED backpack service found.")); return }
         serviceDiscoveries = services.count
         for service in services { peripheral.discoverCharacteristics(nil, for: service) }
     }

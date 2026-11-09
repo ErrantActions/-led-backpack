@@ -45,9 +45,9 @@ final class PhoneSwapGameTests: XCTestCase {
     private func ciphers(origin: String = "https://catalog.example") throws -> (PhoneSwapCipher, PhoneSwapCipher) {
         let first = try key(1), second = try key(2)
         let initiator = card(owner, first, 3), responder = card(peer, second, 4)
-        let hello = PhoneSwapWire.Hello(version: 1, sessionID: presence, initiatorToken: initiator.token,
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence, initiatorToken: initiator.token,
             responderToken: responder.token, nonce: token(5), response: false)
-        let response = PhoneSwapWire.Hello(version: 1, sessionID: presence, initiatorToken: initiator.token,
+        let response = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence, initiatorToken: initiator.token,
             responderToken: responder.token, nonce: token(6), response: true)
         return (try PhoneSwapCipher(privateKey: first, initiator: initiator, responder: responder,
             first: hello, second: response, origin: origin, isInitiator: true),
@@ -158,12 +158,33 @@ final class PhoneSwapGameTests: XCTestCase {
     func testWrongRegisteredKeyTokenOrRoleCannotBuildTranscript() throws {
         let first = try key(1), second = try key(2)
         let a = card(owner, first, 3), b = card(peer, second, 4)
-        let hello = PhoneSwapWire.Hello(version: 1, sessionID: presence, initiatorToken: token(3), responderToken: token(4), nonce: token(5), response: false)
-        let wrong = PhoneSwapWire.Hello(version: 1, sessionID: presence, initiatorToken: token(8), responderToken: token(4), nonce: token(6), response: true)
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence, initiatorToken: token(3), responderToken: token(4), nonce: token(5), response: false)
+        let wrong = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence, initiatorToken: token(8), responderToken: token(4), nonce: token(6), response: true)
         XCTAssertThrowsError(try PhoneSwapCipher(privateKey: first, initiator: a, responder: b, first: hello, second: wrong, origin: "https://catalog.example", isInitiator: true))
     }
+    func testOlderPeerVersionsAndRetiredDomainsCannotEstablishSession() throws {
+        let first = try key(1), second = try key(2)
+        let a = card(owner, first, 3), b = card(peer, second, 4)
+        for versions in [(1, PhoneSwapWire.version), (PhoneSwapWire.version, 1)] {
+            let hello = PhoneSwapWire.Hello(version: versions.0, sessionID: presence, initiatorToken: a.token,
+                responderToken: b.token, nonce: token(5), response: false)
+            let response = PhoneSwapWire.Hello(version: versions.1, sessionID: presence, initiatorToken: a.token,
+                responderToken: b.token, nonce: token(6), response: true)
+            XCTAssertThrowsError(try PhoneSwapCipher(privateKey: first, initiator: a, responder: b,
+                first: hello, second: response, origin: "https://catalog.example", isInitiator: true)) { error in
+                XCTAssertTrue(error.localizedDescription.contains("Update both phones"))
+            }
+        }
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence,
+            initiatorToken: a.token, responderToken: b.token, nonce: token(5), response: false)
+        let response = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence,
+            initiatorToken: a.token, responderToken: b.token, nonce: token(6), response: true)
+        XCTAssertThrowsError(try PhoneSwapCipher(privateKey: first, initiator: a, responder: b,
+            first: hello, second: response, origin: "https://catalog.example", isInitiator: true,
+            domain: "retired.phone-swap.v1"))
+    }
     func testEveryFrameSplitAndOversizeHeaderAreBoundedWithoutRadioInitialization() throws {
-        let hello = PhoneSwapWire.Hello(version: 1, sessionID: presence, initiatorToken: token(3), responderToken: token(4), nonce: token(5), response: false)
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: presence, initiatorToken: token(3), responderToken: token(4), nonce: token(5), response: false)
         let bytes = try PhoneSwapWire.packet(PhoneSwapWire.Outer(hello: hello, counter: nil, encrypted: nil))
         for split in 1..<bytes.count {
             var parser = PhoneSwapFrameDecoder()

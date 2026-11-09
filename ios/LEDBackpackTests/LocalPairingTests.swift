@@ -7,15 +7,15 @@ final class LocalPairingTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1794000000)
     private func code(_ n: UInt8) throws -> (LocalPairCode, Curve25519.KeyAgreement.PrivateKey) {
         let key = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: Data(repeating: n, count: 32))
-        return (.init(version: 1, id: n == 1 ? UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")! : UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!,
+        return (.init(version: LocalPairCode.currentVersion, id: n == 1 ? UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")! : UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!,
             key: PhoneSwapWire.b64(key.publicKey.rawRepresentation), hint: PhoneSwapWire.b64(Data(repeating: n + 4, count: 32)),
             expiresAt: CatalogEventTime.wire(now.addingTimeInterval(120))), key)
     }
-    private func ciphers(domain: String = "nyan.local-pair.v1") throws -> (PhoneSwapCipher, PhoneSwapCipher) {
+    private func ciphers(domain: String = "led.local-pair.v2") throws -> (PhoneSwapCipher, PhoneSwapCipher) {
         let (a,ka) = try code(1), (b,kb) = try code(2)
-        let first = PhoneSwapWire.Hello(version: 1, sessionID: UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!, initiatorToken: a.hint, responderToken: b.hint,
+        let first = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!, initiatorToken: a.hint, responderToken: b.hint,
             nonce: PhoneSwapWire.b64(Data(repeating: 8, count: 32)), response: false)
-        let second = PhoneSwapWire.Hello(version: 1, sessionID: first.sessionID, initiatorToken: a.hint, responderToken: b.hint,
+        let second = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: first.sessionID, initiatorToken: a.hint, responderToken: b.hint,
             nonce: PhoneSwapWire.b64(Data(repeating: 9, count: 32)), response: true)
         let binding = [try LocalPairCode.comparison(a,b), try a.text(), try b.text()]
         return (try .init(privateKey: ka, initiator: a.contact(), responder: b.contact(), first: first, second: second,
@@ -26,6 +26,7 @@ final class LocalPairingTests: XCTestCase {
     func testCanonicalCodeRoundtripKeepsEphemeralBindingsOnly() throws {
         let (value,_) = try code(1)
         XCTAssertEqual(try LocalPairCode.parse(value.text(), now: now), value)
+        XCTAssertTrue(try value.text().hasPrefix("led-local-pair:2:"))
     }
     func testForeignUrlsOversizeAndAlternateEncodingAreRejected() throws {
         XCTAssertThrowsError(try LocalPairCode.parse("https://foreign.example/pair", now: now))
@@ -36,10 +37,12 @@ final class LocalPairingTests: XCTestCase {
     func testExpiredFutureAndUnsupportedVersionCannotArmPair() throws {
         let (value,_) = try code(1)
         XCTAssertThrowsError(try value.validate(now: now.addingTimeInterval(121)))
-        let future = LocalPairCode(version: 1, id: value.id, key: value.key, hint: value.hint, expiresAt: CatalogEventTime.wire(now.addingTimeInterval(1000)))
+        let future = LocalPairCode(version: LocalPairCode.currentVersion, id: value.id, key: value.key, hint: value.hint, expiresAt: CatalogEventTime.wire(now.addingTimeInterval(1000)))
         XCTAssertThrowsError(try future.validate(now: now))
-        let wrong = LocalPairCode(version: 2, id: value.id, key: value.key, hint: value.hint, expiresAt: value.expiresAt)
+        let wrong = LocalPairCode(version: 1, id: value.id, key: value.key, hint: value.hint, expiresAt: value.expiresAt)
         XCTAssertThrowsError(try wrong.validate(now: now))
+        XCTAssertThrowsError(try wrong.text())
+        XCTAssertThrowsError(try LocalPairCode.parse(value.text().replacingOccurrences(of: "led-local-pair:2:", with: "led-local-pair:1:"), now: now))
     }
     func testOwnCodeCannotBeAcceptedAsTheOtherDevice() throws {
         let (value,_) = try code(1)
@@ -48,7 +51,7 @@ final class LocalPairingTests: XCTestCase {
     func testComparisonIsSymmetricAndBoundToBothKeysAndHints() throws {
         let (a,_) = try code(1), (b,_) = try code(2)
         XCTAssertEqual(try LocalPairCode.comparison(a,b), try LocalPairCode.comparison(b,a))
-        let changed = LocalPairCode(version: 1, id: b.id, key: b.key, hint: PhoneSwapWire.b64(Data(repeating: 9, count: 32)), expiresAt: b.expiresAt)
+        let changed = LocalPairCode(version: LocalPairCode.currentVersion, id: b.id, key: b.key, hint: PhoneSwapWire.b64(Data(repeating: 9, count: 32)), expiresAt: b.expiresAt)
         XCTAssertNotEqual(try LocalPairCode.comparison(a,b), try LocalPairCode.comparison(a,changed))
     }
     func testComparedKeyCipherAuthenticatesCurrentLocalGameMessages() throws {
@@ -58,7 +61,7 @@ final class LocalPairingTests: XCTestCase {
     }
     func testOnlinePurposeCannotDecryptOfflineLocalPairCipher() throws {
         var (a,_) = try ciphers()
-        var (_,b) = try ciphers(domain: "nyan.phone-swap.v1")
+        var (_,b) = try ciphers(domain: "led.phone-swap.v2")
         XCTAssertThrowsError(try b.open(a.seal(.init(kind: "proof"))))
     }
     func testLocalCipherReplayFailsBeforeAnotherReadyApplication() throws {

@@ -36,13 +36,13 @@ final class FriendPlaybackTests: XCTestCase {
             ownedByCurrentSession: true, coordinatesIncluded: false, physicalProximityVerified: false,
             playbackStarted: false, historyStored: false, advertisementToken: token(3))
     }
-    private func ciphers(domain: String = "nyan.accepted-friend.v1", binding: [String] = ["accepted-session","revision2","identity2","greeting","aurora-soft"]) throws -> (PhoneSwapCipher, PhoneSwapCipher) {
+    private func ciphers(domain: String = "led.accepted-friend.v2", binding: [String] = ["accepted-session","revision2","identity2","greeting","aurora-soft"]) throws -> (PhoneSwapCipher, PhoneSwapCipher) {
         let a = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: Data(repeating: 1, count: 32))
         let b = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: Data(repeating: 2, count: 32))
         let first = PhoneSwapContact(id: owner, displayName: "", canRequestFriendship: false, publicKey: PhoneSwapWire.b64(a.publicKey.rawRepresentation), token: token(3), tokenExpiresAtISO: "2026-11-06T12:02:00Z")
         let second = PhoneSwapContact(id: peer, displayName: "", canRequestFriendship: false, publicKey: PhoneSwapWire.b64(b.publicKey.rawRepresentation), token: token(4), tokenExpiresAtISO: "2026-11-06T12:02:00Z")
-        let hello = PhoneSwapWire.Hello(version: 1, sessionID: sessionID, initiatorToken: first.token, responderToken: second.token, nonce: token(5), response: false)
-        let response = PhoneSwapWire.Hello(version: 1, sessionID: sessionID, initiatorToken: first.token, responderToken: second.token, nonce: token(6), response: true)
+        let hello = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: sessionID, initiatorToken: first.token, responderToken: second.token, nonce: token(5), response: false)
+        let response = PhoneSwapWire.Hello(version: PhoneSwapWire.version, sessionID: sessionID, initiatorToken: first.token, responderToken: second.token, nonce: token(6), response: true)
         return (try PhoneSwapCipher(privateKey: a, initiator: first, responder: second, first: hello, second: response,
             origin: "https://catalog.example", isInitiator: true, domain: domain, binding: binding),
             try PhoneSwapCipher(privateKey: b, initiator: first, responder: second, first: hello, second: response,
@@ -113,7 +113,7 @@ final class FriendPlaybackTests: XCTestCase {
     }
     func testGamePurposeCannotAuthenticateAcceptedFriendTraffic() throws {
         var (a,_) = try ciphers()
-        var (_,game) = try ciphers(domain: "nyan.phone-swap.v1", binding: [])
+        var (_,game) = try ciphers(domain: "led.phone-swap.v2", binding: [])
         XCTAssertThrowsError(try game.open(a.seal(PhoneSwapWire.Message(kind: "proof"))))
         XCTAssertThrowsError(try ciphers(binding: []))
     }

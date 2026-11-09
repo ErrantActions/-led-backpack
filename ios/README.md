@@ -1,5 +1,14 @@
 # LED Backpack for iOS
 
+### Peer protocol v2
+
+Local pairing QR codes and phone swap/friend-play cryptographic domains now use
+neutral LED protocol names. **Update both phones and exchange fresh pairing
+codes.** Older peer protocol versions are explicitly rejected; there is no
+fallback or mixed-version pairing. Existing original/recovery journals are
+retained, and Stop/Restore remains available. This changes neither backpack
+firmware commands nor account/cloud storage protocols.
+
 ### Erase backpack
 
 Erase review uses an **Allow erase** toggle, off by default, instead of a typed

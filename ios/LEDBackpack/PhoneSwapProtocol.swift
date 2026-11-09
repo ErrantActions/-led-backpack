@@ -3,6 +3,7 @@ import CryptoKit
 import BackpackProtocol
 
 enum PhoneSwapWire {
+    static let version = 2
     static let maximumGIF = 131072
     static let chunkBytes = 512
     static let maximumPacket = 4096
@@ -91,10 +92,13 @@ struct PhoneSwapCipher {
     let transcriptHash: String
     init(privateKey: Curve25519.KeyAgreement.PrivateKey, initiator: PhoneSwapContact, responder: PhoneSwapContact,
         first: PhoneSwapWire.Hello, second: PhoneSwapWire.Hello, origin: String, isInitiator: Bool,
-        domain: String = "nyan.phone-swap.v1", binding: [String] = []) throws {
-        guard ["nyan.phone-swap.v1","nyan.accepted-friend.v1","nyan.local-pair.v1"].contains(domain),
-              domain == "nyan.phone-swap.v1" || !binding.isEmpty else { throw BackpackError.invalid("Missing purpose-separated peer-session transcript.") }
-        guard first.version == 1, second.version == 1, !first.response, second.response,
+        domain: String = "led.phone-swap.v2", binding: [String] = []) throws {
+        guard ["led.phone-swap.v2","led.accepted-friend.v2","led.local-pair.v2"].contains(domain),
+              domain == "led.phone-swap.v2" || !binding.isEmpty else { throw BackpackError.invalid("Missing purpose-separated peer-session transcript.") }
+        guard first.version == PhoneSwapWire.version, second.version == PhoneSwapWire.version else {
+            throw BackpackError.invalid("Update both phones to use the current peer protocol.")
+        }
+        guard !first.response, second.response,
               first.sessionID == second.sessionID,
               first.initiatorToken == initiator.token, first.responderToken == responder.token,
               second.initiatorToken == first.initiatorToken, second.responderToken == first.responderToken,
@@ -119,7 +123,7 @@ struct PhoneSwapCipher {
         outgoingRole = isInitiator ? 1 : 2; incomingRole = isInitiator ? 2 : 1
     }
     private func nonce(_ role: UInt8, _ counter: UInt64) throws -> AES.GCM.Nonce {
-        try AES.GCM.Nonce(data: Data([0x4E,0x53,1,role] + (0..<8).map { UInt8(truncatingIfNeeded: counter >> ($0 * 8)) }))
+        try AES.GCM.Nonce(data: Data([0x4C,0x53,2,role] + (0..<8).map { UInt8(truncatingIfNeeded: counter >> ($0 * 8)) }))
     }
     mutating func seal(_ message: PhoneSwapWire.Message) throws -> PhoneSwapWire.Outer {
         guard sent < 4096 else { throw BackpackError.invalid("Game message budget exhausted; new explicit session required.") }

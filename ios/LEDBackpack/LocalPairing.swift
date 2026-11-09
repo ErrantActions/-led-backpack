@@ -3,20 +3,24 @@ import CryptoKit
 import BackpackProtocol
 
 struct LocalPairCode: Codable, Equatable, Sendable {
+    static let currentVersion = 2
     let version: Int
     let id: UUID
     let key, hint: String
     let expiresAt: String
     func validate(now: Date) throws {
         let expiry = try CatalogEventTime.parse(expiresAt)
-        guard version == 1, expiry > now, expiry.timeIntervalSince(now) <= 180,
+        guard version == Self.currentVersion, expiry > now, expiry.timeIntervalSince(now) <= 180,
               try PhoneSwapWire.bytes(key).contains(where: { $0 != 0 }), NearbyTokenPolicy.valid(hint) else {
-            throw BackpackError.invalid("Unsupported/expired local pair code. Use a fresh code; no online friend identity is inferred.")
+            throw BackpackError.invalid("Unsupported or expired local pair code. Update both phones and exchange fresh codes.")
         }
     }
-    func text() throws -> String { "nyan-local-pair:1:" + PhoneSwapWire.b64(try PhoneSwapWire.encoder().encode(self)) }
+    func text() throws -> String {
+        guard version == Self.currentVersion else { throw BackpackError.invalid("Update both phones and exchange fresh pairing codes.") }
+        return "led-local-pair:2:" + PhoneSwapWire.b64(try PhoneSwapWire.encoder().encode(self))
+    }
     static func parse(_ text: String, now: Date) throws -> Self {
-        let prefix = "nyan-local-pair:1:"
+        let prefix = "led-local-pair:2:"
         guard text.utf8.count <= 1200, text.hasPrefix(prefix) else { throw BackpackError.invalid("Paste only an explicit local-pair code; no URL/token/profile fallback.") }
         let raw = String(text.dropFirst(prefix.count))
         guard raw.utf8.allSatisfy({ (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95 }),
@@ -30,7 +34,7 @@ struct LocalPairCode: Codable, Equatable, Sendable {
     static func comparison(_ first: Self, _ second: Self) throws -> String {
         guard first.id != second.id, first.key != second.key, first.hint != second.hint else { throw BackpackError.invalid("Cannot pair with your own code/key or reused hint.") }
         let strings = try [first.text(), second.text()].sorted()
-        let hash = LocalSwapOriginal.digest(Data(("nyan.local-pair.compare.v1\n" + strings.joined(separator: "\n")).utf8))
+        let hash = LocalSwapOriginal.digest(Data(("led.local-pair.compare.v2\n" + strings.joined(separator: "\n")).utf8))
         let prefix = String(hash.prefix(16))
         return stride(from: 0, to: 16, by: 4).map { String(prefix.dropFirst($0).prefix(4)) }.joined(separator: " ")
     }

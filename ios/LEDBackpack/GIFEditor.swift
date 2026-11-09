@@ -58,7 +58,11 @@ struct MediaEditor: View {
     var body: some View {
         NavigationStack {
             observedEditor
-                .toolbar { Button("Cancel", action: cancelEditing) }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel", action: cancelEditing)
+                    }
+                }
                 .sheet(isPresented: Binding(get: { previewAnimation != nil }, set: { if !$0 { previewAnimation = nil } })) {
                     animationPreview
                 }
