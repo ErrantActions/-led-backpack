@@ -334,7 +334,12 @@ final class NavigationTests: XCTestCase {
         let save = app.buttons["Save new GIF to library"]
         reveal(save, in: app); XCTAssertTrue(save.isHittable)
         attach(app, name: "GIF Studio - clear save action, advanced tools collapsed")
-        app.buttons["Cancel"].tap()
+        let cancel = app.buttons["editor-cancel"]
+        XCTAssertTrue(cancel.exists)
+        XCTAssertTrue(cancel.isHittable)
+        cancel.tap()
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
     }
 
     private func signInFixture(_ app: XCUIApplication) {

@@ -66,6 +66,8 @@ remote paging. Required inventory reconciliation for unified cloud sync remains
 automatic.
 
 Workflow end screens use shorter outcomes and expandable advanced controls.
+The GIF editor keeps Cancel in a fixed bottom action area, independent of the
+system toolbar's placement on Duo.
 Required sharing consent, errors, destructive confirmation, Stop and Restore
 remain available. Gallery definition conflicts retain local drafts; actual
 role/access loss still clears them. The previously unreachable catalog settings

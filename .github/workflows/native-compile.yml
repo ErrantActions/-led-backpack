@@ -5,7 +5,7 @@ on:
       mode:
         description: Compile source and optionally run focused units or UI regressions
         type: choice
-        options: [focused, compile, gps, ui, library, library-units, connected-device, peer-protocol]
+        options: [focused, compile, gps, ui, library, library-units, connected-device, peer-protocol, ux-endpoints]
         default: focused
         required: true
 permissions:
@@ -66,6 +66,12 @@ jobs:
               TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests")
               TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "600"
                 "-maximum-test-execution-time-allowance" "900")
+            elif [ "$VALIDATION_MODE" = ux-endpoints ]; then
+              CLASSES=()
+              TESTS+=("-only-testing:LEDBackpackUITests/NavigationTests/testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable"
+                "-only-testing:LEDBackpackUITests/NavigationTests/testExpandableDetailsButtonsFireOnlyTheChosenAction")
+              TIMEOUTS+=("-test-timeouts-enabled" "YES" "-default-test-execution-time-allowance" "180"
+                "-maximum-test-execution-time-allowance" "300")
             elif [ "$VALIDATION_MODE" = peer-protocol ]; then
               CLASSES=(PhoneSwapGameTests FriendPlaybackTests LocalPairingTests AutomaticPhoneSessionTests)
             elif [ "$VALIDATION_MODE" = connected-device ]; then
@@ -104,14 +110,14 @@ jobs:
             -maximum-test-execution-time-allowance 300 \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO | tee build/public-integration.log
       - name: Export UI regression screenshots
-        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'connected-device')
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'connected-device' || inputs.mode == 'ux-endpoints')
         run: |
           if test -d build/UnsignedTests.xcresult; then
             xcrun xcresulttool export attachments --path build/UnsignedTests.xcresult \
               --output-path build/UIScreenshots
           fi
       - uses: actions/upload-artifact@v4
-        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'connected-device')
+        if: always() && (inputs.mode == 'ui' || inputs.mode == 'library' || inputs.mode == 'connected-device' || inputs.mode == 'ux-endpoints')
         with:
           name: native-ui-screenshots-${{ github.run_id }}-${{ github.run_attempt }}
           path: ios/build/UIScreenshots
