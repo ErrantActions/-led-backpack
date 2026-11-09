@@ -4,7 +4,20 @@ Status tracks source and explicitly identified Mac validation checkpoints.
 Neither source nor simulator success proves device behavior, TestFlight
 availability or that the product backlog is finished.
 
-## Connected backpack account association - implementation in validation
+## Build 11 - verified upload
+
+- [x] Source191d8af full run42577133898: native1,044/0fail/2explicit skips,
+  UI14/0fail and separate live public integration1/0.
+- [x] Exact native inputs promoted fc4bcc2; protected upload42581582161
+  archived/exported/uploaded0.1.0(11), with signing cleanup successful.
+- [x] Neutral LED peer protocol v2, fresh pairing codes required on both phones.
+- [x] Erase review uses a default-off Allow erase toggle; captured device and
+  inventory checks remain. Persistent editor Cancel verifies actual dismissal.
+- [ ] Apple processing/tester availability and physical backpack acceptance.
+- [ ] New editor redesign, version-2 adoption lookup and opt-in found-device
+  messaging are follow-up work; not claimed shipped by the upload above.
+
+## Connected backpack account association - build 11 source validated
 
 - [x] Explicit read-only vendor identity/dimensions, case-preserving ID validation,
   private review and default-off physical-access/account confirmation.
@@ -12,8 +25,9 @@ availability or that the product backlog is finished.
   foreground/consent invalidation, one operation at a time and explicit errors.
 - [x] Dedicated gated registration DTO, matching private receipt, duplicate
   customization preservation and no private ID in incoming transfer records.
-- [ ] Actual native compile, focused state/client/UI regressions and backend
-  deployment evidence (record after execution; source is not acceptance).
+- [x] Native compile and focused98unit/3UI regressions passed in42558701729;
+  the later full source191d8af gate passed above. Backend registration v1
+  deployment was separately reported; this is not physical-device acceptance.
 - [ ] Owner device: same ID after reconnect/reboot and across phones; repeat
   registration creates no duplicate; cancellation/password errors leave hardware
   artwork, password and ID unchanged. No hardware-verified ownership claim.

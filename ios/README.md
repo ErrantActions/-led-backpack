@@ -1,5 +1,19 @@
 # LED Backpack for iOS
 
+### TestFlight 0.1.0 (11)
+
+Source `191d8af` passed [full native validation](https://github.com/ErrantActions/-led-backpack/actions/runs/42577133898):
+1,044 unit tests / 0 failures / 2 explicit skips, 14 UI tests / 0 failures,
+and separate live public integration 1 / 0. Exact native inputs were promoted
+as `fc4bcc2`. [Signed upload](https://github.com/ErrantActions/-led-backpack/actions/runs/42581582161)
+archived, exported and uploaded build 11; signing cleanup succeeded.
+Apple processing and internal tester availability are not verified.
+
+This build includes the routing/paging corrections, connected-device reading
+and registration, nickname-only editing, erase opt-in toggle and peer protocol
+v2. The newer visual-editor redesign and found-device recovery messaging are
+separate follow-up work, not features claimed shipped in this build.
+
 ### Peer protocol v2
 
 Local pairing QR codes and phone swap/friend-play cryptographic domains now use
@@ -34,11 +48,12 @@ IDs and passwords are not included in Bluetooth diagnostic identity messages.
 Firmware is displayed locally, not submitted to the registration API.
 
 `POST /devices/connected` saves a private **unverified association**, not ownership
-or anti-clone proof. The ID is mutable; different accounts can associate the same
-ID independently. The same account/ID reuses its existing record without changing
+or anti-clone proof. The ID is mutable and can be copied. The same account/ID
+reuses its existing record without changing
 customized labels, sharing, pending transfer or revision. New records have owner
 sharing off. An uncertain receipt requires reloading My devices before deliberate
-retry; the app does not automatically retry registration. Manual device entry is not offered in the app. Only the nickname can be edited;
+retry; the app does not automatically retry registration.
+Manual device entry is not offered in the app. Only the nickname can be edited;
 model and dimensions remain read-only. Legacy records and their generic API
 remain compatible. Public owner cards and incoming transfers do not reveal the ID.
 Accepting a label transfer removes its private connected-ID binding; the recipient
@@ -47,9 +62,11 @@ must explicitly read/register the backpack. Unlink does not alter hardware or GI
 Hardware acceptance still requires the owner's powered backpack. Verify that its
 ID survives reconnect/reboot and matches on another phone; the simulator cannot
 establish factory uniqueness, reset persistence, ownership or BLE security.
-Layout/SVG generation remains paused pending the owner's editor format.
+The requested version-2 registry lookup, adoption and opt-in owner recovery
+conversation are still a separate native integration task. Do not treat a
+service association as verified physical ownership.
 
-### Post-build10 UX corrections - source in validation
+### UX corrections included in build 11
 
 Social's four primary buttons now use explicit distinct destinations instead of
 multiple NavigationLinks competing inside one List row. Add Friends follows the
@@ -73,8 +90,8 @@ remain available. Gallery definition conflicts retain local drafts; actual
 role/access loss still clears them. The previously unreachable catalog settings
 link was moved out of the backup button's action.
 
-These changes are **not in TestFlight build10**. Actual unsigned native
-compile/unit/UI/screenshot evidence will be recorded after validation.
+These changes are included in build 11, not build 10. Simulator captures are
+source-matched debug-fixture evidence, not physical TestFlight device captures.
 
 Independent SwiftUI + Core Bluetooth controller for compatible Bluetooth LED
 backpacks. No vendor login, cloud database or account subscription is required.
