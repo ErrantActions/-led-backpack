@@ -198,7 +198,7 @@ final class NavigationTests: XCTestCase {
         let phoneOptions = app.buttons["Phone animation"]
         reveal(phoneOptions, in: app); phoneOptions.tap()
         let automation = app.buttons["Capture durable original and arm PHONE"]
-        reveal(automation, in: app, requireHittable: false)
+        reveal(automation, in: app, requireHittable: false, maximumSwipes: 20)
         XCTAssertTrue(automation.exists); XCTAssertFalse(automation.isEnabled)
         assertNoVisibleEntryForms(app)
         XCTAssertFalse(app.buttons["Create scene"].isHittable)
@@ -326,9 +326,11 @@ final class NavigationTests: XCTestCase {
         reveal(artwork, in: app); artwork.press(forDuration: 1)
         app.buttons["Edit a copy"].tap()
         XCTAssertTrue(app.navigationBars["GIF Studio"].waitForExistence(timeout: 10))
+        let timing = app.buttons["Timing & loops"]
+        reveal(timing, in: app)
         XCTAssertFalse(app.buttons["Use source timing"].exists)
         XCTAssertFalse(app.buttons["Reset manual edits"].exists)
-        XCTAssertTrue(app.buttons["Timing & loops"].exists)
+        XCTAssertTrue(timing.isHittable)
         let save = app.buttons["Save new GIF to library"]
         reveal(save, in: app); XCTAssertTrue(save.isHittable)
         attach(app, name: "GIF Studio - clear save action, advanced tools collapsed")
