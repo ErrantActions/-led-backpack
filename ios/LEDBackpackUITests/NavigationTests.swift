@@ -524,6 +524,11 @@ final class NavigationTests: XCTestCase {
 
     func testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable() throws {
         let app = XCUIApplication()
+        addUIInterruptionMonitor(withDescription: "Live workflow system permission") { alert in
+            if alert.buttons["Allow"].exists { alert.buttons["Allow"].tap(); return true }
+            if alert.buttons["OK"].exists { alert.buttons["OK"].tap(); return true }
+            return false
+        }
         app.launchArguments = ["--library-ui-fixture"]
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
