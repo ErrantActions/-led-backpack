@@ -5,7 +5,7 @@ on:
       validation:
         description: Build only, focused process/event checks or full native suite (no upload)
         type: choice
-        options: [full, processes, events, build]
+        options: [full, processes, live, events, build]
         default: full
   push:
     branches: [main]
@@ -40,7 +40,7 @@ jobs:
           echo "Selected iOS SDK: $SDK"
           python3 -c 'import sys; assert tuple(map(int,sys.argv[1].split(".")[:2])) == (27,1), "This build requires the iOS 27.1 SDK"; print("iOS 27.1 SDK selected; physical Duo fold testing remains separate.")' "$SDK"
       - name: Test portable packet codec
-        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'build'
+        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'build'
         run: swift test --package-path Packages/BackpackProtocol
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
@@ -50,7 +50,7 @@ jobs:
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); devices=[x for runtime,items in d["devices"].items() if runtime.endswith(".iOS-27-1") for x in items if x["name"]=="iPhone Duo"]; assert devices, "The required iOS 27.1 iPhone Duo simulator is unavailable"; print(devices[0]["udid"])')
           echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
       - name: Build and test app
-        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'build'
+        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'build'
         run: |
           xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
@@ -75,6 +75,14 @@ jobs:
             -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
             -only-testing:LEDBackpackUITests/NavigationTests/testAppWideProcessesStartWithEssentialsAndKeepSafeExits \
             -only-testing:LEDBackpackUITests/NavigationTests/testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable \
+            -only-testing:LEDBackpackUITests/NavigationTests/testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
+      - name: Verify live reflow only
+        if: inputs.validation == 'live'
+        run: |
+          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
             -only-testing:LEDBackpackUITests/NavigationTests/testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
       - name: Build app only

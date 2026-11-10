@@ -530,12 +530,10 @@ final class NavigationTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
         app.buttons.matching(NSPredicate(format: "label == %@", "Live")).firstMatch.tap()
+        let picker = app.buttons["live-mode-picker"]
+        reveal(picker, in: app); picker.tap()
         let mode = app.buttons["Scrolling message"]
-        if !mode.exists {
-            let modes = app.buttons["Explore all modes"]
-            reveal(modes, in: app); modes.tap()
-        }
-        reveal(mode, in: app); mode.tap()
+        XCTAssertTrue(mode.waitForExistence(timeout: 5)); mode.tap()
         let field = app.textFields["live-message"]
         reveal(field, in: app); field.tap(); field.typeText("Reflow keeps this message")
         let draft = try XCTUnwrap(field.value as? String)
