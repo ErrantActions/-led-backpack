@@ -7,7 +7,7 @@ struct CloudVaultSettingsView: View {
     @EnvironmentObject private var community: CommunityController
     @EnvironmentObject private var library: LocalLibrary
     @State private var deleting = false
-    @State private var confirmation = ""
+    @State private var approval = ScopedActionConfirmation<String>()
     @State private var failure: String?
     @StateObject private var anchor = CloudVaultWindow()
 
@@ -121,7 +121,22 @@ struct CloudVaultSettingsView: View {
                         }
                     }
                     Section("Cloud-only deletion") {
-                        Button("Delete all private cloud copies", role: .destructive) { deleting = true }
+                        Button("Review cloud-only deletion", role: .destructive) { approval.reset(); deleting = true }
+                        if deleting {
+                            Toggle("Delete these private cloud copies only", isOn: Binding(
+                                get: { approval.isConfirmed(for: deletionScope) },
+                                set: { approval.setConfirmed($0, for: deletionScope) }))
+                            Button("Delete cloud copies", role: .destructive) {
+                                guard !vault.busy, approval.consume(for: deletionScope) else { failure = "Cloud or approval changed. Review deletion again."; return }
+                                let reviewed = deletionScope
+                                deleting = false
+                                vault.run {
+                                    guard reviewed == deletionScope else { throw BackpackError.invalid("Cloud changed. Review deletion again.") }
+                                    try await vault.deleteCloudOnly(confirmation: "DELETE CLOUD")
+                                }
+                            }.disabled(vault.busy || !approval.isConfirmed(for: deletionScope))
+                            Button("Cancel", role: .cancel) { deleting = false; approval.reset() }
+                        }
                         Text("Requires sign-in within ten minutes. Community submissions, local files and your account are retained. This is not account deletion.").font(.caption)
                         NavigationLink("Sign in again for sensitive cloud operations") { CommunityAccountView() }
                     }
@@ -132,14 +147,11 @@ struct CloudVaultSettingsView: View {
         }
         .modernScene().navigationTitle("Private cloud").buttonStyle(.borderless)
         .background(CloudVaultWindowReader(holder: anchor).frame(width: 0, height: 0))
-        .alert("Delete all private cloud copies?", isPresented: $deleting) {
-            TextField("Type DELETE CLOUD", text: $confirmation)
-            Button("Cancel", role: .cancel) { confirmation = "" }
-            Button("Delete cloud copies", role: .destructive) {
-                let value = confirmation; confirmation = ""
-                vault.run { try await vault.deleteCloudOnly(confirmation: value) }
-            }
-        } message: { Text("Type DELETE CLOUD. Local files, public submissions and your account remain.") }
+        .onChange(of: deletionScope) { _, _ in deleting = false; approval.reset() }
+        .onDisappear { deleting = false; approval.reset() }
+    }
+    private var deletionScope: String {
+        "\(community.accountRevision):\(vault.available):\(String(describing: vault.state?.generation)):\(String(describing: vault.state?.revision))"
     }
     private func enableSync(createNewManagedAfterReset: Bool) {
         failure = nil
@@ -174,7 +186,7 @@ struct CloudVaultPasswordView: View {
                     Toggle("I have stored this separate recovery passphrase safely", isOn: $storedRecovery)
                 }
                 if mode == .enroll {
-                    Text("Migration downloads and verifies every existing cloud asset, encrypts and verifies staged copies, then signs an independently computed manifest. Temporary quota headroom is required. Historical server-readable backups/logs need expiration; this does not promise retroactive secrecy or forensic erasure.")
+                    InteractionExplanation("Migration verifies encrypted copies and needs spare quota. Historical server-readable backups do not become retroactively secret.", details: "Migration downloads and verifies every existing cloud asset, encrypts and verifies staged copies, then signs an independently computed manifest. Temporary quota headroom is required. Historical server-readable backups/logs need expiration; this does not promise retroactive secrecy or forensic erasure.")
                         .font(.caption).foregroundStyle(.orange)
                 }
             }
@@ -242,7 +254,6 @@ struct CloudVaultArtworkDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let bytes { AnimatedPreview(data: bytes).frame(height: 280) }
-                Text(vault.titles[item.id] ?? "Private artwork").font(.title2.bold())
                 NavigationLink("Private cloud settings / unlock") { CloudVaultSettingsView() }
                 Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.vault(item)]) }
                     .buttonStyle(.borderedProminent).disabled(vault.locked || vault.busy || !vault.syncing)

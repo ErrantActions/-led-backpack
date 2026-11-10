@@ -1,5 +1,33 @@
 # LED Backpack for iOS
 
+## Aurora native UI release candidate
+
+The reviewed design language is integrated through shared adaptive Aurora
+surfaces, headings, cards, buttons and original pixel artwork across the app.
+Motion respects Reduce Motion, background/offscreen visibility and the selected
+tab. GIF selection/editing is artwork-first without visible names or naming
+steps; required metadata and accessibility descriptions remain. Scoped,
+default-off toggles replace typed destructive keywords, followed by a separate
+final action. Passwords, publication/privacy consent and moderation reasons are
+not removed.
+
+Messages has a searchable chronological inbox of supported direct, private
+organizer and room contexts, group unread counts, bubble history, a bottom
+composer, explicit requests and existing media/place/reference tools. Drafts are
+process-memory only and scoped to server, account, authorization revision and
+conversation; navigating or reflowing does not move a draft to another context.
+Changing account/access invalidates them. Wide flat windows show inbox/thread;
+active native divisions use the complete navigation task rather than a fake
+fold gap. Native hardware fold/keyboard/accessibility acceptance remains separate.
+
+Send results mean server persistence, not recipient delivery/read. Typing expires
+locally as well as on the server. Existing outbox UUID/byte retries and
+authorization/revocation checks remain in force. No aggregate inbox, delivery
+receipt or new backend API is assumed. The backend compatibility review found no
+required edit/deployment; live recovery v2 and absent feature capabilities remain
+unavailable. The release candidate still requires passing exact-source native
+validation and the protected TestFlight upload. for iOS
+
 ### TestFlight 0.1.0 (11)
 
 Source `191d8af` passed [full native validation](https://github.com/ErrantActions/-led-backpack/actions/runs/42577133898):

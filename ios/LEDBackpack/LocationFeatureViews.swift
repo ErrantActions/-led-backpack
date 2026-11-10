@@ -211,7 +211,7 @@ struct EventLocalEligibilityView: View {
     var body: some View {
         Form {
             Text("Foreground-only, local checkpoint hint").font(.headline)
-            Text("Samples are discarded, never saved, logged, encoded or sent. No peer positions/distances, encounter history, background permission, GPS proof or navigation. Eligibility never records progress or badges.").font(.caption)
+            InteractionExplanation("Location samples are discarded. No track, encounter history or GPS proof; eligibility never records progress or badges.", details: "Samples are discarded, never saved, logged, encoded or sent. No peer positions/distances, encounter history, background permission, GPS proof or navigation. Eligibility never records progress or badges.").font(.caption)
             Label(local.status, systemImage: local.sensing ? "location.fill" : "location.slash")
             Text(local.eligibility.rawValue)
             if let remaining = local.dwellRemaining, local.sensing, local.eligibility == .dwelling {
@@ -255,7 +255,7 @@ struct EventLocalEligibilityView: View {
                 }
             }
             NavigationLink("Manual self-reported checkpoint choice") { EventProgressView(eventID: eventID) }
-            Text("5s freshness, usable <=25m accuracy, 10s dwell inside confidence bounds, hysteresis reset and 60s cooldown. The configured radius is never enlarged. Manual fallback is always separate and uncertified.").font(.caption)
+            InteractionExplanation("Eligibility needs fresh, accurate samples and dwell time. The radius is not enlarged; manual fallback stays uncertified.", details: "5s freshness, usable <=25m accuracy, 10s dwell inside confidence bounds, hysteresis reset and 60s cooldown. The configured radius is never enlarged. Manual fallback is always separate and uncertified.").font(.caption)
         }.modernScene().navigationTitle("Local checkpoint eligibility")
         .navigationDestination(isPresented: $showingProgress) {
             EventProgressView(eventID: eventID, initialCheckpointID: progressCheckpointID)

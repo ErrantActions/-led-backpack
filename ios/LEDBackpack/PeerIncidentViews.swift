@@ -32,7 +32,7 @@ struct PeerIncidentComposeView: View {
                     Button("Review deliberate unverified report") { confirmation = true }
                         .disabled(!consent || captured != nil || session.busy || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } else if submitted == nil {
-                    Text("Description/create capability unavailable (key may be absent). No empty-description success is implied. Local stop, block/remove and permitted owner receipts/withdrawal are independent.")
+                    InteractionExplanation("Reporting is unavailable. Stop, block/remove and permitted owner receipts/withdrawal remain independent.", details: "Description/create capability unavailable (key may be absent). No empty-description success is implied. Local stop, block/remove and permitted owner receipts/withdrawal are independent.")
                 }
                 if let submitted, let clock {
                     Text("Your unverified explanation was retained. Claim verified: NO. No account action.")
@@ -119,7 +119,7 @@ struct PeerIncidentOwnerView: View {
                     Toggle("Metadata-only withdrawal mode (no descriptions)", isOn: $receiptsOnly)
                         .disabled(session.busy || community.config?.peerIncidentWithdrawalEnabled != true)
                 } else if community.config?.peerIncidentWithdrawalEnabled == true {
-                    Text("WITHDRAWAL-ONLY MODE — description/key capability unavailable. Metadata receipts, including expired cases awaiting cleanup, remain manageable. This is not a successful empty-description list.").foregroundStyle(.orange)
+                    InteractionExplanation("Withdrawal-only mode. Descriptions are unavailable, not empty; owned metadata receipts remain manageable.", details: "WITHDRAWAL-ONLY MODE — description/key capability unavailable. Metadata receipts, including expired cases awaiting cleanup, remain manageable. This is not a successful empty-description list.").foregroundStyle(.orange)
                     Button("Load permitted receipts explicitly") {
                         page = 1
                         if receiptsOnly { load() } else { receiptsOnly = true }
@@ -158,8 +158,8 @@ struct PeerIncidentOwnerView: View {
                     Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy || page >= 10000)
                 }
                 Button("Explicitly reload current owned cases / revisions") { pending = nil; load() }.disabled(session.busy)
-                Text("Withdrawal needs no current game/friendship/event/profile access and works for known owned cases after expiry/key loss when advertised. Only current-account receipts are used; no other account's data is adopted.").font(.caption)
-                Text("Limits: 100/account, 5000 global; 20 writes/120 reads per minute, 30-day description reads, at most 500 cleanup/pass. Erasure removes cases by/about an account; cleanup is not forensic backup erasure.").font(.caption)
+                InteractionExplanation("Only current-account cases can be withdrawn, including supported expired/key-loss cases. No other account’s data is adopted.", details: "Withdrawal needs no current game/friendship/event/profile access and works for known owned cases after expiry/key loss when advertised. Only current-account receipts are used; no other account's data is adopted.").font(.caption)
+                InteractionExplanation("Descriptions are retained up to 30 days. Account erasure removes related cases, not forensic backup copies.", details: "Limits: 100/account, 5000 global; 20 writes/120 reads per minute, 30-day description reads, at most 500 cleanup/pass. Erasure removes cases by/about an account; cleanup is not forensic backup erasure.").font(.caption)
             }.padding(20)
         }.modernScene().navigationTitle("Own peer reports")
         .task(id: community.accountRevision) { clear(); page = 1; session.bind(community); if community.config?.peerIncidentReportsEnabled == true { load() } }

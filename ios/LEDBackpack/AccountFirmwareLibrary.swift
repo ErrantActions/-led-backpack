@@ -159,7 +159,7 @@ struct FirmwareLibraryView: View {
     private var identity: String { "\(community.accountRevision):\(community.user?.role ?? ""):\(community.config?.firmwareCatalogEnabled == true):\(community.avatarPolicyRevision)" }
     var body: some View {
         Form {
-            Text("Download/research library only. SHA-256 checks bytes, not authenticity. Generic stock/custom metadata and admin declarations do NOT certify target compatibility, signature or safety. Flashing, automatic recommendations and device commands are unavailable.")
+            InteractionExplanation("Download/research only. A matching hash does not prove authenticity or compatibility. Flashing is unavailable.", details: "Download/research library only. SHA-256 checks bytes, not authenticity. Generic stock/custom metadata and admin declarations do NOT certify target compatibility, signature or safety. Flashing, automatic recommendations and device commands are unavailable.")
                 .font(.caption)
             if session.scope != nil {
                 Section("Exact filters — not connected-device detection") {

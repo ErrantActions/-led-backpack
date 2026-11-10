@@ -27,7 +27,7 @@ struct CommunityNotificationSettingsView: View {
                             set: { self.choices?.categories[keyPath: category.keyPath] = $0 }))
                         .disabled(category == .eventReminders && community.config?.eventRemindersEnabled != true && !choices.categories.eventReminders)
                     }
-                    Text("Event reminders default off. Opting in schedules only eligible reviewed events during their final hour; it never RSVPs, shares progress, records arrival or collects GPS. Material updates require fresh review.").font(.caption)
+                    InteractionExplanation("Reminders are off by default. Eligible reviewed events only; no RSVP, GPS, arrival or progress sharing.", details: "Event reminders default off. Opting in schedules only eligible reviewed events during their final hour; it never RSVPs, shares progress, records arrival or collects GPS. Material updates require fresh review.").font(.caption)
                 }
                 Button("Review save") {
                     guard let original, let client = session.client, let choices = self.choices else { return }

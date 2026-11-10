@@ -149,7 +149,7 @@ struct CommunityAccountView: View {
         Group {
             Toggle("Create a new account", isOn: $creating).disabled(community.config?.allowsNativeSignup != true)
             if community.config?.allowsNativeSignup != true {
-                Text("Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.")
+                InteractionExplanation("Signup is unavailable under the current retention policy. Browse as a guest or sign in to an existing account.", details: "Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.")
                     .font(.caption).foregroundStyle(.orange)
             }
             if creating { TextField("Display name", text: $displayName).focused($focusedField, equals: .displayName) }
@@ -265,7 +265,7 @@ struct CommunityDeletionStatus: View {
 private struct CommunityDeleteAccountView: View {
     @EnvironmentObject private var community: CommunityController
     @State private var password = ""
-    @State private var confirmation = ""
+    @State private var approval = ScopedActionConfirmation<String>()
     @State private var busy = false
     @State private var failure: String?
     @State private var verifyWithApple = false
@@ -274,7 +274,10 @@ private struct CommunityDeleteAccountView: View {
             if community.signedIn {
                 Section("Permanent server deletion") {
                     if let user = community.user { Text("Delete \(user.email)") }
-                    Text(community.config?.accountDeletionRetainsSharedGifs == false
+                    InteractionExplanation(community.config?.accountDeletionRetainsSharedGifs == false
+                        ? "Deletes your account and uploaded work. Sessions end immediately; server cleanup can continue."
+                        : "Deletes your account and private/unpublished work. Approved community GIFs and credits stay as 'Deleted account'.",
+                        details: community.config?.accountDeletionRetainsSharedGifs == false
                         ? "This removes your server account and associated uploaded work under this server's deletion policy. All sessions are revoked immediately; cleanup may continue after you leave."
                         : "This removes your server account, private-library GIFs and unpublished/rejected uploads. Approved shared GIFs and their credits are retained under the server's policy, attributed to 'Deleted account'. Names in existing credit/source text may remain. All sessions are revoked immediately; cleanup may continue after you leave.")
                         .foregroundStyle(.orange)
@@ -286,29 +289,37 @@ private struct CommunityDeleteAccountView: View {
                     if !verifyWithApple && community.user?.authMethods?.appleOnly != true {
                         SecureField("Current password", text: $password)
                     }
-                    TextField("Type DELETE", text: $confirmation).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    Toggle("Permanently delete this account", isOn: Binding(
+                        get: { approval.isConfirmed(for: approvalScope) },
+                        set: { approval.setConfirmed($0, for: approvalScope) }))
                     if verifyWithApple || community.user?.authMethods?.appleOnly == true {
                         if community.config?.appleSignInEnabled == true {
                             Text("Continue with Apple to freshly verify this deletion. The server revokes Apple access before accepting erasure.")
                                 .font(.caption).foregroundStyle(.secondary)
-                            AppleSignInControl(purpose: .delete, confirmation: confirmation,
-                                enabled: confirmation == "DELETE", busyChanged: { busy = $0 },
-                                completed: { password = ""; confirmation = "" })
+                            AppleSignInControl(purpose: .delete,
+                                confirmation: approval.isConfirmed(for: approvalScope) ? "DELETE" : nil,
+                                enabled: approval.isConfirmed(for: approvalScope) && community.config?.accountDeletionRetainsSharedGifs != nil,
+                                busyChanged: { busy = $0; approval.reset() },
+                                completed: { password = ""; approval.reset() })
                         } else {
                             Text("Apple reauthentication is currently unavailable. Reload the server policy or try again later; no deletion has been accepted.")
                                 .foregroundStyle(.orange)
                         }
                     } else {
                         Button("Delete account permanently", role: .destructive) {
-                        guard !busy else { return }
-                        let enteredPassword = password, enteredConfirmation = confirmation
+                        guard !busy, community.config?.accountDeletionRetainsSharedGifs != nil,
+                              approval.consume(for: approvalScope) else { failure = "Account or approval changed. Review deletion again."; return }
+                        let enteredPassword = password, enteredRevision = community.accountRevision
                         busy = true; failure = nil
                         Task {
                             defer { busy = false; password = "" }
-                            do { try await community.deleteAccount(password: enteredPassword, confirmation: enteredConfirmation) }
+                            do {
+                                guard enteredRevision == community.accountRevision else { throw BackpackError.invalid("Account changed. Review deletion again.") }
+                                try await community.deleteAccount(password: enteredPassword, confirmation: "DELETE")
+                            }
                             catch { failure = error.localizedDescription }
                         }
-                    }.disabled(busy || password.isEmpty || confirmation != "DELETE" || community.config?.accountDeletionRetainsSharedGifs == nil)
+                    }.disabled(busy || password.isEmpty || !approval.isConfirmed(for: approvalScope) || community.config?.accountDeletionRetainsSharedGifs == nil)
                     }
                     if community.config?.accountDeletionRetainsSharedGifs == nil {
                         Text("Load the server's deletion policy before confirming.").font(.caption).foregroundStyle(.orange)
@@ -326,6 +337,10 @@ private struct CommunityDeleteAccountView: View {
             if !community.signedIn, community.deletion != nil { CommunityDeletionStatus() }
         }
         .modernScene().navigationTitle("Delete account")
-        .onDisappear { password = "" }
+        .onChange(of: approvalScope) { _, _ in approval.reset(); password = "" }
+        .onDisappear { password = ""; approval.reset() }
+    }
+    private var approvalScope: String {
+        "\(community.accountRevision):\(community.signedIn):\(String(describing: community.config?.accountDeletionRetainsSharedGifs)):\(community.config?.appleSignInEnabled == true):\(verifyWithApple):\(community.user?.authMethods?.appleOnly == true)"
     }
 }

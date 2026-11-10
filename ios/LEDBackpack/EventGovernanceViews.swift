@@ -33,7 +33,10 @@ struct EventOwnerToolsView: View {
             Button("Explicitly reload owner role / revision") { pending = nil; load() }.disabled(session.busy)
             if needsReload { Text("Conflict: choices are retained. Reload explicitly before selecting or submitting again.") }
             if let retainedChoice {
-                Text("Retained choice: \(retainedChoice.action.label), \(retainedChoice.person.displayName), revision \(retainedChoice.event.revision). A reload never rebases it; select again deliberately.").font(.caption)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(retainedChoice.action.label): \(retainedChoice.person.displayName)")
+                    Text("Captured revision \(retainedChoice.event.revision). Select again after reloading.").font(.caption)
+                }
             }
             if let event, let client = session.client, event.access.role == .owner {
                 Text("Current event owner · revision \(event.revision)")
@@ -56,7 +59,7 @@ struct EventOwnerToolsView: View {
                             Text("Explicitly retain co-organizer role").tag(NativeFormerOwnerRole.coorganizer)
                             Text("Explicitly relinquish all management").tag(NativeFormerOwnerRole.none)
                         }
-                    } else { Text("When the ownership receipt contract is advertised but role choice is absent, omission retains co-organizer status. Undeployed ownership receipt/audit controls are not enabled on older live servers.") }
+                    } else { InteractionExplanation("Ownership controls require the advertised contract. Older servers cannot enable undeployed receipt/audit features.", details: "When the ownership receipt contract is advertised but role choice is absent, omission retains co-organizer status. Undeployed ownership receipt/audit controls are not enabled on older live servers.") }
                     ForEach(event.organizers.filter { $0.eventRole == .coorganizer }) { person in
                         Text(person.displayName).font(.headline)
                         Button("Review removing \(person.displayName)'s co-organizer role") { capture(event, person, .removeOrganizer) }
@@ -171,7 +174,7 @@ struct EventReportComposerView: View {
     @State private var needsReload = false
     var body: some View {
         Form {
-            Text("Only your deliberately typed category/explanation and event/revision identifiers are sent. Nothing copies title, venue, roster, chat, GIF, screenshot, scan or GPS. Server-managed encrypted explanation, not E2EE; retained up to 30 days.").font(.caption)
+            InteractionExplanation("Sends only your explanation/category and event IDs. No automatic chat, roster, media or GPS copy. Server-encrypted; up to 30 days.", details: "Only your deliberately typed category/explanation and event/revision identifiers are sent. Nothing copies title, venue, roster, chat, GIF, screenshot, scan or GPS. Server-managed encrypted explanation, not E2EE; retained up to 30 days.").font(.caption)
             Picker("Choose report category", selection: $category) {
                 Text("Choose…").tag(Optional<NativeEventReportCategory>.none)
                 ForEach(NativeEventReportCategory.allCases, id: \.self) { Text($0.rawValue).tag(Optional($0)) }
@@ -325,7 +328,7 @@ struct EventModerationView: View {
                         }.disabled(session.busy || needsReload)
                     }
                 }
-                Text("Release never restores progress, prior public badge claims or participation consent. Resolve, report withdrawal, thirty-day expiry and erasure do not automatically release enforcement.").font(.caption)
+                InteractionExplanation("Release does not restore progress, badges or consent. Resolving/withdrawing/expiring a report does not release enforcement.", details: "Release never restores progress, prior public badge claims or participation consent. Resolve, report withdrawal, thirty-day expiry and erasure do not automatically release enforcement.").font(.caption)
                 HStack {
                     Button("Previous") { page -= 1; load() }.disabled(page == 1)
                     Button("Next") { page += 1; load() }.disabled(!hasMore || page >= 10000)

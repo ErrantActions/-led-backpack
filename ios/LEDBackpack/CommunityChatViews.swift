@@ -21,97 +21,196 @@ struct CommunityMessagesView: View {
     @State private var hasMore = false
     @State private var selection: ChatScreenSelection?
     @State private var creating = false
+    @State private var composing = false
+    @State private var query = ""
+    @State private var filter = NativeChatInboxFilter.chats
     @State private var pendingInvite: NativeChatInvitation?
     @State private var inviteScope: UUID?
-    private var newConversationContacts: [SocialPerson] {
-        let existing = Set(recent.filter { $0.eventId == nil }.map { $0.profile.id })
-        return friends.filter { !existing.contains($0.id) }
+    private var filteredRecent: [RecentChatContact] {
+        recent.filter { filter.matches($0.profile.displayName,
+            context: $0.eventId == nil ? "Direct message" : "Private organizer question", query: query) }
+    }
+    private var filteredRooms: [NativeChatRoom] {
+        rooms.filter { filter.matches($0.title, context: $0.kind == "event" ? "Event-wide chat" : "Group chat", query: query) }
+    }
+    private var inboxEntries: [NativeChatInboxEntry] {
+        let contacts = filter == .chats ? filteredRecent.map(NativeChatInboxEntry.direct) : []
+        let groups = filter != .requests ? filteredRooms.map(NativeChatInboxEntry.room) : []
+        return (contacts + groups).sorted(by: NativeChatInboxEntry.newestFirst)
     }
     var body: some View {
-        List {
-            if community.config?.messagingEnabled == true && !session.denied {
-                if session.busy { ProgressView() }
-                if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-                if community.config?.chatMessageRequestsEnabled == true {
-                    NavigationLink("Non-friend message requests / stop") { CommunityMessageRequestsView() }
-                }
-                if community.config?.deviceRecoveryEnabled == true {
-                    NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
-                }
-                Section("Recent conversations") {
-                    ForEach(recent) { contact in
-                        Button {
-                            selection = ChatScreenSelection(context: .direct(peer: contact.profile.id, event: contact.eventId),
-                                title: contact.eventId == nil ? contact.profile.displayName : "Private organizer question")
-                        } label: {
-                            HStack {
-                                Text(contact.profile.displayName)
-                                Spacer()
-                                if contact.eventId != nil { Text("Private event question").font(.caption) }
-                            }
-                        }
-                        if !newConversationContacts.isEmpty {
-                            Section("Start a conversation") {
-                                ForEach(newConversationContacts) { person in
-                                    Button(person.displayName) { selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName) }
-                                }
-                            }
-                        }
+        GeometryReader { geometry in
+            let split = presentsSplit(geometry)
+            HStack(spacing: 0) {
+                inbox.frame(maxWidth: split ? 340 : .infinity)
+                if split {
+                    Divider()
+                    if let selection {
+                        CommunityConversationView(context: selection.context, title: selection.title, embedded: true)
+                            .id(selection.context).frame(maxWidth: .infinity)
+                    } else {
+                        ContentUnavailableView("Choose a conversation", systemImage: "bubble.left.and.bubble.right")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                Section("Groups & event-wide chats") {
-                    ForEach(rooms) { room in
-                        Button { selection = ChatScreenSelection(context: .room(room.id), title: room.title) } label: {
-                            HStack { Text(room.title); Spacer(); Text(room.kind == "event" ? "Event-wide" : "Group").font(.caption)
-                                if room.unread > 0 { Text("\(room.unread)").font(.caption.bold()).foregroundStyle(Aurora.mint) } }
-                        }
-                    }
-                    if community.config?.groupChatsEnabled == true { Button("Create group") { creating = true } }
-                    FeatureDetails("Event chats") { Text("Join event-wide chats from an eligible event. Organizer questions stay private.") }
-                }
-                Section("Group invitations") {
-                    ForEach(invitations) { invite in
-                        VStack(alignment: .leading) {
-                            Text(invite.title).font(.headline)
-                            Text("From \(invite.inviter.displayName)").font(.caption)
-                            Text(invite.shareHistory ? "The owner shares this room's retained earlier messages and attachments." :
-                                "You start from acceptance; earlier room history is not shared.").font(.caption)
-                            Button("Review invitation") { pendingInvite = invite; inviteScope = session.client?.instanceID }
-                        }
-                    }
-                }
-                if page > 1 || hasMore { HStack {
-                    Button("Previous") { page -= 1; load() }.disabled(page <= 1 || session.busy)
-                    Spacer()
-                    Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy)
-                } }
-                if !session.busy && session.failure == nil && friends.isEmpty && recent.isEmpty && rooms.isEmpty && invitations.isEmpty {
-                    ContentUnavailableView("No conversations yet", systemImage: "bubble.left.and.bubble.right",
-                        description: Text("Connect with a friend to start chatting."))
-                }
-                Button("Refresh", action: load).disabled(session.busy)
-            } else { Text(session.failure ?? "Messaging is unavailable until this server advertises configured support.") }
+            }
+            .navigationDestination(item: Binding(get: { split ? nil : selection }, set: { if !split { selection = $0 } })) { item in
+                CommunityConversationView(context: item.context, title: item.title).id(item.context)
+            }
         }
-        .modernScene().navigationTitle("Messages").buttonStyle(.borderless)
-        .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(phase)") {
+        .navigationTitle("Messages").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("New message", systemImage: "square.and.pencil") { composing = true }
+                    if community.config?.groupChatsEnabled == true {
+                        Button("Create group", systemImage: "person.3") { creating = true }
+                    }
+                } label: { Image(systemName: "square.and.pencil").frame(minWidth: 44, minHeight: 44) }
+                    .accessibilityLabel("New conversation")
+                    .disabled(session.denied || session.client == nil || community.config?.messagingEnabled != true)
+            }
+        }
+        .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.groupChatsEnabled == true):\(community.config?.eventChatsEnabled == true)") {
             clear(); selection = nil; page = 1; session.clear()
             guard phase == .active else { return }
             session.bind(community)
             if community.config?.messagingEnabled == true { load() }
         }
-        .onChange(of: session.denied) { _, denied in if denied { clear() } }
-        .onChange(of: community.accountRevision) { _, _ in clear(); selection = nil }
-        .onChange(of: community.chatAccessRevision) { _, _ in clear(); selection = nil; session.clear() }
+        .onChange(of: phase) { _, value in
+            if value == .active { session.bind(community); if community.config?.messagingEnabled == true { load() } }
+            else { session.clear(); clear() }
+        }
+        .onChange(of: session.denied) { _, denied in if denied { clear(); selection = nil } }
+        .onChange(of: community.accountRevision) { _, _ in clear(); selection = nil; NativeChatDraftStore.shared.invalidate() }
+        .onChange(of: community.chatAccessRevision) { _, _ in clear(); selection = nil; session.clear(); NativeChatDraftStore.shared.invalidate() }
         .onDisappear { session.clear(); clear() }
-        .navigationDestination(item: $selection) { item in CommunityConversationView(context: item.context, title: item.title) }
         .sheet(isPresented: $creating, onDismiss: load) { NativeGroupCreateView() }
+        .sheet(isPresented: $composing) {
+            NavigationStack {
+                List {
+                    ForEach(friends) { person in
+                        Button {
+                            composing = false
+                            selection = ChatScreenSelection(context: .direct(peer: person.id, event: nil), title: person.displayName)
+                        } label: { contactRow(person, subtitle: "Direct message") }
+                            .buttonStyle(.plain)
+                    }
+                    if friends.isEmpty { Text("Connect with a friend to start a conversation.").foregroundStyle(.secondary) }
+                }
+                .modernScene().navigationTitle("New message")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { composing = false } } }
+            }
+        }
         .confirmationDialog("Respond to group invitation?", isPresented: Binding(get: { pendingInvite != nil },
             set: { if !$0 { pendingInvite = nil } })) {
                 if let invite = pendingInvite {
                     Button("Accept displayed history choice") { respond(invite, accept: true) }
                     Button("Decline", role: .destructive) { respond(invite, accept: false) }
                 }
-            } message: { Text("Acceptance uses the invitation's displayed revision. You cannot override the owner's history choice.") }
+            } message: { Text("Uses the displayed invitation and history choice.") }
+    }
+    private func presentsSplit(_ geometry: GeometryProxy) -> Bool {
+        guard geometry.size.width >= 760 else { return false }
+        if #available(iOS 27.1, *) { return geometry.reservedRegions(kind: .division).isEmpty }
+        return true
+    }
+    private var inbox: some View {
+        List {
+            if community.config?.messagingEnabled == true && !session.denied {
+                if session.busy { ProgressView() }
+                if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                Picker("Conversations", selection: $filter) {
+                    ForEach(NativeChatInboxFilter.allCases) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).listRowBackground(Color.clear)
+                ForEach(inboxEntries) { entry in
+                    switch entry {
+                    case .direct(let contact):
+                        Button {
+                            selection = ChatScreenSelection(context: .direct(peer: contact.profile.id, event: contact.eventId),
+                                title: contact.profile.displayName)
+                        } label: {
+                            contactRow(contact.profile, subtitle: contact.eventId == nil ? "Direct message" : "Private organizer question",
+                                timestamp: contact.lastMessageCreatedAt)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("chat-contact-\(contact.profile.id.uuidString.lowercased())-\(contact.eventId?.uuidString.lowercased() ?? "direct")")
+                    case .room(let room):
+                        Button { selection = ChatScreenSelection(context: .room(room.id), title: room.title) } label: {
+                            HStack(spacing: 12) {
+                                NativeChatAvatar(title: room.title, group: true)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(room.title).font(.headline)
+                                    Text(room.archived ? "Archived" : room.kind == "event" ? "Event-wide chat" : "Group chat")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 4)
+                                VStack(alignment: .trailing, spacing: 6) {
+                                    Text(Date(timeIntervalSince1970: room.updatedAt / 1000), style: .relative)
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                    if room.unread > 0 {
+                                        Text("\(room.unread)").font(.caption.bold()).foregroundStyle(Aurora.onAction)
+                                            .padding(7).background(Aurora.mint, in: Capsule())
+                                            .accessibilityLabel("\(room.unread) unread messages")
+                                }
+                                }
+                            }.padding(.vertical, 6).frame(minHeight: 64)
+                        }.buttonStyle(.plain).accessibilityIdentifier("chat-room-\(room.id.uuidString.lowercased())")
+                    }
+                }
+                if filter == .requests {
+                    if community.config?.chatMessageRequestsEnabled == true {
+                        NavigationLink("Message requests") { CommunityMessageRequestsView() }
+                    }
+                    ForEach(invitations.filter { filter.matches($0.title, context: "Group invitation", query: query) }) { invite in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(invite.title, systemImage: "person.3").font(.headline)
+                            Text("Invited by \(invite.inviter.displayName)").font(.caption)
+                            Text(invite.shareHistory ? "Retained earlier messages are shared." :
+                                "Earlier messages are not shared.").font(.caption).foregroundStyle(.secondary)
+                            Button("Review invitation") { pendingInvite = invite; inviteScope = session.client?.instanceID }
+                        }
+                    }
+                }
+                if community.config?.deviceRecoveryEnabled == true,
+                   community.config?.connectedDeviceRegistrationVersion == 2 {
+                    NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
+                }
+                if page > 1 || hasMore { HStack {
+                    Button("Previous") { page -= 1; load() }.disabled(page <= 1 || session.busy)
+                    Spacer()
+                    Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy)
+                } }
+                if !session.busy && session.failure == nil && recent.isEmpty && rooms.isEmpty && invitations.isEmpty {
+                    ContentUnavailableView("No conversations yet", systemImage: "bubble.left.and.bubble.right",
+                        description: Text("Connect with a friend to start chatting."))
+                }
+                if !session.busy && session.failure == nil && !query.isEmpty && filter != .requests &&
+                    filteredRooms.isEmpty && (filter == .groups || filteredRecent.isEmpty) {
+                    ContentUnavailableView.search(text: query)
+                }
+                if !query.isEmpty { Text("Searches loaded conversation names and contexts.").font(.caption).foregroundStyle(.secondary) }
+            } else { Text(session.failure ?? "Messaging is unavailable until this server advertises configured support.") }
+        }
+        .listStyle(.plain).modernScene()
+        .searchable(text: $query, prompt: "Find a conversation")
+        .disabled(session.denied || community.config?.messagingEnabled != true)
+        .refreshable { load() }
+    }
+    private func contactRow(_ person: SocialPerson, subtitle: String, timestamp: Double? = nil) -> some View {
+        HStack(spacing: 12) {
+            if let client = session.client {
+                CommunityProfileAvatar(person: person, client: client).frame(width: 48, height: 48)
+            } else { NativeChatAvatar(title: person.displayName) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(person.displayName).font(.headline)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            if let timestamp {
+                Text(Date(timeIntervalSince1970: timestamp / 1000), style: .relative).font(.caption2).foregroundStyle(.secondary)
+            }
+        }.padding(.vertical, 6).frame(minHeight: 64)
     }
     private func respond(_ invite: NativeChatInvitation, accept: Bool) {
         session.run(expected: inviteScope, { try await $0.respondChatInvite(invite, accept: accept) },
@@ -129,7 +228,7 @@ struct CommunityMessagesView: View {
             hasMore = contacts.conversations.count == 24 || peers.count == 50 || chats?.hasMore == true || invites?.hasMore == true
         }
     }
-    private func clear() { friends = []; recent = []; rooms = []; invitations = []; pendingInvite = nil }
+    private func clear() { friends = []; recent = []; rooms = []; invitations = []; pendingInvite = nil; composing = false; creating = false; query = "" }
 }
 
 @MainActor
@@ -140,6 +239,8 @@ struct CommunityConversationView: View {
     @StateObject private var session = CommunityFeatureSession()
     let context: ChatConversation
     let title: String
+    var embedded = false
+    @State private var draftScope: NativeChatDraftScope?
     @State private var messages: [NativeChatMessage] = []
     @State private var room: NativeChatRoom?
     @State private var directCursor: DirectChatCursor?
@@ -166,8 +267,11 @@ struct CommunityConversationView: View {
     @State private var shareTyping = false
     @State private var typing: [ChatTypingPage.Peer] = []
     @State private var typingTask: Task<Void, Never>?
+    @State private var typingExpiryTask: Task<Void, Never>?
+    @State private var typingWasShared = false
     @State private var typingClient = UUID()
     @State private var roomInfo = false
+    @State private var privacyDetails = false
     @State private var choosingPin = false
     @State private var choosingReference = false
     @State private var reporting: NativeChatMessage?
@@ -176,50 +280,71 @@ struct CommunityConversationView: View {
     @State private var referencesVerified = false
     private var conversationContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if revoked || session.denied || community.config?.messagingEnabled != true {
-                    Text(session.failure ?? "Conversation access is unavailable. Recheck access; private media never falls back to public URLs.")
+            LazyVStack(alignment: .leading, spacing: 12) {
+                if revoked || session.denied || community.config?.messagingEnabled != true || phase != .active {
+                    ContentUnavailableView("Conversation unavailable", systemImage: "lock.bubble",
+                        description: Text(session.failure ?? "Refresh to check access."))
                 } else {
-                    Text(liveStatus).font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        NativeChatAvatar(title: room?.title ?? title, group: isRoom)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(conversationSubtitle).font(.subheadline.weight(.semibold))
+                            Text(liveStatus).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }.padding(.bottom, 12)
                     if let outboxFailure { Text(outboxFailure).foregroundStyle(.orange) }
                     if let liveFailure { Text(liveFailure).font(.caption).foregroundStyle(.orange) }
                     if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                     if more { Button("Load older messages") { load(older: true) }.disabled(session.busy) }
                     ForEach(community.avatarPolicyChanging ? [] : messages) { message in
                         NativeChatBubble(message: message, mine: message.senderId == community.user?.id, client: session.client,
-                            referenceEpoch: viewToken ?? "", referencesVerified: referencesVerified,
+                            referenceEpoch: viewToken ?? "", referencesVerified: referencesVerified, showSender: isRoom,
                             incident: session.client?.chatReportsEnabled == true && message.senderId != community.user?.id ? { reporting = message } : nil) {
                             deleting = message; deleteScope = session.client?.instanceID
                         }
                     }
-                    if !typing.isEmpty { Text("\(typing.map(\.displayName).joined(separator: ", ")) typing...").font(.caption) }
-                    if let client = session.client {
-                        if client.chatNotificationPreferencesEnabled {
-                            NavigationLink("Alerts for this conversation") { ConversationNotificationView(context: context) }
-                        }
+                    if messages.isEmpty && !session.busy && session.failure == nil {
+                        Text("No messages yet. Say hello.").foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 30)
                     }
-                    if let room { Button("Room information / members") { roomInfo = true }.disabled(session.busy || room.archived) }
-                    Button("Refresh conversation") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }.disabled(session.busy)
-                    DisclosureGroup("Privacy & history") {
-                        Text("Messages use server-managed encryption, not E2EE. Direct/organizer recovery reloads only authorized history less than 30 days old with the same server messaging key. Deleted/expired messages, lost keys and private libraries cannot be restored. Minimal sender/client-ID receipts last at most 60 days, not forever. Room history follows its invitation choice. Screenshots cannot be recalled.")
-                            .font(.caption)
-                    }
+                    if !typing.isEmpty { Text("\(typing.map(\.displayName).joined(separator: ", ")) typing...").font(.caption).foregroundStyle(Aurora.lavender) }
                 }
-            }.padding(20)
+            }.padding(16)
         }.defaultScrollAnchor(.bottom)
+        .refreshable { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }
+    }
+    private var isRoom: Bool { if case .room = context { return true }; return false }
+    private var conversationSubtitle: String {
+        if let room { return room.archived ? "Archived chat" : room.kind == "event" ? "Event-wide chat" : "Group chat" }
+        if case .direct(_, let event) = context, event != nil { return "Private organizer question" }
+        return "Direct message"
     }
     private var conversationLifecycle: some View {
         conversationContent
-        .modernScene().navigationTitle(revoked || session.denied ? "Messages" : room?.title ?? title)
+        .modernScene().navigationTitle(revoked || session.denied || phase != .active || embedded ? "Messages" : room?.title ?? title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    if let client = session.client, client.chatNotificationPreferencesEnabled {
+                        NavigationLink("Notifications", destination: ConversationNotificationView(context: context))
+                    }
+                    if let room { Button("Members & room info") { roomInfo = true }.disabled(session.busy || room.archived) }
+                    Button("Refresh") { revoked = false; liveFailure = nil; liveRevision = UUID(); load(older: false) }
+                    Button("Privacy & history", systemImage: "info.circle") { privacyDetails = true }
+                } label: { Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44) }
+                    .accessibilityLabel("Conversation actions").disabled(revoked || session.denied || session.client == nil)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if !revoked, !session.denied, community.config?.messagingEnabled == true, let client = session.client {
                 composer(client)
             }
         }
         .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatMediaEnabled == true):\(community.config?.chatPinsEnabled == true):\(community.config?.directMessageRetentionDays.map(String.init) ?? "missing"):\(community.config?.directMessageRecovery ?? "missing")") {
-            clear(); session.clear()
+            clear(preservingDraft: true); session.clear()
             guard phase == .active, community.config?.messagingEnabled == true else { return }
-            session.bind(community); load(older: false)
+            session.bind(community); restoreDraft(); load(older: false)
         }
         .task(id: "\(session.client?.instanceID.uuidString ?? ""):\(phase):\(community.config?.messagingEnabled == true):\(community.config?.liveChatEnabled == true):\(liveRevision)") {
             guard phase == .active, community.config?.messagingEnabled == true, let client = session.client else { return }
@@ -271,7 +396,7 @@ struct CommunityConversationView: View {
         }
         .onChange(of: shareTyping) { _, _ in scheduleTyping() }
         .onChange(of: phase) { _, state in
-            if state != .active { stopTyping(); session.clear(); clear() }
+            if state != .active { stopTyping(); clear(preservingDraft: true); session.clear() }
             else if !session.busy && !revoked { load(older: false, reconcile: true) }
         }
         .onChange(of: community.accountRevision) { _, _ in stopTyping(); clear(); session.clear(); dismiss() }
@@ -279,7 +404,7 @@ struct CommunityConversationView: View {
         .onChange(of: community.config?.groupChatsEnabled) { _, _ in stopTyping(); clear(); session.clear(); if phase == .active { session.bind(community); load(older: false) } }
         .onChange(of: community.config?.eventChatsEnabled) { _, _ in stopTyping(); clear(); session.clear(); if phase == .active { session.bind(community); load(older: false) } }
         .onChange(of: session.denied) { _, denied in if denied { clear(); revoked = true } }
-        .onDisappear { stopTyping(); session.clear(); clear() }
+        .onDisappear { stopTyping(); clear(preservingDraft: true); session.clear() }
     }
     var body: some View {
         conversationLifecycle
@@ -296,6 +421,20 @@ struct CommunityConversationView: View {
             if let client = session.client { ChatReferencePicker(client: client, context: context) { reference = $0; choosingReference = false } }
         }
         .sheet(item: $reporting) { message in MessageIncidentComposeView(message: message, context: context) }
+        .sheet(isPresented: $privacyDetails) {
+            NavigationStack {
+                List {
+                    Text("Server-encrypted, not end-to-end encrypted.")
+                    Text("Saved on the server does not mean delivered or read by the recipient.")
+                    Text("Only authorized retained history is available for 30 days. Deleted messages, lost keys and private libraries cannot be restored.")
+                    Text("Room history follows its invitation choice. Screenshots and downloaded copies cannot be recalled.")
+                    FeatureDetails("Retry records") {
+                        Text("Minimal sender/client-ID receipts last at most 60 days. They are not recipient read receipts.")
+                    }
+                }.modernScene().navigationTitle("Privacy & history")
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { privacyDetails = false } } }
+            }
+        }
         .confirmationDialog("Delete your sent message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             if let message = deleting {
                 Button("Delete for both accounts", role: .destructive) {
@@ -343,8 +482,9 @@ struct CommunityConversationView: View {
                     }.disabled(session.busy)
                 }
             }
+            if room?.canSend == false { Text("Read-only chat").font(.caption).foregroundStyle(.secondary) }
             if let outbox {
-                Text(outbox.state == .uncertain ? "Delivery uncertain" : outbox.state == .acknowledged ? "Delivered" : "Delivery stopped").font(.headline)
+                Text(outbox.state == .uncertain ? "Send outcome unknown" : outbox.state == .acknowledged ? "Saved on server" : "Send stopped").font(.headline)
                 if outbox.state == .uncertain {
                     Button("Retry same message") { retryOutbox(outbox) }.disabled(session.busy)
                     Button("Clear pending message", role: .destructive) {
@@ -353,34 +493,45 @@ struct CommunityConversationView: View {
                         catch { outboxFailure = error.localizedDescription }
                     }.disabled(session.busy)
                 } else {
-                    Button("Clear delivery record") { dismissAcknowledgedOutbox(outbox) }.disabled(session.busy)
+                    Button("Clear send record") { dismissAcknowledgedOutbox(outbox) }.disabled(session.busy)
                 }
-                Text("Clearing local delivery state does not recall a message already received.").font(.caption)
+                Text("Clearing this record does not recall a message.").font(.caption)
             }
-            TextField("Message", text: $text, axis: .vertical).lineLimit(1...6).disabled(intent != nil || outbox != nil)
-            HStack {
+            HStack(alignment: .bottom, spacing: 10) {
                 Menu {
-                    if client.chatMediaEnabled { Button("Image or GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || attachment != nil) }
-                    if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil) }
+                    if client.chatMediaEnabled { Button("Image or GIF") { importScope = client.instanceID; importing = true }.disabled(intent != nil || outbox != nil || attachment != nil) }
+                    if client.chatPinsEnabled { Button("Fixed place") { choosingPin = true }.disabled(intent != nil || outbox != nil) }
                     if client.chatReferencesEnabled { Button("GIF, event or playlist") { choosingReference = true }.disabled(intent != nil || outbox != nil) }
                     if client.chatLiveEnabled { Toggle("Share typing indicator", isOn: $shareTyping) }
-                } label: { Label("Add", systemImage: "plus.circle").frame(minWidth: 44, minHeight: 44) }
-                .disabled(session.busy)
-                Spacer()
-                Button("Send") { send() }.buttonStyle(.borderedProminent)
+                } label: { Image(systemName: "plus").font(.title3).frame(minWidth: 44, minHeight: 44) }
+                .accessibilityLabel("Add to message").disabled(session.busy || room?.canSend == false)
+                TextField("Message", text: $text, axis: .vertical).lineLimit(1...6)
+                    .padding(.horizontal, 14).padding(.vertical, 11)
+                    .background(Aurora.lavender.opacity(0.10), in: RoundedRectangle(cornerRadius: 22))
+                    .disabled(intent != nil || outbox != nil || room?.canSend == false)
+                    .accessibilityIdentifier("chat-message-input")
+                Button { send() } label: {
+                    Image(systemName: "arrow.up").font(.headline.bold()).frame(width: 44, height: 44)
+                        .foregroundStyle(Aurora.onAction).background(Aurora.mint, in: Circle())
+                }.buttonStyle(.plain).accessibilityLabel("Send message").accessibilityIdentifier("chat-send-message")
+                    .keyboardShortcut(.return, modifiers: .command)
                     .disabled(session.busy || outbox != nil || !newQuestionsAllowed ||
+                        text.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count > 4000 ||
                         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachment == nil && pin == nil && reference == nil)
             }
-            DisclosureGroup("Delivery details") {
-                Button("Check saved delivery state", action: restoreOutbox).disabled(session.busy)
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count > 4000 {
+                Text("Shorten your message to 4,000 UTF-16 units.").font(.caption).foregroundStyle(.orange)
+            }
+            DisclosureGroup("Send details") {
+                Button("Check saved send state", action: restoreOutbox).disabled(session.busy)
                 if let outbox {
                     Text("State: \(outbox.state.rawValue). Retry before \(outbox.retryBefore.formatted()).").font(.caption)
                 }
-                Text("Retries keep the original ID and exact content. Similar text in history is not a delivery receipt.")
+                Text("Retries keep the exact message ID and content. Server acceptance is not recipient delivery.")
                     .font(.caption)
             }
             if session.busy { ProgressView() }
-        }.padding(16).glassPanel().disabled(room?.canSend == false)
+        }.padding(12).background(AuroraSurface(radius: 22))
     }
     private func send() {
         let capturedText = text, capturedAttachment = attachment?.attachment.id
@@ -404,7 +555,7 @@ struct CommunityConversationView: View {
                 try session.checked(client); messages = []; referencesVerified = false; newQuestionsAllowed = false
                 restoreOutbox(); throw error
             }
-        }, success: { intent = nil; text = ""; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; stopTyping(); load(older: false) })
+        }, success: { discardStoredDraft(); intent = nil; text = ""; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; stopTyping(); load(older: false) })
     }
     private func restoreOutbox() {
         guard let client = session.client else { return }
@@ -493,22 +644,81 @@ struct CommunityConversationView: View {
     }
     private func refreshTyping(_ client: CommunityFeatureClient) async throws {
         let page = try await client.typing(context)
-        try session.checked(client); typing = page.typing.filter { $0.expiresInMs > 0 }
+        try session.checked(client); typingExpiryTask?.cancel()
+        typing = page.typing.filter { $0.expiresInMs > 0 }
+        let clock = ContinuousClock()
+        let deadlines = typing.map { (id: $0.id, expiry: clock.now.advanced(by: .milliseconds(min(6000, $0.expiresInMs)))) }
+        typingExpiryTask = Task {
+            do {
+                for item in deadlines.sorted(by: { $0.expiry < $1.expiry }) {
+                    try await clock.sleep(until: item.expiry)
+                    try session.checked(client)
+                    typing.removeAll { $0.id == item.id }
+                }
+            } catch {
+                if !Task.isCancelled { typing = []; liveFailure = "Typing unavailable: \(error.localizedDescription)" }
+            }
+        }
     }
     private func scheduleTyping() {
         typingTask?.cancel()
-        guard phase == .active, let client = session.client, client.chatLiveEnabled else { return }
-        let active = shareTyping && !text.isEmpty
+        guard phase == .active, !revoked, !session.denied, let client = session.client, client.chatLiveEnabled else { return }
+        let active = shareTyping && !text.isEmpty && newQuestionsAllowed && room?.canSend != false
+        guard active || typingWasShared else { return }
         typingTask = Task {
-            do { try await Task.sleep(for: .milliseconds(500)); try await client.setTyping(context, clientID: typingClient, active: active) }
+            do {
+                try await Task.sleep(for: .milliseconds(500)); try session.checked(client)
+                try await client.setTyping(context, clientID: typingClient, active: active)
+                try session.checked(client); typingWasShared = active
+            }
             catch { if !Task.isCancelled { liveFailure = "Typing update failed: \(error.localizedDescription)" } }
         }
     }
     private func stopTyping() {
-        typingTask?.cancel(); typing = []
+        typingTask?.cancel(); typingExpiryTask?.cancel(); typing = []; typingWasShared = false
         // The server's bounded typing TTL expires it; background/access loss never starts another request.
     }
-    private func clear() { messages = []; room = nil; text = ""; intent = nil; outbox = nil; outboxFailure = nil; newQuestionsAllowed = false; contactPreference = nil; canManageOwnContact = false; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false; referencesVerified = false; choosingReference = false; choosingPin = false; importing = false; deleting = nil; reporting = nil; typing = []; viewToken = nil; revoked = false; directCursor = nil; roomCursor = nil; more = false }
+    private func restoreDraft() {
+        guard let client = session.client else { return }
+        let scope = NativeChatDraftScope(origin: client.origin.url.absoluteString, account: client.accountID,
+            accountRevision: community.accountRevision, accessRevision: community.chatAccessRevision)
+        draftScope = scope
+        if let saved = NativeChatDraftStore.shared.restore(scope: scope, context: context) {
+            text = saved.text; attachment = saved.attachment; pin = saved.pin; reference = saved.reference
+        }
+    }
+    private func discardStoredDraft() {
+        if let draftScope { NativeChatDraftStore.shared.remove(scope: draftScope, context: context) }
+    }
+    private func clear(preservingDraft: Bool = false) {
+        if preservingDraft, let draftScope, !revoked, !session.denied,
+           community.config?.messagingEnabled == true, community.user?.id == draftScope.account,
+           community.origin?.url.absoluteString == draftScope.origin,
+           community.accountRevision == draftScope.accountRevision, community.chatAccessRevision == draftScope.accessRevision,
+           intent == nil, outbox == nil {
+            let saved = NativeChatDraft(text: text, attachment: attachment, pin: pin, reference: reference)
+            if !NativeChatDraftStore.shared.save(saved, scope: draftScope, context: context) {
+                Logger(subsystem: "com.errantactions.ledbackpack", category: "Messages").debug("Ignoring a draft from an expired session scope.")
+            }
+        } else { discardStoredDraft() }
+        messages = []; room = nil; text = ""; intent = nil; outbox = nil; outboxFailure = nil; newQuestionsAllowed = false
+        contactPreference = nil; canManageOwnContact = false; attachment = nil; pin = nil; reference = nil; referencePolicyStale = false
+        referencesVerified = false; choosingReference = false; choosingPin = false; importing = false; deleting = nil; reporting = nil
+        roomInfo = false; privacyDetails = false; draftScope = nil; stopTyping(); viewToken = nil; revoked = false; directCursor = nil; roomCursor = nil; more = false
+    }
+}
+
+@MainActor
+private struct NativeChatAvatar: View {
+    let title: String
+    var group = false
+    var body: some View {
+        Text(title.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased())
+            .font(.subheadline.bold()).foregroundStyle(Aurora.onAction)
+            .frame(width: 48, height: 48)
+            .background(Aurora.spectrum, in: RoundedRectangle(cornerRadius: group ? 16 : 24))
+            .accessibilityHidden(true)
+    }
 }
 
 @MainActor
@@ -539,28 +749,45 @@ private struct NativeChatBubble: View {
     let client: CommunityFeatureClient?
     let referenceEpoch: String
     let referencesVerified: Bool
+    var showSender = false
     let incident: (() -> Void)?
     let delete: () -> Void
-    @State private var hover = false
-    @State private var selected = false
+    @Environment(\.accessibilityReduceMotion) private var reducedMotion
+    @State private var entered = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(mine ? "You" : message.senderName ?? "Contact").font(.caption).foregroundStyle(.secondary)
-            if !message.text.isEmpty { Text(message.text).textSelection(.enabled) }
+        HStack(alignment: .bottom, spacing: 8) {
+            if mine { Spacer(minLength: 32) }
+            VStack(alignment: mine ? .trailing : .leading, spacing: 5) {
+            if showSender, !mine { Text(message.senderName ?? "Contact").font(.caption).foregroundStyle(.secondary) }
+            VStack(alignment: .leading, spacing: 8) {
+            if !message.text.isEmpty {
+                Text(message.text).textSelection(.enabled).foregroundStyle(mine ? Aurora.onAction : Aurora.ink)
+            }
             if let attachment = message.attachment, let client { PrivateChatImage(item: attachment, client: client).frame(height: 200) }
-            if let pin = message.pin { ChatFixedPinCard(pin: pin) }
+            if let pin = message.pin { ChatFixedPinCard(pin: pin).padding(8).glassPanel(radius: 14) }
             if let reference = message.reference, let client {
                 if referencesVerified {
-                    ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch).id("\(reference.fingerprint):\(referenceEpoch)")
+                    ChatReferenceCardView(card: reference, client: client, reconciliationEpoch: referenceEpoch)
+                        .padding(8).glassPanel(radius: 14).id("\(reference.fingerprint):\(referenceEpoch)")
                 } else { Label("Shared content unavailable until access is reverified", systemImage: "rectangle.slash").foregroundStyle(.secondary) }
             }
-            if !mine, let incident { Button("Explain an incident", action: incident).font(.caption) }
+            }.padding(14)
+                .background(mine ? Aurora.mint.opacity(0.96) : Aurora.lavender.opacity(0.13),
+                    in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            Text(Date(timeIntervalSince1970: message.createdAt / 1000), format: .dateTime.hour().minute())
+                .font(.caption2).foregroundStyle(.secondary).padding(.horizontal, 8)
+            }
+            if !mine { Spacer(minLength: 32) }
         }
-        .padding(16).frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading).glassPanel(radius: 22)
-        .overlay(alignment: .topTrailing) {
-            if mine && (hover || selected) { Button(action: delete) { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Delete your message") }
+        .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
+        .opacity(entered || reducedMotion ? 1 : 0)
+        .offset(y: entered || reducedMotion ? 0 : 6)
+        .onAppear { withAnimation(reducedMotion ? nil : .easeOut(duration: 0.22)) { entered = true } }
+        .contextMenu {
+            if mine { Button("Delete your message", systemImage: "trash", role: .destructive, action: delete) }
+            if !mine, let incident { Button("Report message", systemImage: "flag", action: incident) }
         }
-        .onHover { hover = $0 }.onTapGesture { selected.toggle() }
         .accessibilityAction(named: Text("Delete your message")) { if mine { delete() } }
+        .accessibilityAction(named: Text("Report message")) { if !mine { incident?() } }
     }
 }

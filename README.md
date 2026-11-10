@@ -46,6 +46,22 @@ For signed internal testing, see the [TestFlight setup guide](ios/TESTFLIGHT.md)
 Its manual upload workflow requires protected environment secrets and explicit
 confirmation; it never submits an App Store release automatically.
 
+## Design research
+
+See [research](research/README.md) for the iOS/Duo UX research, attributed
+screenshots, layout studies, and native acceptance criteria.
+The [Aurora Fieldwork atlas](research/layouts/design-atlas.html) contains the
+all-surface design studies and coverage boundaries; it is not a shipped native
+redesign.
+
+The native Aurora integration now applies shared adaptive colors, surfaces,
+feature cards and lifecycle-aware motion throughout the app, with concise
+details, scoped confirmation toggles and artwork-only GIF surfaces. Messaging
+uses an avatar-led inbox, chronological supported contexts, bubbles, anchored
+composer and account-scoped in-memory drafts. This source is a release candidate;
+native CI, screenshot review and the protected TestFlight workflow are separate
+gates. The browser atlas's geometry results are not native acceptance evidence.
+
 ## Status and important limits
 
 This is an experimental app. Installing a signed beta requires Apple signing

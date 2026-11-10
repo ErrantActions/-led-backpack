@@ -88,7 +88,8 @@ struct FriendPlaybackView: View {
                     .disabled(interactions.engine?.enabled == true || interactions.engine?.busy == true || interactions.consumed.contains(selected.id))
                 if selectsArtwork {
                     if let choice = media.choice {
-                        Text("Interaction artwork: \(choice.name) — \(choice.data.count) bytes").font(.caption)
+                        Text("Interaction artwork · \(choice.data.count) bytes").font(.caption)
+                            .accessibilityLabel("Interaction artwork: \(choice.name), \(choice.data.count) bytes")
                     } else { Text("Select interaction artwork separately. Your current phone artwork remains the recovery original.").font(.caption) }
                     Button("Choose GIF") { media.pause(); choosing = true }.disabled(!canEdit)
                     FeatureDetails("Use what's playing") {

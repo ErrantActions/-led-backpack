@@ -237,7 +237,6 @@ struct CloudArtworkDetail: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if let bytes { AnimatedPreview(data: bytes).frame(height: 280).clipShape(RoundedRectangle(cornerRadius: 22)) }
                     else if failure == nil { ProgressView("Opening cloud GIF...").frame(maxWidth: .infinity, minHeight: 180) }
-                    Text(cloud.item.title).font(.title2.bold())
                     Label(cloud.visibility == "private" ? "Private cloud library" : "Community / \(cloud.status)",
                         systemImage: cloud.visibility == "private" ? "lock.icloud" : "person.2")
                         .font(.subheadline).foregroundStyle(.secondary)

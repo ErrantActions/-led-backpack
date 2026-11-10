@@ -82,7 +82,7 @@ struct DeviceResearchView: View {
     @State private var pendingDelete: GenericResearchTarget?
     var body: some View {
         Form {
-            Text("Explicit default-off research: select only a curated GENERIC combination. Reports are not unique devices/installs and do not verify hardware. No BLE/MAC/serial/IP/account/location/source/time is in the submission or stored connection history. Authentication still processes the request. No raw device strings are collected.")
+            InteractionExplanation("Optional research shares a generic device category, not raw device details or location. Authentication still applies.", details: "Explicit default-off research: select only a curated GENERIC combination. Reports are not unique devices/installs and do not verify hardware. No BLE/MAC/serial/IP/account/location/source/time is in the submission or stored connection history. Authentication still processes the request. No raw device strings are collected.")
                 .font(.caption)
             if session.scope != nil {
                 if admin {
@@ -115,7 +115,7 @@ struct DeviceResearchView: View {
                                 ForEach(page.targets) { target in Text(label(target)).tag(Optional(target.id)) }
                             }
                             Toggle("I consent to one unlinkable aggregate report for this exact curated combination", isOn: $consent)
-                            Text("Only {targetId, consent:true} is sent. Once counted, an individual report cannot be retrieved or withdrawn. At most 16 combinations/account per 24-hour volatile dedup window; counts may repeat after a day/restart. No automatic submission.")
+                            InteractionExplanation("Reports cannot be withdrawn once counted. Choose deliberately; nothing submits automatically.", details: "Only {targetId, consent:true} is sent. Once counted, an individual report cannot be retrieved or withdrawn. At most 16 combinations/account per 24-hour volatile dedup window; counts may repeat after a day/restart. No automatic submission.")
                                 .font(.caption)
                             Button("Submit selected combination once") {
                                 session.run { scope in

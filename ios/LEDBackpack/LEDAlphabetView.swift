@@ -47,7 +47,7 @@ struct LEDAlphabetView: View {
             Section("Check the physical backpack") {
                 Button("Save all-character test GIF") { saveProof() }.disabled(saving)
                 if saving { ProgressView("Building font proof...") }
-                Text("Creates a local 94-frame GIF: A-Z, a-z, digits and all printable punctuation in ASCII order at the selected size. Each frame lasts 0.5 seconds. Send it from Library to an expendable slot, or preview it locally first.")
+                InteractionExplanation("Creates a local 94-frame alphabet GIF, 0.5 seconds per frame. Preview first; sending to a slot is a separate choice.", details: "Creates a local 94-frame GIF: A-Z, a-z, digits and all printable punctuation in ASCII order at the selected size. Each frame lasts 0.5 seconds. Send it from Library to an expendable slot, or preview it locally first.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text("Software pixel checks do not certify physical readability. View the actual backpack at your normal distance. Existing saved artwork is not rewritten.")
                     .font(.caption).foregroundStyle(.secondary)

@@ -131,7 +131,7 @@ struct CommunityUploadView: View {
             Form {
                 if let submitted {
                     Section("Submitted for community review") {
-                        Label(submitted.title, systemImage: "checkmark.circle")
+                        Label("Artwork submitted", systemImage: "checkmark.circle")
                         Text("This is not a private backup. The server may send the GIF and metadata for AI review and publish it when approved.")
                         NavigationLink("My community uploads") { CommunityUploadsView() }
                     }
@@ -157,7 +157,6 @@ struct CommunityUploadView: View {
     }
     private var metadata: some View {
         Section("About this GIF") {
-            TextField("Title", text: $title)
             Picker("Category", selection: $category) {
                 ForEach(CommunityCategory.allCases) { Text($0.label).tag($0.rawValue) }
             }
@@ -166,7 +165,7 @@ struct CommunityUploadView: View {
                 Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Text("GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. This submission is for public community review, not private storage. Use Private cloud for backups. Neither action changes the backpack.")
+            InteractionExplanation("Public community review, not backup. GIFs: 1-120 frames, up to 5 MB; single frames are valid. Backpack output is unchanged.", details: "GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. This submission is for public community review, not private storage. Use Private cloud for backups. Neither action changes the backpack.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(busy)
     }
@@ -224,7 +223,6 @@ struct CommunityUploadsView: View {
                 Button("Refresh uploads") { refresh() }.disabled(busy)
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(item.title).font(.headline)
                         if let width = item.width, let height = item.height { Text("native:\(width)x\(height) — exact original").font(.caption) }
                         Text(item.status.capitalized).font(.caption)
                         if !item.moderationReason.isEmpty { Text(item.moderationReason).font(.caption) }

@@ -56,15 +56,25 @@ struct RootView: View {
     @EnvironmentObject private var targets: DisplayTargetSelection
     @EnvironmentObject private var apple: NativeApplePushCoordinator
     @Environment(\.scenePhase) private var phase
+    @Environment(\.accessibilityReduceTransparency) private var opaqueNavigation
+    @Environment(\.colorSchemeContrast) private var navigationContrast
     var body: some View {
         TabView(selection: $app.selectedTab) {
-            LibraryView().tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
-            SocialTabView().tabItem { Label("Social", systemImage: "person.2") }.tag(AppTab.social)
-            DeviceView().tabItem { Label("Backpack", systemImage: "backpack") }.tag(AppTab.backpack)
-            CreateView().tabItem { Label("Create", systemImage: "paintbrush.pointed") }.tag(AppTab.create)
-            LiveView().tabItem { Label("Live", systemImage: "waveform.path") }.tag(AppTab.live)
+            LibraryView().auroraMotionActive(app.selectedTab == .library)
+                .tabItem { Label("Library", systemImage: "photo.on.rectangle") }.tag(AppTab.library)
+            SocialTabView().auroraMotionActive(app.selectedTab == .social)
+                .tabItem { Label("Social", systemImage: "person.2") }.tag(AppTab.social)
+            DeviceView().auroraMotionActive(app.selectedTab == .backpack)
+                .tabItem { Label("Backpack", systemImage: "backpack") }.tag(AppTab.backpack)
+            CreateView().auroraMotionActive(app.selectedTab == .create)
+                .tabItem { Label("Create", systemImage: "paintbrush.pointed") }.tag(AppTab.create)
+            LiveView().auroraMotionActive(app.selectedTab == .live)
+                .tabItem { Label("Live", systemImage: "waveform.path") }.tag(AppTab.live)
         }
         .tint(Aurora.mint)
+        .toolbarBackground(opaqueNavigation || navigationContrast == .increased ?
+            AnyShapeStyle(Aurora.surface) : AnyShapeStyle(.ultraThinMaterial), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .task(id: "\(community.accountRevision)-\(phase)") {
             guard phase == .active else { return }
             await vault.bind(community)
@@ -80,6 +90,8 @@ struct RootView: View {
             if phase == .active { vault.requestSynchronization(library) }
         }
         .onChange(of: phase) { _, value in if value != .active { vault.stopWork() } }
+        .onChange(of: community.accountRevision) { _, _ in NativeChatDraftStore.shared.invalidate() }
+        .onChange(of: community.chatAccessRevision) { _, _ in NativeChatDraftStore.shared.invalidate() }
         .disabled(app.applyingSceneID != nil)
         .alert("LED Backpack", isPresented: Binding(get: { panel.errorMessage != nil },
             set: { if !$0 { panel.errorMessage = nil } })) {
@@ -160,11 +172,11 @@ struct DeviceView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                connectionSection
                 if !link.connected {
                     BackpackHero(connected: link.connected,
                         size: panel.size.map { "\($0.width) x \($0.height) / STOCK FIRMWARE" } ?? "INDEPENDENT LED CONTROL")
                 }
+                connectionSection
                 if link.connected {
                     BackpackMonitor()
                     VStack(alignment: .leading, spacing: 16) { QuickScenes() }.padding(20).glassPanel()
@@ -399,7 +411,8 @@ struct LibraryView: View {
                 symbol: targets.target == .phone ? "iphone" : "backpack")
             if targets.target == .hardware, let id = targets.hardwareArtworkID,
                let media = library.state.media.first(where: { $0.id == id }) {
-                Text("Selected: \(media.name)").font(.caption).foregroundStyle(.secondary)
+                Text("Artwork selected").font(.caption).foregroundStyle(.secondary)
+                    .accessibilityLabel("Selected: \(media.name)")
             }
             NavigationLink { CloudVaultSettingsView() } label: {
                 Label(vault.busy ? "Syncing" : vault.failure != nil ? "Sync needs attention" :
@@ -620,7 +633,7 @@ struct LibraryView: View {
             .sheet(isPresented: Binding(get: { previewData != nil }, set: { if !$0 { previewData = nil } })) {
                 NavigationStack {
                     if let data = previewData {
-                        AnimatedPreview(data: data).navigationTitle(previewTitle)
+                        AnimatedPreview(data: data).navigationTitle("Artwork preview").accessibilityLabel(previewTitle)
                             .toolbar { Button("Done") { previewData = nil } }
                     }
                 }
@@ -628,7 +641,7 @@ struct LibraryView: View {
             .sheet(isPresented: $uploading) {
                 NavigationStack {
                     Form {
-                        Text(selected?.name ?? "Artwork")
+                        Text("Selected artwork").accessibilityLabel(selected?.name ?? "Artwork")
                         Stepper("Target slot \(targetSlot)", value: $targetSlot, in: 0...59)
                         Toggle("Write program display duration with upload", isOn: $useDwell)
                         if useDwell { Stepper("Stored duration \(dwell)s", value: $dwell, in: 1...600) }

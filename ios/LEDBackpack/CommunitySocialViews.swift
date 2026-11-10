@@ -258,14 +258,14 @@ struct CommunityAvatarView: View {
                 }
                 if avatar == nil && !session.busy { Text("Default profile avatar") }
                 Toggle("I have permission and consent to automatic public-profile screening", isOn: $consent)
-                Text("This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Allowed art publishes after automatic screening; uncertain/mature art is filtered by content preferences and prohibited imagery is blocked.")
+                InteractionExplanation("Avatar upload is public screening, not private backup. Up to 5 MB; content preferences and moderation still apply.", details: "This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Allowed art publishes after automatic screening; uncertain/mature art is filtered by content preferences and prohibited imagery is blocked.")
                     .font(.caption).foregroundStyle(.secondary)
                 if !uploadReady { Text("Uploads/retry are unavailable until this server advertises configured automatic screening. There is no manual-approval fallback.").font(.caption).foregroundStyle(.secondary) }
                 Button("Choose avatar image or GIF") { pickerScope = session.client?.instanceID; pickerVersion = avatar?.version; picking = true }
                     .disabled(!consent || session.busy || !uploadReady)
                 if let selection {
                     Section("Selected file — not uploaded") {
-                        Text("Preview is the oriented first still only. Original immutable bytes and crop metadata are sent; every-frame timing, repeat and transparency remain server-controlled. No local original is rewritten.")
+                        InteractionExplanation("Preview shows the first still. Original bytes and crop metadata are sent; source timing and transparency remain server-controlled.", details: "Preview is the oriented first still only. Original immutable bytes and crop metadata are sent; every-frame timing, repeat and transparency remain server-controlled. No local original is rewritten.")
                             .font(.caption)
                         if owned?.cropsEnabled == true && community.config?.avatarCropsEnabled == true {
                             Toggle("Purposeful percentage crop", isOn: $cropping)

@@ -80,7 +80,7 @@ struct EventRosterView: View {
                             Button("Next friends") { friendPage += 1; load() }.disabled(!moreFriends)
                         }.disabled(session.busy)
                     }
-                    Text("Revocation only withdraws the invitation. Owner-only participant removal is separate and can clear shared progress/access. Organizers are protected from participant removal; no global-admin role bypass.").font(.caption)
+                    InteractionExplanation("Invitation withdrawal is not participant removal. Removal can clear progress/access; protected organizer roles still apply.", details: "Revocation only withdraws the invitation. Owner-only participant removal is separate and can clear shared progress/access. Organizers are protected from participant removal; no global-admin role bypass.").font(.caption)
                 } else if !session.busy { Text("Current event organizer access is required. Cached names/avatars are cleared when access is lost.") }
             }.padding(20)
         }.modernScene().navigationTitle("Event roster")

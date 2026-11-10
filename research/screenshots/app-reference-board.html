@@ -1,0 +1,2865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>LED Backpack - app UI/UX reference board</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; background: #101923; color: #eef4fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main, footer { max-width: 1540px; margin: auto; padding: 24px; }
+    h1 { font-size: clamp(1.7rem, 3vw, 2.6rem); margin: 0 0 12px; }
+    h2 { margin: 0; font-size: 1.5rem; }
+    p { max-width: 95ch; line-height: 1.65; }
+    a { color: #a7e8ff; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #ffd782; outline-offset: 3px; }
+    .skip { position: absolute; top: -100px; }
+    .skip:focus { top: 8px; background: #101923; padding: 12px; z-index: 3; }
+    .notice { border-left: 4px solid #ffd782; padding: 8px 18px; background: #202b38; }
+    .filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; padding: 18px 0; }
+    label { display: grid; gap: 7px; font-weight: 600; }
+    select, input, button { font: inherit; min-height: 44px; padding: 10px 12px; border: 1px solid #8eabc1; border-radius: 6px; background: #1b2b3a; color: #eef4fa; }
+    input { width: min(100%, 340px); }
+    button { cursor: pointer; }
+    #count, .meta { color: #bfd0df; }
+    #count { min-height: 1.5em; }
+    .jump-links { display: flex; flex-wrap: wrap; gap: 12px 18px; padding: 0; list-style: none; }
+    .app { background: #162535; border: 1px solid #496176; border-radius: 12px; margin-bottom: 32px; padding: 22px; }
+    .app-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px; }
+    .meta { font-size: .9rem; }
+    .question { font-weight: 650; }
+    .targets { color: #b7eadc; }
+    .screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 20px; margin: 20px 0; }
+    figure { margin: 0; min-width: 0; }
+    figure a { display: block; min-height: 44px; }
+    .image-frame { height: 360px; display: flex; align-items: center; justify-content: center; background: #0c1520; border-radius: 8px; padding: 10px; }
+    img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+    figcaption { margin-top: 10px; font-size: .9rem; line-height: 1.5; }
+    .image-status { color: #ffce91; font-size: .85rem; }
+    .fallback { padding: 14px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 540px) { header, main, footer { padding: 16px; } .app { padding: 16px; } .screens { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+    @media print { :root { background: white; color: black; } a { color: #123952; } .app { background: white; color: black; break-inside: avoid; } .meta, .targets { color: #233949; } .filters { display: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#references">Skip to app examples</a>
+  <header>
+    <h1>App UI/UX reference board</h1>
+    <p>Official publisher screenshots for workflows related to LED Backpack.
+      Compare content hierarchy, discovery, creating, sending, device status, messaging, outdoor sessions and recovery.
+      Each image links to its original; each app links to its publisher's listing.</p>
+    <p class="notice">These are externally hosted App Store marketing screenshots, not hands-on tests or verified current-build captures.
+      Images and branding belong to their respective owners. Referencing them does not grant permission to reuse them in our app.
+      These listing images do not establish iPhone Duo compatibility. An internet connection is required to load the images.</p>
+    <p><a href="iphone-duo-examples.html">iPhone Duo: ten official Apple-published app layout examples</a>
+      (separate evidence, not inferred from ordinary phone or iPad images).</p>
+    <p><a href="../documentation/app-ui-patterns.md">Read the pattern analysis and Duo implications</a> |
+      <a href="README.md">Screenshot provenance and limitations</a></p>
+    <p id="provenance" class="meta">Loading the local reference index...</p>
+    <div class="filters" aria-label="Reference filters">
+      <label>Feature family <select id="category"><option value="">All feature families</option></select></label>
+      <label>Find an app or workflow <input id="search" type="search" placeholder="For example: recovery, pixel, messaging"></label>
+      <button id="reset" type="button">Reset filters</button>
+    </div>
+    <p id="count" role="status" aria-live="polite"></p>
+    <nav aria-label="Jump to app"><ul id="jumps" class="jump-links"></ul></nav>
+  </header>
+  <main id="references" tabindex="-1"></main>
+  <footer>
+    <p>Study the interaction principle; do not copy artwork, branding, paid content, product claims or unsupported hardware capabilities.
+      A good-looking screenshot alone does not demonstrate accessibility, reliable error handling, privacy, performance, or safe background behavior.</p>
+  </footer>
+  <script id="reference-data" type="application/json">
+{
+  "retrievedAt": "2026-11-10T07:44:40.742Z",
+  "storefront": "US",
+  "source": "Apple iTunes lookup API and linked publisher App Store listings",
+  "sourceUrl": "https://itunes.apple.com/lookup?country=us&id=1237452417,1562961996,6446207239,1049333656,1055281310,1110145103,1514844621,874139669,686449807,310633997,985746746,454638411,618783545,389801252,429047995,1064216828,6444370199,1571998974,426826309,447374873,893687399,405075943,975571447,1209129603,1373032762,1087005682,1089668246,1250173746,1255766787,583446403,1576857102,1584215428,953286746,916366645,888422857,324684580,363590051,544007664,1232780281,904237743,718043190,1358823008,1016366447,885697368",
+  "selection": "Up to the first six published iPhone screenshots and first two iPad screenshots per app, in publisher order.",
+  "limitations": "Published marketing images, not hands-on captures. Listing update dates do not date the screenshot or establish Duo support. No third-party image binaries are stored in this repository.",
+  "apps": [
+    {
+      "id": 1237452417,
+      "category": "LED and pixel tools",
+      "question": "How do gallery browsing, creation and device sending relate?",
+      "targets": [
+        "Library",
+        "Create",
+        "Send & Play"
+      ],
+      "name": "Divoom: Pixel art community",
+      "publisher": "Divoom Lab (Hong Kong) International Co.,Limited",
+      "listingUrl": "https://apps.apple.com/us/app/divoom-pixel-art-community/id1237452417?uo=4",
+      "listingVersion": "3.8.52",
+      "listingReleaseDate": "2026-11-04T01:24:47Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 8,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/a6/e3/cd/a6e3cdf9-2e66-095e-4d62-74813e90111c/7f7f5985-29a4-42b6-b321-8dab96253337__U753b_U677f.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/14/ad/76/14ad7685-316d-1a5c-2c78-3a98a0efcd6d/2a724496-6afe-4376-9f55-cca8f9631af5__U52a8_U753b.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/37/fa/72/37fa7220-ac7a-ab19-57e2-5cb42225e45f/a933ed97-2dd1-49b7-afb4-f37daaebcb35__U793e_U533a.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/65/8c/56/658c5616-9c5d-cd56-c78b-fd7e741f9766/a398dd2c-594b-4df1-be43-7c81416430d5__U8bdd_U9898.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/22/58/28/22582832-4527-e257-d4e9-2ddb3bba0310/fd6e170b-fb28-4fa4-a0d2-5b3f518a4843__U4fdd_U5b58.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/4a/59/e4/4a59e436-3dd7-19fd-3783-80ad339bd316/7b30c231-57f3-43b3-ae85-70242aea774c__U5408_U8f91.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/9b/17/3d/9b173d62-ab59-18e3-eb1b-c4a3e93f8700/79316f83-8db6-46f4-9d2e-70461744b8aa__U753b_U677f.png/576x768bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/ec/a3/77/eca3772b-7c61-2964-81e6-293846e316b1/a16548bd-acbd-465c-b78b-567004be2400__U52a8_U753b.png/576x768bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1562961996,
+      "category": "LED and pixel tools",
+      "question": "What does a close functional peer expose for text, animation and hardware?",
+      "targets": [
+        "Create",
+        "Backpack",
+        "Live"
+      ],
+      "name": "iPixel Color",
+      "publisher": "Shenzhen Heaton Technology Co., Ltd.",
+      "listingUrl": "https://apps.apple.com/us/app/ipixel-color/id1562961996?uo=4",
+      "listingVersion": "4.8.1",
+      "listingReleaseDate": "2026-10-28T18:55:05Z",
+      "availableIPhoneScreenshots": 3,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource125/v4/9c/30/8e/9c308ecb-c949-59fa-106b-ffd8a1eb4796/9b8db794-98bd-4f92-96c0-d852cc494ae2_2021_04_24_11_29_IMG_3728.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource125/v4/ed/bc/09/edbc097d-20fe-4f9d-06ab-ec3a432fb69d/345b274e-4c3f-4696-bbf4-bd75fd28cd1e_2021_04_24_11_29_IMG_3729.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource125/v4/e7/e7/26/e7e7268e-8a15-c4d3-6dac-79ccc9546412/cc326cd8-cd96-4731-bdc2-dcc07fa9d6b6_2021_04_24_11_30_IMG_3730.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 6446207239,
+      "category": "LED and pixel tools",
+      "question": "How can device selection and light controls stay direct?",
+      "targets": [
+        "Backpack",
+        "Scenes"
+      ],
+      "name": "WLED - Official App",
+      "publisher": "Christophe Gagnier",
+      "listingUrl": "https://apps.apple.com/us/app/wled-official-app/id6446207239?uo=4",
+      "listingVersion": "8.0.0",
+      "listingReleaseDate": "2026-11-05T19:25:59Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 2,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/d9/06/76/d90676fc-a43f-4e35-283a-7f86f89068de/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.44.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/32/5d/c1/325dc1a7-a5e8-6beb-fb54-4923a7031258/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.46.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/01/a2/6b/01a26b40-0e5f-afdb-86a1-a4af7e9e8d22/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.49.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/1b/0e/5a/1b0e5a2a-0282-d067-9448-f81d74b6dc2e/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.16.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/35/2b/d1/352bd197-c4eb-4d1b-5e71-32cfb8a583d4/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.22.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/85/98/55/85985533-0477-34fb-efb9-3323cf2e8b30/Simulator_Screenshot_-_iPhone_17_Pro_Max_-_2026-03-08_at_22.03.25.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b7/0a/58/b70a58ea-f5b1-ba5d-9aec-780aba840097/Simulator_Screenshot_-_iPad_Pro_13-inch__U0028M5_U0029_-_2026-03-08_at_22.17.29.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/cc/8c/e6/cc8ce67f-b579-4707-060d-71ee54f8db7d/Simulator_Screenshot_-_iPad_Pro_13-inch__U0028M5_U0029_-_2026-03-08_at_22.17.35.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1049333656,
+      "category": "Connected devices",
+      "question": "How are rooms/devices, scenes and live control separated?",
+      "targets": [
+        "Backpack",
+        "Scenes"
+      ],
+      "name": "Nanoleaf",
+      "publisher": "Doodle Labs Inc",
+      "listingUrl": "https://apps.apple.com/us/app/nanoleaf/id1049333656?uo=4",
+      "listingVersion": "12.0.2",
+      "listingReleaseDate": "2026-11-03T21:49:51Z",
+      "availableIPhoneScreenshots": 5,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/e6/8e/06/e68e06fb-29bf-b90f-1723-d0b8e6174147/0258094e-941a-4b1a-a56c-7bce10a5b43f_Control_.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/3b/4e/76/3b4e76df-8f54-0b5f-6286-44c2df11c843/e4b993f6-ad1a-4329-a312-87986f74bac0_Scene_Creator_.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a8/89/ed/a889edf0-d562-3309-e190-a48f6ce98353/c7e39614-a91c-4e77-aa64-4325c5794291_Schedules_.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6c/60/c5/6c60c5e1-3749-168d-0f73-a5a90f888674/dad05c8a-8b8c-4884-8a6d-040f4f32c029_Discover.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/31/f8/4b/31f84bef-28d3-f44f-92ca-f5bcb2b9ba9e/46aae8f4-7bcb-4c1e-b9c4-8d23bca3c854_Explore.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/5d/71/e6/5d71e6e7-afcd-e653-ad75-2f444968b35f/98ab32b4-c995-40b4-89fa-70e158fefaf8_Control_View_.png/576x768bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c4/cd/a8/c4cda8f0-1a0a-ccf7-bbe2-f901cc6631a7/a796dfbe-aa53-40b3-a81a-732553986122_Paint_.png/576x768bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1055281310,
+      "category": "Connected devices",
+      "question": "How are immediate controls distinguished from saved scenes?",
+      "targets": [
+        "Backpack",
+        "Scenes"
+      ],
+      "name": "Philips Hue",
+      "publisher": "Signify Netherlands B.V.",
+      "listingUrl": "https://apps.apple.com/us/app/philips-hue/id1055281310?uo=4",
+      "listingVersion": "6.4.2",
+      "listingReleaseDate": "2026-11-03T04:21:05Z",
+      "availableIPhoneScreenshots": 9,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/a2/41/fd/a241fd50-6ae4-fd4f-0704-ab219927e3d2/d66140ec-9f67-4859-b9e9-ce77359933df_iPhone_8_Plus_-_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource116/v4/80/b6/20/80b620b8-6afd-24a4-5ab6-ed23186e67a7/b0e5b2cf-0dfa-42ad-829b-3add5bed5d49_iPhone_8_Plus_-_2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/d7/b3/4e/d7b34eca-d7f8-f460-7bab-6e3d080dbd25/7c254008-300b-4f55-98ae-78de33f8f32b_iPhone_8_Plus_-_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/ba/47/7e/ba477ee7-ca7a-e7d9-9ed8-9ea26f1bf558/207aa70c-dd4d-44a8-9107-2826014300f3_iPhone_8_Plus_-_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/68/c0/8d/68c08d33-a6c7-2d49-f722-003a13d36d5a/fd58bfd5-fe42-4514-9403-a2e3e26bffb1_iPhone_8_Plus_-_5.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/0c/1e/0f/0c1e0fa5-7774-d94f-a2de-4f03038f9f7b/c6ebf6dd-a9b5-4274-9990-5af8749506c0_iPhone_8_Plus_-_6.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource116/v4/00/1a/fb/001afb33-66a0-c2d1-35f0-b0f76e9f07d7/2dae93a7-d32a-461f-b789-a89dc556d103_iPad_Pro_12.9__-_1.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/ac/fd/a5/acfda580-8413-eae0-b8a0-1f9dedc6de2b/61fec2e3-8fa4-4cff-851f-9227714bbbba_iPad_Pro_12.9__-_2.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1110145103,
+      "category": "Connected devices",
+      "question": "How does a native home/device hierarchy provide contextual controls?",
+      "targets": [
+        "Backpack",
+        "My devices"
+      ],
+      "name": "Home",
+      "publisher": "Apple Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/home/id1110145103?uo=4",
+      "listingVersion": "2.14",
+      "listingReleaseDate": "2026-10-19T20:45:13Z",
+      "availableIPhoneScreenshots": 4,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/dc/6a/50/dc6a505c-1d60-f464-8c04-a6fa3d1ea7bb/screenshot-250827164550Z.jpg/322x572bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/2e/6f/2d/2e6f2d38-4c1d-47ab-e6ec-36eb20d3cda3/screenshot-250827164236Z.jpg/322x572bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/e2/8a/e4/e28ae4d3-dd3a-1ed8-cadc-a2d9ef44c581/screenshot-250827164231Z.jpg/322x572bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/02/12/f4/0212f40f-2c78-d229-37fe-85a6cf28f8da/screenshot-250827164422Z.jpg/322x572bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c3/3f/fb/c33ffbca-cdc8-9c67-1bd8-2f1fe8fefa9d/IMG_0114.PNG/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/73/14/17/73141704-0fd0-14a5-799e-f484883153ac/IMG_0116.PNG/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1514844621,
+      "category": "Connected devices",
+      "question": "How are device identity, current status and recovery actions grouped?",
+      "targets": [
+        "My devices",
+        "Recovery"
+      ],
+      "name": "Find My",
+      "publisher": "Apple Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/find-my/id1514844621?uo=4",
+      "listingVersion": "5.12",
+      "listingReleaseDate": "2026-10-19T20:45:01Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 4,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/cd/0a/2d/cd0a2d23-211e-453d-dc2e-f79ecec0b5fa/App_Store_Screenshot_2025_Find_My_-_iPhone.001.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/bb/76/ff/bb76ff07-0559-587e-e828-06d6299f5d66/App_Store_Screenshot_2025_Find_My_-_iPhone.002.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/d6/91/e7/d691e78e-a521-33df-82be-a64e1a4af7ee/App_Store_Screenshot_2025_Find_My_-_iPhone.003.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/29/40/9c/29409ca3-5fc1-c4f1-eff4-d05bfd62c1e7/App_Store_Screenshot_2025_Find_My_-_iPhone.004.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/4c/ad/11/4cad11e6-6ec8-a61f-19e8-ebd6999b12f6/App_Store_Screenshot_2025_Find_My_-_iPhone.005.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/17/b1/6b/17b16b3c-a73c-a5a8-b1d3-1c97bfd38f04/App_Store_Screenshot_2025_Find_My_-_iPhone.006.jpeg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/91/a1/6d/91a16dae-7913-a514-c77d-ef8f8805067c/App_Store_Screenshot_2025_Find_My_-_iPad.001.jpeg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/05/d3/24/05d324ba-403e-9c80-dc60-1542e5f7b62c/App_Store_Screenshot_2025_Find_My_-_iPad.002.jpeg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 874139669,
+      "category": "Messaging",
+      "question": "How do conversation hierarchy and composing support a focused private task?",
+      "targets": [
+        "Messages",
+        "Recovery"
+      ],
+      "name": "Signal - Private Messenger",
+      "publisher": "Signal Messenger, LLC",
+      "listingUrl": "https://apps.apple.com/us/app/signal-private-messenger/id874139669?uo=4",
+      "listingVersion": "8.36",
+      "listingReleaseDate": "2026-11-07T15:30:45Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8f/f9/29/8ff9299e-a322-e85e-8a8e-dd618fbe8125/5.5_Privacy.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/fa/af/35/faaf353c-d6f6-bb00-4780-7e801ed38926/5.5_DisappearingMessages.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/24/38/7d/24387d33-e49e-679b-24e2-46aa57aa0425/5.5_VideoCalling.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6e/31/04/6e3104fd-557a-52f2-5dbd-83015f3276c2/5.5_Stories.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/0e/09/e2/0e09e25c-725e-12f3-f5f0-88bebb54c0f2/5.5_Multimedia.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/eb/78/c8/eb78c828-9054-52df-be28-be48856009c6/5.5_GroupChats.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f4/26/96/f426961d-6142-f8a4-c3b3-d89dd4c9d41e/12.9_2Gen_Privacy.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/fb/95/89/fb95897c-9a10-04ab-77b9-2ba9d32acd7f/12.9_2Gen_DisappearingMessages.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 686449807,
+      "category": "Messaging",
+      "question": "How are rich media and secondary conversation tools exposed?",
+      "targets": [
+        "Messages",
+        "Sharing"
+      ],
+      "name": "Telegram Messenger",
+      "publisher": "Telegram FZ-LLC",
+      "listingUrl": "https://apps.apple.com/us/app/telegram-messenger/id686449807?uo=4",
+      "listingVersion": "13.2.1",
+      "listingReleaseDate": "2026-11-10T06:46:29Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/29/6c/87/296c8715-63d1-77c5-4385-f06a3c0d7627/0_APP_IPHONE_55_0.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/49/a8/48/49a84850-d914-649f-e8ac-8074a73ab941/1_APP_IPHONE_55_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/3c/7f/11/3c7f1180-7e1c-c0e8-b158-5b9068b1e36d/2_APP_IPHONE_55_2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/70/e0/d9/70e0d910-cdfe-0283-a981-de1c4d7e2b3b/3_APP_IPHONE_55_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/02/18/99/0218993a-c0b4-a4e7-580d-51a5b5489341/4_APP_IPHONE_55_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/87/6c/a5/876ca575-eeac-e74d-0952-3164f4295989/5_APP_IPHONE_55_5.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/12/a5/2c/12a52cd5-b708-a5d7-6fc0-19182eed5bcd/1_APP_IPAD_PRO_129_1.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/9b/04/f9/9b04f929-0bf8-3667-0ea1-14cda527a1b1/2_APP_IPAD_PRO_129_2.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 310633997,
+      "category": "Messaging",
+      "question": "How are primary conversation actions kept recognizable?",
+      "targets": [
+        "Messages",
+        "Recovery"
+      ],
+      "name": "WhatsApp",
+      "publisher": "WhatsApp Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/whatsapp/id310633997?uo=4",
+      "listingVersion": "26.44.72",
+      "listingReleaseDate": "2026-11-09T14:07:04Z",
+      "availableIPhoneScreenshots": 5,
+      "availableIPadScreenshots": 4,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/59/68/07/59680746-33d1-542e-5c43-1845813e74e2/6.9__Display_1-en_US.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/19/02/fb/1902fbb6-44b3-937d-f4f2-279af6a7f68c/6.9__Display_2-en_US.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/a5/70/66/a57066d2-6b29-1805-524f-1d2133ab2398/6.9__Display_3-en_US.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/5c/44/7c/5c447c79-c33d-18dc-824d-bc2dd5b4c26b/6.9__Display_4-en_US.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/7d/8a/c5/7d8ac551-f6d6-99e0-afe0-87021c8ea23a/6.9__Display_5-en_US.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/2d/8c/19/2d8c190e-7d44-c0a4-bd0a-bfbaf987727a/1_ipad13.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6d/af/cc/6dafcc0c-0597-c963-a098-aeb72db911cc/3_ipad13.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 985746746,
+      "category": "Messaging",
+      "question": "How are communities, channels and conversations distinguished without confusing the current audience?",
+      "targets": [
+        "Messages",
+        "Groups",
+        "Events"
+      ],
+      "name": "Discord - Talk, Play, Hang Out",
+      "publisher": "Discord Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/discord-talk-play-hang-out/id985746746?uo=4",
+      "listingVersion": "353.0",
+      "listingReleaseDate": "2026-11-09T19:34:18Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/17/6b/df/176bdf6b-a84a-97e9-2234-8e1a1294870b/1242x2208_-_1_GroupChat.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/aa/f8/b0/aaf8b04d-aeaf-0c0a-400c-ccfb4814bd8e/1242x2208_-_2_Stream.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/7e/ff/6b/7eff6b74-cd45-783d-6916-c5e5d78b9344/1242x2208_-_3_SeeWhos.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/ac/f4/5d/acf45d38-0458-fe1a-fad2-ac27eda22f5b/1242x2208_-_4_HopIn.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/10/e4/8a/10e48a77-0e5b-94b8-35d5-2227676b48dc/1242x2208_-_5_ToDos.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/25/99/e3/2599e35c-0cc8-a489-83b5-d03377f135b5/1242x2208_-_6_GameHere.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/bf/05/99/bf059979-d96e-8e00-51c5-0b14653b153a/_U005bTablet_U005d_13_U201d_-_2752_x_2064_-_1_GroupChat.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/33/fe/3f/33fe3fdd-bf10-2be0-96f2-e0e886ec744d/_Tablet__13__-_2752_x_2064_-_2_Stream.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 454638411,
+      "category": "Messaging",
+      "question": "How are recent people, chats and media entry actions presented?",
+      "targets": [
+        "Messages",
+        "Sharing"
+      ],
+      "name": "Messenger",
+      "publisher": "Meta Platforms, Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/messenger/id454638411?uo=4",
+      "listingVersion": "586.0.0",
+      "listingReleaseDate": "2026-11-04T21:04:47Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 2,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/90/cd/bd/90cdbdf8-1c5e-e760-56c8-dfc19dc25715/messenger_appstore_iphone_1320x2868_1.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/b4/dc/8c/b4dc8ce4-cb5d-9a8c-7177-e4e0a8d45153/messenger_appstore_iphone_1320x2868_2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b8/53/0d/b8530d9f-ac96-b85b-957d-436cbe874d4e/messenger_appstore_iphone_1320x2868_3.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/93/ba/84/93ba84fc-1d8c-fba2-9652-4916a9b0a9b7/messenger_appstore_iphone_1320x2868_4.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/cd/be/71/cdbe7100-22c3-8f20-3ed7-d385f51bd803/messenger_appstore_iphone_1320x2868_5.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/02/45/51/0245515f-f331-d05d-bfaf-c7e1ff561857/messenger_appstore_iphone_1320x2868_6.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/3e/a5/50/3ea550d2-bff3-d09e-5459-c341c7c4e6a4/7f6fd0a2-ee06-4b01-b04a-d9fec7b1c6de_iPad_2nd_Gen-_Screen_1.jpg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/9e/8a/d8/9e8ad888-2abe-c2cd-12db-fad2878e8208/c937f0f4-9f1f-4b81-8186-ea5d90618f1f_iPad_2nd_Gen_-_Screen_3.jpg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 618783545,
+      "category": "Messaging",
+      "question": "How can channels, threads and activity organize a large conversation space?",
+      "targets": [
+        "Groups",
+        "Events",
+        "Messages"
+      ],
+      "name": "Slack",
+      "publisher": "SLACK TECHNOLOGIES L.L.C.",
+      "listingUrl": "https://apps.apple.com/us/app/slack/id618783545?uo=4",
+      "listingVersion": "26.11.10",
+      "listingReleaseDate": "2026-11-04T14:05:49Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 3,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/78/e1/b4/78e1b4e3-b819-5f59-9c6a-c0a8200b215b/93f78483-ed6a-4f45-bf05-4308c2ecb92f_iOS-iPhone6.5-Screenshot01.en-GB@3x-1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/3f/35/47/3f3547b7-c3a2-edd6-9199-21a4da9c41f0/9776126f-a44a-4ecb-aa3e-ac35f8128ba0_iOS-iPhone5.5-Screenshot02.en-GB@3x.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/7d/09/7f/7d097fe3-4666-4367-a9da-e368f9b3ee33/b56b1f8b-323c-44c7-a6ce-f1b8c497af8c_iOS-iPhone5.5-Screenshot03.en-GB@3x.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/77/ee/69/77ee6938-9030-6c1f-f40b-ac894107c0de/b977cd3f-9493-4561-a830-2ddf2ce776ec_iOS-iPhone5.5-Screenshot04.en-GB@3x.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/40/24/05/4024058b-793d-99d2-566c-c79e386e7408/c493e707-8eb8-4153-bb33-651b128e7a55_iOS-iPhone5.5-Screenshot05.en-GB@3x.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f2/18/97/f2189783-2333-5455-8abd-0cbeff121e6a/1bd5c4e7-4762-4ae2-9396-b70be4195357_iOS-iPhone6.5-Screenshot06.en-GB@3x-1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/ce/10/0b/ce100bff-15b0-71a8-c234-ee5ec4f1350b/51e614ff-87d3-43bd-94e4-82d93e744e9e_app-store-UI-001-2732x2048@1x.jpg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/ad/fa/1d/adfa1d81-32e9-be40-b271-a9c417f8d1c0/2fc5386f-df07-4fe4-9ab2-a7fbb6bb9c31_app-store-UI-002-2732x2048@1x.jpg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 389801252,
+      "category": "Social and community",
+      "question": "How do media discovery, profiles and direct sharing form separate contexts?",
+      "targets": [
+        "Discovery",
+        "Community uploads",
+        "Profiles"
+      ],
+      "name": "Instagram",
+      "publisher": "Instagram, Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/instagram/id389801252?uo=4",
+      "listingVersion": "455.0.0",
+      "listingReleaseDate": "2026-11-09T15:57:59Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/40/d2/ed/40d2ed5a-6217-60a0-22bb-ca38d63689b4/1_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/ef/2a/8b/ef2a8b44-fa9c-83b5-ec6a-b548a3c6b803/1_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/46/04/ec/4604ec65-497b-85a4-fe51-c96719f9aa86/2_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/21/96/f8/2196f89d-dba9-c58f-1014-69be7cdc1527/3_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f6/7a/53/f67a5367-e0f6-368a-9da7-0a5db8502ce0/4_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/76/44/b3/7644b346-96a2-fdbe-e9e6-84fd4ccf3f30/5_iOS_5.5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b2/12/12/b21212a8-9d4d-12e2-d9c8-4b668cf66587/10.5__Following_tab.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/86/89/b8/8689b8a4-503f-3254-0a10-1a5097953382/10.5__Home.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 429047995,
+      "category": "Social and community",
+      "question": "How can visual search, collecting and boards inspire artwork organization?",
+      "targets": [
+        "Discovery",
+        "Library",
+        "Collections"
+      ],
+      "name": "Pinterest",
+      "publisher": "Pinterest, Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/pinterest/id429047995?uo=4",
+      "listingVersion": "14.43",
+      "listingReleaseDate": "2026-11-04T17:22:15Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 7,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/05/a0/f4/05a0f4cc-c5c2-7598-0c8a-802ca66d93a0/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/13/6c/0e/136c0eba-14ff-efd1-61d0-1fef810593af/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/56/ac/8c/56ac8cb8-2301-983d-5f64-0c89f5e570e2/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/65/8b/e4/658be44a-e669-d970-8b23-b833e5553161/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/04/31/c0/0431c036-f0d7-ec83-7c21-d6c267f683dd/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_5.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/90/97/c4/9097c440-c359-8c0f-2dc0-d52ad4a6686a/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_1242x2208_iPhone-5.5_Halloween_6.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/21/2b/47/212b47bd-d620-d67e-be51-ba17fb817100/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_2048x2732_iPad-12.9_Halloween_1.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/73/a5/7a/73a57a6e-25f9-0290-1e0b-ed7bd6b5cdfa/260630_H2-App-Store-Update_EN_iOSApp_Image-Designed_2048x2732_iPad-12.9_Halloween_2.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1064216828,
+      "category": "Social and community",
+      "question": "How do communities, posts and threaded replies communicate context?",
+      "targets": [
+        "Community",
+        "Events",
+        "Reports"
+      ],
+      "name": "Reddit",
+      "publisher": "REDDIT, INC.",
+      "listingUrl": "https://apps.apple.com/us/app/reddit/id1064216828?uo=4",
+      "listingVersion": "2026.45.0",
+      "listingReleaseDate": "2026-11-09T21:24:19Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/04/d2/41/04d241f1-1cff-8627-7ccd-e4fac6008f10/375c47d8-0adc-4e6d-8b1f-63cad0fd81cd_Reddit_SS_Brand_Update_Colorful_Set_5.5_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c1/c1/a5/c1c1a5ed-4187-ad96-eca4-c6b6501a939a/b58a74df-0fe7-4816-be96-153438344906_Reddit_SS_Brand_Update_Colorful_Set_5.5_2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/bb/bc/d5/bbbcd5fe-2b4b-e953-87b0-a1eb983ee022/aa03a0e1-d00d-42ae-ba45-f419bbc04c70_Reddit_SS_Brand_Update_Colorful_Set_5.5_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/75/96/17/759617ee-80a5-3945-25ed-04038ccaa739/c754066e-6338-43b4-8b15-b995646437f9_Reddit_SS_Brand_Update_Colorful_Set_5.5_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8a/4f/4d/8a4f4d5d-3ff9-206d-3407-ae09c4124995/a73f6e8d-ba7d-4d90-b411-acab9fb721ac_Reddit_SS_Brand_Update_Colorful_Set_5.5_5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/59/d6/bd/59d6bdc0-ce3d-8aa5-6dea-8dbc080249f5/de45bccb-b483-45e3-ad77-3e493242c6ff_Reddit_SS_Brand_Update_Colorful_Set_5.5_6.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/bf/6b/42/bf6b4225-182f-cd6c-16e1-1e67542e15fe/1122d97a-8471-41fd-915b-04cb6c32d511_Reddit_SS_Brand_Update_Colorful_Set_Ipad_1.jpg/576x768bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a4/4e/5a/a44e5afe-5b59-059b-a199-8aba17eca0cd/31f0982f-974d-4e27-82ac-b7dd0e8e0d39_Reddit_SS_Brand_Update_Colorful_Set_Ipad_2.jpg/576x768bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 6444370199,
+      "category": "Social and community",
+      "question": "How are feed, discovery, profiles and public conversation distinguished?",
+      "targets": [
+        "Community",
+        "Profiles",
+        "Social"
+      ],
+      "name": "Bluesky Social",
+      "publisher": "Bluesky PBLLC",
+      "listingUrl": "https://apps.apple.com/us/app/bluesky-social/id6444370199?uo=4",
+      "listingVersion": "1.137.0",
+      "listingReleaseDate": "2026-10-30T08:45:52Z",
+      "availableIPhoneScreenshots": 5,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/54/33/44/54334473-5955-3c02-0ef4-855bc2374078/ios_5.5_1opener.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/d3/e5/a8/d3e5a87f-f541-316e-9be5-95717716a6b1/ios_5.5_2moment.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/5a/2f/06/5a2f06d7-17fd-df94-0115-44caf83d8046/ios_5.5_3people.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/2a/6e/48/2a6e48c5-c7b7-c497-40b8-4eaf8d6b6f87/ios_5.5_4fun.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/d1/a0/24/d1a024e5-8d49-7e64-797d-34d50f07f47b/ios_5.5_5timeline.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c0/67/c0/c067c0e1-4a43-2f4d-d3f4-33ae1e776e95/1-_iPad.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6b/4b/5d/6b4b5d2e-3b44-cb4a-3d25-b051378d843c/2-iPad.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1571998974,
+      "category": "Social and community",
+      "question": "How can a community client make account/server and public conversation context visible?",
+      "targets": [
+        "Account",
+        "Community",
+        "Social"
+      ],
+      "name": "Mastodon",
+      "publisher": "Mastodon GmbH",
+      "listingUrl": "https://apps.apple.com/us/app/mastodon/id1571998974?uo=4",
+      "listingVersion": "2026.07",
+      "listingReleaseDate": "2026-08-10T14:03:04Z",
+      "availableIPhoneScreenshots": 9,
+      "availableIPadScreenshots": 9,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/ce/9b/11/ce9b1176-4e57-20aa-ee7e-4db7441a33af/ca26048c-f678-4f6c-a777-a1d9f9d3509c_5.5_inch_iPhone_Slice_0.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource122/v4/a8/a1/57/a8a15751-d38f-d686-49e5-ac5ea337e5c6/6209330f-f744-4125-80be-589df2035632_5.5_inch_iPhone_Slice_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/9c/08/c1/9c08c1b2-7059-4954-281d-74d00caed844/3dc054de-d1da-4c30-8b61-9f65a8a69c55_5.5_inch_iPhone_Slice_2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/3c/a2/eb/3ca2eb35-0b4a-7cbf-110a-46f5eb947f26/60302dfd-4af3-481b-9912-48f7fe4b6d20_5.5_inch_iPhone_Slice_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/52/98/eb/5298eb75-069f-9827-91f4-805e33799ec8/7eac0262-9f50-4b1c-8afe-5502a8966bce_5.5_inch_iPhone_Slice_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/12/ed/07/12ed077a-0f85-b06f-7453-90380f9a999b/51369685-cdae-42ea-87a2-02ea12425721_5.5_inch_iPhone_Slice_5.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/68/77/3e/68773ea1-6cc4-fbde-9355-b08e7281f3e3/c9bd5c5c-a1ce-47f6-bb8e-705eeef009a8_iPad_Pro_2nd_Gen_Slice_0.png/576x768bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource112/v4/07/d3/c7/07d3c7a7-2cd6-a793-b6d0-6dae4fe15f82/66924bb5-fd9b-49b8-a185-17254f60e86c_iPad_Pro_2nd_Gen_Slice_1.png/576x768bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 426826309,
+      "category": "Outdoor and GPS",
+      "question": "How are recording, route context and community activity distinguished?",
+      "targets": [
+        "GPS games",
+        "Live",
+        "Social"
+      ],
+      "name": "Strava: Run, Bike, Walk",
+      "publisher": "Strava Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/strava-run-bike-walk/id426826309?uo=4",
+      "listingVersion": "488.0.0",
+      "listingReleaseDate": "2026-11-04T19:22:45Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/ba/8a/c4/ba8ac4d7-e6e2-51eb-351e-fee68bf0eaf8/AppStore-TodayTab-5.5-en-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/63/8c/8b/638c8bbf-4d18-5e02-d2fb-919d2dfae685/05ASO-5.5-Community-en-US-CopyA.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/dc/b6/b9/dcb6b9a3-940e-157b-84be-d9a7f77a3368/01ASO-5.5-Track_Workouts-en-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6f/d7/17/6fd71719-d5ea-f362-8c1f-509d616737b0/10ASO-5.5-StickerStats-en-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/05/a0/e3/05a0e341-febb-0098-9a3f-86462e5a8b22/12-ASO-5.5-Hiking.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/fc/ab/c4/fcabc403-2942-baad-52a6-7b632e3ed42f/02ASO-5.5-ShareWithFriends-en-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 447374873,
+      "category": "Outdoor and GPS",
+      "question": "How are route discovery, route review and navigation made legible?",
+      "targets": [
+        "GPS games",
+        "Event routes"
+      ],
+      "name": "komoot - hike, bike & run",
+      "publisher": "komoot GmbH",
+      "listingUrl": "https://apps.apple.com/us/app/komoot-hike-bike-run/id447374873?uo=4",
+      "listingVersion": "2026.45.5",
+      "listingReleaseDate": "2026-11-05T21:47:00Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/29/86/ad/2986ad5e-9e3b-2f65-99eb-8f458eb8eed9/EN_komoot_1242x2688_iPhone65_01.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/54/22/46/54224634-ab05-86d0-f664-4550a75d81d7/EN_komoot_1242x2688_iPhone65_02.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/55/e6/b6/55e6b6a1-e1b8-dc00-66ce-a9b59ab22c27/EN_komoot_1242x2688_iPhone65_03.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c4/8d/58/c48d58b8-a2d5-6301-97f3-016177e2b29b/EN_komoot_1242x2688_iPhone65_04.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/3f/34/0d/3f340d4b-46b5-6fe5-a121-1af790dbffef/EN_komoot_1242x2688_iPhone65_05.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8c/8c/da/8c8cdaca-d282-b709-1bed-175b9e6439af/EN_komoot_1242x2688_iPhone65_06.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c4/42/a6/c442a621-b0b6-331d-5b49-ba3d375e4548/89f34834-4833-45bc-8093-bcb0e22b3cd2_1.jpg/576x768bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/85/c0/9d/85c09deb-0d1e-3bfd-8664-cd1272c9c508/9f169a8e-07fd-4379-80b9-358ddc3b989c_2.jpg/576x768bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 893687399,
+      "category": "Outdoor and GPS",
+      "question": "How can route review and ride controls coexist without crowding the map?",
+      "targets": [
+        "GPS games",
+        "Event routes"
+      ],
+      "name": "Ride with GPS: Bike Navigation",
+      "publisher": "Ride with GPS LLC",
+      "listingUrl": "https://apps.apple.com/us/app/ride-with-gps-bike-navigation/id893687399?uo=4",
+      "listingVersion": "4.5.0",
+      "listingReleaseDate": "2026-11-04T21:50:10Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 4,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/1c/7b/f2/1c7bf29d-eda3-353d-6feb-43ecef778376/1260x2736-VALUEPROP.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c8/7a/e8/c87ae8b5-a80a-3843-0b76-aac15a5f090d/1260x2736-VALUEPROP__U00282_U0029.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/65/22/99/65229901-900d-d66a-6731-b32e1ce581f5/MRP_PLAN.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/59/bd/04/59bd04b1-f547-6fc3-8fa0-16349fa3030f/HEATMAP_HIGHLIGHT.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/0a/f0/e0/0af0e046-abc3-9561-6e60-26a5b067101e/OFFLINE.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/87/29/09/87290995-6054-529d-b46a-d2b122b32926/TESTIMONIAL.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/4b/63/55/4b6355c5-9922-5e12-90b4-ab0795980732/2048x2732-MRP.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/91/e5/23/91e52382-1793-3e1e-3e5a-9e432e69397c/2048x2732-EXPLORE.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 405075943,
+      "category": "Outdoor and GPS",
+      "question": "How are discovery cards, route facts and map context connected?",
+      "targets": [
+        "Discovery",
+        "GPS games"
+      ],
+      "name": "AllTrails: Hike, Bike & Run",
+      "publisher": "AllTrails, Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/alltrails-hike-bike-run/id405075943?uo=4",
+      "listingVersion": "26.11.11",
+      "listingReleaseDate": "2026-11-07T20:04:59Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/ea/3a/76/ea3a760e-66f1-bd14-380c-5fc8eb291632/AT-2024-Organic-EN-US-s1__U00283_U0029.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c1/25/16/c12516aa-6136-333c-410d-25dc8efde4b2/AT-2024-Organic-EN-US-s2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/91/20/96/91209649-93af-0b90-12e5-f627fefab10b/AT-2025rebrand-Organic-iOS-1290-x-2796-EN-US-s3.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/7c/9f/40/7c9f4074-2c9a-7f9e-efbd-ac2bca6b27d8/AT-2025rebrand-Organic-iOS-1290-x-2796-EN-US-s4.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8a/8d/08/8a8d083b-1fad-c0a4-33eb-a2fab2879a67/AT-2025rebrand-Organic-iOS-1290-x-2796-EN-US-s5.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b7/63/38/b7633886-4aac-d56e-8763-b1a0be1926d1/AT-2025rebrand-Organic-iOS-1290-x-2796-EN-US-s6.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 975571447,
+      "category": "Motorcycling",
+      "question": "How are motorcycle route discovery, ride recording and community kept distinct?",
+      "targets": [
+        "Riding setup",
+        "GPS games",
+        "Social rides"
+      ],
+      "name": "REVER - Motorcycle GPS & Rides",
+      "publisher": "Rever, LLC",
+      "listingUrl": "https://apps.apple.com/us/app/rever-motorcycle-gps-rides/id975571447?uo=4",
+      "listingVersion": "9.16.3",
+      "listingReleaseDate": "2026-11-05T06:36:32Z",
+      "availableIPhoneScreenshots": 9,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/00/d2/d0/00d2d03b-08e7-b8fa-3318-c4b8f28b5dfe/REVER_AppStore_1290x2796_01.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c0/0a/62/c00a6258-9cce-5ed7-22fc-a041d48ab534/REVER_AppStore_1290x2796_02.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/50/c1/5f/50c15f31-d961-1fea-7b93-d8ca8c8dcbac/REVER_AppStore_1290x2796_03.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/06/38/53/06385335-333f-ce49-5e62-82cfc6c80dc9/REVER_AppStore_1290x2796_04.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/61/b4/1b/61b41b11-96ce-871f-2d92-29615c5621a1/REVER_AppStore_1290x2796_05.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/0a/e4/c7/0ae4c756-4654-d2a3-e504-41cf62f5fc48/REVER_AppStore_1290x2796_06.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1209129603,
+      "category": "Motorcycling",
+      "question": "How can route review communicate road preferences and ride context before starting?",
+      "targets": [
+        "Event routes",
+        "Riding setup"
+      ],
+      "name": "calimoto Motorcycle Navigation",
+      "publisher": "calimoto GmbH",
+      "listingUrl": "https://apps.apple.com/us/app/calimoto-motorcycle-navigation/id1209129603?uo=4",
+      "listingVersion": "7.25.3",
+      "listingReleaseDate": "2026-11-02T08:14:54Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/2b/16/48/2b164809-f07d-8f89-40ea-77fc812450cc/appostore-screens-5_U002c5-Zoll-1-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/99/28/6d/99286d94-90a9-3bb2-7378-696916d38752/appostore-screens-5_U002c5-Zoll-2-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6b/4d/f9/6b4df93a-bdac-f870-4579-810cb74ef444/appostore-screens-5_U002c5-Zoll-3-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/15/99/c6/1599c686-49c9-40f6-05ab-f0eb68cd92c3/appostore-screens-5_U002c5-Zoll-4-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/cd/4f/bd/cd4fbd19-2ecf-06c5-7497-3f6e10ec26ee/appostore-screens-5_U002c5-Zoll-5-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/50/2b/3f/502b3ff4-2483-bcb3-23d3-097e722f3893/appostore-screens-5_U002c5-Zoll-6-EN-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1373032762,
+      "category": "Motorcycling",
+      "question": "How are planning, an active ride and safety-related services communicated separately?",
+      "targets": [
+        "Riding setup",
+        "Live",
+        "Session state"
+      ],
+      "name": "Detecht - Motorcycle App & GPS",
+      "publisher": "Detecht Technologies AB",
+      "listingUrl": "https://apps.apple.com/us/app/detecht-motorcycle-app-gps/id1373032762?uo=4",
+      "listingVersion": "3.32.0",
+      "listingReleaseDate": "2026-11-05T21:40:00Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/a7/d0/9f/a7d09fb5-d618-deaa-6c97-040487db0cdd/d3411950-79a0-4cbe-a82c-97ab881d72fc_1._5.5_App_Store_Screen_-_Start_Image.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/e7/51/c6/e751c6dd-2933-a656-3169-b48de418a777/8864ded0-6e67-467e-9543-9f7ba4017343_2._5.5_App_Store_Screen_-_Curvy.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/1b/b8/a4/1bb8a445-117e-8a31-1793-4b63c4b8dfb8/62562b50-5399-44f4-afe0-a2be38da1f86_3._5.5_App_Store_Screen_-_Round_Trip.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/57/bc/eb/57bceb0f-9122-2e3c-e051-908ef9675e60/72fa7169-d7d6-449e-928c-ffb032c8cbdd_4._5.5_App_Store_Screen_-_Routes.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/d0/6c/6d/d06c6de8-21d8-9f85-62ec-84b69d0ac0db/9aa0d9c7-8324-4259-8af3-978744ac4141_5._5.5_App_Store_Screen_-_Hazards.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple116/v4/71/d6/d7/71d6d79f-25a6-eb18-e1e4-f8470b44f2d8/bf79b6df-412e-4254-b621-392f6566c682_6._5.5_App_Store_Screen_-_Crash_Detection.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1087005682,
+      "category": "Motorcycling",
+      "question": "How can group ride and route context stay understandable?",
+      "targets": [
+        "Social rides",
+        "Events"
+      ],
+      "name": "Cardo Ride - Motorcycle App",
+      "publisher": "RISER GmbH",
+      "listingUrl": "https://apps.apple.com/us/app/cardo-ride-motorcycle-app/id1087005682?uo=4",
+      "listingVersion": "4.6.7",
+      "listingReleaseDate": "2026-11-02T12:11:32Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c8/c0/4d/c8c04d4b-c375-867e-7ef8-925382dccb9f/Disen_U0303o_sin_ti_U0301tulo__U00282_U0029.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/ba/ae/24/baae248c-cc3c-598e-ed78-344c3ef1275c/Screen_2.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/87/9d/c8/879dc8e5-0b5a-2d2d-38c7-86c349f2af52/Screen_3.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/04/7f/85/047f851c-cd3f-d7be-67cf-1666b239ab5f/Screen_4.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a2/97/db/a297dbe9-c958-e914-5da4-3027ee28db24/Group_81.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/27/5b/b4/275bb4a3-e8b6-64b2-6ae3-cb387289cdde/Screen_6__U00281_U0029.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1089668246,
+      "category": "Motorcycling",
+      "question": "How can map context, route choices and navigation status remain readable?",
+      "targets": [
+        "Event routes",
+        "GPS games"
+      ],
+      "name": "Scenic Motorcycle Navigation",
+      "publisher": "Applified Life Ltd.",
+      "listingUrl": "https://apps.apple.com/us/app/scenic-motorcycle-navigation/id1089668246?uo=4",
+      "listingVersion": "4.48",
+      "listingReleaseDate": "2026-11-01T16:30:57Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 10,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/a4/00/cb/a400cb22-d2f7-cd2f-7163-f63fd13e1f6c/English_-_iPhone_-_01.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/77/4a/35/774a35cc-048c-58a6-8cb1-27b5d9a2ba7d/English_-_iPhone_-_02.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6d/eb/2a/6deb2a51-2497-1cc3-b677-feba30e04802/English_-_iPhone_-_03.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/10/ce/e7/10cee7ea-f43e-ebfe-c3f3-0222e187945a/English_-_iPhone_-_04.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/80/6f/57/806f5757-d9be-7955-8348-3b8d6dfea9cd/English_-_iPhone_-_05.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/cd/e6/a5/cde6a57d-18d6-5096-40d9-00cb3bbcc48d/English_-_iPhone_-_06.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/cf/51/49/cf51491b-125d-c091-6264-ea3825e48ece/English_-_iPad_-_01.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/a1/04/24/a104241a-7e27-f764-73c7-1cab803cfcac/English_-_iPad_-_02.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1250173746,
+      "category": "Motorcycling",
+      "question": "How are vehicle connection and ride/navigation information related?",
+      "targets": [
+        "Backpack status",
+        "Live",
+        "Hardware capability"
+      ],
+      "name": "BMW Motorrad Connected",
+      "publisher": "BMW NORTH AMERICA, LLC",
+      "listingUrl": "https://apps.apple.com/us/app/bmw-motorrad-connected/id1250173746?uo=4",
+      "listingVersion": "5.12.0",
+      "listingReleaseDate": "2026-10-15T07:40:11Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/da/e3/a6/dae3a667-5410-bf6b-ca5a-390a786cd0aa/9b2199ee-2d14-4ebf-a4b1-1d14b202e87f_Fastlane_iPhone_Plus-1_home_screen.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/25/65/00/256500ff-abf2-d163-0407-3583d90ba04e/9884f640-076c-46cf-add8-c66ca1cc35c8_Fastlane_iPhone_Plus-2_bike_details-2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/d4/fe/c9/d4fec932-33a7-e76e-726a-377cc7a1a01e/3a4cf427-f365-4a58-8766-3b15fe4edcf6_Fastlane_iPhone_Plus-3_service_area.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b8/d3/42/b8d34283-4c4e-a1f3-6510-da84edf05cd9/b47f324d-cfab-4464-a7b8-19737fda9b8e_Fastlane_iPhone_Plus-4_route_planning.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6c/61/1d/6c611ddc-a4b4-2963-221d-37aad6a27089/6a9f3c08-8cb5-400e-9479-300fcdaca770_Fastlane_iPhone_Plus-5_race_stats_player.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a4/d2/d7/a4d2d719-13eb-009f-71c6-4a4d7d236ce2/605aa651-088e-4ae9-8dfd-f072017494b1_Fastlane_iPhone_Plus-6_race_status_cockpit.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1255766787,
+      "category": "Motorcycling",
+      "question": "How are recorded routes and ride statistics presented after the session?",
+      "targets": [
+        "Session history",
+        "Social rides"
+      ],
+      "name": "MyRide – Motorcycle Routes",
+      "publisher": "Yamaha Motor Europe N.V.",
+      "listingUrl": "https://apps.apple.com/us/app/myride-motorcycle-routes/id1255766787?uo=4",
+      "listingVersion": "6.2.8",
+      "listingReleaseDate": "2026-09-30T08:05:07Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource116/v4/bf/7e/d5/bf7ed5ae-e92a-0ff9-0a84-1c186abe2756/2399978a-8488-497b-8a0a-655acbd4dd69_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.59.33.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/44/0e/c6/440ec6e8-f64a-bc5d-92eb-a48329e0e558/da3c1b3b-402e-487d-843f-ce2d146e9ee9_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.57.30.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/4e/9a/7c/4e9a7c77-3206-841e-4932-7d85d966713d/794a369b-e417-4227-8b77-87f797d47815_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.57.44.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource116/v4/f8/93/d4/f893d4d9-4a9b-b85a-7d59-b808494a46c8/a69b518f-7e20-44bd-a398-15a22ea40c93_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.58.00.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/19/23/da/1923da57-6f1a-d72c-dd35-95f76e350d6c/cc846b4d-5336-45dd-815c-ef682fd4041f_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.58.08.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource116/v4/e2/95/4c/e2954cf3-537f-b65e-b381-527c49baf456/d88789b7-b606-40f7-a266-a8f97cfec411_Simulator_Screenshot_-_iPhone_8_Plus_-_2024-01-22_at_18.57.51.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 583446403,
+      "category": "Activity and status",
+      "question": "How are current status, detail and connected hardware surfaced?",
+      "targets": [
+        "Backpack status",
+        "Live diagnostics"
+      ],
+      "name": "Garmin Connect™",
+      "publisher": "Garmin International",
+      "listingUrl": "https://apps.apple.com/us/app/garmin-connect/id583446403?uo=4",
+      "listingVersion": "5.31",
+      "listingReleaseDate": "2026-11-03T12:09:39Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9c/ac/4a/9cac4adf-40c3-5b58-3c1a-b06b2cac335e/898b1d91-1dfe-47d3-96b3-418fa5c52ebc_5.5-Phone-EN-01.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/2c/c8/ba/2cc8ba34-9574-2901-dba4-429c920881c8/bea409c6-0d83-435a-b71c-b031d2f6b930_5.5-Phone-EN-02.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/4d/c7/35/4dc735f3-05a6-4efd-8f00-23b8782cba83/ff768461-e092-4c66-a1a2-8eb0acd899c2_5.5-Phone-EN-03.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/4f/1d/bc/4f1dbc40-d0ba-1771-c9c2-8f19a6a48a47/afac2b12-bc72-4e2d-ba0d-64d041d41cb5_5.5-Phone-EN-04.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/7b/e0/ef/7be0ef98-c678-d529-c1ea-f31ce825ed40/5aea75a3-e7c4-4547-9479-1306a28bcd7d_5.5-Phone-EN-05.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/85/5a/ff/855aff9d-efea-9959-90fc-70619cd3920d/f3a00ebd-426a-4c5c-b406-f4d2a1cb2294_5.5-Phone-EN-06.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1576857102,
+      "category": "Activity and status",
+      "question": "How can one clear status story replace a wall of equally weighted metrics?",
+      "targets": [
+        "Live",
+        "Session state"
+      ],
+      "name": "Gentler Streak Workout Tracker",
+      "publisher": "Gentler Stories d.o.o.",
+      "listingUrl": "https://apps.apple.com/us/app/gentler-streak-workout-tracker/id1576857102?uo=4",
+      "listingVersion": "5.13.5",
+      "listingReleaseDate": "2026-10-22T21:27:13Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 8,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/fc/43/dc/fc43dc40-f5df-a46d-3799-521f962107df/Valera_English_iPhone1.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f7/d1/3f/f7d13f37-7120-0f03-881c-8fe0b8494472/Valera_English_iPhone2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c8/03/00/c80300ac-bd26-aba8-2d35-0e2d56bb8972/Valera_English_iPhone3.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/4d/d0/7c/4dd07c7b-9b01-e5ac-a29e-ece618aebf74/Valera_English_iPhone10.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/5c/db/eb/5cdbeb12-8cb6-1819-a85e-d5319dbc78c4/Valera_English_iPhone4.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/93/45/7f/93457f93-0177-5e24-3d03-29a24631244a/Valera_English_iPhone5.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/16/e4/a8/16e4a859-4d98-b214-9c2a-abb9efaca986/iPad_S1@1x.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/b3/f8/81/b3f88108-00b3-f8ea-a670-17c724a8eb02/iPad_S2@1x.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1584215428,
+      "category": "Media and editing",
+      "question": "How can artwork browsing stay dominant while actions remain available?",
+      "targets": [
+        "Library",
+        "Selection"
+      ],
+      "name": "Photos",
+      "publisher": "Apple Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/photos/id1584215428?uo=4",
+      "listingVersion": "3.6",
+      "listingReleaseDate": "2026-10-19T20:46:11Z",
+      "availableIPhoneScreenshots": 5,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/d8/34/92/d8349221-cd2f-ad27-ff77-6dc24b52459f/58c7ea32-0f4a-47e5-b359-c70253f461e9_1.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/d5/e7/d9/d5e7d966-a484-9f84-f0f9-fa3fd4ff9a80/31947024-fa49-4089-bd9e-350f136d7b6d_2.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/58/a5/91/58a591b7-2a38-da2b-e2f6-fe4522a24821/8e349295-a376-47db-a14d-ebbb554fcb1b_3.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/4e/8b/fc/4e8bfcfe-94dd-9471-a28c-69c31627426b/c01642bb-463c-4b4f-a554-da1acb12c5b3_4.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/66/c0/59/66c059b8-bddf-ef2a-509f-1f08fa2601ff/60c6f375-fcdb-4766-8ba5-8c27a37b74f1_5.PNG/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/eb/e5/87/ebe58714-0ea0-90ab-bb6d-292cdb915d69/5652551d-37a0-458b-9819-46ca56c3daa8_App_Store_Screenshot_Template_-_iPad_copy.001.jpeg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/20/68/53/206853ad-f839-16f4-3840-d64daaef8210/aec17607-8c75-4d3f-9c4d-c42450409560_App_Store_Screenshot_Template_-_iPad_copy.002.jpeg/552x414bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 953286746,
+      "category": "Media and editing",
+      "question": "How do editing tools stay subordinate to the visual result?",
+      "targets": [
+        "GIF Studio",
+        "Timing",
+        "Library"
+      ],
+      "name": "Darkroom: Photo & Video Editor",
+      "publisher": "Bergen Co.",
+      "listingUrl": "https://apps.apple.com/us/app/darkroom-photo-video-editor/id953286746?uo=4",
+      "listingVersion": "7.6.4",
+      "listingReleaseDate": "2026-11-04T18:11:18Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 10,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/e4/7b/bc/e47bbcef-41ba-7fa0-4c6f-72efbd1be995/860502cb-b72a-474e-b89c-bcec75b94d34_55-1-masks.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/9f/7d/4c/9f7d4c2f-bade-194a-eb3e-7ce1c60a0496/5ea2eb45-1299-46ee-875a-0746c380cb3f_55-2-sell.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/24/61/08/246108f9-1efe-3b43-59e9-6fabd260e122/9b66e9ba-536c-4b30-bc2e-5afa6288b487_55-3-presets.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/3d/b4/e0/3db4e046-c41d-5bbd-4c3c-f4e6120cc1e7/8fe53768-1bf0-4553-9c40-b0362e59088e_55-4-grade.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/20/a3/c5/20a3c5b2-d61b-6187-97d0-aa38347b3aad/241318c3-c766-44c0-b3a0-12d312f8904b_55-5-frame.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/85/a8/51/85a85115-2b15-893b-2c50-327248c20758/68fdf098-026b-433c-b508-76c786090b39_55-6-batch.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/a0/20/46/a0204614-0ce7-0c41-de33-059e7161ac61/6887e2a8-d50b-4394-a077-9ba1113de5a1_13-01-masks.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/47/95/d9/4795d975-91e0-bff3-2547-4ee62d09997d/c4527a65-bc9a-44f7-8c11-2e4a11bdaf62_13-11-sell.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 916366645,
+      "category": "Media and editing",
+      "question": "How can a small-screen canvas offer powerful tools without permanent forms?",
+      "targets": [
+        "Pixel editor",
+        "GIF Studio"
+      ],
+      "name": "Procreate Pocket",
+      "publisher": "Savage Interactive Pty Ltd",
+      "listingUrl": "https://apps.apple.com/us/app/procreate-pocket/id916366645?uo=4",
+      "listingVersion": "5.0.2",
+      "listingReleaseDate": "2026-10-30T23:12:43Z",
+      "availableIPhoneScreenshots": 9,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/2a/d7/df/2ad7df79-aa3a-5ad3-79fb-e9506c0a797e/1.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/64/cd/79/64cd790d-07b9-3b1d-1cca-e482e75793a7/2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/1e/b1/df/1eb1df5f-14c5-776f-5635-83a8693fc11b/3.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/36/d3/2c/36d32c72-9b16-c37e-5e21-2b7b695b97c4/5.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/5f/f8/85/5ff88531-c113-ebae-e7d2-9c65ee3d76ce/6.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/99/40/5f/99405f7b-d16a-390c-dd77-f39a7f6cea76/4.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 888422857,
+      "category": "Media and editing",
+      "question": "How can playback state and queue/collection hierarchy remain clear?",
+      "targets": [
+        "Playlists",
+        "Phone playback"
+      ],
+      "name": "Overcast Podcast App",
+      "publisher": "Overcast Radio, LLC",
+      "listingUrl": "https://apps.apple.com/us/app/overcast-podcast-app/id888422857?uo=4",
+      "listingVersion": "2026.10.1",
+      "listingReleaseDate": "2026-10-21T19:00:58Z",
+      "availableIPhoneScreenshots": 1,
+      "availableIPadScreenshots": 1,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/4b/fb/30/4bfb3044-2423-eaf5-2bca-cbe1ce13f851/46dfbfb5-3626-4d0a-9752-ad25cc245962_fake55.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/16/82/11/16821196-625c-7216-b6dd-4ea0b6dda7d4/163aeb62-251b-4ce4-89de-616e256b2f81_Simulator_Screenshot_-_iPad_Pro__U002812.9-inch_U0029__U00282nd_generation_U0029_-_2024-07-08_at_20.06.06.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 324684580,
+      "category": "Mainstream products",
+      "question": "How can browsing, a collection and current playback stay distinct?",
+      "targets": [
+        "Discovery",
+        "Library",
+        "Phone playback"
+      ],
+      "name": "Spotify: Music and Podcasts",
+      "publisher": "Spotify",
+      "listingUrl": "https://apps.apple.com/us/app/spotify-music-and-podcasts/id324684580?uo=4",
+      "listingVersion": "9.1.98",
+      "listingReleaseDate": "2026-11-09T18:28:38Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f3/ce/05/f3ce0547-690a-b355-b1dd-6b6e91808279/IOS_-_5.5_-_S01_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/78/81/ca/7881ca10-b441-1a6c-e030-92e08dd76144/IOS_-_5.5_-_S02_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/5b/e7/6a/5be76ae0-8bc6-59fc-58ef-92aa931b6dba/IOS_-_5.5_-_S03_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/cf/ef/84/cfef8425-3610-a4b5-b4d8-1f22da2449d8/IOS_-_5.5_-_S04_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/52/66/2a/52662aa9-7a10-a349-f1cb-787143401ace/IOS_-_5.5_-_S05_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/91/12/40/9112404c-d50d-bae4-1d42-4a0153ab7cfc/IOS_-_5.5_-_S06_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/31/15/15/31151525-510a-a212-ea51-e023e7b6351f/IOS_-_Ipad_6th_-_S01_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/6a/bc/17/6abc17c9-7291-a6e8-0383-7d59764f977f/IOS_-_Ipad_6th_-_S02_-_EN_-_CA_U005bEnglish__U0028Canada_U0029_U005d.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 363590051,
+      "category": "Mainstream products",
+      "question": "How are media discovery, item review and continuing a session related?",
+      "targets": [
+        "Discovery",
+        "Artwork detail",
+        "Playback"
+      ],
+      "name": "Netflix",
+      "publisher": "Netflix, Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/netflix/id363590051?uo=4",
+      "listingVersion": "26.5.0",
+      "listingReleaseDate": "2026-11-09T16:50:28Z",
+      "availableIPhoneScreenshots": 6,
+      "availableIPadScreenshots": 5,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/38/ba/84/38ba8407-1436-6073-0ef4-eb314ba0451a/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_01_0_-_DONE.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/37/c6/3d/37c63dd9-673b-85eb-761c-41671fcc98d4/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_02_en-US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/90/c6/8f/90c68f5e-7add-8cb0-d1c6-4746ba5de7e5/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_03_en_-_US.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a9/51/ac/a951acf0-6a89-977f-0a8a-36f60af8f8c8/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_03_0_-_DONE.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/3e/30/a6/3e30a6d3-0803-238d-4934-0937da896d17/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_04_0_-_DONE.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/23/11/f6/2311f6c7-98c4-4289-9734-a27aeb069a1f/freeform_U0023game-screenshot-ios-mobile-vertical-5-5-inch_na_05_0_-_DONE.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/42/1d/60/421d605c-82af-90ab-ba89-706292977484/freeform_U0023game-screenshot-ios-tablet-horizontal-12-9-inch_na_01_en-US.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/6f/ac/dd/6facddb1-23c0-92a5-38e9-00d42ed74f37/freeform_U0023game-screenshot-ios-tablet-horizontal-12-9-inch_na_02_en-US.jpg/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 544007664,
+      "category": "Mainstream products",
+      "question": "How are media viewing and secondary creator/community context separated?",
+      "targets": [
+        "Artwork detail",
+        "Community",
+        "Creator attribution"
+      ],
+      "name": "YouTube",
+      "publisher": "Google LLC",
+      "listingUrl": "https://apps.apple.com/us/app/youtube/id544007664?uo=4",
+      "listingVersion": "21.45.4",
+      "listingReleaseDate": "2026-11-08T17:09:00Z",
+      "availableIPhoneScreenshots": 5,
+      "availableIPadScreenshots": 10,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/de/5a/90/de5a90bf-0ea7-265c-67bb-51d5c50d96bd/f1192f1f-430d-469a-b032-cdf77b8b04c7_iOS-5.5-in_1.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/fd/9e/3a/fd9e3a99-563c-c21e-9a7b-9c395c159f66/868afd15-b2e4-4923-b0f8-c5599327a3d7_iOS-5.5-in_2.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/77/96/3f/77963f76-6cf7-4100-e0d4-8998db26396a/2930dbc3-4228-403b-b46d-e0066516ab6a_iOS-5.5-in_3.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/35/50/e5/3550e583-e240-168e-858f-ef823a45c747/45519fca-0e0b-466e-9ed6-9a43232a0bf8_iOS-5.5-in_4.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/c1/32/54/c1325465-bfc3-e271-0553-dd89a4b151c9/bace9abd-71f3-4700-8adf-cedcba275a67_iOS-5.5-in_5.jpg/392x696bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/5e/b7/cc/5eb7cc32-44c0-fa17-8295-8b756a2a5f34/874e4458-7af3-45b9-8cd2-bf7ff6d03817_2048x2732bb__U00281_U0029.png/576x768bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/5e/6d/73/5e6d73cf-08a1-ca1a-40ea-e87d7089315b/mzl.soxnenam.jpg/576x768bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1232780281,
+      "category": "Mainstream products",
+      "question": "How can a deep workspace hierarchy retain current page context?",
+      "targets": [
+        "Collections",
+        "Events",
+        "Settings"
+      ],
+      "name": "Notion: Notes, Tasks, AI",
+      "publisher": "Notion Labs, Incorporated",
+      "listingUrl": "https://apps.apple.com/us/app/notion-notes-tasks-ai/id1232780281?uo=4",
+      "listingVersion": "1.7.353",
+      "listingReleaseDate": "2026-11-10T02:54:41Z",
+      "availableIPhoneScreenshots": 7,
+      "availableIPadScreenshots": 7,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/4e/9c/7b/4e9c7b5a-4e44-af47-6389-1fce93ffc6de/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_01.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8f/a4/5c/8fa45ce1-ea9a-8148-1928-b1939028c8ce/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_02.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/49/67/56/49675696-a92d-ba12-de33-59b79711b0f3/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_03.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/37/d0/f1/37d0f1dd-0541-712c-85f6-aa1fca59af7a/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_04.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9e/45/71/9e457117-05e3-a2ab-8a04-c872306f707a/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_05.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/46/14/f2/4614f26e-bf71-06f4-932b-dcd7ee4a15ef/NotionLabs_Notion_iOS-6.9_US_Screenshots_250924_06.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/1d/9c/f6/1d9cf608-5057-04bb-3aab-62dfa53c3f82/1_IPAD_13.png/576x768bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/28/47/23/284723c1-9427-b037-e46d-3491765a68dc/2_IPAD_13.png/576x768bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 904237743,
+      "category": "Premium product references",
+      "question": "How can a focused task list use restrained hierarchy and progressive detail?",
+      "targets": [
+        "Preparation",
+        "Device setup",
+        "Requests"
+      ],
+      "name": "Things 3",
+      "publisher": "Cultured Code GmbH & Co. KG",
+      "listingUrl": "https://apps.apple.com/us/app/things-3/id904237743?uo=4",
+      "listingVersion": "3.25.2",
+      "listingReleaseDate": "2026-11-02T08:52:33Z",
+      "availableIPhoneScreenshots": 8,
+      "availableIPadScreenshots": 0,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/a4/9d/84/a49d8471-636a-5666-da85-3dec4d788008/iPhone_14_Pro_Max_-_1.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a2/65/10/a26510cb-5d2b-0206-e139-f65c9e91aff1/iPhone_14_Pro_Max_-_2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/73/4e/12/734e12cf-9248-3347-bb9f-e11d98da3bfe/iPhone_14_Pro_Max_-_3.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/08/53/0d/08530da1-0201-3f1d-549b-f2fa4cb0acba/iPhone_14_Pro_Max_-_4.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/5b/50/b4/5b50b4fb-3303-35a4-e13b-a17aaa5a4ddd/iPhone_14_Pro_Max_-_5.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/b1/46/ce/b146cec1-286a-fe24-bc4f-b971baf7969a/iPhone_14_Pro_Max_-_6.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 718043190,
+      "category": "Premium product references",
+      "question": "How are event overview and selected detail connected across sizes?",
+      "targets": [
+        "Events",
+        "Event detail",
+        "Duo list/detail"
+      ],
+      "name": "Fantastical Calendar",
+      "publisher": "Flexibits Inc.",
+      "listingUrl": "https://apps.apple.com/us/app/fantastical-calendar/id718043190?uo=4",
+      "listingVersion": "4.2.4",
+      "listingReleaseDate": "2026-10-23T14:01:51Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 9,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/05/07/51/05075153-cf1e-ce88-5c94-db1ebe69a9b5/Screen_1.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/fe/61/4e/fe614ec2-599b-8443-fd98-329f984c0bfd/Screen_2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/0c/09/a0/0c09a0fe-3eeb-0062-e9c5-f9ad9b84bf08/Screen_4.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c5/d8/9a/c5d89a69-9455-ab02-3fe2-4d7da99c22df/Screen_3.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8b/1a/a6/8b1aa64d-acb2-ce9e-fa5b-46a183425458/Screen_5.jpg/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c0/3d/2c/c03d2cf4-051b-5e05-564e-7a5249c91c9f/Screen_6.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/88/d9/46/88d94627-e5e3-ca49-a0c5-3bcef8101a29/Screen_1.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f5/17/22/f5172277-bb38-45ba-db26-e9f6e7986039/Screen_2.png/360x480bb.jpg",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1358823008,
+      "category": "Premium product references",
+      "question": "How can a current operation communicate time, freshness and changing state?",
+      "targets": [
+        "Transfers",
+        "Connection status",
+        "Live"
+      ],
+      "name": "Flighty – Live Flight Tracker",
+      "publisher": "Flighty LLC",
+      "listingUrl": "https://apps.apple.com/us/app/flighty-live-flight-tracker/id1358823008?uo=4",
+      "listingVersion": "4.11.3",
+      "listingReleaseDate": "2026-10-26T19:15:11Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/5a/05/a8/5a05a861-0aa3-fa4e-407a-89d2220ad3ba/Title_6.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/f0/78/df/f078df5c-b1e9-fd16-5a47-cf083c851aa3/Title_2.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c1/e0/74/c1e07420-5d7d-211e-d28f-ec047636bfff/Live_Activities.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/75/bb/05/75bb05d6-d8ff-bde0-5002-0d6055575935/Where_U0027s_My_Plane.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/3e/af/fa/3eaffad1-07de-1a00-df61-cbb0571f92f5/ATC_Notices.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/9f/a5/c1/9fa5c17d-6481-a9e3-d6cc-d6376ccb005b/Flighty_Friends.png/320x480bb.jpg",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/09/2d/64/092d64bf-830b-9502-2119-082d6efa9835/2a689758-9d06-4d86-9451-5b0a941908e7_ipad_2nd_gen_-_Appstore_10.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/58/3f/b5/583fb556-e316-8165-e50f-698453ffb8d9/mzl.hcdwuolo.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 1016366447,
+      "category": "Premium product references",
+      "question": "How can collection hierarchy and an active draft remain quiet and clear?",
+      "targets": [
+        "Collections",
+        "Text editor",
+        "Drafts"
+      ],
+      "name": "Bear Markdown Notes & Journal",
+      "publisher": "Shiny Frog Ltd.",
+      "listingUrl": "https://apps.apple.com/us/app/bear-markdown-notes-journal/id1016366447?uo=4",
+      "listingVersion": "3.0.4",
+      "listingReleaseDate": "2026-11-03T09:04:02Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 9,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/83/b1/9e/83b19e21-c5e1-c122-f694-37db7587d4a4/Cover.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/5b/82/40/5b824005-8b25-9bf5-3abd-ff7b605ef8b0/Markdown.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/d4/93/c4/d493c45b-7f9f-f635-9eec-e54156942da1/Keyboard.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/43/a8/e8/43a8e8df-3d46-445b-74ec-08207211c904/Marmaid__U0026_Mathjax.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/99/3f/4d/993f4d1d-7d70-9e17-e4d6-1212c83506ac/Sketcher.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/0f/aa/81/0faa8160-38bf-2d73-d90d-bd09d10a7561/Workspaces.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/0f/23/ec/0f23ec2f-3e35-7f01-1480-0506dca8df85/Markdown@2x.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/bd/65/6d/bd656dec-5d75-7cf0-cf7f-238ec1ceea92/Keyboard@2x.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    },
+    {
+      "id": 885697368,
+      "category": "Premium product references",
+      "question": "How do professional tools remain subordinate to an active preview?",
+      "targets": [
+        "GIF Studio",
+        "Pixel editor",
+        "Preview"
+      ],
+      "name": "Halide Mark III - Pro Camera",
+      "publisher": "Lux Optics Incorporated",
+      "listingUrl": "https://apps.apple.com/us/app/halide-mark-iii-pro-camera/id885697368?uo=4",
+      "listingVersion": "3.3.3",
+      "listingReleaseDate": "2026-11-05T16:21:15Z",
+      "availableIPhoneScreenshots": 10,
+      "availableIPadScreenshots": 6,
+      "screenshots": [
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/53/55/6a/53556af7-0831-9684-ef81-792950fa8b8e/5ffe57d2-d636-4b17-bbdb-bc4be089574c_55_App_Store_Screen_1.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/9c/17/2c/9c172c2f-16d2-da0e-f90a-1c1c05165eb9/786972e1-d2b2-4411-b7f6-9f8591e595f6_Untitled-2.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/cf/b2/70/cfb270c6-72cc-584b-ead9-109b54c8fd78/113a60cb-733d-499d-a4a3-718ec45d2f23_55_App_Store_Screen_8.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 3,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/19/d8/73/19d87379-6ed5-5421-f549-1a21179fe193/8c05f609-feba-4c0e-9a84-4eb7559caee9_55_App_Store_Screen_3.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 4,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/69/13/b8/6913b822-07da-9ca1-62b6-8d4423c30ae9/85c2b261-8d55-41c8-ae9b-597cb9e00ed1_55_App_Store_Screen_4.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 5,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/44/b3/d1/44b3d130-54de-ba35-bf7f-8cd5de19a0e6/50d64d06-b68a-43eb-a496-0ebd960929f9_55_App_Store_Screen_5.png/392x696bb.png",
+          "device": "iPhone",
+          "position": 6,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/53/5f/74/535f74aa-0787-3d9e-e0ec-a78104d308d4/27dd284a-dade-4961-9e41-38a59af4e228_iPad_App_Store_-_1.png/552x414bb.png",
+          "device": "iPad",
+          "position": 1,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        },
+        {
+          "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f0/f8/b7/f0f8b715-9bf8-b4ca-92d0-48a98c5293c4/eb951d1c-7f7e-4f5b-826d-97bb58bf3da6_iPad_App_Store_-_5.png/552x414bb.png",
+          "device": "iPad",
+          "position": 2,
+          "review": "Publisher screenshot; exact depicted app build and pose are not independently verified."
+        }
+      ]
+    }
+  ]
+}
+</script>
+  <script>
+    'use strict';
+    const data = JSON.parse(document.querySelector('#reference-data').textContent);
+    const content = document.querySelector('#references');
+    const category = document.querySelector('#category');
+    const search = document.querySelector('#search');
+    const count = document.querySelector('#count');
+    const jumps = document.querySelector('#jumps');
+    const make = (tag, text, className) => {
+      const element = document.createElement(tag);
+      if (text !== undefined) element.textContent = text;
+      if (className) element.className = className;
+      return element;
+    };
+    const external = (text, url) => {
+      const link = make('a', text);
+      link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      return link;
+    };
+    if (!data || !Array.isArray(data.apps) || !data.apps.length) {
+      document.querySelector('#provenance').textContent = 'Reference data could not be loaded.';
+      content.append(make('p', 'Run node refresh-app-references.mjs to rebuild the embedded reference data.', 'notice'));
+      for (const element of [category, search, document.querySelector('#reset')]) element.disabled = true;
+    } else {
+      const total = data.apps.reduce((sum, app) => sum + app.screenshots.length, 0);
+      document.querySelector('#provenance').textContent =
+        `${data.apps.length} apps / ${total} published screenshots. US storefront metadata retrieved ${data.retrievedAt}. ` +
+        'Listing release dates do not establish screenshot capture dates. Up to six iPhone and two iPad images per app.';
+      for (const name of [...new Set(data.apps.map(app => app.category))]) {
+        const option = make('option', name); option.value = name; category.append(option);
+      }
+      const sections = data.apps.map(app => {
+        const section = make('section', undefined, 'app');
+        section.id = `app-${app.id}`;
+        const heading = make('div', undefined, 'app-heading');
+        const title = make('h2', app.name); title.id = `heading-${app.id}`;
+        section.setAttribute('aria-labelledby', title.id);
+        heading.append(title, external('Official listing', app.listingUrl));
+        section.append(heading,
+          make('p', `${app.category} | ${app.publisher} | Listing version ${app.listingVersion}; released ${app.listingReleaseDate}`, 'meta'),
+          make('p', `Learning question: ${app.question}`, 'question'),
+          make('p', `Our related workflows: ${app.targets.join(', ')}`, 'targets'));
+        const screens = make('div', undefined, 'screens');
+        for (const image of app.screenshots) {
+          const figure = make('figure');
+          const link = external(undefined, image.url);
+          link.setAttribute('aria-label', `Open ${app.name} ${image.device} published screenshot ${image.position}`);
+          const frame = make('div', undefined, 'image-frame');
+          const img = make('img');
+          img.src = image.url; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+          img.alt = `${app.name}, publisher ${image.device} screenshot ${image.position}. Visual reference; exact depicted build unverified.`;
+          const status = make('p', undefined, 'image-status');
+          status.setAttribute('role', 'status');
+          status.hidden = true;
+          img.addEventListener('error', () => {
+            status.hidden = false;
+            status.textContent = 'Image unavailable. Open the original or official listing.';
+          });
+          img.addEventListener('load', () => { status.hidden = true; });
+          frame.append(img); link.append(frame);
+          const caption = make('figcaption', `${image.device} / published image ${image.position}. `);
+          caption.append(external('Original image', image.url));
+          figure.append(link, caption, status); screens.append(figure);
+        }
+        section.append(screens);
+        content.append(section);
+        const item = make('li');
+        const jump = make('a', app.name); jump.href = `#${section.id}`; item.append(jump); jumps.append(item);
+        return {app, section, item};
+      });
+      function filter() {
+        const query = search.value.trim().toLocaleLowerCase();
+        let visible = 0, images = 0;
+        for (const {app, section, item} of sections) {
+          const matches = (!category.value || app.category === category.value) &&
+            `${app.name} ${app.category} ${app.question} ${app.targets.join(' ')}`.toLocaleLowerCase().includes(query);
+          section.hidden = !matches; item.hidden = !matches;
+          if (matches) { visible++; images += app.screenshots.length; }
+        }
+        count.textContent = visible ? `${visible} apps / ${images} screenshot references shown` : 'No matches. Change the filters or choose Reset filters.';
+      }
+      category.addEventListener('change', filter);
+      search.addEventListener('input', filter);
+      document.querySelector('#reset').addEventListener('click', () => {
+        category.value = ''; search.value = ''; filter();
+      });
+      filter();
+    }
+  </script>
+</body>
+</html>

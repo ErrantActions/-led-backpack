@@ -352,7 +352,7 @@ enum NativeGentlePhoneFrame {
                             VStack(alignment: .leading, spacing: 12) {
                                 Label("ISOLATED PHONE PREVIEW", systemImage: "iphone")
                                 ScopedGlobalPhoneConsent(source: source, client: client, beforeStart: { runtime.leave() })
-                                Text("No global Phone/Backpack selection, original journal, hardware or library is changed. Foreground only; fixed 30-second source lease, never silently renewed. No physical sync, background execution or safety monitoring.").font(.caption)
+                                InteractionExplanation("Isolated foreground preview only. No library/device selection changes; the 30-second source lease never renews silently.", details: "No global Phone/Backpack selection, original journal, hardware or library is changed. Foreground only; fixed 30-second source lease, never silently renewed. No physical sync, background execution or safety monitoring.").font(.caption)
                                 Text(runtime.status).font(.caption)
                                 if let failure = runtime.failure { Text(failure).foregroundStyle(.orange) }
                                 if runtime.loading { ProgressView("Authorizing original / decoding local PHONE pixels") }
@@ -375,7 +375,7 @@ enum NativeGentlePhoneFrame {
                                     Button("Play PHONE") { runtime.play(startingAt: startingEntry) }.disabled(runtime.loading || source.expired)
                                     Button("Stop / clear") { runtime.stop() }
                                 }
-                                Text("Explicit Play may override saved automatic-animation/Reduce Motion policy; local animation and data-saving controls still apply. Automatic next-GIF fetching requires the saved AND local automatic policy. GIF frames/repeats are not rewritten; source entry durations do not prove frame synchronization.").font(.caption)
+                                InteractionExplanation("Explicit Play can animate despite saved auto-play policy. Local data/animation controls still apply; source frames stay unchanged.", details: "Explicit Play may override saved automatic-animation/Reduce Motion policy; local animation and data-saving controls still apply. Automatic next-GIF fetching requires the saved AND local automatic policy. GIF frames/repeats are not rewritten; source entry durations do not prove frame synchronization.").font(.caption)
                                 DisclosureGroup("Local PHONE controls (not saved preferences)") {
                                     Toggle("Allow local animations", isOn: option(\.animations))
                                     Toggle("Local data saving / still", isOn: option(\.dataSaving))

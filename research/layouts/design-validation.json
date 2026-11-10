@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-10",
+  "pages": 202,
+  "variants": 10,
+  "layoutCases": 2020,
+  "browserChecks": {
+    "renderedStudies": 202,
+    "renderFailures": 0,
+    "curatedCompositions": 5,
+    "responsiveWidths": [
+      320,
+      390,
+      1440
+    ],
+    "horizontalPageOverflow": false,
+    "searchAndEmptyState": "passed",
+    "relatedStudyNavigation": "passed",
+    "nativeActionBoundary": "Explicit design-only notification; no backend, radio or sensor operation",
+    "referenceImagesLoaded": 312,
+    "referenceImageFailureMessage": "passed",
+    "renderedLayoutCases": 2020,
+    "clippedTextCases": 0
+  },
+  "liveReadback": {
+    "revision": "531f763b-57ff-4e3b-94b3-8821cb0af558:63",
+    "screens": 244,
+    "elements": 4349,
+    "historicalReferenceScreensUnchanged": 42,
+    "portableExportDecoded": true,
+    "portableBaselineScreens": 240,
+    "initialPortableProjectMatchesInitialLiveProject": true,
+    "scope": "Historical pre-polish live readback, not the current local design proposal."
+  },
+  "currentSourceAudit": {
+    "recognizedNativeViews": 196,
+    "coveredNativeViews": 196,
+    "refreshedSourceStudies": 13,
+    "retainedLegacyStudies": 1
+  },
+  "sourceMappingsAndNativeActions": "Original IDs, source mappings/fingerprints and native controller code retained; intentional design visibility/type/tap changes are recorded separately.",
+  "contrast": [
+    {
+      "role": "Primary text",
+      "foreground": "#f4f7fb",
+      "background": "#141725",
+      "ratio": 16.58
+    },
+    {
+      "role": "Supporting text",
+      "foreground": "#c5c6e4",
+      "background": "#252239",
+      "ratio": 9.2
+    },
+    {
+      "role": "Primary action",
+      "foreground": "#09201e",
+      "background": "#9effe6",
+      "ratio": 14.47
+    },
+    {
+      "role": "Warning",
+      "foreground": "#ffd18a",
+      "background": "#392a13",
+      "ratio": 9.73
+    },
+    {
+      "role": "Destructive",
+      "foreground": "#ffb4b4",
+      "background": "#17212d",
+      "ratio": 9.63
+    },
+    {
+      "role": "Mint feature",
+      "foreground": "#9effe6",
+      "background": "#14352f",
+      "ratio": 11.33
+    },
+    {
+      "role": "Lavender feature",
+      "foreground": "#bdb8ff",
+      "background": "#292142",
+      "ratio": 8.24
+    },
+    {
+      "role": "Rose feature",
+      "foreground": "#ffa3d9",
+      "background": "#381d32",
+      "ratio": 8.27
+    },
+    {
+      "role": "Light text",
+      "foreground": "#14212d",
+      "background": "#ffffff",
+      "ratio": 16.34
+    },
+    {
+      "role": "Light supporting",
+      "foreground": "#47586c",
+      "background": "#e9eef4",
+      "ratio": 6.25
+    },
+    {
+      "role": "Light action",
+      "foreground": "#ffffff",
+      "background": "#006b58",
+      "ratio": 6.47
+    },
+    {
+      "role": "Light warning",
+      "foreground": "#784700",
+      "background": "#ffffff",
+      "ratio": 7.78
+    },
+    {
+      "role": "Light destructive",
+      "foreground": "#9d222a",
+      "background": "#ffffff",
+      "ratio": 7.79
+    }
+  ],
+  "issues": [],
+  "limitations": [
+    "Numeric geometry checks are browser approximations, not native accessibility or hardware tests.",
+    "Source-derived inventories include mutually exclusive branches and unbound values.",
+    "Native fold division/camera occlusion, both system-bar edges, keyboard, VoiceOver and Dynamic Type remain acceptance gates."
+  ],
+  "liveSynchronization": {
+    "status": "pending-editor-permission",
+    "observedRevision": "444a6c66-527e-400f-b2ef-2e81d54dd563:2",
+    "allowEdits": false,
+    "note": "Live editor unchanged. Importable proposal and animated atlas are saved locally; no permission override attempted."
+  },
+  "portableProposal": {
+    "decoded": true,
+    "screens": 244,
+    "elements": 4428,
+    "baselineScreens": 240,
+    "localExport": "../../.migration/design-exports/led-backpack.forma.json"
+  },
+  "themeReview": {
+    "direction": "Original Aurora spectrum restored",
+    "browserVerification": "passed",
+    "contrastPairs": 13,
+    "toggleLabelsMeasured": 144,
+    "toggleMeasureBasis": "Actual browser labels at the minimum resolved width across all ten variants; dimensions include the switch and padding.",
+    "textLabelsMeasured": 2805,
+    "originalIdsAndControllerCodePreserved": true,
+    "originalBaselinePreserved": true,
+    "movingPixelsChanged": true,
+    "pauseStopsFrames": true,
+    "reduceMotionStaticArt": true,
+    "hiddenArtworkStopsFrames": true,
+    "navigationDisposesOldClock": true,
+    "systemMotionPreferenceRestored": true
+  },
+  "interactionReview": {
+    "typedConfirmationToggles": 5,
+    "disabledBeforeConsent": true,
+    "guardedDisabledAction": true,
+    "separateFinalAction": true,
+    "retainedAcrossFold": true,
+    "resetOnReturn": true,
+    "visibleGifCaptions": 0,
+    "artworkNameInputsRemoved": 8,
+    "fullContextAvailable": true,
+    "escapeClosesDetails": true,
+    "visibleDefaultTextMaximum": 180,
+    "productionControllersChanged": false
+  }
+}

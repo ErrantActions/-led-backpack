@@ -166,7 +166,6 @@ struct ChatReferenceCardView: View {
                 GIFThumbnail(key: "reference:\(client.instanceID):\(card.fingerprint):\(reconciliationEpoch):\(reduced):\(community.avatarPolicyRevision)", cache: false) {
                     try await client.referenceMedia(reduced || !gif.animated ? gif.previewUrl : gif.gifUrl, context: context)
                 }.frame(height: 170).clipShape(RoundedRectangle(cornerRadius: 16))
-                Text(gif.title).font(.headline)
                 Text("\(gif.attribution) • \(gif.license)").font(.caption).foregroundStyle(.secondary)
             } else if let event = card.event {
                 if let cover = event.coverUrl {

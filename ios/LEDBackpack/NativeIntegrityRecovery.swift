@@ -27,28 +27,30 @@ struct NativeIntegrityRecoveryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var keys: [NativeIntegrityOwnedKey] = []
     @State private var selected: NativeIntegrityOwnedKey?
-    @State private var confirmation = ""
+    @State private var approval = ScopedActionConfirmation<String>()
     @State private var busy = false
     @State private var failure: String?
     @State private var operation: Task<Void, Never>?
     var body: some View {
         Form {
-            Text("Fresh primary account authentication within ten minutes is required by the server. Recovery does not establish app identity or grant private content access. It works without a device proof so a lost key cannot permanently block recovery.").font(.caption)
+            InteractionExplanation("Recent primary sign-in is required. Recovery does not grant private content access or establish app identity.", details: "Fresh primary account authentication within ten minutes is required by the server. Recovery does not establish app identity or grant private content access. It works without a device proof so a lost key cannot permanently block recovery.").font(.caption)
             if community.integrityControlsAvailable {
                 Button("Refresh my owned App Attest keys") { load() }.disabled(busy || selected != nil)
                 ForEach(keys) { key in
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Key …\(key.keyId.suffix(10))").font(.headline)
                         Text(key.createdAt).font(.caption)
-                        Button("Review revoking this key", role: .destructive) { selected = key; confirmation = "" }
+                        Button("Review revoking this key", role: .destructive) { selected = key; approval.reset() }
                     }.disabled(busy)
                 }
                 if let selected {
                     Text("Captured key …\(selected.keyId.suffix(10))")
-                    TextField("Type REVOKE", text: $confirmation).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                    Button("Revoke captured owned key", role: .destructive) { revoke(selected) }.disabled(confirmation != "REVOKE" || busy)
-                    Button("Cancel") { self.selected = nil; confirmation = "" }.disabled(busy)
-                    Text("Revocation invalidates this public-key binding and its pending challenges. New use requires a new ceremony/key, never attestation replay. Other accounts' keys are not accessible, including to admins.").font(.caption)
+                    Toggle("Revoke this reviewed app key", isOn: Binding(
+                        get: { approval.isConfirmed(for: approvalScope) },
+                        set: { approval.setConfirmed($0, for: approvalScope) }))
+                    Button("Revoke captured owned key", role: .destructive) { revoke(selected) }.disabled(!approval.isConfirmed(for: approvalScope) || busy)
+                    Button("Cancel") { self.selected = nil; approval.reset() }.disabled(busy)
+                    InteractionExplanation("Revokes this key and pending challenges. New use needs a new key ceremony; no access to another account’s keys.", details: "Revocation invalidates this public-key binding and its pending challenges. New use requires a new ceremony/key, never attestation replay. Other accounts' keys are not accessible, including to admins.").font(.caption)
                 }
             } else { Text("The actual source integrity gate is unavailable/OFF; this view cannot enable it.") }
             if busy { ProgressView() }
@@ -56,7 +58,11 @@ struct NativeIntegrityRecoveryView: View {
         }.modernScene().navigationTitle("App key recovery")
         .task { if community.integrityControlsAvailable { load() } }
         .onChange(of: community.accountRevision) { _, _ in operation?.cancel(); keys = []; selected = nil; dismiss() }
-        .onDisappear { operation?.cancel() }
+        .onChange(of: approvalScope) { _, _ in approval.reset() }
+        .onDisappear { operation?.cancel(); approval.reset() }
+    }
+    private var approvalScope: String {
+        "\(community.accountRevision):\(community.integrityControlsAvailable):\(selected?.keyId ?? "")"
     }
     private func load() {
         guard !busy else { return }
@@ -68,13 +74,14 @@ struct NativeIntegrityRecoveryView: View {
         }
     }
     private func revoke(_ key: NativeIntegrityOwnedKey) {
-        guard !busy, confirmation == "REVOKE" else { return }
+        guard !busy, community.integrityControlsAvailable, selected?.keyId == key.keyId,
+              approval.consume(for: approvalScope) else { failure = "Key or approval changed. Review revocation again."; return }
         busy = true; failure = nil; let scope = community.accountRevision
         operation = Task {
             do {
                 try await community.revokeIntegrityKey(key); try Task.checkCancellation()
                 guard scope == community.accountRevision else { return }
-                keys.removeAll { $0.keyId == key.keyId }; selected = nil; confirmation = ""
+                keys.removeAll { $0.keyId == key.keyId }; selected = nil; approval.reset()
             } catch { if !Task.isCancelled { failure = error.localizedDescription } }
             if scope == community.accountRevision { busy = false }
         }

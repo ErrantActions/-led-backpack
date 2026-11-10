@@ -24,7 +24,7 @@ struct RouteArtworkPicker: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    StatusPill(title: "NAMED ARTWORK", symbol: "photo.on.rectangle")
+                    StatusPill(title: "ARTWORK", symbol: "photo.on.rectangle")
                     Picker("Artwork source", selection: $source) {
                         Text("Community / public").tag("community")
                         if client.exclusiveRouteEnabled(event) { Text("This event / exclusive").tag("exclusive") }
@@ -53,10 +53,9 @@ struct RouteArtworkPicker: View {
                                     GIFThumbnail(key: previewKey(choice), cache: false) {
                                         try await client.routeArtworkImage(choice, event: event)
                                     }.frame(height: 110).clipShape(RoundedRectangle(cornerRadius: 16))
-                                    Text(choice.title).font(.subheadline.weight(.semibold)).lineLimit(2)
                                     Text(source == "community" ? "Community" : "Event-exclusive").font(.caption2).foregroundStyle(Aurora.mint)
                                 }.padding(12).glassPanel(radius: 20)
-                            }.buttonStyle(.plain).disabled(busy)
+                            }.buttonStyle(.plain).disabled(busy).accessibilityLabel("Choose \(choice.title)")
                                 .onAppear { if source == "community", case .community(let id) = choice.reference { catalog.nearEnd(id) } }
                         }
                     }

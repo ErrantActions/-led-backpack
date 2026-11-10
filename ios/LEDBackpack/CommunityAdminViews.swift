@@ -101,7 +101,7 @@ struct CommunityAdminView: View {
                     }
                 }
             } message: {
-                Text("The ZIP's GIFs and metadata may be sent for AI review and published automatically when cleared. This is not private backup. Up to 250 MiB and 500 GIFs. Check recent imports before retrying an interrupted upload.")
+                InteractionExplanation("Community import, not backup. Cleared items may publish automatically. Check recent imports before retrying.", details: "The ZIP's GIFs and metadata may be sent for AI review and published automatically when cleared. This is not private backup. Up to 250 MiB and 500 GIFs. Check recent imports before retrying an interrupted upload.")
             }
         .alert("Confirm admin action", isPresented: Binding(get: { pending != nil },
             set: { if !$0 { pending = nil } }), presenting: pending) { value in
@@ -227,7 +227,7 @@ struct CommunityAdminView: View {
                                 try await community.download(item.item.previewUrl)
                             }.frame(width: 72, height: 72).clipShape(RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading) {
-                                Text(item.item.title)
+                                Text("Community artwork").accessibilityLabel(item.item.title)
                                 Text("\(item.status.rawValue) / AI: \(item.aiState)").font(.caption)
                                 if item.heldByReports { Text("Held by reports").font(.caption).foregroundStyle(.orange) }
                                 if item.requiresAdminReview { Text("Needs human review").font(.caption).foregroundStyle(.orange) }
@@ -324,7 +324,7 @@ struct CommunityAdminView: View {
                     Button("Refresh this import") { store.openImport(job.id) }.disabled(store.busy)
                     ForEach(Array(job.results.prefix(resultLimit).enumerated()), id: \.offset) { _, row in
                         VStack(alignment: .leading) {
-                            Text("\(row.status): \(row.name)")
+                            Text(row.status).accessibilityLabel("\(row.status): \(row.name)")
                             if let error = row.error { Text(error).font(.caption).foregroundStyle(.orange) }
                             if let id = row.itemId { Button("Review imported GIF") { store.openItem(id) }.disabled(store.busy) }
                         }
@@ -379,7 +379,6 @@ private struct CommunityAdminItemEditor: View {
                         GIFThumbnail(key: "admin-editor:\(community.accountRevision):\(item.id)", cache: false) {
                             try await community.download(item.item.gifUrl)
                         }.frame(height: 220)
-                        TextField("Title", text: $title)
                         Picker("Category", selection: $category) {
                             ForEach(CommunityCategory.allCases) { Text($0.label).tag($0.rawValue) }
                         }

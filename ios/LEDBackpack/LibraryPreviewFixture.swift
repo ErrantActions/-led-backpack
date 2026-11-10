@@ -22,7 +22,11 @@ struct FeatureActionIsolationFixture: View {
 private actor LibraryPreviewTransport: CommunityTransport {
     private let social: Bool
     private let paging: Bool
-    init(social: Bool = false, paging: Bool = false) { self.social = social; self.paging = paging }
+    private let messaging: Bool
+    private var sentMessages: [[String: Any]] = []
+    init(social: Bool = false, paging: Bool = false, messaging: Bool = false) {
+        self.social = social; self.paging = paging; self.messaging = messaging
+    }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         let path = request.url?.path ?? ""
         if request.httpMethod == "GET", path == "/api/v1/config" {
@@ -31,7 +35,9 @@ private actor LibraryPreviewTransport: CommunityTransport {
                 "accountDeletionRetainsSharedGifs": false, "appleSignInEnabled": true,
                 "socialEnabled": social, "messagingEnabled": social, "eventsEnabled": social, "nearbyDiscoveryEnabled": social,
                 "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social,
-                "connectedDeviceRegistrationVersion": 2, "deviceRecoveryEnabled": false]))
+                "connectedDeviceRegistrationVersion": 2, "deviceRecoveryEnabled": false,
+                "groupChatsEnabled": messaging, "eventChatsEnabled": false, "liveChatEnabled": false,
+                "directMessageRetentionDays": 30, "directMessageRecovery": "retained-history-only"]))
         }
         if request.httpMethod == "POST", path == "/api/v1/auth/login",
            let body = request.httpBody, let values = try JSONSerialization.jsonObject(with: body) as? [String: String],
@@ -78,6 +84,76 @@ private actor LibraryPreviewTransport: CommunityTransport {
             {"user":{"id":"\(LibraryPreviewFixture.owner)","email":"ui@example.invalid","displayName":"UI Rider","role":"user","verified":true,
             "authMethods":{"apple":false,"password":true,"appleOnly":false}}}
             """.utf8))
+        }
+        if messaging {
+            let peer = "33333333-1234-4567-89ab-abcdefabcdef"
+            let other = "44444444-1234-4567-89ab-abcdefabcdef"
+            let roomID = "55555555-1234-4567-89ab-abcdefabcdef"
+            let now = floor(Date().timeIntervalSince1970 * 1000)
+            let room: [String: Any] = ["id": roomID, "kind": "group", "title": "Saturday ride",
+                "ownerId": LibraryPreviewFixture.owner, "revision": 1, "archived": false, "canManage": true,
+                "canSend": true, "updatedAt": now, "readSequence": 0, "latestSequence": 1, "unread": 1]
+            func response(_ value: [String: Any]) throws -> CommunityResponse {
+                .init(status: 200, data: try JSONSerialization.data(withJSONObject: value))
+            }
+            if request.httpMethod == "GET" {
+                switch path {
+                case "/api/v1/social/friends":
+                    return try response(["friends": [["id": peer, "displayName": "Maya Chen"],
+                        ["id": other, "displayName": "Casey"]], "page": 1, "limit": 50])
+                case "/api/v1/social/conversations":
+                    return try response(["conversations": [
+                        ["profile": ["id": peer, "displayName": "Maya Chen"], "lastMessageCreatedAt": now],
+                        ["profile": ["id": other, "displayName": "Casey"], "lastMessageCreatedAt": now]],
+                        "page": 1, "limit": 24])
+                case "/api/v1/social/chats":
+                    return try response(["chats": [room], "page": 1, "limit": 24, "hasMore": false])
+                case "/api/v1/social/chat-invitations":
+                    return try response(["invitations": [], "page": 1, "limit": 24, "hasMore": false])
+                case "/api/v1/social/messages":
+                    guard let url = request.url, let parameters = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                          let recipient = parameters.queryItems?.first(where: { $0.name == "userId" })?.value,
+                          [peer, other].contains(recipient),
+                          !(parameters.queryItems ?? []).contains(where: { $0.name == "eventId" }) else {
+                        throw BackpackError.invalid("Unsupported generated conversation context.")
+                    }
+                    let greeting: [String: Any] = ["id": "66666666-1234-4567-89ab-abcdefabcdef",
+                        "senderId": recipient, "recipientId": LibraryPreviewFixture.owner,
+                        "senderName": recipient == peer ? "Maya Chen" : "Casey",
+                        "text": recipient == peer ? "Did you finish the pixel wave?" : "Ready for the ride?",
+                        "createdAt": now - 1000]
+                    return try response(["messages": [greeting] + sentMessages.filter { ($0["recipientId"] as? String) == recipient },
+                        "page": 1, "limit": 50, "hasMore": false, "viewToken": "fixture-direct-\(recipient)",
+                        "encryption": "server-managed", "retentionDays": 30, "recovery": "retained-history-only"])
+                case "/api/v1/social/chats/\(roomID)":
+                    return try response(["chat": room])
+                case "/api/v1/social/chats/\(roomID)/messages":
+                    return try response(["chat": room, "messages": [[
+                        "id": "77777777-1234-4567-89ab-abcdefabcdef", "senderId": peer,
+                        "senderName": "Maya Chen", "text": "Coffee before we head out?", "createdAt": now, "sequence": 1]],
+                        "hasMore": false, "latestSequence": 1, "readSequence": 0, "viewToken": "fixture-room"])
+                default: break
+                }
+            }
+            if request.httpMethod == "POST", path == "/api/v1/social/messages",
+               let bytes = request.httpBody, let body = try JSONSerialization.jsonObject(with: bytes) as? [String: String],
+               let recipient = body["recipientId"], [peer, other].contains(recipient),
+               let id = body["clientMessageId"], UUID(uuidString: id) != nil,
+               let text = body["text"], !text.isEmpty, text.utf16.count <= 4000, body["eventId"] == nil {
+                if let original = sentMessages.first(where: { ($0["id"] as? String) == id }) {
+                    guard original["text"] as? String == text, original["recipientId"] as? String == recipient else {
+                        throw BackpackError.invalid("Generated fixture retry changed its intent.")
+                    }
+                    return try response(["message": original])
+                }
+                let message: [String: Any] = ["id": id, "senderId": LibraryPreviewFixture.owner,
+                    "recipientId": recipient, "text": text, "createdAt": now]
+                sentMessages.append(message)
+                return try response(["message": message])
+            }
+            if request.httpMethod == "POST", path == "/api/v1/social/chats/\(roomID)/read" {
+                return try response(["readSequence": 1])
+            }
         }
         if social, request.httpMethod == "GET" {
             switch path {
@@ -157,7 +233,8 @@ enum LibraryPreviewFixture {
     static func community() -> CommunityController {
         CommunityController(vault: LibraryPreviewVault(), factory: { _ in
             LibraryPreviewTransport(social: CommandLine.arguments.contains("--social-ui-fixture"),
-                paging: CommandLine.arguments.contains("--pagination-ui-fixture"))
+                paging: CommandLine.arguments.contains("--pagination-ui-fixture"),
+                messaging: CommandLine.arguments.contains("--messaging-ui-fixture"))
         })
     }
     static func make() throws -> LocalLibrary {

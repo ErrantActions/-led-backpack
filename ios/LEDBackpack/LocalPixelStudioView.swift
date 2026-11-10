@@ -74,13 +74,16 @@ struct LocalPixelStudioView: View {
                 }
                 Button("Cancel", role: .cancel) { pending = nil }
             } message: {
-                Text("New/import/open replaces this unsaved editing session only after a supported result is ready. Save an editable project first to retain it. Delete removes only the chosen local project. Phone display, original sources, hardware and cloud are unchanged.")
+                Text("Save the editable project before replacing this draft. Delete affects only the selected local project, not sources, hardware or cloud.")
             }
     }
     private var intro: some View {
         Section {
             Text("\(art.width) × \(art.height) local pixels").font(.headline)
             Text("New copies only. Your originals and display are unchanged.").font(.caption)
+            FeatureDetails("Draft replacement & deletion") {
+                Text("New/import/open replaces this unsaved editing session only after a supported result is ready. Save an editable project first to retain it. Delete removes only the chosen local project. Phone display, original sources, hardware and cloud are unchanged.")
+            }
             if let error = store.failure { Text(error).foregroundStyle(.orange).accessibilityLabel("Studio error: \(error)") }
             if let notice = store.notice { Text(notice).foregroundStyle(.secondary).accessibilityLabel(notice) }
             if store.busy {
@@ -186,7 +189,8 @@ struct LocalPixelStudioView: View {
                 guard let delay = Int(delayText) else { store.failure = "Enter a whole number of centiseconds."; return }
                 store.change { try $0.setTiming(delay) }
             }
-            Text("Current delay \(store.document.current.centiseconds) cs. 100 cs = 1 second. Source timing is never capped at ten seconds. Source zero delay stays zero in export; preview uses a 1 cs display interval.")
+            InteractionExplanation("Delay uses centiseconds: 100 = 1 second. Source timing is preserved; zero-delay preview uses a 1 cs display interval.",
+                details: "Current delay \(store.document.current.centiseconds) cs. 100 cs = 1 second. Source timing is never capped at ten seconds. Source zero delay stays zero in export; preview uses a 1 cs display interval.")
                 .font(.caption).foregroundStyle(.secondary)
             Picker("Loop behavior", selection: Binding(get: {
                 art.repeats == nil ? 0 : (art.repeats == 0 ? 1 : 2)
@@ -221,7 +225,6 @@ struct LocalPixelStudioView: View {
     }
     private var importExport: some View {
         Section("Local import / NEW copy export") {
-            TextField("New project / export name", text: $name)
             Button("Import supported document…") { pending = .importDocument }
             Button("Stamp local still sprite at X / Y…") {
                 do { importPoint = try coordinate(); importSprite = true; importing = true }
@@ -232,7 +235,8 @@ struct LocalPixelStudioView: View {
             }
             DisclosureGroup("Edit an existing original") {
             ForEach(originals.items) { item in
-                Button("Edit local original: \(item.name)") { pending = .library(item) }
+                Button("Edit local original") { pending = .library(item) }
+                    .accessibilityLabel("Edit local original: \(item.name)")
             }
             }
             if store.retainedImport != nil {

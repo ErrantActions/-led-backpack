@@ -74,7 +74,8 @@ struct ConversationNotificationView: View {
                 }
                 if intent != nil { Text("Captured intent retained. Explicitly reload current access/revision before saving again; no automatic retry or overwrite.").foregroundStyle(.orange) }
                 Button("Explicitly reload current conversation settings") { reloading = true }.disabled(session.busy)
-                Text("Only your alerts for this exact direct thread, private organizer question or room change. Messages, history, unread counts, membership, typing, invitations and already delivered inbox/activity links remain intact. Global/category/channel settings still apply.").font(.caption)
+                InteractionExplanation("Only alerts for this conversation change. Messages, unread counts, membership and existing activity links remain.",
+                    details: "Only your alerts for this exact direct thread, private organizer question or room change. Messages, history, unread counts, membership, typing, invitations and already delivered inbox/activity links remain intact. Global/category/channel settings still apply.").font(.caption)
             } else { Text("Conversation notification controls are unavailable or current access was lost.") }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if session.busy { ProgressView() }

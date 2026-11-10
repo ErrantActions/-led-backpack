@@ -207,8 +207,8 @@ struct LiveView: View {
             Text("Use controls only while stationary. A lost connection can prevent playback restoration.")
                 .foregroundStyle(.orange)
             FeatureDetails("Sensors & background limits") {
-            Text("An explicitly started GPS session can continue with Always location and Background GPS enabled. Other screens refresh on allowed callbacks; iOS suspension or force-quit can stop updates.")
-            Text("Weather is opportunistic, marked STALE after five minutes and NO DATA after fifteen. Stop attempts playback restoration; a lost connection can prevent it. Operate controls only while stationary.")
+            InteractionExplanation("Explicit GPS sessions need Always permission and Background GPS. iOS suspension or force-quit can stop updates.", details: "An explicitly started GPS session can continue with Always location and Background GPS enabled. Other screens refresh on allowed callbacks; iOS suspension or force-quit can stop updates.")
+            InteractionExplanation("Weather becomes stale after 5 minutes, unavailable after 15. Stop may not restore playback if disconnected. Use controls while stationary.", details: "Weather is opportunistic, marked STALE after five minutes and NO DATA after fifteen. Stop attempts playback restoration; a lost connection can prevent it. Operate controls only while stationary.")
             LabeledContent("Location", value: sensors.authorization == .authorizedAlways ? "Always" : "Check permission")
             }
         }.font(.caption).foregroundStyle(.secondary).padding(20).glassPanel()
@@ -294,7 +294,7 @@ struct SettingsView: View {
                     }
                     Button("Import / merge backup") { importer = true }
                     FeatureDetails("What's in a backup") {
-                    Text("Includes local GIFs, attribution, playlists and preferences, including the optional catalog URL. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords, catalog sessions, deletion receipts and location history are not exported. A backup does not read artwork out of the backpack.")
+                    InteractionExplanation("Backup includes local media and settings, not passwords, sessions or location history. Import merges; it never reads artwork from the backpack.", details: "Includes local GIFs, attribution, playlists and preferences, including the optional catalog URL. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords, catalog sessions, deletion receipts and location history are not exported. A backup does not read artwork out of the backpack.")
                         .font(.caption)
                     }
                 }

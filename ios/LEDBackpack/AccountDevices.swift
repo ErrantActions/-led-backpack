@@ -223,7 +223,8 @@ struct AccountDevicesView: View {
                     else { devices.append(device) }
                 }
             }
-            if community.config?.deviceRecoveryEnabled == true {
+            if community.config?.deviceRecoveryEnabled == true,
+               (community.config?.connectedDeviceRegistrationVersion ?? 0) >= 2 {
                 NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
             }
             if session.scope != nil {

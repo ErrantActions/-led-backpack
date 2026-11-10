@@ -92,12 +92,15 @@ private struct EventGPSHuntContent: View {
             if let event = model.event, let collection = model.collection, let selected {
                 Button("Self-report \(selected.title) — no GPS proof") { confirmGPS(event, collection: collection, requiresHint: false) }
             }
-        } message: { Text("This is your deliberate private self-report, not a verified GPS/Bluetooth arrival. No coordinates or public progress are uploaded. Your existing cooperative opt-in, if any, remains unchanged.") }
+        } message: { Text("Private self-report, not verified arrival. No coordinates or public progress are uploaded; existing cooperative opt-in is unchanged.") }
     }
     private var intro: some View {
         Section {
             Text(model.event?.title ?? "Checkpoint hunt").font(.title2.bold())
             Text("Choose a target. Stay still. Confirm privately.").font(.subheadline).foregroundStyle(.secondary)
+            FeatureDetails("Self-report privacy") {
+                Text("This is your deliberate private self-report, not a verified GPS/Bluetooth arrival. No coordinates or public progress are uploaded. Your existing cooperative opt-in, if any, remains unchanged.")
+            }
         }
     }
     @ViewBuilder private var consentSection: some View {

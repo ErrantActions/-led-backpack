@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+  <title>LED Backpack - Aurora Messages</title>
+  <style>
+    :root{color-scheme:dark;font:16px/1.4 system-ui,sans-serif;background:#06090e;color:#f4f7fb}
+    *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;padding:24px}
+    button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;min-width:44px;min-height:44px;border:0;border-radius:14px;background:#252239;padding:10px 14px}
+    button:hover{background:#332d4b}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #ffd18a;outline-offset:3px}
+    input,textarea,select{background:#1b1b2c;border:1px solid #5e5477;border-radius:16px;min-height:44px;padding:10px 14px;min-width:0}
+    a{color:#9effe6}h1,h2,p{margin:0}h1{font:800 30px/1.1 ui-rounded,system-ui,sans-serif;letter-spacing:-.04em}h2{font-size:20px}
+    .studio{max-width:1100px;margin:auto}.studio-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    .studio-head p,.caption{color:#c5c6e4;font-size:14px}.studio-head nav{display:flex;gap:16px;flex-wrap:wrap}
+    .lab{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:16px 0}.lab label{display:grid;gap:4px;font-size:13px;color:#c5c6e4}.lab select{max-width:100%}
+    .device{container:messages/inline-size;width:100%;max-width:420px;margin:20px auto;background:radial-gradient(ellipse at 0% 5%,#9effe615,transparent 65%),#0b0e18;border:1px solid #bdb8ff45;border-radius:28px;overflow:hidden;box-shadow:0 20px 80px #0007}
+    .device[data-layout="open"],.device[data-layout="book"]{max-width:980px}
+    .app{height:min(820px,86svh);min-height:400px;display:grid;grid-template-columns:minmax(0,1fr)}
+    .inbox,.thread{min-width:0;min-height:0;display:flex;flex-direction:column}.inbox{background:#111522}
+    .device[data-view="thread"] .inbox{display:none}.device[data-view="list"] .thread{display:none}
+    .inbox-head{padding:22px 18px 12px}.heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+    .icon-button{padding:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;color:#bdb8ff}
+    .icon-button:hover{background:#bdb8ff18}.icon{width:24px;height:24px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .search{width:100%;background:#252239;border-color:transparent}.filters{display:flex;gap:8px;margin-top:12px}.filters button{font-size:14px;padding:8px 12px;min-height:44px;background:transparent;color:#c5c6e4}
+    .filters button[aria-pressed="true"]{background:#14352f;color:#9effe6}
+    .chat-list{flex:1;overflow:auto;overscroll-behavior:contain;padding:2px 8px 16px}
+    .chat-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;text-align:left;background:transparent;border-radius:18px;min-height:86px}
+    .chat-row[aria-current="true"]{background:#bdb8ff16;box-shadow:inset 3px 0 #bdb8ff}.chat-row:hover{background:#ffffff08}
+    .avatar{width:52px;height:52px;flex:0 0 52px;display:grid;place-items:center;border-radius:50%;font-weight:750;color:#09201e;background:linear-gradient(135deg,#9effe6,#bdb8ff);position:relative}
+    .avatar.rose{background:linear-gradient(135deg,#bdb8ff,#ffa3d9)}.avatar.group{border-radius:18px;background:linear-gradient(135deg,#bdb8ff,#9effe6)}
+    .row-copy{flex:1;min-width:0}.row-top{display:flex;justify-content:space-between;gap:8px;align-items:center}.row-name{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .row-time{font-size:12px;color:#c5c6e4;flex-shrink:0}.row-preview{font-size:14px;color:#c5c6e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}
+    .unread{min-width:24px;height:24px;display:grid;place-items:center;border-radius:20px;background:#9effe6;color:#09201e;font-size:12px;font-weight:750;padding:0 6px}
+    .row-context{color:#bdb8ff;font-size:12px;margin-top:3px}.empty{padding:28px 20px;text-align:center;color:#c5c6e4}.empty h2{color:#f4f7fb;margin-bottom:8px}.empty button{margin-top:16px}
+    .thread-head{display:flex;align-items:center;gap:10px;padding:12px;background:#141725;border-bottom:1px solid #bdb8ff25;flex-shrink:0;min-height:80px}
+    .thread-head .avatar{width:40px;height:40px;flex-basis:40px;font-size:14px}.thread-title{flex:1;min-width:0}.thread-title h2{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.thread-title p{font-size:12px;color:#c5c6e4;margin-top:3px}
+    .banner{padding:10px 16px;font-size:14px;color:#ffd18a;background:#342616;border-bottom:1px solid #ffd18a40}
+    .history{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:20px 14px;scroll-padding-bottom:16px}
+    .day{text-align:center;font-size:12px;color:#c5c6e4;margin-bottom:20px}
+    .message{display:flex;flex-direction:column;align-items:flex-start;margin:8px 0;gap:4px}.message.mine{align-items:flex-end}
+    .sender{font-size:12px;color:#c5c6e4;padding:0 12px}
+    .bubble{min-width:0;min-height:44px;max-width:min(86%,460px);padding:11px 15px;border-radius:20px 20px 20px 6px;background:#252239;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+    .mine .bubble{background:#9effe6;color:#09201e;border-radius:20px 20px 6px 20px}
+    .stamp{font-size:11px;color:#c5c6e4;margin:0 10px}.attempt{display:flex;align-items:center;gap:6px;max-width:100%;flex-wrap:wrap;font-size:12px;color:#ffd18a}
+    .attempt button{font-size:12px;color:#ffd18a;background:transparent;text-decoration:underline}
+    .composer{padding:12px 12px max(12px,env(safe-area-inset-bottom));background:#141725;border-top:1px solid #bdb8ff25;flex-shrink:0}
+    .composer-row{display:flex;align-items:end;gap:8px}.composer textarea{resize:none;flex:1;width:0;min-height:46px;max-height:120px;border-radius:22px;padding:11px 14px;line-height:22px}
+    .send{background:#9effe6;color:#09201e;border-radius:50%;padding:11px}.send:hover{background:#b4ffed}.send .icon{width:22px;height:22px}
+    .draft-attachment{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px}.art{width:84px;height:70px;display:grid;place-items:center;background:#06090e;border-radius:12px;overflow:hidden}.art svg{width:100%;height:100%}
+    .request-card{margin:16px;padding:20px;background:#252239;border:1px solid #bdb8ff50;border-radius:22px}.request-card h2{margin-bottom:8px}.request-card p{color:#c5c6e4;font-size:14px}.request-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.primary{background:#9effe6;color:#09201e}.danger{color:#ffb4b4}
+    .typing{padding:0 24px 12px;color:#c5c6e4;font-size:13px}.typing i{display:inline-block;width:5px;height:5px;background:#bdb8ff;border-radius:50%;margin:0 2px;animation:breath 1.2s ease-in-out infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+    @keyframes breath{50%{transform:translateY(-3px)}}@keyframes arrive{from{transform:translateY(8px) scale(.98)}to{transform:none}}
+    .message.enter .bubble{animation:arrive .22s cubic-bezier(.16,1,.3,1)}
+    .status{font-size:13px;color:#c5c6e4;min-height:20px;padding:0 4px;margin-top:6px;overflow-wrap:anywhere}
+    .room-empty{display:flex;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;color:#c5c6e4}
+    dialog{max-width:min(460px,calc(100vw - 32px));width:100%;max-height:85svh;overflow:auto;background:#141725;color:#f4f7fb;border:1px solid #bdb8ff66;border-radius:24px;padding:20px}
+    dialog::backdrop{background:#06090ecf}dialog .heading-row{margin-bottom:16px}dialog p{color:#c5c6e4;margin:10px 0;font-size:14px}dialog input,dialog textarea{width:100%;margin-bottom:12px}dialog .dialog-list{display:grid;gap:8px}dialog button.choice{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:#252239}
+    .art-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.art-grid button{padding:0;background:#06090e;min-height:130px}.art-grid svg{display:block;width:100%;height:130px}
+    .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .foot{font-size:13px;color:#c5c6e4;margin-top:16px;max-width:80ch}
+    @container messages (min-width:720px){.app{grid-template-columns:300px minmax(0,1fr)}.device[data-layout="book"] .app{column-gap:40px}.device[data-layout="book"]{background:#06090e}.device .inbox,.device .thread{display:flex!important}.back{display:none}.inbox{border-right:1px solid #bdb8ff25}}
+    @media(max-width:600px){body{padding:12px}.studio-head h1{font-size:24px}.lab{gap:8px}.lab label{flex:1;min-width:135px}.lab select{width:100%}.device{margin:12px auto}.app{height:80svh;min-height:360px}.thread-head{gap:6px;padding:10px 6px}.thread-head .avatar{display:none}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+    @media(prefers-reduced-transparency:reduce){.device{background:#0b0e18}.avatar,.avatar.rose,.avatar.group{background:#bdb8ff}}
+    @media(prefers-contrast:more){.bubble,.chat-row,.composer textarea{border:1px solid #bdb8ff}.mine .bubble{border-color:#09201e}}
+  </style>
+</head>
+<body>
+  <main class="studio">
+    <header class="studio-head">
+      <div><h1>Aurora Messages</h1><p>Fictional conversations. Nothing is sent.</p></div>
+      <nav aria-label="Design references"><a href="design-atlas.html">Design atlas</a><a href="../documentation/messaging-design.md">Design notes</a></nav>
+    </header>
+    <div class="lab" aria-label="Prototype controls">
+      <label>Layout<select id="layout"><option value="compact">Compact</option><option value="open">Duo open</option><option value="book">Duo book study</option></select></label>
+      <label>Access / connection<select id="connection"><option value="normal">Available sample</option><option value="offline">Offline</option><option value="readonly">Sending unavailable</option><option value="revoked">Access revoked</option></select></label>
+      <label>Send preview result<select id="outcome"><option value="preview">Local preview</option><option value="failed">Failed</option><option value="uncertain">Outcome unknown</option></select></label>
+      <button id="typing-sample" type="button">Preview typing</button>
+    </div>
+    <section class="device" id="device" data-layout="compact" data-view="list" aria-label="Interactive messaging design">
+      <div class="app">
+        <section class="inbox" aria-label="Conversation inbox">
+          <div class="inbox-head">
+            <div class="heading-row"><h1 id="inbox-title" tabindex="-1">Messages</h1><button class="icon-button" id="new-message" aria-label="New message"></button></div>
+            <input id="search" class="search" type="search" placeholder="Find a conversation" aria-label="Search loaded conversations">
+            <div class="filters" aria-label="Conversation filters">
+              <button data-filter="all" aria-pressed="true">Chats</button><button data-filter="groups" aria-pressed="false">Groups</button><button data-filter="requests" aria-pressed="false">Requests <span id="request-count">2</span></button>
+            </div>
+          </div>
+          <div class="chat-list" id="chat-list"></div>
+        </section>
+        <section class="thread" aria-label="Selected conversation">
+          <div class="room-empty" id="room-empty"><div><h2>Your conversations</h2><p>Choose someone to pick up the thread.</p></div></div>
+          <div id="thread-content" hidden style="display:flex;flex-direction:column;min-height:0;height:100%">
+            <header class="thread-head">
+              <button id="back" class="icon-button back" aria-label="Back to conversations"></button>
+              <div id="thread-avatar" class="avatar" aria-hidden="true"></div>
+              <div class="thread-title"><h2 id="thread-title" tabindex="-1"></h2><p id="thread-context"></p></div>
+              <button id="thread-info" class="icon-button" aria-label="Conversation details"></button>
+              <button id="thread-actions" class="icon-button" aria-label="Conversation actions"></button>
+            </header>
+            <p class="banner" id="banner" hidden></p>
+            <div class="history" id="history" role="log" aria-label="Conversation messages" aria-live="off"></div>
+            <div class="typing" id="typing" hidden></div>
+            <div class="request-card" id="request-card" hidden></div>
+            <form class="composer" id="composer" aria-label="Message composer">
+              <div class="draft-attachment" id="attachment" hidden></div>
+              <div class="composer-row">
+                <button class="icon-button" id="add" type="button" aria-label="Add an attachment"></button>
+                <label for="message" class="sr-only">Message</label><textarea id="message" rows="1" maxlength="4000" placeholder="Message"></textarea>
+                <button class="send" id="send" aria-label="Send preview" type="submit"></button>
+              </div>
+              <p class="status" id="status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+    <p class="foot">Aurora styling, familiar messaging behavior. No calls, online-status claims or recipient read receipts. Duo fold space is illustrative; native geometry and keyboard acceptance remain separate.</p>
+    <dialog id="dialog" aria-labelledby="dialog-title">
+      <div class="heading-row"><h2 id="dialog-title"></h2><button class="icon-button" id="close-dialog" aria-label="Close dialog"></button></div>
+      <div id="dialog-body"></div>
+    </dialog>
+  </main>
+  <script>
+    'use strict';
+    const $=id=>document.getElementById(id);
+    const paths={compose:'M12 20H4V4h10M10 14l9-11 3 3-10 10-4 1z',back:'M15 5l-7 7 7 7',info:'M12 11v6M12 7h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',more:'M5 12h.01M12 12h.01M19 12h.01',plus:'M12 5v14M5 12h14',send:'M12 20V4M5 11l7-7 7 7',close:'M6 6l12 12M18 6L6 18',group:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M22 21v-2a4 4 0 0 0-3-4M17 3a4 4 0 0 1 0 8'};
+    function node(tag,text){const el=document.createElement(tag);if(text)el.textContent=text;return el}
+    function icon(name){const el=document.createElementNS('http://www.w3.org/2000/svg','svg');el.setAttribute('viewBox','0 0 24 24');el.setAttribute('class','icon');el.setAttribute('aria-hidden','true');const path=document.createElementNS(el.namespaceURI,'path');path.setAttribute('d',paths[name]);el.append(path);return el}
+    for(const [id,name] of [['new-message','compose'],['back','back'],['thread-info','info'],['thread-actions','more'],['add','plus'],['send','send'],['close-dialog','close']])$(id).append(icon(name));
+    const rooms=[
+      {id:'direct-maya',name:'Maya Chen',initials:'MC',kind:'direct',tone:'rose',time:'10:42',messages:[['them','Maya','Did you finish the pixel wave?'],['me','You','Almost. Going with mint and pink.'],['them','Maya','That is going to look so good at the meetup.']]},
+      {id:'room-ride',name:'Saturday ride',initials:'SR',kind:'group',unread:3,time:'10:35',messages:[['them','Morgan','Coffee before we head out?'],['them','Ari','Riverside works for me.'],['me','You','Sounds good. I will set up the backpack before we leave.']]},
+      {id:'room-event',name:'River loop',initials:'RL',kind:'event',unread:1,time:'10:18',messages:[['them','Casey','Route review is ready in the event.'],['them','Morgan','Thanks! I will look before confirming.']]},
+      {id:'direct-casey',name:'Casey',initials:'C',kind:'direct',time:'Yesterday',messages:[['them','Casey','What colors are you using this weekend?']]},
+      {id:'organizer-casey',name:'Casey',initials:'C',kind:'organizer',time:'Yesterday',messages:[['me','You','Can I ask about the River loop meeting point?'],['them','Casey','Of course. This question stays private, separate from the event room.']]},
+      {id:'request-jamie',name:'Jamie',initials:'J',kind:'request',pending:true,tone:'rose',time:'Request',messages:[['them','Jamie','Can I ask about your pixel setup?']]},
+      {id:'invite-makers',name:'Pixel makers',initials:'PM',kind:'invitation',pending:true,unread:0,time:'Invitation',messages:[]},
+    ].map(r=>({...r,loaded:false,canSend:!r.pending,messages:r.messages.map((m,i)=>({id:`${r.id}-${i}`,side:m[0],sender:m[1],text:m[2],status:'example'}))}));
+    const drafts=new Map(),attempts=new Map(),typingUntil=new Map();
+    let selected=null,filter='all',newestMessage=null,dialogReturnFocus=null;
+    const current=()=>rooms.find(r=>r.id===selected);
+    const context=r=>({direct:'Direct message',group:'Group chat',event:'Event-wide chat',organizer:'Private question · River loop',request:r.pending?'Message request':'Accepted request',invitation:'Group invitation'}[r.kind]);
+    const available=()=>$('connection').value!=='revoked';
+    function draft(r=current()){if(!drafts.has(r.id))drafts.set(r.id,{text:'',attachment:null});return drafts.get(r.id)}
+    function pendingAttempt(r=current()){return attempts.get(r.id)}
+    function writable(r=current()){return Boolean(r&&available()&&r.canSend&&!r.pending&&!r.closed&&$('connection').value==='normal')}
+    function allowed(r=current()){return writable(r)&&!pendingAttempt(r)}
+    function avatar(r){const el=node('div',r.initials);el.className='avatar '+(r.tone||'')+(['group','event','invitation'].includes(r.kind)?' group':'');el.setAttribute('aria-hidden','true');return el}
+    function preview(r){
+      if(drafts.get(r.id)?.text)return 'Draft · '+drafts.get(r.id).text;
+      if(r.loaded&&r.messages.length){const m=r.messages.at(-1);return (m.side==='me'?'You: ':'')+(m.text||'Artwork');}
+      return context(r);
+    }
+    function renderList(){
+      const list=$('chat-list');list.replaceChildren();
+      $('request-count').textContent=available()?String(rooms.filter(r=>r.pending&&!r.closed).length):'';
+      $('new-message').disabled=!available();$('search').disabled=!available();
+      document.querySelector('.filters').hidden=!available();
+      for(const b of document.querySelectorAll('[data-filter]'))b.setAttribute('aria-pressed',String(b.dataset.filter===filter));
+      if(!available()){list.append(node('p','Conversation access changed. Recheck authorization before loading private content.'));return}
+      const query=$('search').value.toLocaleLowerCase().trim();
+      const shown=rooms.filter(r=>!r.closed&&(filter==='requests'?r.pending:!r.pending&&(filter!=='groups'||['group','event'].includes(r.kind))))
+        .filter(r=>(r.name+' '+context(r)).toLocaleLowerCase().includes(query));
+      if(!shown.length){const empty=node('div');empty.className='empty';empty.append(node('h2',query?'No matches':'Nothing here yet'),node('p',query?'Try another name.':'Your conversations will appear here.'));list.append(empty);return}
+      for(const r of shown){
+        const row=node('button');row.type='button';row.className='chat-row';row.dataset.room=r.id;row.setAttribute('aria-current',String(r.id===selected));
+        row.setAttribute('aria-label',`${r.name}, ${context(r)}${r.unread?', '+r.unread+' unread':''}`);
+        const copy=node('div');copy.className='row-copy';const top=node('div');top.className='row-top';
+        const name=node('span',r.name);name.className='row-name';const time=node('span',r.time);time.className='row-time';top.append(name,time);
+        const snippet=node('p',preview(r));snippet.className='row-preview';copy.append(top,snippet);
+        if(r.loaded&&['organizer','event'].includes(r.kind)){const label=node('p',context(r));label.className='row-context';copy.append(label)}
+        row.append(avatar(r),copy);
+        if(r.unread>0){const count=node('span',String(r.unread));count.className='unread';count.setAttribute('aria-hidden','true');row.append(count)}
+        row.onclick=()=>select(r.id);list.append(row);
+      }
+    }
+    function select(id,compose=false){
+      const r=rooms.find(r=>r.id===id);if(!r||!available()||r.closed)return;
+      selected=id;r.loaded=true;
+      if(['group','event'].includes(r.kind))r.unread=0;
+      $('device').dataset.view='thread';renderList();renderThread();
+      if(compose&&!r.pending)$('message').focus();else $('thread-title').focus();
+    }
+    function artwork(index){
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');svg.setAttribute('aria-hidden','true');
+      for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+        const lit=index%2?Math.abs(Math.hypot(x-7.5,y-7.5)-5)<1.2:Math.abs(y-(7+3*Math.sin(x*.55+index)))<1.2;
+        if(!lit)continue;const pixel=document.createElementNS(svg.namespaceURI,'rect');pixel.setAttribute('x',x*4);pixel.setAttribute('y',y*4);pixel.setAttribute('width','3');pixel.setAttribute('height','3');pixel.setAttribute('fill',x<6?'#9effe6':x<11?'#bdb8ff':'#ffa3d9');svg.append(pixel);
+      }
+      return svg;
+    }
+    function renderMessages(){
+      const r=current(),history=$('history');history.replaceChildren();
+      if(!r||!available())return;
+      const day=node('div','Sample conversation');day.className='day';history.append(day);
+      if(!r.messages.length&&!r.pending){const empty=node('p','No messages yet. Say hello.');empty.className='empty';history.append(empty)}
+      for(const m of r.messages){
+        const row=node('div');row.className='message'+(m.side==='me'?' mine':'')+(m.id===newestMessage?' enter':'');row.dataset.message=m.id;
+        if(m.side==='them'&&['group','event'].includes(r.kind)){const sender=node('span',m.sender);sender.className='sender';row.append(sender)}
+        const bubble=node('div',m.text);bubble.className='bubble';
+        if(m.attachment){const art=node('div');art.className='art';art.append(artwork(m.attachment.index));bubble.prepend(art)}
+        row.append(bubble);
+        if(['failed','uncertain'].includes(m.status)){
+          const attempt=node('div');attempt.className='attempt';attempt.append(node('span',m.status==='failed'?'Not sent':'Outcome unknown'));
+          const retry=node('button','Retry same message');retry.type='button';retry.disabled=!writable(r);retry.onclick=()=>retryMessage(r.id,m.id);attempt.append(retry);row.append(attempt);
+        }else if(m.side==='me'){const stamp=node('span',m.status==='preview'?'Preview only':'Saved on server · sample');stamp.className='stamp';row.append(stamp)}
+        history.append(row);
+      }
+      newestMessage=null;history.scrollTop=history.scrollHeight;
+    }
+    function renderRequest(){
+      const r=current(),card=$('request-card');card.hidden=!r?.pending||!available();card.replaceChildren();
+      if(card.hidden)return;
+      const invitation=r.kind==='invitation';
+      card.append(node('h2',invitation?'Join Pixel makers?':'Allow messages?'),node('p',invitation?'Invited by Morgan. Earlier messages are not shared.':'Accepting allows this conversation, not friendship or library access.'));
+      const actions=node('div');actions.className='request-actions';
+      const respond=accept=>{
+        if(!available()||$('connection').value!=='normal'||selected!==r.id||!r.pending||r.closed){
+          $('banner').textContent='Request access changed. No choice applied.';$('banner').hidden=false;return;
+        }
+        if(accept){r.pending=false;r.canSend=true;if(invitation){r.kind='group';r.messages=[]}}
+        else{r.closed=true;selected=null;$('device').dataset.view='list'}
+        renderList();renderThread();
+        if(accept)$('status').textContent='Preview choice only. No permission changed on a server.';
+      };
+      const accept=node('button',invitation?'Join group':'Accept');accept.className='primary';accept.type='button';
+      accept.disabled=$('connection').value!=='normal';
+      accept.onclick=()=>respond(true);
+      const decline=node('button','Decline');decline.type='button';decline.onclick=()=>respond(false);
+      decline.disabled=$('connection').value!=='normal';
+      actions.append(accept,decline);card.append(actions);
+    }
+    function renderTyping(){
+      const r=current(),show=r&&!r.pending&&available()&&$('connection').value==='normal'&&(typingUntil.get(r.id)||0)>Date.now();
+      $('typing').hidden=!show;$('typing').replaceChildren();
+      if(show){$('typing').append(document.createTextNode('Sample typing '));for(let i=0;i<3;i++)$('typing').append(node('i'))}
+    }
+    function renderAttachment(){
+      const d=current()?draft():null,host=$('attachment');host.hidden=!d?.attachment;host.replaceChildren();
+      if(host.hidden)return;
+      const art=node('div');art.className='art';art.append(artwork(d.attachment.index));
+      const remove=node('button');remove.type='button';remove.className='icon-button';remove.setAttribute('aria-label','Remove unsent artwork');remove.append(icon('close'));
+      remove.onclick=()=>{d.attachment=null;renderAttachment();updateComposer()};host.append(art,node('span','Not shared until Send'),remove);
+    }
+    function fitComposer(){const input=$('message');input.style.height='auto';input.style.height=Math.min(120,input.scrollHeight)+'px'}
+    function updateComposer(){
+      const r=current();if(!r)return;
+      const locked=r.pending||r.closed||!available()||Boolean(pendingAttempt(r))||$('connection').value==='readonly';
+      $('message').disabled=locked;$('add').disabled=!allowed(r)||r.kind==='request';
+      $('send').disabled=!allowed(r)||(!draft(r).text.trim()&&!draft(r).attachment);
+      $('composer').hidden=r.pending||!available();fitComposer();
+      const banner=$('banner');
+      const message=!available()?'Access changed. Recheck permissions.':$('connection').value==='offline'?'Offline. Your draft is kept.':$('connection').value==='readonly'?'Sending is unavailable in this conversation.':pendingAttempt(r)?'Resolve the earlier attempt before sending another.':'';
+      banner.textContent=message;banner.hidden=!message;
+    }
+    function renderThread(){
+      const r=current();$('room-empty').hidden=Boolean(r);$('thread-content').hidden=!r;
+      if(!r)return;
+      $('thread-title').textContent=available()?r.name:'Messages';$('thread-context').textContent=available()?context(r):'Access unavailable';
+      $('thread-avatar').textContent=available()?r.initials:'';$('thread-avatar').hidden=!available();
+      $('thread-info').disabled=!available();$('thread-actions').disabled=!available();
+      $('message').value=draft(r).text;$('status').textContent='';
+      renderMessages();renderRequest();renderTyping();renderAttachment();updateComposer();
+    }
+    function validText(text){for(const c of text)if(c.length===1&&c.charCodeAt(0)>=0xd800&&c.charCodeAt(0)<=0xdfff)return false;return true}
+    function send(event){
+      event.preventDefault();const r=current();if(!allowed(r)){$('status').textContent='Sending is unavailable. Your draft is kept.';return}
+      const d=draft(r),text=d.text.trim();
+      if((!text&&!d.attachment)||text.length>4000||!validText(text)){$('status').textContent='Use a message or artwork, up to 4,000 valid UTF-16 units.';return}
+      const attachment=d.attachment?Object.freeze({...d.attachment}):null;
+      const intent=Object.freeze({id:crypto.randomUUID(),context:r.id,text,attachment,bytes:JSON.stringify({context:r.id,text,attachment})});
+      const status=$('outcome').value;attempts.set(r.id,intent);
+      r.messages.push({id:intent.id,side:'me',sender:'You',text,attachment,status});newestMessage=intent.id;
+      if(status==='preview')attempts.delete(r.id);
+      drafts.set(r.id,{text:'',attachment:null});$('message').value='';
+      renderMessages();renderAttachment();updateComposer();renderList();
+      $('status').textContent=status==='preview'?'Local preview only. Nothing sent.':status==='failed'?'Not sent. Retry keeps the same message.':'Outcome unknown. Do not send a replacement.';
+      if(!pendingAttempt(r))$('message').focus();
+    }
+    function retryMessage(roomId,id){
+      const r=rooms.find(r=>r.id===roomId),intent=attempts.get(roomId);
+      if(!intent||intent.id!==id||!writable(r)){$('status').textContent='Retry unavailable. Keep this attempt until access is checked.';return}
+      const message=r.messages.find(m=>m.id===id);
+      if(!message)throw Error('Retry message is missing.');
+      if(JSON.stringify({context:roomId,text:message.text,attachment:message.attachment})!==intent.bytes)throw Error('Retry payload changed.');
+      message.status=$('outcome').value;
+      if(message.status==='preview')attempts.delete(roomId);
+      renderMessages();updateComposer();$('status').textContent='Retried the same local preview ID and payload. Nothing sent.';
+    }
+    function openDialog(title,build){
+      dialogReturnFocus=document.activeElement;$('dialog-title').textContent=title;$('dialog-body').replaceChildren();build($('dialog-body'));$('dialog').showModal();
+    }
+    function closeDialog(){$('dialog').close();if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus()}
+    $('close-dialog').onclick=closeDialog;
+    $('dialog').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();closeDialog()}});
+    $('new-message').onclick=()=>openDialog('New message',body=>{
+      body.append(node('p','People you can message in this sample.'));
+      const list=node('div');list.className='dialog-list';
+      for(const r of rooms.filter(r=>r.kind==='direct'&&!r.closed)){const button=node('button',r.name);button.className='choice';button.prepend(avatar(r));button.onclick=()=>{closeDialog();select(r.id,true)};list.append(button)}body.append(list);
+    });
+    $('thread-info').onclick=()=>openDialog('Conversation details',body=>{
+      const r=current();body.append(node('h2',r.name),node('p',context(r)),node('p','Messages are server-encrypted, not end-to-end encrypted. Server acceptance does not mean delivered or read.'));
+      if(['group','event'].includes(r.kind))body.append(node('p','Unread counts describe your own position in this room, never another person’s read status.'));
+      if(r.kind==='organizer')body.append(node('p','This private question is separate from the event-wide room and your ordinary direct messages.'));
+    });
+    $('thread-actions').onclick=()=>openDialog('Conversation actions',body=>{
+      body.append(node('p','Preview the existing native actions. Nothing is applied here.'));
+      const list=node('div');list.className='dialog-list';
+      const actions=['Notification preferences','Report a message',
+        ['group','event'].includes(current().kind)?'Room members':'Block person'];
+      for(const text of actions){
+        const button=node('button',text);button.className='choice';
+        button.onclick=()=>{body.replaceChildren(node('h2',text),node('p',text==='Report a message'?'Native integration must select a currently accessible message and collect your explicit report. No report was submitted.':text==='Block person'?'Blocking is separate from reporting and closing. No block was applied.':text==='Room members'?'Use the authorized native room roster to choose a person. No membership changed.':'Only your alerts for this conversation change. No setting was saved.'))};list.append(button);
+      }
+      body.append(list);
+    });
+    $('add').onclick=()=>{
+      if(!allowed()||current().kind==='request')return;
+      const roomId=selected;
+      openDialog('Add artwork',body=>{
+        body.append(node('p','Private unsent artwork. No public submission.'));
+        const grid=node('div');grid.className='art-grid';
+        for(let i=0;i<4;i++){const button=node('button');button.setAttribute('aria-label',`Choose illustrative artwork ${i+1}`);button.append(artwork(i));
+          button.onclick=()=>{
+            if(selected!==roomId||!allowed()){closeDialog();return}
+            draft().attachment={id:crypto.randomUUID(),index:i};closeDialog();renderAttachment();updateComposer();$('message').focus()
+          };grid.append(button)}
+        body.append(grid);
+      });
+    };
+    $('back').onclick=()=>{$('device').dataset.view='list';const row=[...document.querySelectorAll('[data-room]')].find(e=>e.dataset.room===selected);(row||$('inbox-title')).focus()};
+    $('search').addEventListener('input',renderList);
+    for(const b of document.querySelectorAll('[data-filter]'))b.onclick=()=>{filter=b.dataset.filter;renderList()};
+    $('message').addEventListener('input',()=>{draft().text=$('message').value;updateComposer();renderList()});
+    $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)&&!event.isComposing){event.preventDefault();$('composer').requestSubmit()}});
+    $('composer').addEventListener('submit',send);
+    $('layout').onchange=()=>{$('device').dataset.layout=$('layout').value};
+    $('connection').onchange=()=>{
+      if(!available()){
+        typingUntil.clear();$('search').value='';$('attachment').replaceChildren();
+        if($('dialog').open)closeDialog();$('dialog-body').replaceChildren();
+        for(const d of drafts.values())d.attachment=null;
+      }
+      renderList();renderThread();
+    };
+    $('typing-sample').onclick=()=>{
+      const r=current();if(!r||!allowed(r))return;
+      const expiry=Date.now()+6000;typingUntil.set(r.id,expiry);renderTyping();
+      setTimeout(()=>{if(typingUntil.get(r.id)===expiry){typingUntil.delete(r.id);renderTyping()}},6000);
+    };
+    renderList();
+  </script>
+</body>
+</html>

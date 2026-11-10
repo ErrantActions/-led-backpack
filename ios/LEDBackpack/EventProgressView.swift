@@ -45,10 +45,10 @@ struct EventProgressView: View {
                                 }
                             }
                             Toggle("Explicitly share this latest claim with current members", isOn: $choice.share)
-                            Text("Default off. Local-only validates the checkpoint but does not publish a claim; it also withdraws any previously shared claim on the server. Its checkpoint remains only in this screen's memory, not a queued replay.").font(.caption)
+                            InteractionExplanation("Sharing is off by default. Local-only also withdraws any earlier shared claim. No offline replay is queued.", details: "Default off. Local-only validates the checkpoint but does not publish a claim; it also withdraws any previously shared claim on the server. Its checkpoint remains only in this screen's memory, not a queued replay.").font(.caption)
                             Button(choice.share ? "Review shared self-report" : "Review local-only choice / unshare") { prepare(event) }
                                 .disabled(choice.checkpointID == nil || session.busy)
-                            Text("Server enforces required checkpoint order, optional skips, published start/finish, current reviewed participation and the exact event time window. A rejection resets sharing consent; no retry is queued.").font(.caption)
+                            InteractionExplanation("Current participation, checkpoint order and event timing apply. Rejection resets sharing consent; no retry is queued.", details: "Server enforces required checkpoint order, optional skips, published start/finish, current reviewed participation and the exact event time window. A rejection resets sharing consent; no retry is queued.").font(.caption)
                         }.padding(16).glassPanel().disabled(session.busy)
                     } else {
                         Text("Claims require going RSVP, current reviewed membership, a published route and the actual event window.").font(.caption)

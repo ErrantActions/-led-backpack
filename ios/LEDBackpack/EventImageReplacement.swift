@@ -194,7 +194,7 @@ struct EventImageReplacementView: View {
                             } catch { notice = error.localizedDescription }
                         }.disabled(bytes == nil || !permission || !authorized)
                         if acknowledged != nil { Button("Verify acknowledged replacement (do not resubmit)") { verifyReceipt() } }
-                        Text("Refresh never changes the captured revision/order or selected bytes. A conflict retains this draft; explicitly cancel/reload before choosing a new target. No automatic rebase/retry.").font(.caption)
+                        InteractionExplanation("Conflicts keep this draft and its captured target. Cancel/reload to choose again; no automatic retry or rebase.", details: "Refresh never changes the captured revision/order or selected bytes. A conflict retains this draft; explicitly cancel/reload before choosing a new target. No automatic rebase/retry.").font(.caption)
                     }.padding(16).glassPanel().disabled(session.busy)
                         .disabled(intent != nil || acknowledged != nil)
                     if intent != nil && acknowledged == nil {

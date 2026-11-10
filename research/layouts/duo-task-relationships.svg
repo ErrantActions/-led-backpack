@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+  <title id="title">Duo task content relationships</title>
+  <desc id="description">Original conceptual wireframes, not screenshots or device metrics. Compact keeps essential controls in primary content. Expanded split separates related task surfaces. Tabletop overlay puts visual content above primary controls. Navigation stays outside arrangements.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #e7eef5; }
+    .heading { font-size: 24px; font-weight: 700; }
+    .label { font-size: 18px; font-weight: 600; }
+    .note { font-size: 15px; fill: #b7c8d8; }
+    .shell { fill: #142131; stroke: #8ca2b8; stroke-width: 2; }
+    .content { fill: #21374c; stroke: #7d9bb4; }
+    .action { fill: #284b4b; stroke: #9de8d5; }
+    .region { fill: #392f37; stroke: #edbece; stroke-dasharray: 6 5; }
+  </style>
+  <rect width="1200" height="760" fill="#0c1420"/>
+  <text x="32" y="42" class="heading">Duo task relationships - conceptual layout study</text>
+  <text x="32" y="70" class="note">Not native output. No fixed device dimensions, rail width or fold margin is specified.</text>
+
+  <text x="32" y="118" class="label">1. Compact primary</text>
+  <rect x="32" y="140" width="280" height="450" rx="18" class="shell"/>
+  <text x="50" y="171" class="note">Native navigation / safe areas</text>
+  <rect x="50" y="192" width="196" height="160" rx="10" class="content"/>
+  <text x="67" y="226" class="label">Artwork preview</text>
+  <text x="67" y="253" class="note">Explicit demo/live label</text>
+  <rect x="258" y="192" width="36" height="330" rx="10" class="content"/>
+  <text x="50" y="388" class="label">Mode / draft / status</text>
+  <rect x="50" y="411" width="196" height="58" rx="10" class="action"/>
+  <text x="66" y="445" class="label">Start / Stop</text>
+  <text x="50" y="503" class="note">Optional details reachable</text>
+  <text x="50" y="529" class="note">even without secondary</text>
+  <text x="50" y="563" class="note">Rail edge is system-owned</text>
+
+  <text x="352" y="118" class="label">2. Expanded split</text>
+  <rect x="352" y="140" width="394" height="450" rx="18" class="shell"/>
+  <text x="370" y="171" class="note">Navigation surrounds task content</text>
+  <rect x="370" y="192" width="160" height="326" rx="10" class="content"/>
+  <text x="385" y="226" class="label">Primary</text>
+  <text x="385" y="256" class="note">Preview + mode</text>
+  <text x="385" y="283" class="note">Draft + status</text>
+  <rect x="385" y="415" width="130" height="58" rx="10" class="action"/>
+  <text x="398" y="450" class="label">Start / Stop</text>
+  <rect x="542" y="192" width="24" height="326" class="region"/>
+  <rect x="578" y="192" width="150" height="326" rx="10" class="content"/>
+  <text x="590" y="226" class="label">Secondary</text>
+  <text x="590" y="256" class="note">Presets / tools</text>
+  <text x="590" y="283" class="note">Optional detail</text>
+  <text x="370" y="551" class="note">Active division, if present, comes from runtime.</text>
+  <text x="370" y="575" class="note">Primary retains essential actions if secondary hides.</text>
+
+  <text x="786" y="118" class="label">3. Tabletop overlay relationship</text>
+  <rect x="786" y="140" width="382" height="450" rx="18" class="shell"/>
+  <text x="804" y="171" class="note">Candidate for preview + control relationship</text>
+  <rect x="804" y="192" width="346" height="140" rx="10" class="content"/>
+  <text x="824" y="229" class="label">Secondary visual surface</text>
+  <text x="824" y="259" class="note">Artwork / canvas stays intact</text>
+  <rect x="804" y="346" width="346" height="24" class="region"/>
+  <rect x="804" y="384" width="346" height="150" rx="10" class="content"/>
+  <text x="824" y="416" class="label">Primary controls</text>
+  <text x="824" y="444" class="note">Draft, mode, current error</text>
+  <rect x="824" y="463" width="306" height="50" rx="10" class="action"/>
+  <text x="843" y="495" class="label">Explicit action / Stop</text>
+  <text x="804" y="563" class="note">Overlay primary differs from split primary order.</text>
+
+  <text x="32" y="638" class="heading">Review invariant</text>
+  <text x="32" y="672" class="label">Reflow changes presentation, not recipient, consent, task identity, draft, or hardware state.</text>
+  <text x="32" y="707" class="note">Validate native keyboard, VoiceOver, Dynamic Type, RTL, camera occlusion, overflow and partial folds.</text>
+  <text x="32" y="735" class="note">Related research: documentation/ios-duo-ux-research.md. Concept created 2026-11-10.</text>
+</svg>

@@ -41,7 +41,7 @@ struct CommunityUploadAlertsView: View {
     @State private var action = ""
     var body: some View {
         Form {
-            Text("Content-blind counters are indicators, not proof of abuse. No private names, thumbnails, hashes, ciphertext, keys or content scans. Holds affect uploads only; login/download/recovery/deletion remain available. Acknowledge does NOT release. Admin ZIP imports remain exempt.")
+            InteractionExplanation("Upload indicators are not proof of abuse. Holds affect uploads, not account access; acknowledging does not release a hold.", details: "Content-blind counters are indicators, not proof of abuse. No private names, thumbnails, hashes, ciphertext, keys or content scans. Holds affect uploads only; login/download/recovery/deletion remain available. Acknowledge does NOT release. Admin ZIP imports remain exempt.")
                 .font(.caption)
             if session.scope != nil {
                 if let page {
@@ -111,7 +111,7 @@ struct CommunityUploadAlertsView: View {
                             }
                         }
                     }
-                } message: { Text("Current admin/account and captured alert identity/state are checked. Release clears this account's unreleased upload holds, not just this alert row. Acknowledge never releases. The API has no revision-CAS field; no silent stale retry or suspension occurs.") }
+                } message: { Text("Release clears this account's upload holds, not just this row. Acknowledge never releases. Changed alerts require fresh review.") }
     }
     private func fetch(_ scope: AccountServiceScope) async throws -> ContentBlindUploadAlertsPage {
         let value = try await scope.send(ContentBlindUploadAlertsPage.self, "admin/upload-alerts",

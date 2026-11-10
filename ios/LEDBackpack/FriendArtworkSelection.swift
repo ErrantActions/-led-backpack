@@ -117,7 +117,7 @@ struct FriendArtworkPreview: View {
             }
             if selection.reading { ProgressView("Reading / validating local media") }
             if let error = selection.failure { Text(error).font(.caption).foregroundStyle(.orange) }
-            Text("Isolated, paused by default; no display target, phone selection, screen lease, service request or Bluetooth operation. Timing/repeats are the source's; preview is not a verified friend interaction.").font(.caption)
+            InteractionExplanation("Paused local preview only. No device operation, screen lease, service request or verified friend interaction.", details: "Isolated, paused by default; no display target, phone selection, screen lease, service request or Bluetooth operation. Timing/repeats are the source's; preview is not a verified friend interaction.").font(.caption)
         }
         .onChange(of: phase) { _, value in if value != .active { selection.cancelPending() } }
         .onChange(of: reducedMotion) { _, _ in selection.pause() }
@@ -150,18 +150,24 @@ struct FriendArtworkPicker: View {
                 Button("Choose an explicit local file (no library upload)") { importing = true }
                 Section("Phone originals") {
                     ForEach(originals.items) { item in
-                        Button(item.name) {
+                        Button {
                             choose(name: item.name, attribution: item.attribution) { try await originals.bytes(item) }
-                        }
+                        } label: {
+                            GIFThumbnail(key: "friend-original:\(item.id)", cache: false) { try await originals.bytes(item) }
+                                .frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
+                        }.buttonStyle(.plain).accessibilityLabel("Choose \(item.name)")
                     }
                 }
                 Section("Existing local GIFs — first 100") {
                     ForEach(Array(library.state.media.prefix(100))) { item in
-                        Button(item.name) {
+                        Button {
                             choose(name: item.name, attribution: item.attribution) {
                                 let url = try library.phoneOriginalURL(item)
                                 return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
-                            }
+                            } label: {
+                                GIFThumbnail(key: item.previewKey) { try library.data(item) }
+                                    .frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain).accessibilityLabel("Choose \(item.name)")
                         }
                     }
                 }

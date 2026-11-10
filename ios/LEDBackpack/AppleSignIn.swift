@@ -107,7 +107,7 @@ extension CommunityController {
                 method: "POST", body: JSONEncoder().encode(body)).data)
             updateAppleLinkedUser(result.user)
         case .delete:
-            guard confirmation == "DELETE" else { throw BackpackError.invalid("Type DELETE before reauthenticating with Apple.") }
+            guard confirmation == "DELETE" else { throw BackpackError.invalid("Confirm account deletion before reauthenticating with Apple.") }
             struct Result: Decodable { let deletionToken: String; let expiresAt: String }
             let result = try JSONDecoder().decode(Result.self, from: await request("auth/apple/deletion-proof",
                 method: "POST", body: JSONEncoder().encode(proof)).data)

@@ -49,11 +49,10 @@ struct PixelAnimationStudio: View {
                         app.run { try drawing.start(document.current.pixels) }
                     }.disabled(!panel.link.connected || panel.busy || panel.hasDisplayOwner || panel.size != document.current.pixels.size)
                 }
-                Text("Brush updates are coalesced, not queued per touch. Preview stops and attempts to restore stored playback when you leave this editor or background the app. It does not save or overwrite a GIF slot.")
+                InteractionExplanation("Preview does not save a slot. Leaving/backgrounding stops preview and attempts to restore stored playback.", details: "Brush updates are coalesced, not queued per touch. Preview stops and attempts to restore stored playback when you leave this editor or background the app. It does not save or overwrite a GIF slot.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Save a new local copy") {
-                TextField("Artwork name", text: $name)
                 Button("Preview animation") {
                     app.run { animation = try encoded() }
                 }

@@ -177,11 +177,10 @@ struct GIFGallery: View {
                         GIFThumbnail(key: catalog.thumbnailKey(item)) {
                             try await HTTP.fetch(item.previewURL, maxBytes: 2_000_000)
                         }.frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 12))
-                        Text(item.title).font(.subheadline.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
                         Text("\(item.width) x \(item.height) / \(item.attribution.license)")
                             .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
                     }.padding(10).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 16))
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).accessibilityLabel("Preview \(item.title)")
                     .onAppear { catalog.nearEnd(item.id) }
             }
         }
@@ -223,7 +222,6 @@ private struct GIFDetails: View {
                         Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                         Button("Retry download") { retry += 1 }
                     } else { ProgressView("Loading full preview...").frame(maxWidth: .infinity, minHeight: 180) }
-                    Text(item.title).font(.title2.bold())
                     FeatureDetails("File details") {
                     Text("\(item.width) x \(item.height) / \(ByteCountFormatter.string(fromByteCount: Int64(item.bytes), countStyle: .file))")
                     if let category { Label(category, systemImage: "folder") }

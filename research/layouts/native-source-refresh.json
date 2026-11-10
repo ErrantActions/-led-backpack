@@ -1,0 +1,4347 @@
+{
+  "nativeSurfaces": 196,
+  "covered": 196,
+  "missing": [],
+  "refreshedStudies": [
+    "AccountDevicesView",
+    "AccountDeviceEditView",
+    "EraseBackpackView",
+    "CloudVaultSettingsView",
+    "CommunityMessagesView",
+    "CommunityConversationView",
+    "CreateView",
+    "FriendInviteQRView",
+    "MediaEditor",
+    "MessageIncidentComposeView",
+    "LiveView",
+    "ThemeEditor",
+    "DeviceView"
+  ],
+  "retainedLegacy": [
+    "FirmwareOTAInspectionView"
+  ],
+  "sourceMap": [
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-0",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 199,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-1",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 227,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-2",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 231,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-3",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 233,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-4",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 234,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-5",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 235,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-6",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 236,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-7",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 240,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-8",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 250,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-9",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 253,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-10",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 255,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-11",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 256,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-12",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 260,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-13",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 261,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-14",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 262,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-15",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 264,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-16",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 266,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-17",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 272,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-18",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 273,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-19",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 274,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-20",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 276,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-21",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 278,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-22",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 280,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-23",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 281,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-24",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 282,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-25",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 283,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-26",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 287,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-27",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 289,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-28",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 290,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-29",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 291,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-30",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 296,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-31",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 297,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-32",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 298,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-33",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 299,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-34",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 302,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-35",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 303,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-36",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 304,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-37",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 305,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-38",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 306,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-39",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 307,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-40",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 319,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f",
+      "elementId": "fieldwork-current-1d1c2b9a-f7fd-4e73-a0e6-6927f2c76e6f-41",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 337,
+        "symbol": "AccountDevicesView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-0",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 364,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-1",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 373,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-2",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 374,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-3",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 375,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-4",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 376,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-5",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 384,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-6",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 385,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "3237c509-e24a-4817-a89d-ba59752300fd",
+      "elementId": "fieldwork-current-3237c509-e24a-4817-a89d-ba59752300fd-7",
+      "source": {
+        "file": "AccountDevices.swift",
+        "line": 393,
+        "symbol": "AccountDeviceEditView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-0",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 123,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-1",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 134,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-2",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 135,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-3",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 136,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-4",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 138,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-5",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 141,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-6",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 142,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "16da140f-6901-4b3c-b44a-f2476b4657cf",
+      "elementId": "fieldwork-current-16da140f-6901-4b3c-b44a-f2476b4657cf-7",
+      "source": {
+        "file": "BackpackStorageViews.swift",
+        "line": 155,
+        "symbol": "EraseBackpackView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-0",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 5,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-1",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 17,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-2",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 18,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-3",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 21,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-4",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 22,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-5",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 26,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-6",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 28,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-7",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 31,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-8",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 39,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-9",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 41,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-10",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 43,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-11",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 44,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-12",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 46,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-13",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 48,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-14",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 52,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-15",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 55,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-16",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 57,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-17",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 58,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-18",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 60,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-19",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 65,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-20",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 66,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-21",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 67,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-22",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 71,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-23",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 74,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-24",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 75,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-25",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 78,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-26",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 79,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-27",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 80,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-28",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 84,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-29",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 88,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-30",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 96,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-31",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 102,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-32",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 111,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-33",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 113,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-34",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 119,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-35",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 120,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-36",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 124,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-37",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 125,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-38",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 126,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-39",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 130,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-40",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 131,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-41",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 136,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-42",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 137,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-43",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 138,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-44",
+      "source": {
+        "file": "CloudVaultViews.swift",
+        "line": 142,
+        "symbol": "CloudVaultSettingsView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-0",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 12,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-1",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 33,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-2",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 34,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-3",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 36,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-4",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 39,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-5",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 43,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-6",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 47,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-7",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 48,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-8",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 50,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-9",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 56,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-10",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 64,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-11",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 65,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-12",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 65,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-13",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 65,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-14",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 66,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-15",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 69,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-16",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 70,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-17",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 74,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-18",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 75,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-19",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 76,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-20",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 77,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-21",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 79,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-22",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 83,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-23",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 84,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-24",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 86,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-25",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 90,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-26",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 92,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-27",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 93,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-28",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 111,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-29",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 112,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "eb78d868-793a-44a5-9016-4bb054421f4d",
+      "elementId": "fieldwork-current-eb78d868-793a-44a5-9016-4bb054421f4d-30",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 114,
+        "symbol": "CommunityMessagesView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-0",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 179,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-1",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 181,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-2",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 183,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-3",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 184,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-4",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 185,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-5",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 186,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-6",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 187,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-7",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 195,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-8",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 198,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-9",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 201,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-10",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 202,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-11",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 203,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-12",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 204,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-13",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 301,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-14",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 306,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-15",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 309,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-16",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 312,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-17",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 313,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-18",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 317,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-19",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 317,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-20",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 319,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-21",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 321,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-22",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 323,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-23",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 326,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-24",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 328,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-25",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 337,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-26",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 347,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-27",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 349,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-28",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 350,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-29",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 356,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-30",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 358,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-31",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 360,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-32",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 361,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-33",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 362,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-34",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 363,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-35",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 364,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-36",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 365,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-37",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 366,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-38",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 367,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-39",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 370,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-40",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 374,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-41",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 375,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-42",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 377,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-43",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 379,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-44",
+      "source": {
+        "file": "CommunityChatViews.swift",
+        "line": 382,
+        "symbol": "CommunityConversationView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-0",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 4,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-1",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 9,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-2",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 10,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-3",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 11,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-4",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 12,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-5",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 17,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-6",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 20,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-7",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 23,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-8",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 24,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-9",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 29,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-10",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 30,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "69587c09-4346-44f9-92a7-230f42d0788e",
+      "elementId": "fieldwork-current-69587c09-4346-44f9-92a7-230f42d0788e-11",
+      "source": {
+        "file": "CreateView.swift",
+        "line": 4,
+        "symbol": "CreateView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-0",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 90,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-1",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 113,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-2",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 114,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-3",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 115,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-4",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 116,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-5",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 119,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-6",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 120,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-7",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 124,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-8",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 125,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-9",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 126,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-10",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 127,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-11",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 129,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-12",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 135,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-13",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 140,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-14",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 141,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-15",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 142,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-16",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 145,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-17",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 150,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-18",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 151,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-19",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 152,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-20",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 153,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-21",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 156,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-22",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 157,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-23",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 160,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-24",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 162,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "f032bff0-0dc3-448b-8976-84e4e3b24481",
+      "elementId": "fieldwork-current-f032bff0-0dc3-448b-8976-84e4e3b24481-25",
+      "source": {
+        "file": "FriendInviteQR.swift",
+        "line": 186,
+        "symbol": "FriendInviteQRView"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-0",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 5,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-1",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 62,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-2",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 63,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-3",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 118,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-4",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 119,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-5",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 122,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-6",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 130,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-7",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 131,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-8",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 140,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-9",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 164,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-10",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 166,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-11",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 172,
+        "symbol": "MediaEditor"
+      },
+      "designHidden": true
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-12",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 173,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-13",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 174,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-14",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 175,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-15",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 180,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-16",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 181,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-17",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 182,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-18",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 184,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-19",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 184,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-20",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 185,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-21",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 186,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-22",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 186,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-23",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 187,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-24",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 192,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-25",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 193,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-26",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 194,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-27",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 197,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-28",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 198,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-29",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 198,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-30",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 199,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-31",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 200,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-32",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 201,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-33",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 201,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-34",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 202,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-35",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 203,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-36",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 204,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-37",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 211,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-38",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 212,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-39",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 214,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-40",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 216,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-41",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 218,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-42",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 220,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-43",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 226,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-44",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 228,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-45",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 229,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-46",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 230,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-47",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 232,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-48",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 232,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-49",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 233,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-50",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 233,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-51",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 234,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-52",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 235,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-53",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 236,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-54",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 236,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-55",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 237,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-56",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 240,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-57",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 241,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-58",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 247,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-59",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 248,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-60",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 248,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-61",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 248,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-62",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 248,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-63",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 249,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-64",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 250,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-65",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 251,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-66",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 252,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-67",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 255,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-68",
+      "source": {
+        "file": "GIFEditor.swift",
+        "line": 256,
+        "symbol": "MediaEditor"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-0",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 105,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-1",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 124,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-2",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 125,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-3",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 127,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-4",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 127,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-5",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 128,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-6",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 129,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-7",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 130,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-8",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 132,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-9",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 134,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-10",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 135,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-11",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 137,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-12",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 138,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-13",
+      "source": {
+        "file": "MessageIncidentReports.swift",
+        "line": 140,
+        "symbol": "MessageIncidentComposeView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-0",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 7,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-1",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 25,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-2",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 28,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-3",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 29,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-4",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 40,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-5",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 42,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-6",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 49,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-7",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 52,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-8",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 54,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-9",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 56,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-10",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 62,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-11",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 77,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-12",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 78,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-13",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 86,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-14",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 87,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-15",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 88,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-16",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 90,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-17",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 93,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-18",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 94,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-19",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 95,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-20",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 97,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-21",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 98,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-22",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 101,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-23",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 101,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-24",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 108,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-25",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 116,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-26",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 117,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-27",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 118,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-28",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 120,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-29",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 121,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-30",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 122,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-31",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 123,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-32",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 127,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-33",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 128,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-34",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 138,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-35",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 140,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-36",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 144,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-37",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 148,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-38",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 152,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-39",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 155,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-40",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 161,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-41",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 163,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-42",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 170,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-43",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 175,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-44",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 183,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-45",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 185,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-46",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 187,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-47",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 193,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-48",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 194,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-49",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 195,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-50",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 196,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-51",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 206,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-52",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 207,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-53",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 210,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-54",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 211,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-55",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 212,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-56",
+      "source": {
+        "file": "StudioAndSettings.swift",
+        "line": 7,
+        "symbol": "LiveView"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-0",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 5,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-1",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 26,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-2",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 35,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-3",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 54,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-4",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 57,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-5",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 59,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-6",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 60,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-7",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 61,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-8",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 63,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-9",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 68,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-10",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 69,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-11",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 71,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-12",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 71,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-13",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 72,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-14",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 72,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-15",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 73,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-16",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 73,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-17",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 74,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-18",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 77,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-19",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 77,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-20",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 78,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-21",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 78,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-22",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 79,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-23",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 80,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-24",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 80,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-25",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 81,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-26",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 82,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-27",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 83,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-28",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 84,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-29",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 84,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-30",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 85,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-31",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 88,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-32",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 89,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-33",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 91,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-34",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 91,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-35",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 92,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-36",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 93,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-37",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 93,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-38",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 94,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-39",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 96,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-40",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 100,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-41",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 100,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-42",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 101,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-43",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 102,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-44",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 103,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-45",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 109,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-46",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 110,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-47",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 111,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-48",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 112,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-49",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 114,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-50",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 120,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-51",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 121,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-52",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 125,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-53",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 126,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-54",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 128,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-55",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 128,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-56",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 131,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-57",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 143,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-58",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 144,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-59",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 147,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-60",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 150,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-61",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 151,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "7d3fbc30-72da-46f8-904d-8c8f330ec292",
+      "elementId": "fieldwork-current-7d3fbc30-72da-46f8-904d-8c8f330ec292-62",
+      "source": {
+        "file": "ThemeEditor.swift",
+        "line": 153,
+        "symbol": "ThemeEditor"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-0",
+      "source": {
+        "file": "Views.swift",
+        "line": 104,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-1",
+      "source": {
+        "file": "Views.swift",
+        "line": 117,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-2",
+      "source": {
+        "file": "Views.swift",
+        "line": 118,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-3",
+      "source": {
+        "file": "Views.swift",
+        "line": 119,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-4",
+      "source": {
+        "file": "Views.swift",
+        "line": 121,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-5",
+      "source": {
+        "file": "Views.swift",
+        "line": 122,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-6",
+      "source": {
+        "file": "Views.swift",
+        "line": 123,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-7",
+      "source": {
+        "file": "Views.swift",
+        "line": 127,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-8",
+      "source": {
+        "file": "Views.swift",
+        "line": 128,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-9",
+      "source": {
+        "file": "Views.swift",
+        "line": 130,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-10",
+      "source": {
+        "file": "Views.swift",
+        "line": 131,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-11",
+      "source": {
+        "file": "Views.swift",
+        "line": 134,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-12",
+      "source": {
+        "file": "Views.swift",
+        "line": 135,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-13",
+      "source": {
+        "file": "Views.swift",
+        "line": 140,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-14",
+      "source": {
+        "file": "Views.swift",
+        "line": 142,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-15",
+      "source": {
+        "file": "Views.swift",
+        "line": 143,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-16",
+      "source": {
+        "file": "Views.swift",
+        "line": 143,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-17",
+      "source": {
+        "file": "Views.swift",
+        "line": 143,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-18",
+      "source": {
+        "file": "Views.swift",
+        "line": 146,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-19",
+      "source": {
+        "file": "Views.swift",
+        "line": 146,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-20",
+      "source": {
+        "file": "Views.swift",
+        "line": 148,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-21",
+      "source": {
+        "file": "Views.swift",
+        "line": 149,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-22",
+      "source": {
+        "file": "Views.swift",
+        "line": 149,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-23",
+      "source": {
+        "file": "Views.swift",
+        "line": 149,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-24",
+      "source": {
+        "file": "Views.swift",
+        "line": 153,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-25",
+      "source": {
+        "file": "Views.swift",
+        "line": 162,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-26",
+      "source": {
+        "file": "Views.swift",
+        "line": 170,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-27",
+      "source": {
+        "file": "Views.swift",
+        "line": 171,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-28",
+      "source": {
+        "file": "Views.swift",
+        "line": 174,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-29",
+      "source": {
+        "file": "Views.swift",
+        "line": 175,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-30",
+      "source": {
+        "file": "Views.swift",
+        "line": 176,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-31",
+      "source": {
+        "file": "Views.swift",
+        "line": 177,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-32",
+      "source": {
+        "file": "Views.swift",
+        "line": 178,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-33",
+      "source": {
+        "file": "Views.swift",
+        "line": 179,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-34",
+      "source": {
+        "file": "Views.swift",
+        "line": 180,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-35",
+      "source": {
+        "file": "Views.swift",
+        "line": 187,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-36",
+      "source": {
+        "file": "Views.swift",
+        "line": 188,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-37",
+      "source": {
+        "file": "Views.swift",
+        "line": 189,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-38",
+      "source": {
+        "file": "Views.swift",
+        "line": 190,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-39",
+      "source": {
+        "file": "Views.swift",
+        "line": 191,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-40",
+      "source": {
+        "file": "Views.swift",
+        "line": 192,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-41",
+      "source": {
+        "file": "Views.swift",
+        "line": 193,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-42",
+      "source": {
+        "file": "Views.swift",
+        "line": 205,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-43",
+      "source": {
+        "file": "Views.swift",
+        "line": 208,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-44",
+      "source": {
+        "file": "Views.swift",
+        "line": 221,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-45",
+      "source": {
+        "file": "Views.swift",
+        "line": 222,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-46",
+      "source": {
+        "file": "Views.swift",
+        "line": 223,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-47",
+      "source": {
+        "file": "Views.swift",
+        "line": 224,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-48",
+      "source": {
+        "file": "Views.swift",
+        "line": 226,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-49",
+      "source": {
+        "file": "Views.swift",
+        "line": 228,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-50",
+      "source": {
+        "file": "Views.swift",
+        "line": 229,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-51",
+      "source": {
+        "file": "Views.swift",
+        "line": 231,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-52",
+      "source": {
+        "file": "Views.swift",
+        "line": 233,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-53",
+      "source": {
+        "file": "Views.swift",
+        "line": 233,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-54",
+      "source": {
+        "file": "Views.swift",
+        "line": 234,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-55",
+      "source": {
+        "file": "Views.swift",
+        "line": 235,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-56",
+      "source": {
+        "file": "Views.swift",
+        "line": 236,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-57",
+      "source": {
+        "file": "Views.swift",
+        "line": 237,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-58",
+      "source": {
+        "file": "Views.swift",
+        "line": 239,
+        "symbol": "DeviceView"
+      }
+    },
+    {
+      "screenId": "bd8c0827-1162-4902-8a63-78029f4114ae",
+      "elementId": "fieldwork-current-bd8c0827-1162-4902-8a63-78029f4114ae-59",
+      "source": {
+        "file": "Views.swift",
+        "line": 104,
+        "symbol": "DeviceView"
+      }
+    }
+  ],
+  "boundary": "Current source annotations supplement original immutable mappings. Static import is not native execution."
+}

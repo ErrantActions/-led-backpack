@@ -1,0 +1,38 @@
+{
+  "importedOn": "2026-11-10",
+  "captureKind": "Historical native simulator screenshots, not new captures",
+  "sourceCommit": "0772fd9",
+  "validationRun": "42502718422",
+  "validationUrl": "https://github.com/ErrantActions/-led-backpack/actions/runs/42502718422",
+  "archiveGroup": "native-screenshots/build-10",
+  "archiveManifest": ".migration/archive/evidence/native-screenshots/build-10/manifest.json",
+  "captureEnvironment": {
+    "sdkAndOsVersion": "Not recorded in this screenshot manifest; consult the original run",
+    "deviceAndPose": "Not recorded in this screenshot manifest; do not infer physical pose from attachment names",
+    "appearanceAndTextSize": "Not recorded in this screenshot manifest"
+  },
+  "images": [
+    {
+      "file": "native-build-10/library-orientation-request.png",
+      "originalFile": "build-10-Duo-Library---landscape-orientation-request-3783FF71.png",
+      "screen": "Duo Library - landscape orientation request",
+      "test": "NavigationTests/testGuestLibraryAndCreateLandingHaveNoPermanentEntryForms()",
+      "widthPixels": 1398,
+      "heightPixels": 2034,
+      "bytes": 722656,
+      "sha256": "d48fcdaeb3819bfae4e26ca35d9bf1af2e21729826fcb1a0de0c716f07de1413",
+      "limits": "Landscape was requested by the test name; image geometry is portrait. Not fold or orientation acceptance proof."
+    },
+    {
+      "file": "native-build-10/live-preview.png",
+      "originalFile": "build-10-Aurora-live-studio---preview-and-atmosphere-824AA313.png",
+      "screen": "Aurora live studio - preview and atmosphere",
+      "test": "NavigationTests/testGuestLibraryAndCreateLandingHaveNoPermanentEntryForms()",
+      "widthPixels": 1398,
+      "heightPixels": 2034,
+      "bytes": 718830,
+      "sha256": "9a31a0ca8aa9fe15302f971403c3244b4edf395d2bd3a4fcfcb793f859a20cd1",
+      "limits": "Historical demo preview, not current Live arrangement, live GPS or physical backpack output."
+    }
+  ]
+}

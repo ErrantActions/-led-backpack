@@ -67,7 +67,7 @@ struct CommunityBulkModerationView: View {
     @State private var selected: Set<UUID> = []
     @State private var action = "quarantine"
     @State private var reason = ""
-    @State private var confirmation = ""
+    @State private var approval = ScopedActionConfirmation<String>()
     @State private var pending: Captured?
     @State private var sizes = NativeMatrixFilter()
     private struct Captured {
@@ -77,7 +77,7 @@ struct CommunityBulkModerationView: View {
     }
     var body: some View {
         Form {
-            Text("Community-only moderation. Private/cloud artwork is excluded. Quarantine withdraws all public media and requires explicit manual safety approval in the existing item editor; AI cannot release it. Delete hides atomically and queues durable byte cleanup.")
+            InteractionExplanation("Community items only. Quarantine removes public access; only manual safety approval can release it. Delete queues byte cleanup.", details: "Community-only moderation. Private/cloud artwork is excluded. Quarantine withdraws all public media and requires explicit manual safety approval in the existing item editor; AI cannot release it. Delete hides atomically and queues durable byte cleanup.")
                 .font(.caption)
             if session.scope != nil {
                 if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
@@ -93,7 +93,7 @@ struct CommunityBulkModerationView: View {
                                 if $0 { selected.insert(value.id) } else { selected.remove(value.id) }
                             })) {
                                 VStack(alignment: .leading) {
-                                    Text(value.item.title)
+                                    Text("Community artwork").accessibilityLabel(value.item.title)
                                     Text("\(value.id.uuidString.lowercased()) · \(value.status.rawValue)\(value.quarantined ? " · quarantine" : "")")
                                         .font(.caption).textSelection(.enabled)
                                     if let version = value.moderationVersion { Text("Moderation revision \(version)").font(.caption) }
@@ -108,13 +108,16 @@ struct CommunityBulkModerationView: View {
                     Section("Exact selected IDs (\(selected.count))") {
                         Picker("Action", selection: $action) { Text("Quarantine").tag("quarantine"); Text("Delete").tag("delete") }
                         TextField("Required moderation reason", text: $reason, axis: .vertical)
-                        TextField("Type \(action.uppercased())", text: $confirmation).textInputAutocapitalization(.characters)
-                        Text("Selection resets on paging/refresh. Current item state is checked before submission. This API has no client version-CAS field: the server atomically rejects missing/deleted/private IDs, but not every concurrent moderation edit. No version guarantee is invented.")
+                        Toggle("Apply this action to the reviewed community items", isOn: Binding(
+                            get: { approval.isConfirmed(for: approvalScope) },
+                            set: { approval.setConfirmed($0, for: approvalScope) }))
+                        InteractionExplanation("Selection resets on refresh/paging. Current items are checked, but concurrent moderation is not version-locked.", details: "Selection resets on paging/refresh. Current item state is checked before submission. This API has no client version-CAS field: the server atomically rejects missing/deleted/private IDs, but not every concurrent moderation edit. No version guarantee is invented.")
                             .font(.caption).foregroundStyle(.secondary)
                         Button("Review captured \(action)", role: .destructive) {
                             session.run { scope in
+                                guard approval.consume(for: approvalScope) else { throw BackpackError.invalid("Selection or approval changed. Review moderation again.") }
                                 let ids = selected.sorted { $0.uuidString < $1.uuidString }
-                                let request = CommunityBulkRequest(ids: ids, action: action, reason: reason, confirmation: confirmation)
+                                let request = CommunityBulkRequest(ids: ids, action: action, reason: reason, confirmation: action.uppercased())
                                 try request.validate()
                                 var snapshots: [UUID: Data] = [:]
                                 for id in ids {
@@ -125,7 +128,7 @@ struct CommunityBulkModerationView: View {
                                 pending = Captured(request: request, snapshots: snapshots, revision: scope.revision)
                                 return nil
                             }
-                        }.disabled(selected.isEmpty)
+                        }.disabled(selected.isEmpty || reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !approval.isConfirmed(for: approvalScope))
                     }
                 }
                 Button("Reload queue / discard selection") { load() }
@@ -139,6 +142,7 @@ struct CommunityBulkModerationView: View {
             }
             .onChange(of: status) { _, _ in number = 1; load() }
             .onChange(of: sizes) { _, _ in number = 1; load() }
+            .onChange(of: approvalScope) { _, _ in approval.reset(); pending = nil }
             .onDisappear { session.clear(); reset() }
             .confirmationDialog("Apply the captured action to exactly these community IDs?", isPresented: Binding(
                 get: { pending != nil }, set: { if !$0 { pending = nil } })) {
@@ -165,7 +169,10 @@ struct CommunityBulkModerationView: View {
                     }
                 } message: { Text(pending.map { $0.request.ids.map { $0.uuidString.lowercased() }.joined(separator: "\n") + "\nReason: " + $0.request.reason } ?? "") }
     }
-    private func reset() { selected = []; pending = nil; page = nil; confirmation = ""; reason = "" }
+    private var approvalScope: String {
+        "\(community.accountRevision):\(community.user?.role ?? ""):\(community.config?.adminBulkModerationEnabled == true):\(action):\(reason):\(selected.sorted { $0.uuidString < $1.uuidString })"
+    }
+    private func reset() { selected = []; pending = nil; page = nil; approval.reset(); reason = "" }
     private func load() {
         reset()
         session.run { scope in

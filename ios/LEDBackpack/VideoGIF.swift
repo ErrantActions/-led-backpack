@@ -191,7 +191,6 @@ struct VideoGIFEditor: View {
         Section("Preview and save") {
             AnimatedPreview(data: data).frame(height: 240)
             Text(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)).font(.caption)
-            TextField("Saved name", text: $name)
             TextField("Category (optional)", text: $category)
             Button("Save GIF to library") {
                 do {

@@ -31,7 +31,7 @@ struct BatchTransferView: View {
                     Button("Assign empty ordinary slots") { assignEmpty() }
                         .disabled(panel.inventoryDeviceID == nil)
                 }
-                Text("Automatic assignment uses slots 2–54. Slots 55–59 are reserved for future features; 0 and 1 retain their existing reservation. Manual selection is allowed with a warning and does not erase existing artwork by itself. Distinct GIF copies stay independent.")
+                InteractionExplanation("Auto-assign uses slots 2-54. Other slots are reserved; manual selection requires review.", details: "Automatic assignment uses slots 2–54. Slots 55–59 are reserved for future features; 0 and 1 retain their existing reservation. Manual selection is allowed with a warning and does not erase existing artwork by itself. Distinct GIF copies stay independent.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Order and destination") {
@@ -79,7 +79,7 @@ struct BatchTransferView: View {
                     }
                 }.buttonStyle(.borderedProminent)
                     .disabled(queue.isEmpty || !panel.link.connected || panel.inventoryDeviceID == nil || panel.busy || panel.hasDisplayOwner)
-                Text("GIFs are fitted to the panel without changing your local originals. All files are prepared before the first overwrite. A stopped/failed upload may leave its slot partially written; refresh and review before retrying. No automatic retry or rollback.")
+                InteractionExplanation("Originals stay unchanged. A failed transfer can leave a partial slot; review before retrying. No automatic retry or rollback.", details: "GIFs are fitted to the panel without changing your local originals. All files are prepared before the first overwrite. A stopped/failed upload may leave its slot partially written; refresh and review before retrying. No automatic retry or rollback.")
                     .font(.caption).foregroundStyle(.secondary)
             }.disabled(batch.running)
         }
@@ -100,8 +100,11 @@ private struct BatchSendConfirmation: View {
     @EnvironmentObject private var batch: BatchTransferQueue
     @Environment(\.dismiss) private var dismiss
     let plan: BatchTransferPlan
-    @State private var typed = ""
+    @State private var approval = ScopedActionConfirmation<String>()
     @State private var failure: String?
+    private var approvalScope: String {
+        "\(plan.id):\(panel.link.selectedID?.uuidString ?? ""):\(panel.link.connected):\(panel.inventoryDeviceID?.uuidString ?? ""):\(String(describing: panel.size)):\(panel.identity?.serial ?? ""):\(panel.slots.map { "\($0.id):\($0.identifier)" }):\(library.state.transferQueue?.map(\.id) ?? [])"
+    }
     var body: some View {
         NavigationStack {
             Form {
@@ -110,19 +113,24 @@ private struct BatchSendConfirmation: View {
                 if !plan.overwrittenSlots.isEmpty {
                     Text("Permanently replaces slots: \(plan.overwrittenSlots.map(String.init).joined(separator: ", ")). Stored originals cannot be downloaded for backup.")
                         .foregroundStyle(.orange)
-                    TextField("Type OVERWRITE", text: $typed).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    Toggle("Replace these reviewed backpack slots", isOn: Binding(
+                        get: { approval.isConfirmed(for: approvalScope) },
+                        set: { approval.setConfirmed($0, for: approvalScope) }))
                 }
                 Text("Only the captured device and inventory are authorized. Local/cloud files are retained. Backgrounding or disconnecting stops the batch; it never resumes automatically.")
                     .font(.caption)
                 if let failure { Text(failure).foregroundStyle(.orange) }
                 Button(plan.overwrittenSlots.isEmpty ? "Send batch" : "Overwrite and send batch",
                     role: plan.overwrittenSlots.isEmpty ? nil : .destructive) {
+                        guard plan.overwrittenSlots.isEmpty || approval.consume(for: approvalScope) else { failure = "Backpack or approval changed. Review the slots again."; return }
                         do { try batch.start(plan, library: library); dismiss() }
                         catch { failure = error.localizedDescription }
-                    }.disabled(batch.running || (!plan.overwrittenSlots.isEmpty && typed != "OVERWRITE"))
+                    }.disabled(batch.running || (!plan.overwrittenSlots.isEmpty && !approval.isConfirmed(for: approvalScope)))
             }
             .modernScene().navigationTitle("Confirm batch transfer")
             .toolbar { Button("Cancel") { dismiss() } }
+            .onChange(of: approvalScope) { _, _ in approval.reset() }
+            .onDisappear { approval.reset() }
         }
     }
 }

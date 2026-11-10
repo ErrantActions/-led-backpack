@@ -122,7 +122,8 @@ struct MessageIncidentComposeView: View {
         NavigationStack {
             Form {
                 Text("Deliberately explain this incident").font(.headline)
-                Text("Nothing is copied automatically: no message text, GIF/image, place, event, room roster or neighboring history. Only your typed explanation/category and opaque identifiers are retained for moderator review. You may explicitly quote content yourself. No automatic punishment or blocking occurs.").font(.caption)
+                InteractionExplanation("Only your explanation/category and opaque IDs are retained for review. No automatic content copy, punishment or block.",
+                    details: "Nothing is copied automatically: no message text, GIF/image, place, event, room roster or neighboring history. Only your typed explanation/category and opaque identifiers are retained for moderator review. You may explicitly quote content yourself. No automatic punishment or blocking occurs.").font(.caption)
                 if community.config?.chatReportsEnabled == true && !session.denied && submitted == nil {
                     Picker("Reason", selection: $category) { ForEach(MessageIncidentCategory.allCases) { Text($0.rawValue.capitalized).tag($0) } }
                     TextField("Your deliberate explanation (1–1000 characters)", text: $details, axis: .vertical).lineLimit(4...12)

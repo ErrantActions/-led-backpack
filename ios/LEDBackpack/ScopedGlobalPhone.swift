@@ -118,7 +118,7 @@ struct ScopedGlobalPhoneConsent: View {
     var body: some View {
         VStack(alignment: .leading) {
             Toggle("I explicitly replace the main PHONE display with this current scoped source", isOn: $consent)
-            Text("Distinct from isolated preview. Durable initial original and exclusive PHONE ownership required. Runs only until this fixed source/cue lease ends (at most30 seconds); longer playlists require a new explicit source request. No hidden renewal, hardware playback, background execution or guaranteed sync.").font(.caption)
+            InteractionExplanation("Main-phone output needs separate consent and exclusive ownership. Fixed lease: up to 30 seconds; no hidden renewal or physical sync.", details: "Distinct from isolated preview. Durable initial original and exclusive PHONE ownership required. Runs only until this fixed source/cue lease ends (at most30 seconds); longer playlists require a new explicit source request. No hidden renewal, hardware playback, background execution or guaranteed sync.").font(.caption)
             Button("Play on main PHONE / preserve my original") { beforeStart(); global.start(source, client: client, consent: consent); consent = false }
                 .disabled(!consent || source.expired || global.arming || global.session.running || global.session.busy)
             Text(global.status).font(.caption)

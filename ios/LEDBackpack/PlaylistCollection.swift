@@ -109,7 +109,7 @@ private struct PlaylistEditor: View {
                         }
                     } else { Text("Connect this playlist's backpack to add slots.") }
                 }
-                Text("Loop on backpack sends the ordered slot list once and continues without the phone. The per-entry seconds above are for foreground timed sequences only. Autonomous dwell uses each GIF/program's already stored duration; editing this list never silently overwrites backpack artwork.")
+                InteractionExplanation("Backpack loop uses stored GIF durations, not these foreground timing values. Editing the list does not overwrite artwork.", details: "Loop on backpack sends the ordered slot list once and continues without the phone. The per-entry seconds above are for foreground timed sequences only. Autonomous dwell uses each GIF/program's already stored duration; editing this list never silently overwrites backpack artwork.")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Save playlist") {
                     app.run {

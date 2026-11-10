@@ -288,8 +288,7 @@ struct LEDBackpackApp: App {
                     }
                 }
             }
-            .preferredColorScheme(.dark)
-            .tint(.cyan)
+            .tint(Aurora.mint)
             .onChange(of: scenePhase) { _, value in
                 app.link.setScanActivity(active: value == .active, backgrounded: value == .background)
                 app.soloScenes.setForeground(value == .active)

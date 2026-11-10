@@ -77,7 +77,7 @@ final class NavigationTests: XCTestCase {
         artwork.press(forDuration: 1)
         app.buttons["Submit to community review"].tap()
         XCTAssertTrue(app.navigationBars["Upload GIF"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["Title"].exists)
+        XCTAssertFalse(app.textFields["Title"].exists)
         XCTAssertFalse(app.textFields["Creator / attribution"].exists)
         XCTAssertFalse(app.buttons["License / permission"].exists)
         XCTAssertFalse(app.buttons["Submit to community review"].isEnabled)
@@ -252,6 +252,52 @@ final class NavigationTests: XCTestCase {
             XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
         }
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
+    }
+
+    func testNativeMessagingRetainsContextDraftsAndUsesServerAcceptanceNotReadReceipts() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture", "--messaging-ui-fixture"]
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        signInFixture(app)
+        app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch.tap()
+        let messages = app.buttons["social-primary-messages"]
+        reveal(messages, in: app); messages.tap()
+        XCTAssertTrue(app.navigationBars["Messages"].waitForExistence(timeout: 10))
+        let maya = "chat-contact-33333333-1234-4567-89ab-abcdefabcdef-direct"
+        let casey = "chat-contact-44444444-1234-4567-89ab-abcdefabcdef-direct"
+        func open(_ id: String) {
+            if !app.buttons[id].isHittable {
+                let back = app.buttons["BackButton"]
+                XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
+            }
+            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10)); app.buttons[id].tap()
+        }
+        open(maya)
+        let input = app.descendants(matching: .any).matching(identifier: "chat-message-input").firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        input.tap(); input.typeText("Maya private draft")
+        attach(app, name: "Aurora Messages - native conversation and anchored composer")
+        open(casey)
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        XCTAssertTrue(["", "Message"].contains(input.value as? String ?? ""))
+        input.tap(); input.typeText("Casey separate draft")
+        open(maya)
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        XCTAssertEqual(input.value as? String, "Maya private draft")
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(input.waitForExistence(timeout: 10))
+            XCTAssertEqual(input.value as? String, "Maya private draft")
+            attach(app, name: "Aurora Messages - native orientation \(orientation.rawValue)")
+        }
+        let send = app.buttons["chat-send-message"]
+        XCTAssertTrue(send.waitForExistence(timeout: 10)); XCTAssertTrue(send.isEnabled); send.tap()
+        XCTAssertTrue(app.staticTexts["Maya private draft"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Delivered"].exists)
+        XCTAssertFalse(app.staticTexts["Seen"].exists)
+        attach(app, name: "Aurora Messages - persisted fixture result without peer receipts")
     }
 
     func testCommunityLoadsNextPageByScrollingWithoutLoadMore() throws {

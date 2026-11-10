@@ -89,7 +89,6 @@ struct GIFTimingEditorView: View {
                 if bytes == nil {
                     Button("Review changes") { update() }.disabled(busy).buttonStyle(AuroraPrimaryButton())
                 }
-                TextField("New copy name", text: $name)
                 if bytes != nil {
                     Button("Save copy") {
                         do {

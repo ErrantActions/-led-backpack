@@ -58,7 +58,7 @@ struct EventAwardListView: View {
                     }.disabled(session.busy)
                     if value.awards.isEmpty { Text("No owned records on this page. Collection is explicit from an authorized event.").font(.caption) }
                 } else if !session.busy { Text("Private badge records are unavailable until social/me explicitly enables the capability. No event access or admin override is inferred.") }
-                Text("Profile display still requires normal profile authorization AND current event authorization for every viewer. Friendship alone does not unlock private-event badges; already seen information cannot be recalled.").font(.caption)
+                InteractionExplanation("Badge visibility needs profile and event permission. Friendship alone does not grant private-event access.", details: "Profile display still requires normal profile authorization AND current event authorization for every viewer. Friendship alone does not unlock private-event badges; already seen information cannot be recalled.").font(.caption)
             }.padding(20)
         }.modernScene().navigationTitle("My private badges")
         .task(id: community.accountRevision) { clear(); session.bind(community); reload() }
@@ -126,7 +126,7 @@ struct EventAwardCollectionView: View {
     var body: some View {
         Form {
             Text("Collect privately, only by choice").font(.headline)
-            Text("Self-reported/uncertified; not verified attendance, arrival or route completion. Names/descriptions can reveal participation or visits to known places even in a private account record. Collection does not share progress, RSVP or publish to a profile.").font(.caption)
+            InteractionExplanation("Private, self-reported collection—not proof of attendance. Names may reveal participation; nothing is published automatically.", details: "Self-reported/uncertified; not verified attendance, arrival or route completion. Names/descriptions can reveal participation or visits to known places even in a private account record. Collection does not share progress, RSVP or publish to a profile.").font(.caption)
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice).font(.caption) }
             if session.busy { ProgressView() }
@@ -144,7 +144,10 @@ struct EventAwardCollectionView: View {
                         }
                     }.disabled(session.busy)
                     Toggle("I explicitly consent to private collection of this choice", isOn: $choice.consent).disabled(session.busy)
-                    Text("Server enforces ordered required checkpoints, optional skips, published start/finish and the actual event window. Finish may collect finish/named rewards. Repeating is idempotent, not an automatic retry. Limit: 500 private records.").font(.caption)
+                    InteractionExplanation("Event order and time rules apply. Repeating is idempotent, not an automatic retry. Up to 500 private records.", details: "Server enforces ordered required checkpoints, optional skips, published start/finish and the actual event window. Finish may collect finish/named rewards. Repeating is idempotent, not an automatic retry. Limit: 500 private records.").font(.caption)
+                    FeatureDetails("Collection privacy") {
+                        Text("Captured event/participation revision and checkpoint only. No GPS, arrival/departure timeline, media bytes or credentials. Profile display requires another explicit choice. Context/conflict resets consent; no queued replay.")
+                    }
                     Button("Review private collection") { prepare(event) }.disabled(!choice.consent || session.busy || needsReload)
                 } else { Text("A current reviewed going RSVP is required. No badge is collected automatically by RSVP or progress.") }
             } else if !session.busy { Text("Both social/me and this event must explicitly enable account badges. Missing capabilities remain unavailable.") }
@@ -157,7 +160,7 @@ struct EventAwardCollectionView: View {
         .onDisappear { clear(); session.clear() }
         .confirmationDialog("Collect only this private self-report?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
             if let pending { Button("I consent: collect privately") { collect(pending) } }
-        } message: { Text("Captured event/participation revision and checkpoint only. No GPS, arrival/departure timeline, media bytes or credentials. Profile display requires another explicit choice. Context/conflict resets consent; no queued replay.") }
+        } message: { Text("This checkpoint and revision only. No GPS or media is sent. Context changes reset consent; profile sharing is separate.") }
     }
     private func reload() {
         choice.clear(); event = nil

@@ -76,15 +76,20 @@ struct AdminArtworkView: View {
     }
     private var sourceControls: some View {
         Section("Choose one explicit source") {
-            Text(store.sourceName).font(.caption)
+            Text(store.sourceName == "" ? "Choose an artwork source" : "Artwork source selected").font(.caption)
+                .accessibilityLabel(store.sourceName)
             Button("Choose immutable local GIF input") { consent = false; picking = true }.disabled(store.busy)
             if let upload = store.upload { ArtworkComparison(input: upload.preview, result: nil).id(store.sourceName + String(upload.data.count)) }
             TextField("Approved community title/tag search", text: $query)
-            Button("Search named current community sources") { consent = false; page = 1; store.search(query, page: page) }.disabled(store.busy)
+            Button("Search community artwork") { consent = false; page = 1; store.search(query, page: page) }.disabled(store.busy)
             if store.canRetryCatalog { Button("Retry catalog page") { store.retryCatalog() } }
             if let catalog = store.catalog {
                 ForEach(catalog.items) { item in
-                    Button("\(item.title) (\(item.width)×\(item.height))") { consent = false; store.chooseCommunity(item) }.disabled(store.busy)
+                    Button { consent = false; store.chooseCommunity(item) } label: {
+                        GIFThumbnail(key: "admin-source:\(community.accountRevision):\(item.id)", cache: false, animationAllowed: false) {
+                            try await community.download(item.previewUrl)
+                        }.frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }.buttonStyle(.plain).accessibilityLabel("Choose \(item.title)").disabled(store.busy)
                         .onAppear { store.nearCatalogEnd(item.id) }
                 }
                 if catalog.items.count == 100 { Text("Showing 100 matches. Refine your search.").font(.caption) }
@@ -103,7 +108,7 @@ struct AdminArtworkView: View {
             Toggle("Remove border-connected matching background", isOn: $settings.removeBackground)
             Stepper("Tolerance \(settings.tolerance)", value: $settings.tolerance, in: 0...64)
             TextField("Optional redraw prompt (≤1000 UTF16 units)", text: $settings.prompt, axis: .vertical)
-            Text("Processing may remove intentional edge-connected pixels. GIF alpha is binary. AI redraw can alter text/characters/flicker and provider assets may survive cancellation; inspect the retained input/result before any separate download/publication.").font(.caption)
+            InteractionExplanation("Processing can alter artwork. Inspect the result before saving or publishing; cancellation may not remove provider copies.", details: "Processing may remove intentional edge-connected pixels. GIF alpha is binary. AI redraw can alter text/characters/flicker and provider assets may survive cancellation; inspect the retained input/result before any separate download/publication.").font(.caption)
             Toggle("I consent to processing only this explicit source with these settings", isOn: $consent)
             Button("Create new private preview job") { store.submit(settings, consent: consent); consent = false }
                 .disabled(!consent || store.busy || store.uncertainSubmission || (store.source == nil && store.upload == nil) || (settings.mode == .redraw && community.config?.aiArtworkRedrawEnabled != true))
@@ -167,7 +172,7 @@ private struct ArtworkComparison: View {
                 } catch { failure = error.localizedDescription; pause() }
             }.disabled(!allowed || !((input?.duration ?? 0) > 0 || (result?.duration ?? 0) > 0))
             if let failure { Text(failure).foregroundStyle(.orange) }
-            Text("Paused/manual local comparisons, not calibrated synchronization, hardware playback or permanent access. No awake/brightness lease. Current role/source access is refreshed while foreground.").font(.caption)
+            InteractionExplanation("Local comparison only. Access is rechecked; timing is not calibrated and no hardware playback is verified.", details: "Paused/manual local comparisons, not calibrated synchronization, hardware playback or permanent access. No awake/brightness lease. Current role/source access is refreshed while foreground.").font(.caption)
         }
         .onDisappear { pause() }
         .onChange(of: phase) { _, _ in pause() }

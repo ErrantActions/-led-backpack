@@ -136,7 +136,7 @@ struct SoloScenesView: View {
                     }
                     FeatureDetails("GIFs & credits") {
                         ForEach(scene.items) { item in
-                            Text(item.name)
+                            Text("Scene artwork").accessibilityLabel(item.name)
                             if let credit = item.attribution { Text("\(credit.author) · \(credit.license) · \(credit.source)") }
                         }
                         Text("Manual preview does not record a visit.")
@@ -229,7 +229,7 @@ struct SoloScenesView: View {
                     }
                 }
             }
-            Text("Calculation uses your explicit point/time zone and device clock, not weather or continuous GPS. Polar/unavailable cases have no guessed event. Missed/background events never replay. PHONE presentation expires; brightness is separately optional, capped and reversible.").font(.caption)
+            InteractionExplanation("Uses your chosen point/time zone and device clock, not weather or continuous GPS. Missed events never replay.", details: "Calculation uses your explicit point/time zone and device clock, not weather or continuous GPS. Polar/unavailable cases have no guessed event. Missed/background events never replay. PHONE presentation expires; brightness is separately optional, capped and reversible.").font(.caption)
         }
     }
     private var collection: some View {
@@ -261,7 +261,7 @@ struct SoloScenesView: View {
                 perform { try await solo.saveRecap(name: name, selectedUnlocks: selected) }
             }
                 .disabled(!solo.recapConsent || solo.trip.running)
-            Text("Stop SOLO and reload to edit/save. Recaps contain only approximate total distance and selected local unlock names, not coordinates, dates of encounters, maps, route or automatic sharing.").font(.caption)
+            InteractionExplanation("Stop and reload to edit. Recaps contain approximate distance and local unlock names, not coordinates or encounter history.", details: "Stop SOLO and reload to edit/save. Recaps contain only approximate total distance and selected local unlock names, not coordinates, dates of encounters, maps, route or automatic sharing.").font(.caption)
             ForEach(solo.archive.recaps) { recap in
                 VStack(alignment: .leading) {
                     Text("\(recap.name) · \(Int(recap.approximateMeters)) approximate meters")
@@ -311,10 +311,11 @@ private struct SoloSceneComposer: View {
                         else if selected.count < 12 { selected.append(item.id) }
                     } label: {
                         HStack {
-                            Text(item.name)
+                            GIFThumbnail(key: "solo-original:\(item.id)", cache: false) { try await originals.bytes(item) }
+                                .frame(width: 80, height: 80).clipShape(RoundedRectangle(cornerRadius: 12))
                             Spacer()
                             if let index = selected.firstIndex(of: item.id) { Text("\(index + 1)").foregroundStyle(.cyan) }
-                        }
+                        }.accessibilityLabel("Select \(item.name)")
                     }
                 }
                 TextField("Interval (seconds)", text: $interval).keyboardType(.decimalPad)
@@ -542,7 +543,7 @@ private struct SoloDaylightEditor: View {
                 } catch { self.error = error.localizedDescription }
             }
             Text(calculation).font(.caption)
-            Text("No weather/API/model or continuous GPS dependency. Device clock and explicitly supplied point/time zone only. Schedules are foreground-only, default off and never replay missed events.")
+            InteractionExplanation("Foreground schedule, off by default. Uses your chosen point/time zone; no weather service, continuous GPS or missed-event replay.", details: "No weather/API/model or continuous GPS dependency. Device clock and explicitly supplied point/time zone only. Schedules are foreground-only, default off and never replay missed events.")
             if let error { Text(error).foregroundStyle(.orange) }
             Button("Save explicit local daylight plan") {
                 do {

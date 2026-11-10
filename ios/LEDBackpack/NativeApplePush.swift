@@ -230,7 +230,8 @@ struct NativeApplePushView: View {
             }
             if apple.busy { ProgressView() }
             if let failure = apple.failure ?? events.failure { Text(failure).foregroundStyle(.orange) }
-            Text("Provider acceptance is not proof of on-device delivery. Focus/OS settings still apply. No keys, models, credentials, developer profiles or entitlements are provisioned by this screen.").font(.caption)
+            InteractionExplanation("Provider acceptance is not on-device delivery. OS/Focus settings still apply; this screen provisions no credentials.",
+                details: "Provider acceptance is not proof of on-device delivery. Focus/OS settings still apply. No keys, models, credentials, developer profiles or entitlements are provisioned by this screen.").font(.caption)
         }.disabled(apple.busy).modernScene().navigationTitle("Apple device alerts")
         .task { if community.nativeApplePushAvailable { apple.refresh() } }
         .onChange(of: phase) { _, phase in if phase == .active && community.nativeApplePushAvailable { apple.refresh() } }

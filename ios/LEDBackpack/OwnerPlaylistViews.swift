@@ -228,7 +228,7 @@ struct OwnerPlaylistEditor: View {
                 publishing
             }.disabled(model.busy || model.needsReload || model.client?.playlistsAvailable != true)
             Section("Public snapshot receipts created in this open editor") {
-                Text("These are separate published IDs, not private playlist IDs. No all-shares management endpoint is documented; reopening does not invent a server share list. Revoke below removes all snapshots, including older ones.").font(.caption)
+                InteractionExplanation("Published snapshots have separate IDs. Revoke removes all snapshots, including older ones; no share list is invented.", details: "These are separate published IDs, not private playlist IDs. No all-shares management endpoint is documented; reopening does not invent a server share list. Revoke below removes all snapshots, including older ones.").font(.caption)
                 if model.receipts.isEmpty { Text("No share receipts in this session.") }
                 ForEach(model.receipts) { receipt in
                     VStack(alignment: .leading) {
@@ -282,7 +282,8 @@ struct OwnerPlaylistEditor: View {
             ForEach(model.content.entries.indices, id: \.self) { index in
                 let entry = model.content.entries[index]
                 VStack(alignment: .leading) {
-                    Text(model.knownItems[entry.itemId]?.title ?? "Unavailable public reference (metadata withheld)")
+                    Text(model.knownItems[entry.itemId] == nil ? "Unavailable public reference (metadata withheld)" : "Playlist artwork")
+                        .accessibilityLabel(model.knownItems[entry.itemId]?.title ?? "Unavailable artwork")
                     Stepper("Duration \(entry.durationMilliseconds)ms", value: $model.content.entries[index].durationMilliseconds, in: 1000...600000, step: 1000)
                     HStack {
                         Button("Earlier") { model.content.entries.swapAt(index, index - 1) }.disabled(index == 0)
@@ -291,7 +292,7 @@ struct OwnerPlaylistEditor: View {
                     }
                 }
             }
-            if model.content.entries.isEmpty { Text("Select at least one currently permitted named public GIF below.") }
+            if model.content.entries.isEmpty { Text("Choose at least one available public GIF below.") }
             Button("Save captured private revision") { model.save() }
             if model.original != nil {
                 Button("Delete private playlist and revoke shares", role: .destructive) { qrReceipt = nil; model.delete() }
@@ -300,12 +301,17 @@ struct OwnerPlaylistEditor: View {
     }
     private var artworkPicker: some View {
         Section("Current authorized public GIF selector") {
-            TextField("Search named public artwork", text: $query)
+            TextField("Search public artwork", text: $query)
             Button("Search / reload public choices") { model.search(query) }
             if let picker = model.picker {
                 if picker.items.isEmpty { Text("No currently permitted public GIFs match this search.") }
                 ForEach(picker.items) { item in
-                    Button("Add \(item.title) (\(item.nativeSize))") { model.add(item) }.disabled(model.content.entries.count >= 100)
+                    Button { model.add(item) } label: {
+                        GIFThumbnail(key: "playlist-choice:\(community.accountRevision):\(item.id)", cache: false, animationAllowed: false) {
+                            try await community.download(item.previewUrl)
+                        }.frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }.buttonStyle(.plain).accessibilityLabel("Add \(item.title)")
+                        .disabled(model.content.entries.count >= 100)
                 }
                 Button("Next public choices") { model.search(query, more: true) }.disabled(!picker.hasMore)
             }
@@ -337,7 +343,7 @@ struct OwnerPlaylistEditor: View {
                 Button("Arm foreground source schedule") { model.armSchedule() }.disabled(!model.scheduleConsent)
                 Text(model.scheduleState.armed ? "Foreground armed; a due minute prepares an authorized source. The separate one-shot main-PHONE opt-in, if chosen, starts only its current fixed lease." : "Schedule not armed.")
             }
-            Text("No background task, server job, catch-up execution, physical transport or synchronization. Opening the main PHONE leaves this editor and disarms future occurrences. Its already approved current window can finish; further windows require explicit rearm. Leaving/backgrounding/account changes disarm. Repeated local-clock minutes do not retrigger within this arming session.").font(.caption)
+            InteractionExplanation("Foreground schedule only. Leaving, backgrounding or account changes disarm future windows; missed events never replay.", details: "No background task, server job, catch-up execution, physical transport or synchronization. Opening the main PHONE leaves this editor and disarms future occurrences. Its already approved current window can finish; further windows require explicit rearm. Leaving/backgrounding/account changes disarm. Repeated local-clock minutes do not retrigger within this arming session.").font(.caption)
         }
     }
     private var preview: some View {
@@ -346,9 +352,11 @@ struct OwnerPlaylistEditor: View {
             Button("Start authorized source preview") { model.startPreview() }.disabled(!model.previewConsent)
             Button("Stop preview / disarm now") { globalScheduleConsent = false; globalPhone.stop(); model.stop(); onPreview?(nil) }
             if let request = model.preview {
-                Text("Source preview ready / \(request.content.order.rawValue), capped at30 seconds. Isolated playback and separately consented main-PHONE playback are available; no LED transport or physical sync.").font(.caption)
+                InteractionExplanation("Source preview is capped at 30 seconds. Main-phone playback needs separate consent; no LED transport or physical sync.",
+                    details: "Source preview ready / \(request.content.order.rawValue), capped at30 seconds. Isolated playback and separately consented main-PHONE playback are available; no LED transport or physical sync.").font(.caption)
                 ForEach(Array(request.hydratedEntries.enumerated()), id: \.offset) { _, entry in
-                    Text(entry.item.map { "\($0.title) / \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
+                    Text(entry.item.map { _ in "Artwork · \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
+                        .accessibilityLabel(entry.item.map { "\($0.title), \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
                 }
                 if let client = model.client { NativeScopedPhonePreviewView(source: .playlist(request), client: client) }
             } else { Text("Paused. This editor never downloads artwork or silently starts phone/backpack playback.") }
@@ -362,7 +370,7 @@ struct OwnerPlaylistEditor: View {
             Toggle("I explicitly consent to publishing this text and current public references", isOn: $model.publishDraft.consent)
             Button("Publish separate public snapshot") { model.publish() }.disabled(!model.publishDraft.consent || model.original == nil)
             Button("Revoke ALL snapshots of this playlist", role: .destructive) { qrReceipt = nil; model.revoke() }.disabled(model.original == nil)
-            Text("Private title, notes and schedule are not sent in the publish body. Revocation does not recall copies. Published snapshot IDs alone may be used by the later authorized chat-card picker; private playlist IDs must never be chat references.").font(.caption)
+            InteractionExplanation("Publishing excludes private title, notes and schedule. Revocation cannot recall copies; chat uses published snapshots only.", details: "Private title, notes and schedule are not sent in the publish body. Revocation does not recall copies. Published snapshot IDs alone may be used by the later authorized chat-card picker; private playlist IDs must never be chat references.").font(.caption)
         }
     }
 }
@@ -385,7 +393,8 @@ struct NativePlaylistShareQRView: View {
                 Text(snapshot.description).font(.caption)
                 Text("Paused / \(snapshot.order.rawValue)")
                 ForEach(Array(snapshot.entries.enumerated()), id: \.offset) { _, entry in
-                    Text(entry.item.map { "\($0.title) / \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; metadata withheld.")
+                    Text(entry.item.map { _ in "Artwork · \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; metadata withheld.")
+                        .accessibilityLabel(entry.item.map { "\($0.title), \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
                 }
             }
             if let png, let image = UIImage(data: png) {

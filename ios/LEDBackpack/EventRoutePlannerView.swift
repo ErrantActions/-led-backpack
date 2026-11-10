@@ -146,7 +146,7 @@ private struct EventRoutePlannerContent: View {
                         VStack(alignment: .leading, spacing: 14) {
                             Toggle("Publish checkpoint plan", isOn: Binding(get: { store.draft?.published ?? false },
                                 set: { value in edit(structural: true) { $0.published = value } })).disabled(!structureEditable)
-                            Text("Publishing requires exactly one start first and one finish last. Guide lines are organizer-authored, not navigation or a safe-routing promise. Claims/rewards remain self-reported, not certified attendance.")
+                            InteractionExplanation("Publish needs start first and finish last. Organizer lines are not navigation or a safe-route guarantee.", details: "Publishing requires exactly one start first and one finish last. Guide lines are organizer-authored, not navigation or a safe-routing promise. Claims/rewards remain self-reported, not certified attendance.")
                                 .font(.caption).foregroundStyle(.secondary)
                             Button("Review and save route") {
                                 do { saveReview = try NativeEventRouteReview(draft) } catch { localFailure = error.localizedDescription }
@@ -272,7 +272,7 @@ private struct EventRoutePlannerContent: View {
     private func mapPanel(_ draft: EventRouteDraft) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Enable Apple Maps, place search and route directions", isOn: $imagery)
-            Text("Apple receives map viewports, typed place searches and chosen start/destination/shaping coordinates for directions. No account token, private event text, participant/device location or GPS track is supplied.")
+            InteractionExplanation("Apple receives map/search/routing coordinates, not account tokens, private event text, participant location or GPS tracks.", details: "Apple receives map viewports, typed place searches and chosen start/destination/shaping coordinates for directions. No account token, private event text, participant/device location or GPS track is supplied.")
                 .font(.caption).foregroundStyle(.secondary)
             if imagery && phase == .active {
                 roadControls(draft)
@@ -284,7 +284,7 @@ private struct EventRoutePlannerContent: View {
                     failed: { localFailure = $0 })
                     .frame(height: 390).clipShape(RoundedRectangle(cornerRadius: 24))
                 Button("Show whole plan") { fit = UUID() }
-                Text("Choose start and destination, Generate route, then choose Drop checkpoint and tap the blue line. To reshape: choose Add draggable route handle, tap the line and drag its handle to the road you want; the route recalculates. Start/finish pins can also be dragged. No latitude/longitude entry is required.")
+                InteractionExplanation("Choose start and destination, then Generate route. Tap the line to add a checkpoint or drag a route handle to reshape it.", details: "Choose start and destination, Generate route, then choose Drop checkpoint and tap the blue line. To reshape: choose Add draggable route handle, tap the line and drag its handle to the road you want; the route recalculates. Start/finish pins can also be dragged. No latitude/longitude entry is required.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }.padding(18).glassPanel()
@@ -310,7 +310,7 @@ private struct EventRoutePlannerContent: View {
             if road.needsRegeneration { Text("Route edit is not yet applied. Recalculate before saving; the previous saved draft geometry remains intact.").font(.caption).foregroundStyle(.orange) }
             if let route = road.result {
                 Text(String(format: "Route preview %.1f km · about %.0f minutes", route.meters / 1000, route.seconds / 60)).font(.caption)
-                Text("Route preview only—not safe-routing certification, live navigation or a participant track. Saved geometry is simplified within10m and must fit the service's200-point limit; longer complex routes fail explicitly instead of truncating.").font(.caption)
+                InteractionExplanation("Preview only, not navigation or attendance proof. Geometry is simplified; over-complex routes fail instead of truncating.", details: "Route preview only—not safe-routing certification, live navigation or a participant track. Saved geometry is simplified within10m and must fit the service's200-point limit; longer complex routes fail explicitly instead of truncating.").font(.caption)
                 Button("Drop checkpoint pins along this route") { mode = .checkpoint }.disabled(road.busy || road.needsRegeneration)
                 Button("Reshape route: tap line to add a draggable handle") { mode = .shape }.disabled(road.busy || road.needsRegeneration)
                 ForEach(Array(road.waypoints.enumerated()), id: \.element.id) { index, waypoint in

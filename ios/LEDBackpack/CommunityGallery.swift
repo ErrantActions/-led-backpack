@@ -188,7 +188,6 @@ private struct CommunityDetail: View {
                 VStack(alignment: .leading, spacing: 18) {
                     if let bytes { AnimatedPreview(data: bytes).frame(height: 280) }
                     else if failure == nil { ProgressView("Loading preview...") }
-                    Text(item.title).font(.title2.bold())
                     Picker("Download exact recorded file", selection: Binding(get: { selectedFile ?? item.gifUrl }, set: { selectedFile = $0 })) {
                         ForEach(item.recordedFiles) { file in Text(file.label).tag(file.url) }
                     }

@@ -127,7 +127,6 @@ struct TextArtworkStudio: View {
 
     private var saveControls: some View {
         Group {
-            TextField("Saved name", text: $name)
             TextField("Category (optional)", text: $category)
             if effect.animated {
                 Button("Play animation preview") { generate(save: false) }.disabled(saving || preview == nil || failure != nil)

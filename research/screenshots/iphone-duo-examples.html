@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>iPhone Duo - official app layout examples</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101923; color: #eef4fa; }
+    * { box-sizing: border-box; }
+    body { max-width: 1540px; margin: auto; padding: 24px; }
+    a { color: #a7e8ff; overflow-wrap: anywhere; text-underline-offset: 3px; }
+    a:focus-visible { outline: 3px solid #ffd782; outline-offset: 3px; }
+    p { line-height: 1.65; max-width: 95ch; }
+    nav { display: flex; flex-wrap: wrap; gap: 20px; }
+    nav a { min-height: 44px; padding: 12px 0; }
+    .notice { border-left: 4px solid #ffd782; background: #202b38; padding: 8px 18px; }
+    main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); gap: 24px; margin-top: 24px; }
+    article { min-width: 0; padding: 20px; background: #162535; border: 1px solid #496176; border-radius: 12px; }
+    h2 { margin-top: 0; }
+    figure { margin: 0; }
+    figure a { display: block; min-height: 44px; }
+    img { display: block; width: 100%; height: auto; background: #0c1520; }
+    figcaption { line-height: 1.5; margin-top: 12px; }
+    .image-status { color: #ffce91; }
+    [hidden] { display: none !important; }
+    @media (max-width: 540px) { body { padding: 16px; } article { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>iPhone Duo: official app layout examples</h1>
+    <p>Ten Apple-published visual references, distinct from ordinary iPhone and iPad App Store screenshots.
+      Source: <a href="https://www.apple.com/ca/newsroom/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/">Apple Newsroom, October 22, 2026</a>;
+      reviewed November 10, 2026. Images remain hosted by Apple and require internet access.</p>
+    <p class="notice">These are official promotional device compositions, not our captures, hands-on tests, or proof of the exact shipped version.
+      The article describes partial-fold behavior for some apps even when its individual image shows a fully open device.
+      Do not infer motion, keyboard behavior, accessibility or all-pose support from one still.
+      Artwork and branding belong to their respective owners; no reuse permission is granted.</p>
+    <nav aria-label="Research navigation">
+      <a href="#examples">Skip to Duo examples</a>
+      <a href="app-reference-board.html">35-app comparison board</a>
+      <a href="../documentation/app-ui-patterns.md#iphone-duo-specific-examples">Duo analysis and design actions</a>
+      <a href="../layouts/README.md">Our original layout studies</a>
+    </nav>
+  </header>
+  <main id="examples" tabindex="-1">
+    <article id="netflix">
+      <h2>Netflix: viewing continuity</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Netflix-2_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Netflix-2_big.jpg.large.jpg" alt="Apple promotional image: Netflix playback on a partially folded iPhone Duo."></a><figcaption>Study: keep the current content and playback session when the display changes. For us: artwork preview continuity, not streaming-service features.</figcaption></figure>
+    </article>
+    <article id="prime-video">
+      <h2>Prime Video: content plus context</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Amazon-Prime-Video_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Amazon-Prime-Video_big.jpg.large.jpg" alt="Apple promotional image: Prime Video on a partially folded iPhone Duo, with playback upright and controls below."></a><figcaption>Apple describes partial-fold video above X-Ray context. The image visibly shows a partially folded device, despite the source page's fully-open alternative text. For us: preview plus optional details, with essential actions available without a second region.</figcaption></figure>
+    </article>
+    <article id="zoom">
+      <h2>Zoom: related views together</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Zoom_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Zoom_big.jpg.large.jpg" alt="Apple promotional image: Zoom on a fully open iPhone Duo."></a><figcaption>Study: shared content and participants retain context. For us: a current artwork or session beside its relevant details, rather than two unrelated dashboards.</figcaption></figure>
+    </article>
+    <article id="slack">
+      <h2>Slack: conversation hierarchy</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Slack_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Slack_big.jpg.large.jpg" alt="Apple promotional image: Slack workspace on a fully open iPhone Duo."></a><figcaption>Study: workspace/channel context beside conversation. For us: inbox and selected thread where space permits; preserve recipient, consent and draft when compact.</figcaption></figure>
+    </article>
+    <article id="fantastical">
+      <h2>Fantastical: overview and detail</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Fantastical_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Fantastical_big.jpg.large.jpg" alt="Apple promotional image: Fantastical calendar on a fully open iPhone Duo."></a><figcaption>Study: calendar, tasks and menus have coordinated roles. For us: event overview and selected ride information, with a coherent single-pane fallback.</figcaption></figure>
+    </article>
+    <article id="detail">
+      <h2>Detail: media and editing context</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Detail_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Detail_big.jpg.large.jpg" alt="Apple promotional image: Detail editor on a fully open iPhone Duo."></a><figcaption>Apple describes video and transcript side by side. For us: animation preview and frame/timing tools; this is not evidence that we need AI or transcription.</figcaption></figure>
+    </article>
+    <article id="edits">
+      <h2>Instagram Edits: creative studio</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Instagram-Edits_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Instagram-Edits_big.jpg.large.jpg" alt="Apple promotional image: Instagram Edits on a fully open iPhone Duo."></a><figcaption>Apple describes an expanded creative studio; this still shows preview beside clip/media thumbnails, not every described tool. For us: GIF Studio preview with frame tools. Keep the selected frame and unsaved edits stable across folds.</figcaption></figure>
+    </article>
+    <article id="vllo">
+      <h2>VLLO: editing space</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-VLLO_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-VLLO_big.jpg.large.jpg" alt="Apple promotional image: VLLO video editor on a fully open iPhone Duo."></a><figcaption>Study: footage and tools gain room together rather than merely scaling the phone screen. For us: contextual editing controls, with usable touch targets and primary actions outside occlusions.</figcaption></figure>
+    </article>
+    <article id="nyt-cooking">
+      <h2>NYT Cooking: glanceable task context</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-NYT-Cooking_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-NYT-Cooking_big.jpg.large.jpg" alt="Apple promotional image: NYT Cooking on a fully open iPhone Duo."></a><figcaption>Apple describes propped use for steps, timers and video; this image is fully open. For us: stationary setup/preview with the important state readily visible, not phone interaction while riding.</figcaption></figure>
+    </article>
+    <article id="lyft">
+      <h2>Lyft: map and choices</h2>
+      <figure><a href="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Lyft_big.jpg.large.jpg"><img loading="lazy" referrerpolicy="no-referrer" src="https://www.apple.com/newsroom/images/2026/10/developers-bring-incredible-new-app-experiences-to-iphone-duo/article/Apple-iPhone-Duo-optimized-apps-Lyft_big.jpg.large.jpg" alt="Apple promotional image: Lyft on a fully open iPhone Duo."></a><figcaption>Study: route context remains visible while comparing options. For us: map plus route/session review before a ride, without exposing personal location by default.</figcaption></figure>
+    </article>
+  </main>
+  <footer>
+    <p>Source and image attribution: Apple Newsroom; app interfaces and brands belong to their respective owners.
+      These ten compositions are counted separately from the 243 App Store screenshot references.
+      Follow <a href="https://developer.apple.com/iphone-duo/prepare/">Apple's native preparation guidance</a>,
+      not screenshot dimensions, when implementing layouts.</p>
+  </footer>
+  <script>
+    for (const image of document.images) {
+      const status = document.createElement('p');
+      status.className = 'image-status';
+      status.setAttribute('role', 'status');
+      status.hidden = !(image.complete && !image.naturalWidth);
+      status.textContent = 'Image unavailable. Open its linked original or the Apple Newsroom source.';
+      image.closest('figure').append(status);
+      image.addEventListener('error', () => { status.hidden = false; });
+      image.addEventListener('load', () => { status.hidden = true; });
+    }
+  </script>
+</body>
+</html>

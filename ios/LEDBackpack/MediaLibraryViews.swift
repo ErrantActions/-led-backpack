@@ -65,7 +65,7 @@ struct MediaOrganizer: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(item.name) {
+                Section("Artwork organization") {
                     TextField("Category, or leave empty", text: $category)
                     Menu("Choose a category") {
                         Button("Uncategorized") { category = "" }

@@ -6,19 +6,46 @@ availability or that the product backlog is finished.
 
 ## Current redesign board (not shipped in build 11)
 
-Research and attributed reference images are retained in the ignored local
-scratch research folder, not bundled or published as application artwork.
+The original ignored scratch research and 41 external reference images were
+excluded from migration. Replacement research is maintained in
+[research](../research/README.md), with documentation, attributed native
+screenshots and original layout studies tracked separately from app artwork.
 Older checkpoints below are historical evidence, not the current release board.
 
 - [x] Build-11 upload completed before the new research/redesign phase.
 - [x] Primary-source messaging, social, riding/GPS, LED apps, iOS systems and Duo
-  research documented, with 41 attributed local image references.
+  research documented before migration, with 41 attributed local image references.
+  Those original research files were not transferred.
+- [x] Research rebuilt2026-11-10 with verified iOS/Duo API and HIG sources,
+  workflow recommendations, native acceptance criteria and an attributed
+  reference register. This does not claim recovery of the original41images.
+- [x] Expanded reference board:44apps/312publisher screenshots plus10official
+  Duo compositions. [Aurora Fieldwork](../research/documentation/design-language.md)
+  defines the shared design language.
+- [x] [Design atlas and coverage](../research/layouts/page-coverage.md):
+  202editable studies, five curated tabs, current-source refreshes and compact/
+  Duo variants.2,020numeric geometry cases pass; this is prototype evidence,
+  not completed native integration or runtime state-by-state acceptance.
+- [ ] Integrate reviewed Fieldwork designs into native SwiftUI while preserving
+  controllers, bindings, feature gates and consent. Validate the changed native
+  surfaces on Mac and hardware before claiming the redesign shipped.
 - [x] Recovery transport foundation323caaf compiled;97 focused native tests
   passed in42588981367. This does not validate later view/store changes.
 - [x] Integrated source4dd4d1c compiled;124 focused native tests and2 UI
   regressions passed in42592497858. Includes v2-gated My devices, recovery
   DTOs/history/drafts and owner-reply acceptance, no second finder introduction,
   exact-ID receipt-write retry and stale-account response rejection.
+- [x] Current sourcebd1cf7d passed full native gate42598416855: Xcode27.1/
+  iOS27.1 compile,1,070unit tests/0failures/2explicit skips,15UI tests/
+  0failures and separate read-only public integration. This supersedes older
+  pending-validation notes; it is not a new beta upload or hardware acceptance.
+- [x] Live uses native adaptive arrangements with primary mode/actions retained
+  when the secondary pane is hidden. Message drafts, including initial sample
+  text, survive orientation and theme-sheet reflow in the full native gate.
+- [x] One explicit Bluetooth scan request waits for readiness within its bounded
+  lifetime; leaving the screen/backgrounding cancels it. Messaging/cloud flows
+  remove repeated intent prompts while retaining distinct privacy, system-auth,
+  destructive-action and encryption boundaries.
 - [ ] Physical connected-device adoption/contact and complete native recovery
   interaction acceptance; simulator proof is not hardware ownership proof.
 - [ ] Complete native adaptive/reserved-region layouts and verify state/actions
@@ -26,7 +53,8 @@ Older checkpoints below are historical evidence, not the current release board.
 - [ ] Complete remaining low-friction upload/discovery/chat workflows; preserve
   distinct system/privacy/destructive boundaries, not repeated intent dialogs.
 - [ ] Reconcile the remaining historical roadmap against current software proof.
-- [ ] Full release-eligible native gate and next authorized beta promotion.
+- [x] Full release-eligible native source gate atbd1cf7d, recorded above.
+- [ ] Next authorized beta promotion; build11 remains the last verified upload.
 - [x] Backend v2 strict build and full653tests/0fail/0skip locally. An initial
   Windows avatar-fixture directory-rename error passed focused and full reruns.
 - [ ] Preservation-checked backend v2 deployment and public recovery/revocation

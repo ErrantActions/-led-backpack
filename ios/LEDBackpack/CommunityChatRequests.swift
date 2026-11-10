@@ -170,7 +170,8 @@ struct CommunityMessageRequestsView: View {
                             }
                         }
                     }
-                    Text("Stopping new requests does not close existing permissions. Acceptance is not friendship, location consent or library access; only server-authorized history from the introduction is shared.")
+                    InteractionExplanation("Accepting permits this conversation, not friendship or library/location access. Turning requests off keeps existing permissions.",
+                        details: "Stopping new requests does not close existing permissions. Acceptance is not friendship, location consent or library access; only server-authorized history from the introduction is shared.")
                 }
                 Section("Current requests") {
                     ForEach(rows) { row in
@@ -247,7 +248,8 @@ struct CommunityMessageRequestsView: View {
                     Toggle("Send this one encrypted introduction", isOn: $consent).disabled(intent != nil || storedIntro != nil)
                     Button(intent == nil ? "Send introduction" : "Reconcile by exact introduction retry") { sendIntro() }
                         .disabled(storedIntro != nil || intent == nil && (target == nil || !consent))
-                    Text("Server-managed encryption, not E2EE. No GIF, pin, attachment or earlier history is included. No silent retries. Limits: 10 new/day, 50 pending/recipient, 500 descriptors/account, 20,000/server, 120 polls/minute and 20 shared social mutations/minute. Pending expires after 14 days; closed descriptors remain up to 30 days.")
+                    InteractionExplanation("Text-only, server-encrypted requests. Pending requests expire after 14 days. No silent retries.",
+                        details: "Server-managed encryption, not E2EE. No GIF, pin, attachment or earlier history is included. No silent retries. Limits: 10 new/day, 50 pending/recipient, 500 descriptors/account, 20,000/server, 120 polls/minute and 20 shared social mutations/minute. Pending expires after 14 days; closed descriptors remain up to 30 days.")
                 }
                 Button("Reload current requests and opt-in") { load() }
             } else { Text("Non-friend message requests are unavailable on this server.") }

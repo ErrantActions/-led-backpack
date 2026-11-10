@@ -521,7 +521,7 @@ struct EventSocialView: View {
                     Toggle("Organizer enables this event guestbook", isOn: $model.guestbookEnabled)
                     Button("Save current guestbook settings revision") { model.saveGuestbookSettings() }
                 }
-                Text("Server-managed encryption is not end-to-end encryption. Notes expire after 90 days; already viewed public copies cannot be recalled. No chat, venue, GPS, GIF or private-library content is copied.").font(.caption)
+                InteractionExplanation("Server-encrypted, not E2EE. Notes expire after 90 days; viewed public copies cannot be recalled. No private content is copied.", details: "Server-managed encryption is not end-to-end encryption. Notes expire after 90 days; already viewed public copies cannot be recalled. No chat, venue, GPS, GIF or private-library content is copied.").font(.caption)
             }
             if let value = model.guestbook {
                 Section("Visible posts") {

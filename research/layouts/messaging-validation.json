@@ -1,0 +1,119 @@
+{
+  "scope": "Interactive browser prototype only; not native, backend or live Forma acceptance",
+  "status": "passed",
+  "source": {
+    "path": "layouts\\messaging.html",
+    "sha256": "db959da1209acc2eb84d5321285530769446f39f05ff612818c139029bd2fb92"
+  },
+  "method": "Playwright interactions and DOM measurements in the integrated browser",
+  "behaviorChecks": 50,
+  "groups": [
+    {
+      "name": "Navigation and context",
+      "checks": [
+        "Enter creates a newline, not a send",
+        "Back restores row focus",
+        "Unselected conversation shows its draft",
+        "Same-person direct and organizer drafts stay separate",
+        "Draft survives conversation navigation",
+        "Folding preserves composer focus and selection",
+        "Layout changes retain composer and history DOM",
+        "Search has a clear no-match state",
+        "Search retains the active draft",
+        "Groups filter excludes direct histories",
+        "No invented direct-message unread badge",
+        "Reading a room advances only that room"
+      ]
+    },
+    {
+      "name": "Sending and immutable retries",
+      "checks": [
+        "Failed intent is immutable and locks replacement sends",
+        "Offline cannot retry",
+        "Current canSend permission gates retry",
+        "Unknown outcome retains the exact UUID/body without duplicate bubble",
+        "Resolved retry uses the same intent and unlocks composer",
+        "Offline preserves draft and prevents send",
+        "Reconnection does not auto-send",
+        "IME composition cannot trigger Ctrl+Enter send",
+        "Explicit keyboard send is labeled local-only",
+        "4001 UTF-16 units are rejected without losing draft",
+        "Malformed Unicode is rejected",
+        "Exactly 4000 UTF-16 units including emoji are accepted",
+        "Whitespace-only message cannot send"
+      ]
+    },
+    {
+      "name": "Attachments, consent and revocation",
+      "checks": [
+        "New message shows only eligible sample contacts",
+        "Escape closes dialog and restores focus",
+        "Artwork picker has images and accessible labels, no visible names",
+        "Unsent attachment never moves to another person",
+        "Attachment survives layout and context navigation",
+        "Remove attachment leaves no accidental send",
+        "Attachment-only send is explicitly local preview",
+        "Pending request cannot compose",
+        "Offline cannot accept or decline a request",
+        "Read-only cannot grant request permission",
+        "Accept enables only the sample conversation, with explicit non-server result",
+        "Invitation discloses history policy before joining",
+        "Joining does not invent or reveal old group history",
+        "Revocation removes inbox identities, avatars and message history",
+        "Revocation disables entry and hides composer",
+        "Revocation clears private dialog and attachment previews",
+        "Revocation clears all unsent attachment selections"
+      ]
+    },
+    {
+      "name": "Stale actions and typing",
+      "checks": [
+        "Stale request action rechecks current authorization",
+        "Authorized request still accepts after guarded transition",
+        "Decline removes only the chosen invitation",
+        "Stale attachment selection cannot change recipient",
+        "Read-only retains authorized history but prevents sending",
+        "Typing appears only after explicit sample trigger",
+        "Typing disappears after six seconds",
+        "Reduce Motion disables typing animation"
+      ]
+    }
+  ],
+  "geometry": {
+    "requestedViewportWidths": [320, 390, 768, 820, 1440],
+    "requestedViewportHeights": [400, 900],
+    "layouts": ["compact", "open", "book"],
+    "views": ["list", "thread", "request"],
+    "cases": 90,
+    "failures": 0,
+    "horizontalOverflowCases": 0,
+    "clippedStructuralContainers": 0,
+    "composerOutsideAppCases": 0,
+    "undersizedVisibleControlCases": 0,
+    "minimumVisibleControlSize": 44,
+    "wideSplitCases": 24,
+    "compactFallbackCases": 66,
+    "intentionalTruncation": "Inbox previews and long conversation headings use ellipsis; these are not structural clipping failures"
+  },
+  "additionalChecks": {
+    "historyScrollPositionsBeforeFoldAndReopen": [120, 120, 120],
+    "bubbleEntranceSeconds": 0.22,
+    "reduceMotionStopsBubbleEntrance": true,
+    "systemMotionPreferenceRestored": true,
+    "externalRequestsObserved": 0,
+    "directAndRoomActionsRemainDistinct": true,
+    "atlasMessagingLinkNavigated": true
+  },
+  "visualReview": [
+    "Compact inbox",
+    "Compact conversation",
+    "Duo book inbox/thread split"
+  ],
+  "notVerified": [
+    "Production SwiftUI integration",
+    "Actual Apple keyboard, VoiceOver and Dynamic Type",
+    "Native Duo reserved regions",
+    "Backend request/response transport",
+    "Live Forma synchronization"
+  ]
+}

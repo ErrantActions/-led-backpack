@@ -128,7 +128,7 @@ struct MediaEditor: View {
                 }
             }.buttonStyle(.borderedProminent)
             if busy { ProgressView("Processing selected frames...", value: progress) }
-            Text("Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.")
+            InteractionExplanation("Save creates a copy and retains attribution. Removed areas show black on LEDs; inspect animation before sending.", details: "Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(animation == nil || busy)
     }
@@ -169,7 +169,6 @@ struct MediaEditor: View {
                         }.onEnded { _ in drawing = false })
                 }.aspectRatio(CGFloat(sizes[sizeIndex].width) / CGFloat(sizes[sizeIndex].height), contentMode: .fit)
             }
-            TextField("Artwork name", text: $name)
             TextField("Category (optional)", text: $categoryName)
             if preview == nil { Text("Tap Update frame preview to render the current settings.").font(.caption).foregroundStyle(.secondary) }
             Text("Frame \(frameIndex + 1) / \(animation?.images.count ?? 0)").font(.caption.monospaced())
@@ -201,7 +200,7 @@ struct MediaEditor: View {
             if halos { Slider(value: $haloThreshold, in: 0...128, step: 1) { Text("Halo threshold") } }
             Toggle("Remove isolated pixels", isOn: $isolated)
             Toggle("Automatic foreground cutout (Vision)", isOn: $subject)
-            Text("Cutout runs on device on supported hardware and may fail for some art. All selected frames are processed individually; no cloud image service is used. Edge cleanup can remove intentional tiny details.")
+            InteractionExplanation("On-device cutout can fail or remove intentional details. Frames are processed individually; no cloud image service.", details: "Cutout runs on device on supported hardware and may fail for some art. All selected frames are processed individually; no cloud image service is used. Edge cleanup can remove intentional tiny details.")
                 .font(.caption).foregroundStyle(.secondary)
         }.disabled(busy)
     }

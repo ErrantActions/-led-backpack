@@ -1,0 +1,774 @@
+{
+  "scope": "Design proposal only; native controllers and API bodies are not changed.",
+  "name": "LED Backpack",
+  "maxDefaultTextCharacters": 180,
+  "typedConfirmationReplacements": 5,
+  "changes": [
+    {
+      "screenId": "0807d3b7-c891-406e-b6c4-56b2805153b2",
+      "elementId": "41614ad2-52fc-4f79-a99c-795b07c43cf0",
+      "kind": "concise-copy",
+      "original": "Explicit default-off research: select only a curated GENERIC combination. Reports are not unique devices/installs and do not verify hardware. No BLE/MAC/serial/IP/account/location/source/time is in the submission or stored connection history. Authentication still processes the request. No raw device strings are collected.",
+      "summary": "Optional research shares a generic device category, not raw device details or location. Authentication still applies.",
+      "detailsId": "aurora-context-41614ad2-52fc-4f79-a99c-795b07c43cf0"
+    },
+    {
+      "screenId": "0807d3b7-c891-406e-b6c4-56b2805153b2",
+      "elementId": "5670ccb3-6457-462d-be0b-301a1b9a4a3b",
+      "kind": "concise-copy",
+      "original": "Only {targetId, consent:true} is sent. Once counted, an individual report cannot be retrieved or withdrawn. At most 16 combinations/account per 24-hour volatile dedup window; counts may repeat after a day/restart. No automatic submission.",
+      "summary": "Reports cannot be withdrawn once counted. Choose deliberately; nothing submits automatically.",
+      "detailsId": "aurora-context-5670ccb3-6457-462d-be0b-301a1b9a4a3b"
+    },
+    {
+      "screenId": "b35739d1-cf45-49aa-b4a8-f09ef43d999f",
+      "elementId": "6f678bf0-b91c-4cf9-b4a2-e8c9d314990d",
+      "kind": "concise-copy",
+      "original": "Download/research library only. SHA-256 checks bytes, not authenticity. Generic stock/custom metadata and admin declarations do NOT certify target compatibility, signature or safety. Flashing, automatic recommendations and device commands are unavailable.",
+      "summary": "Download/research only. A matching hash does not prove authenticity or compatibility. Flashing is unavailable.",
+      "detailsId": "aurora-context-6f678bf0-b91c-4cf9-b4a2-e8c9d314990d"
+    },
+    {
+      "screenId": "d6222d22-6adf-45be-ac5b-7ae4f61f8a92",
+      "elementId": "7cfc9302-6e37-4ec8-939d-3218fde6d5a2",
+      "kind": "concise-copy",
+      "original": "Processing may remove intentional edge-connected pixels. GIF alpha is binary. AI redraw can alter text/characters/flicker and provider assets may survive cancellation; inspect the retained input/result before any separate download/publication.",
+      "summary": "Processing can alter artwork. Inspect the result before saving or publishing; cancellation may not remove provider copies.",
+      "detailsId": "aurora-context-7cfc9302-6e37-4ec8-939d-3218fde6d5a2"
+    },
+    {
+      "screenId": "3261ee06-ec11-4901-bd90-b8c661e7f6f7",
+      "elementId": "f5903b6a-503f-4f56-9810-337aaaf10430",
+      "kind": "concise-copy",
+      "original": "Paused/manual local comparisons, not calibrated synchronization, hardware playback or permanent access. No awake/brightness lease. Current role/source access is refreshed while foreground.",
+      "summary": "Local comparison only. Access is rechecked; timing is not calibrated and no hardware playback is verified.",
+      "detailsId": "aurora-context-f5903b6a-503f-4f56-9810-337aaaf10430"
+    },
+    {
+      "screenId": "5dfd9dc5-ef87-4d17-bb18-dc295eb7aafc",
+      "elementId": "ac625efc-fb1b-4d7c-8ce0-1e5640512047",
+      "kind": "concise-copy",
+      "original": "Automatic assignment uses slots 2–54. Slots 55–59 are reserved for future features; 0 and 1 retain their existing reservation. Manual selection is allowed with a warning and does not erase existing artwork by itself. Distinct GIF copies stay independent.",
+      "summary": "Auto-assign uses slots 2-54. Other slots are reserved; manual selection requires review.",
+      "detailsId": "aurora-context-ac625efc-fb1b-4d7c-8ce0-1e5640512047"
+    },
+    {
+      "screenId": "5dfd9dc5-ef87-4d17-bb18-dc295eb7aafc",
+      "elementId": "8fda634f-2395-46dd-8940-6ab1dafc16b8",
+      "kind": "concise-copy",
+      "original": "GIFs are fitted to the panel without changing your local originals. All files are prepared before the first overwrite. A stopped/failed upload may leave its slot partially written; refresh and review before retrying. No automatic retry or rollback.",
+      "summary": "Originals stay unchanged. A failed transfer can leave a partial slot; review before retrying. No automatic retry or rollback.",
+      "detailsId": "aurora-context-8fda634f-2395-46dd-8940-6ab1dafc16b8"
+    },
+    {
+      "screenId": "f3394de7-dd8e-4c31-97b5-487fab5f8b3e",
+      "elementId": "ad2593e8-2083-4ced-a466-7086de2134db",
+      "kind": "concise-copy",
+      "original": "This manually uses reserved slots. Slots 55–59 are set aside for future features, not firmware-required scratch storage. Proceeding may occupy that future space; existing overwrite confirmations still apply.",
+      "summary": "You selected reserved slots. This can occupy future-feature space; overwrite review still applies.",
+      "detailsId": "aurora-context-ad2593e8-2083-4ced-a466-7086de2134db"
+    },
+    {
+      "screenId": "dc0cc88d-c3ef-495a-be06-b87687591260",
+      "elementId": "e27c8f4c-9832-4efd-aa3b-4bc33cf41132",
+      "kind": "concise-copy",
+      "original": "Opening this page contacts Apple Maps. You manually place a fixed pin; no GPS, location tracking, directions or automatic sharing. The selected pin is sent only after the chat's Send action.",
+      "summary": "Apple Maps opens here. Place a fixed pin manually; nothing shares until Send. No GPS tracking.",
+      "detailsId": "aurora-context-e27c8f4c-9832-4efd-aa3b-4bc33cf41132"
+    },
+    {
+      "screenId": "47efd079-d855-4e6d-b98c-bd347ee63c81",
+      "elementId": "00ed4df1-2df4-409d-8517-e43b6f2151e1",
+      "kind": "concise-copy",
+      "original": "Migration downloads and verifies every existing cloud asset, encrypts and verifies staged copies, then signs an independently computed manifest. Temporary quota headroom is required. Historical server-readable backups/logs need expiration; this does not promise retroactive secrecy or forensic erasure.",
+      "summary": "Migration verifies encrypted copies and needs spare quota. Historical server-readable backups do not become retroactively secret.",
+      "detailsId": "aurora-context-00ed4df1-2df4-409d-8517-e43b6f2151e1"
+    },
+    {
+      "screenId": "4cfed8d6-c6a7-4a7c-912c-a57c3608778f",
+      "elementId": "9eb8929b-f2af-4484-a5a1-3568f4f60d4e",
+      "kind": "concise-copy",
+      "original": "Native signup is unavailable while the server retains approved shared GIFs after account deletion, or its policy is unknown. Guest browsing and existing-account sign-in remain available.",
+      "summary": "Signup is unavailable under the current retention policy. Browse as a guest or sign in to an existing account.",
+      "detailsId": "aurora-context-9eb8929b-f2af-4484-a5a1-3568f4f60d4e"
+    },
+    {
+      "screenId": "ffc7f151-6520-4f75-a57c-4c78ef6c0496",
+      "elementId": "2d1efc80-efc7-4dd9-943b-b978c1cbd012",
+      "kind": "concise-copy",
+      "original": "The ZIP's GIFs and metadata may be sent for AI review and published automatically when cleared. This is not private backup. Up to 250 MiB and 500 GIFs. Check recent imports before retrying an interrupted upload.",
+      "summary": "Community import, not backup. Cleared items may publish automatically. Check recent imports before retrying.",
+      "detailsId": "aurora-context-2d1efc80-efc7-4dd9-943b-b978c1cbd012"
+    },
+    {
+      "screenId": "74a0b570-6117-456b-bec1-982b75f29c55",
+      "elementId": "6d7ab067-3b7a-4e02-b6a1-bbf5a9a15cb2",
+      "kind": "concise-copy",
+      "original": "Community-only moderation. Private/cloud artwork is excluded. Quarantine withdraws all public media and requires explicit manual safety approval in the existing item editor; AI cannot release it. Delete hides atomically and queues durable byte cleanup.",
+      "summary": "Community items only. Quarantine removes public access; only manual safety approval can release it. Delete queues byte cleanup.",
+      "detailsId": "aurora-context-6d7ab067-3b7a-4e02-b6a1-bbf5a9a15cb2"
+    },
+    {
+      "screenId": "74a0b570-6117-456b-bec1-982b75f29c55",
+      "elementId": "2f2d88c0-2750-47d1-b1b1-e4acd4f6473e",
+      "kind": "concise-copy",
+      "original": "Selection resets on paging/refresh. Current item state is checked before submission. This API has no client version-CAS field: the server atomically rejects missing/deleted/private IDs, but not every concurrent moderation edit. No version guarantee is invented.",
+      "summary": "Selection resets on refresh/paging. Current items are checked, but concurrent moderation is not version-locked.",
+      "detailsId": "aurora-context-2f2d88c0-2750-47d1-b1b1-e4acd4f6473e"
+    },
+    {
+      "screenId": "ececf4b6-865b-4f16-bb7f-c0b2554db176",
+      "elementId": "1982008f-8c2b-492a-a118-7da97bd5be8e",
+      "kind": "concise-copy",
+      "original": "Stopping new requests does not close existing permissions. Acceptance is not friendship, location consent or library access; only server-authorized history from the introduction is shared.",
+      "summary": "Accepting permits this conversation, not friendship or library/location access. Turning requests off keeps existing permissions.",
+      "detailsId": "aurora-context-1982008f-8c2b-492a-a118-7da97bd5be8e"
+    },
+    {
+      "screenId": "ececf4b6-865b-4f16-bb7f-c0b2554db176",
+      "elementId": "34e95bfc-0fae-42a6-877b-c834eb485c85",
+      "kind": "concise-copy",
+      "original": "Server-managed encryption, not E2EE. No GIF, pin, attachment or earlier history is included. No silent retries. Limits: 10 new/day, 50 pending/recipient, 500 descriptors/account, 20,000/server, 120 polls/minute and 20 shared social mutations/minute. Pending expires after 14 days; closed descriptors remain up to 30 days.",
+      "summary": "Text-only, server-encrypted requests. Pending requests expire after 14 days. No silent retries.",
+      "detailsId": "aurora-context-34e95bfc-0fae-42a6-877b-c834eb485c85"
+    },
+    {
+      "screenId": "880b5147-17e9-45de-a18e-8da463d1216b",
+      "elementId": "fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-12",
+      "kind": "concise-copy",
+      "original": "Messages use server-managed encryption, not E2EE. Direct/organizer recovery reloads only authorized history less than 30 days old with the same server messaging key. Deleted/expired messages, lost keys and private libraries cannot be restored. Minimal sender/client-ID receipts last at most 60 days, not forever. Room history follows its invitation choice. Screenshots cannot be recalled.",
+      "summary": "Server-encrypted, not E2EE. Only authorized retained history can reload; deleted/expired content and lost keys cannot be restored.",
+      "detailsId": "aurora-context-fieldwork-current-880b5147-17e9-45de-a18e-8da463d1216b-12"
+    },
+    {
+      "screenId": "24128c23-c420-426f-8373-a359f0fa37c8",
+      "elementId": "bef9264d-83d4-40eb-a264-cff6ee0abec3",
+      "kind": "concise-copy",
+      "original": "Event reminders default off. Opting in schedules only eligible reviewed events during their final hour; it never RSVPs, shares progress, records arrival or collects GPS. Material updates require fresh review.",
+      "summary": "Reminders are off by default. Eligible reviewed events only; no RSVP, GPS, arrival or progress sharing.",
+      "detailsId": "aurora-context-bef9264d-83d4-40eb-a264-cff6ee0abec3"
+    },
+    {
+      "screenId": "7e587304-5e5a-49dc-8bb6-95fc6fab27ca",
+      "elementId": "d3859821-fb04-4b23-8915-b93d19354546",
+      "kind": "concise-copy",
+      "original": "This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Allowed art publishes after automatic screening; uncertain/mature art is filtered by content preferences and prohibited imagery is blocked.",
+      "summary": "Avatar upload is public screening, not private backup. Up to 5 MB; content preferences and moderation still apply.",
+      "detailsId": "aurora-context-d3859821-fb04-4b23-8915-b93d19354546"
+    },
+    {
+      "screenId": "7e587304-5e5a-49dc-8bb6-95fc6fab27ca",
+      "elementId": "a3961c1b-4e74-4135-aacc-dc576c0c2eb5",
+      "kind": "concise-copy",
+      "original": "Preview is the oriented first still only. Original immutable bytes and crop metadata are sent; every-frame timing, repeat and transparency remain server-controlled. No local original is rewritten.",
+      "summary": "Preview shows the first still. Original bytes and crop metadata are sent; source timing and transparency remain server-controlled.",
+      "detailsId": "aurora-context-a3961c1b-4e74-4135-aacc-dc576c0c2eb5"
+    },
+    {
+      "screenId": "8300694d-8370-447e-a7d6-45f3b2d83d3f",
+      "elementId": "ac2669db-9bab-46af-9971-039e3fb3085c",
+      "kind": "concise-copy",
+      "original": "GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. This submission is for public community review, not private storage. Use Private cloud for backups. Neither action changes the backpack.",
+      "summary": "Public community review, not backup. GIFs: 1-120 frames, up to 5 MB; single frames are valid. Backpack output is unchanged.",
+      "detailsId": "aurora-context-ac2669db-9bab-46af-9971-039e3fb3085c"
+    },
+    {
+      "screenId": "4366cc03-2847-4136-9271-2e916ec094a8",
+      "elementId": "05ef55f0-6cce-422b-94cb-0643d94a2374",
+      "kind": "concise-copy",
+      "original": "Content-blind counters are indicators, not proof of abuse. No private names, thumbnails, hashes, ciphertext, keys or content scans. Holds affect uploads only; login/download/recovery/deletion remain available. Acknowledge does NOT release. Admin ZIP imports remain exempt.",
+      "summary": "Upload indicators are not proof of abuse. Holds affect uploads, not account access; acknowledging does not release a hold.",
+      "detailsId": "aurora-context-05ef55f0-6cce-422b-94cb-0643d94a2374"
+    },
+    {
+      "screenId": "4366cc03-2847-4136-9271-2e916ec094a8",
+      "elementId": "eb827c3c-2229-4550-ac31-7d065c35b0c6",
+      "kind": "concise-copy",
+      "original": "Current admin/account and captured alert identity/state are checked. Release clears this account's unreleased upload holds, not just this alert row. Acknowledge never releases. The API has no revision-CAS field; no silent stale retry or suspension occurs.",
+      "summary": "Release clears this account’s upload holds, not just this row. Acknowledge and release are separate.",
+      "detailsId": "aurora-context-eb827c3c-2229-4550-ac31-7d065c35b0c6"
+    },
+    {
+      "screenId": "5c3dbf02-7a82-474e-86b8-01504a1c581c",
+      "elementId": "9df034c2-452d-42c4-a302-8e1533e95a98",
+      "kind": "concise-copy",
+      "original": "Only your alerts for this exact direct thread, private organizer question or room change. Messages, history, unread counts, membership, typing, invitations and already delivered inbox/activity links remain intact. Global/category/channel settings still apply.",
+      "summary": "Only alerts for this conversation change. Messages, unread counts, membership and existing activity links remain.",
+      "detailsId": "aurora-context-9df034c2-452d-42c4-a302-8e1533e95a98"
+    },
+    {
+      "screenId": "75932f67-8ef9-4401-ab7e-5e9db631a4bb",
+      "elementId": "efffcefe-16d3-4eb7-a97e-bd6c3afb26fc",
+      "kind": "concise-copy",
+      "original": "Profile display still requires normal profile authorization AND current event authorization for every viewer. Friendship alone does not unlock private-event badges; already seen information cannot be recalled.",
+      "summary": "Badge visibility needs profile and event permission. Friendship alone does not grant private-event access.",
+      "detailsId": "aurora-context-efffcefe-16d3-4eb7-a97e-bd6c3afb26fc"
+    },
+    {
+      "screenId": "a91e0879-d270-493d-97eb-ef21ab0d1a09",
+      "elementId": "5e74a36e-fdd8-4449-8922-a5b0290d4f09",
+      "kind": "concise-copy",
+      "original": "Self-reported/uncertified; not verified attendance, arrival or route completion. Names/descriptions can reveal participation or visits to known places even in a private account record. Collection does not share progress, RSVP or publish to a profile.",
+      "summary": "Private, self-reported collection—not proof of attendance. Names may reveal participation; nothing is published automatically.",
+      "detailsId": "aurora-context-5e74a36e-fdd8-4449-8922-a5b0290d4f09"
+    },
+    {
+      "screenId": "a91e0879-d270-493d-97eb-ef21ab0d1a09",
+      "elementId": "85322c03-27bc-4c27-9e8f-d4891c41bbd6",
+      "kind": "concise-copy",
+      "original": "Server enforces ordered required checkpoints, optional skips, published start/finish and the actual event window. Finish may collect finish/named rewards. Repeating is idempotent, not an automatic retry. Limit: 500 private records.",
+      "summary": "Event order and time rules apply. Repeating is idempotent, not an automatic retry. Up to 500 private records.",
+      "detailsId": "aurora-context-85322c03-27bc-4c27-9e8f-d4891c41bbd6"
+    },
+    {
+      "screenId": "a91e0879-d270-493d-97eb-ef21ab0d1a09",
+      "elementId": "1fcc8b3b-8ddf-4325-819d-3d6238b38df2",
+      "kind": "concise-copy",
+      "original": "Captured event/participation revision and checkpoint only. No GPS, arrival/departure timeline, media bytes or credentials. Profile display requires another explicit choice. Context/conflict resets consent; no queued replay.",
+      "summary": "This checkpoint and revision only. No GPS or media is sent. Context changes reset consent; profile sharing is separate.",
+      "detailsId": "aurora-context-1fcc8b3b-8ddf-4325-819d-3d6238b38df2"
+    },
+    {
+      "screenId": "8d26400b-f71c-42b8-84e7-30fd5ec8cd3f",
+      "elementId": "59c5deeb-2d45-4f74-927a-9f1f0f52a447",
+      "kind": "concise-copy",
+      "original": "This is your deliberate private self-report, not a verified GPS/Bluetooth arrival. No coordinates or public progress are uploaded. Your existing cooperative opt-in, if any, remains unchanged.",
+      "summary": "Private self-report, not verified arrival. No coordinates or public progress are uploaded; existing cooperative opt-in is unchanged.",
+      "detailsId": "aurora-context-59c5deeb-2d45-4f74-927a-9f1f0f52a447"
+    },
+    {
+      "screenId": "39c6589a-1fc1-4699-a3b5-82c9537d308b",
+      "elementId": "4efc475b-27d5-4143-bbf6-cd3c7a800f31",
+      "kind": "concise-copy",
+      "original": "Retained choice: \\(retainedChoice.action.label), \\(retainedChoice.person.displayName), revision \\(retainedChoice.event.revision). A reload never rebases it; select again deliberately.",
+      "summary": "Your captured choice stays fixed after reload. Select again to act on a different revision.",
+      "detailsId": "aurora-context-4efc475b-27d5-4143-bbf6-cd3c7a800f31"
+    },
+    {
+      "screenId": "39c6589a-1fc1-4699-a3b5-82c9537d308b",
+      "elementId": "6ea17520-56ea-4d6d-8c86-3e808c89b1ed",
+      "kind": "concise-copy",
+      "original": "When the ownership receipt contract is advertised but role choice is absent, omission retains co-organizer status. Undeployed ownership receipt/audit controls are not enabled on older live servers.",
+      "summary": "Ownership controls require the advertised contract. Older servers cannot enable undeployed receipt/audit features.",
+      "detailsId": "aurora-context-6ea17520-56ea-4d6d-8c86-3e808c89b1ed"
+    },
+    {
+      "screenId": "47aa7ef1-ac6f-418b-a8c0-696a3d467edb",
+      "elementId": "5b07e301-8e19-48ea-874e-113478d804bf",
+      "kind": "concise-copy",
+      "original": "Only your deliberately typed category/explanation and event/revision identifiers are sent. Nothing copies title, venue, roster, chat, GIF, screenshot, scan or GPS. Server-managed encrypted explanation, not E2EE; retained up to 30 days.",
+      "summary": "Sends only your explanation/category and event IDs. No automatic chat, roster, media or GPS copy. Server-encrypted; up to 30 days.",
+      "detailsId": "aurora-context-5b07e301-8e19-48ea-874e-113478d804bf"
+    },
+    {
+      "screenId": "2b29767c-5501-4079-a5f9-5db260b59582",
+      "elementId": "8d682994-dc26-49f3-948d-9e80cd053cd7",
+      "kind": "concise-copy",
+      "original": "Release never restores progress, prior public badge claims or participation consent. Resolve, report withdrawal, thirty-day expiry and erasure do not automatically release enforcement.",
+      "summary": "Release does not restore progress, badges or consent. Resolving/withdrawing/expiring a report does not release enforcement.",
+      "detailsId": "aurora-context-8d682994-dc26-49f3-948d-9e80cd053cd7"
+    },
+    {
+      "screenId": "bdb0689c-a9cc-4251-85e2-5eab697679b4",
+      "elementId": "a2ae63ed-60be-4f07-ae09-ea6862b06330",
+      "kind": "concise-copy",
+      "original": "Refresh never changes the captured revision/order or selected bytes. A conflict retains this draft; explicitly cancel/reload before choosing a new target. No automatic rebase/retry.",
+      "summary": "Conflicts keep this draft and its captured target. Cancel/reload to choose again; no automatic retry or rebase.",
+      "detailsId": "aurora-context-a2ae63ed-60be-4f07-ae09-ea6862b06330"
+    },
+    {
+      "screenId": "bdb0689c-a9cc-4251-85e2-5eab697679b4",
+      "elementId": "43cb44df-7763-4bcd-8007-01fe7b243168",
+      "kind": "concise-copy",
+      "original": "Caption: \\(caption)\nAlt: \\(alt)\nCaptured asset revision \\(asset?.revision ?? 0), exact \\(captured?.assets.count ?? 0)-image order, explicit permission true. Previous URL retires; cover/order retained, approval resets. Conflicts retain file/descriptions.",
+      "summary": "Review the captured image, descriptions and order. Replacement retires the old URL and resets approval; conflicts keep the draft.",
+      "detailsId": "aurora-context-43cb44df-7763-4bcd-8007-01fe7b243168"
+    },
+    {
+      "screenId": "a1f92d23-af01-46b0-b389-03e07de7746b",
+      "elementId": "6211d322-3599-4366-96c5-6bb21b9a2e02",
+      "kind": "concise-copy",
+      "original": "Default off. Local-only validates the checkpoint but does not publish a claim; it also withdraws any previously shared claim on the server. Its checkpoint remains only in this screen's memory, not a queued replay.",
+      "summary": "Sharing is off by default. Local-only also withdraws any earlier shared claim. No offline replay is queued.",
+      "detailsId": "aurora-context-6211d322-3599-4366-96c5-6bb21b9a2e02"
+    },
+    {
+      "screenId": "a1f92d23-af01-46b0-b389-03e07de7746b",
+      "elementId": "d4a7ffa3-3572-46d7-82e2-b5fd08337d57",
+      "kind": "concise-copy",
+      "original": "Server enforces required checkpoint order, optional skips, published start/finish, current reviewed participation and the exact event time window. A rejection resets sharing consent; no retry is queued.",
+      "summary": "Current participation, checkpoint order and event timing apply. Rejection resets sharing consent; no retry is queued.",
+      "detailsId": "aurora-context-d4a7ffa3-3572-46d7-82e2-b5fd08337d57"
+    },
+    {
+      "screenId": "6c69c5f2-8b2b-409a-9a25-3ccc3eae379e",
+      "elementId": "846f4d4d-079a-4d4c-a04d-4d9124d6991c",
+      "kind": "concise-copy",
+      "original": "Revocation only withdraws the invitation. Owner-only participant removal is separate and can clear shared progress/access. Organizers are protected from participant removal; no global-admin role bypass.",
+      "summary": "Invitation withdrawal is not participant removal. Removal can clear progress/access; protected organizer roles still apply.",
+      "detailsId": "aurora-context-846f4d4d-079a-4d4c-a04d-4d9124d6991c"
+    },
+    {
+      "screenId": "8cc187b9-b085-4da8-b497-3c3e059b03a4",
+      "elementId": "c29ecb05-c672-4723-b1ea-3337730b2af8",
+      "kind": "concise-copy",
+      "original": "Publishing requires exactly one start first and one finish last. Guide lines are organizer-authored, not navigation or a safe-routing promise. Claims/rewards remain self-reported, not certified attendance.",
+      "summary": "Publish needs start first and finish last. Organizer lines are not navigation or a safe-route guarantee.",
+      "detailsId": "aurora-context-c29ecb05-c672-4723-b1ea-3337730b2af8"
+    },
+    {
+      "screenId": "8cc187b9-b085-4da8-b497-3c3e059b03a4",
+      "elementId": "d7772880-481d-4f17-ae79-90cf54c2961b",
+      "kind": "concise-copy",
+      "original": "Apple receives map viewports, typed place searches and chosen start/destination/shaping coordinates for directions. No account token, private event text, participant/device location or GPS track is supplied.",
+      "summary": "Apple receives map/search/routing coordinates, not account tokens, private event text, participant location or GPS tracks.",
+      "detailsId": "aurora-context-d7772880-481d-4f17-ae79-90cf54c2961b"
+    },
+    {
+      "screenId": "8cc187b9-b085-4da8-b497-3c3e059b03a4",
+      "elementId": "2155146c-90db-4e6a-9f90-98049db7c47f",
+      "kind": "concise-copy",
+      "original": "Choose start and destination, Generate route, then choose Drop checkpoint and tap the blue line. To reshape: choose Add draggable route handle, tap the line and drag its handle to the road you want; the route recalculates. Start/finish pins can also be dragged. No latitude/longitude entry is required.",
+      "summary": "Choose start and destination, then Generate route. Tap the line to add a checkpoint or drag a route handle to reshape it.",
+      "detailsId": "aurora-context-2155146c-90db-4e6a-9f90-98049db7c47f"
+    },
+    {
+      "screenId": "8cc187b9-b085-4da8-b497-3c3e059b03a4",
+      "elementId": "82684908-0578-43d9-844b-f06864cd8066",
+      "kind": "concise-copy",
+      "original": "Route preview only—not safe-routing certification, live navigation or a participant track. Saved geometry is simplified within10m and must fit the service's200-point limit; longer complex routes fail explicitly instead of truncating.",
+      "summary": "Preview only, not navigation or attendance proof. Geometry is simplified; over-complex routes fail instead of truncating.",
+      "detailsId": "aurora-context-82684908-0578-43d9-844b-f06864cd8066"
+    },
+    {
+      "screenId": "672ce90d-b842-451a-883a-0c03197ed9c2",
+      "elementId": "9ca30b2e-f780-4370-ab4c-e6b3da5e459d",
+      "kind": "concise-copy",
+      "original": "Server-managed encryption is not end-to-end encryption. Notes expire after 90 days; already viewed public copies cannot be recalled. No chat, venue, GPS, GIF or private-library content is copied.",
+      "summary": "Server-encrypted, not E2EE. Notes expire after 90 days; viewed public copies cannot be recalled. No private content is copied.",
+      "detailsId": "aurora-context-9ca30b2e-f780-4370-ab4c-e6b3da5e459d"
+    },
+    {
+      "screenId": "e4021ecb-8802-4727-80c1-9b92e01a7acf",
+      "elementId": "1f3312f0-b358-426d-a1b7-62b9ee48b27a",
+      "kind": "concise-copy",
+      "original": "Whole container, 960-byte application chunks, C1 04 and sequential matching ACKs. GATT fragmentation is separate. Correct raw-file MD5 is illustrative only; device acceptance is not established. No automatic retries or commit are invented.",
+      "summary": "Research evidence only. Byte checks and illustrative acknowledgements do not establish device acceptance or authorize flashing.",
+      "detailsId": "aurora-context-1f3312f0-b358-426d-a1b7-62b9ee48b27a"
+    },
+    {
+      "screenId": "99b8ad53-d0ee-4748-9b22-31c9897a81eb",
+      "elementId": "73fc8391-32fd-4b21-8371-52a32a46640c",
+      "kind": "concise-copy",
+      "original": "Isolated, paused by default; no display target, phone selection, screen lease, service request or Bluetooth operation. Timing/repeats are the source's; preview is not a verified friend interaction.",
+      "summary": "Paused local preview only. No device operation, screen lease, service request or verified friend interaction.",
+      "detailsId": "aurora-context-73fc8391-32fd-4b21-8371-52a32a46640c"
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-7",
+      "kind": "concise-copy",
+      "original": "Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.",
+      "summary": "Save creates a copy and retains attribution. Removed areas show black on LEDs; inspect animation before sending.",
+      "detailsId": "aurora-context-fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-7"
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-36",
+      "kind": "concise-copy",
+      "original": "Cutout runs on device on supported hardware and may fail for some art. All selected frames are processed individually; no cloud image service is used. Edge cleanup can remove intentional tiny details.",
+      "summary": "On-device cutout can fail or remove intentional details. Frames are processed individually; no cloud image service.",
+      "detailsId": "aurora-context-fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-36"
+    },
+    {
+      "screenId": "d2b5bf78-9f17-4b75-8e0a-4217c35d03ad",
+      "elementId": "8dbafedd-e41a-442c-8edf-9ea849e36f81",
+      "kind": "concise-copy",
+      "original": "Creates a local 94-frame GIF: A-Z, a-z, digits and all printable punctuation in ASCII order at the selected size. Each frame lasts 0.5 seconds. Send it from Library to an expendable slot, or preview it locally first.",
+      "summary": "Creates a local 94-frame alphabet GIF, 0.5 seconds per frame. Preview first; sending to a slot is a separate choice.",
+      "detailsId": "aurora-context-8dbafedd-e41a-442c-8edf-9ea849e36f81"
+    },
+    {
+      "screenId": "11a11eb1-a642-4cdc-b7ed-a0f8aa20b321",
+      "elementId": "1ae0b0ee-1892-4e00-905a-134764c61e13",
+      "kind": "concise-copy",
+      "original": "New/import/open replaces this unsaved editing session only after a supported result is ready. Save an editable project first to retain it. Delete removes only the chosen local project. Phone display, original sources, hardware and cloud are unchanged.",
+      "summary": "Save the editable project before replacing this draft. Delete affects only the selected local project, not sources, hardware or cloud.",
+      "detailsId": "aurora-context-1ae0b0ee-1892-4e00-905a-134764c61e13"
+    },
+    {
+      "screenId": "11a11eb1-a642-4cdc-b7ed-a0f8aa20b321",
+      "elementId": "2b3a5582-18b1-4bea-88b2-81a929c108ae",
+      "kind": "concise-copy",
+      "original": "Current delay \\(store.document.current.centiseconds) cs. 100 cs = 1 second. Source timing is never capped at ten seconds. Source zero delay stays zero in export; preview uses a 1 cs display interval.",
+      "summary": "Delay uses centiseconds: 100 = 1 second. Source timing is preserved; zero-delay preview uses a 1 cs display interval.",
+      "detailsId": "aurora-context-2b3a5582-18b1-4bea-88b2-81a929c108ae"
+    },
+    {
+      "screenId": "01a3f56c-d26b-4030-83db-b4427ce6051e",
+      "elementId": "4f515bad-398d-44f4-8dd4-dfdc3027ba6f",
+      "kind": "concise-copy",
+      "original": "Samples are discarded, never saved, logged, encoded or sent. No peer positions/distances, encounter history, background permission, GPS proof or navigation. Eligibility never records progress or badges.",
+      "summary": "Location samples are discarded. No track, encounter history or GPS proof; eligibility never records progress or badges.",
+      "detailsId": "aurora-context-4f515bad-398d-44f4-8dd4-dfdc3027ba6f"
+    },
+    {
+      "screenId": "01a3f56c-d26b-4030-83db-b4427ce6051e",
+      "elementId": "d36ef437-96e2-4365-b3de-e5249bf951ce",
+      "kind": "concise-copy",
+      "original": "5s freshness, usable <=25m accuracy, 10s dwell inside confidence bounds, hysteresis reset and 60s cooldown. The configured radius is never enlarged. Manual fallback is always separate and uncertified.",
+      "summary": "Eligibility needs fresh, accurate samples and dwell time. The radius is not enlarged; manual fallback stays uncertified.",
+      "detailsId": "aurora-context-d36ef437-96e2-4365-b3de-e5249bf951ce"
+    },
+    {
+      "screenId": "529bfdcc-7a85-4925-bc77-0a01eae7a427",
+      "elementId": "fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-2",
+      "kind": "concise-copy",
+      "original": "Nothing is copied automatically: no message text, GIF/image, place, event, room roster or neighboring history. Only your typed explanation/category and opaque identifiers are retained for moderator review. You may explicitly quote content yourself. No automatic punishment or blocking occurs.",
+      "summary": "Only your explanation/category and opaque IDs are retained for review. No automatic content copy, punishment or block.",
+      "detailsId": "aurora-context-fieldwork-current-529bfdcc-7a85-4925-bc77-0a01eae7a427-2"
+    },
+    {
+      "screenId": "b343f4fe-fdcb-4216-ab5d-03dd402b358a",
+      "elementId": "f1b13993-3a26-4454-a6db-0fe31e619464",
+      "kind": "concise-copy",
+      "original": "Provider acceptance is not proof of on-device delivery. Focus/OS settings still apply. No keys, models, credentials, developer profiles or entitlements are provisioned by this screen.",
+      "summary": "Provider acceptance is not on-device delivery. OS/Focus settings still apply; this screen provisions no credentials.",
+      "detailsId": "aurora-context-f1b13993-3a26-4454-a6db-0fe31e619464"
+    },
+    {
+      "screenId": "b868f4e7-5142-4ef4-8851-16b3b1879bbd",
+      "elementId": "bfa3ee51-102d-4d24-8f7d-4637249b13d3",
+      "kind": "concise-copy",
+      "original": "Fresh primary account authentication within ten minutes is required by the server. Recovery does not establish app identity or grant private content access. It works without a device proof so a lost key cannot permanently block recovery.",
+      "summary": "Recent primary sign-in is required. Recovery does not grant private content access or establish app identity.",
+      "detailsId": "aurora-context-bfa3ee51-102d-4d24-8f7d-4637249b13d3"
+    },
+    {
+      "screenId": "b868f4e7-5142-4ef4-8851-16b3b1879bbd",
+      "elementId": "99e6ed3e-e5cf-432c-81dd-27b70def80ad",
+      "kind": "concise-copy",
+      "original": "Revocation invalidates this public-key binding and its pending challenges. New use requires a new ceremony/key, never attestation replay. Other accounts' keys are not accessible, including to admins.",
+      "summary": "Revokes this key and pending challenges. New use needs a new key ceremony; no access to another account’s keys.",
+      "detailsId": "aurora-context-99e6ed3e-e5cf-432c-81dd-27b70def80ad"
+    },
+    {
+      "screenId": "41370e50-cad2-4cbd-9797-f631ddbef323",
+      "elementId": "3a6d0719-88c8-41bb-9097-136ea795436d",
+      "kind": "concise-copy",
+      "original": "These are separate published IDs, not private playlist IDs. No all-shares management endpoint is documented; reopening does not invent a server share list. Revoke below removes all snapshots, including older ones.",
+      "summary": "Published snapshots have separate IDs. Revoke removes all snapshots, including older ones; no share list is invented.",
+      "detailsId": "aurora-context-3a6d0719-88c8-41bb-9097-136ea795436d"
+    },
+    {
+      "screenId": "41370e50-cad2-4cbd-9797-f631ddbef323",
+      "elementId": "2c6ac57c-3253-48bf-bcb1-a5697b8365ba",
+      "kind": "concise-copy",
+      "original": "No background task, server job, catch-up execution, physical transport or synchronization. Opening the main PHONE leaves this editor and disarms future occurrences. Its already approved current window can finish; further windows require explicit rearm. Leaving/backgrounding/account changes disarm. Repeated local-clock minutes do not retrigger within this arming session.",
+      "summary": "Foreground schedule only. Leaving, backgrounding or account changes disarm future windows; missed events never replay.",
+      "detailsId": "aurora-context-2c6ac57c-3253-48bf-bcb1-a5697b8365ba"
+    },
+    {
+      "screenId": "41370e50-cad2-4cbd-9797-f631ddbef323",
+      "elementId": "3b0db661-0c08-4aac-a18a-8538f5f8df32",
+      "kind": "concise-copy",
+      "original": "Source preview ready / \\(request.content.order.rawValue), capped at30 seconds. Isolated playback and separately consented main-PHONE playback are available; no LED transport or physical sync.",
+      "summary": "Source preview is capped at 30 seconds. Main-phone playback needs separate consent; no LED transport or physical sync.",
+      "detailsId": "aurora-context-3b0db661-0c08-4aac-a18a-8538f5f8df32"
+    },
+    {
+      "screenId": "41370e50-cad2-4cbd-9797-f631ddbef323",
+      "elementId": "eb0c07ba-6c74-438d-b8f0-a53615ca9bc8",
+      "kind": "concise-copy",
+      "original": "Private title, notes and schedule are not sent in the publish body. Revocation does not recall copies. Published snapshot IDs alone may be used by the later authorized chat-card picker; private playlist IDs must never be chat references.",
+      "summary": "Publishing excludes private title, notes and schedule. Revocation cannot recall copies; chat uses published snapshots only.",
+      "detailsId": "aurora-context-eb0c07ba-6c74-438d-b8f0-a53615ca9bc8"
+    },
+    {
+      "screenId": "3d3ef789-9822-43dd-aec6-6faf3e158351",
+      "elementId": "4fedc790-e17c-4ba7-8cc3-dd3ff0434eb2",
+      "kind": "concise-copy",
+      "original": "Description/create capability unavailable (key may be absent). No empty-description success is implied. Local stop, block/remove and permitted owner receipts/withdrawal are independent.",
+      "summary": "Reporting is unavailable. Stop, block/remove and permitted owner receipts/withdrawal remain independent.",
+      "detailsId": "aurora-context-4fedc790-e17c-4ba7-8cc3-dd3ff0434eb2"
+    },
+    {
+      "screenId": "0e28c53f-8abd-47a0-a06a-46678dcd74a5",
+      "elementId": "59cdd04d-c671-4c2b-85c2-3d92bc54838c",
+      "kind": "concise-copy",
+      "original": "WITHDRAWAL-ONLY MODE — description/key capability unavailable. Metadata receipts, including expired cases awaiting cleanup, remain manageable. This is not a successful empty-description list.",
+      "summary": "Withdrawal-only mode. Descriptions are unavailable, not empty; owned metadata receipts remain manageable.",
+      "detailsId": "aurora-context-59cdd04d-c671-4c2b-85c2-3d92bc54838c"
+    },
+    {
+      "screenId": "0e28c53f-8abd-47a0-a06a-46678dcd74a5",
+      "elementId": "251b7203-a3e3-449b-b6e4-1918f1608fda",
+      "kind": "concise-copy",
+      "original": "Withdrawal needs no current game/friendship/event/profile access and works for known owned cases after expiry/key loss when advertised. Only current-account receipts are used; no other account's data is adopted.",
+      "summary": "Only current-account cases can be withdrawn, including supported expired/key-loss cases. No other account’s data is adopted.",
+      "detailsId": "aurora-context-251b7203-a3e3-449b-b6e4-1918f1608fda"
+    },
+    {
+      "screenId": "0e28c53f-8abd-47a0-a06a-46678dcd74a5",
+      "elementId": "0ceaba03-c397-45ab-8887-0dc484fd0b2a",
+      "kind": "concise-copy",
+      "original": "Limits: 100/account, 5000 global; 20 writes/120 reads per minute, 30-day description reads, at most 500 cleanup/pass. Erasure removes cases by/about an account; cleanup is not forensic backup erasure.",
+      "summary": "Descriptions are retained up to 30 days. Account erasure removes related cases, not forensic backup copies.",
+      "detailsId": "aurora-context-0ceaba03-c397-45ab-8887-0dc484fd0b2a"
+    },
+    {
+      "screenId": "5b96070c-5460-43af-a7eb-5a9d7ddb9918",
+      "elementId": "7a720e73-f393-454e-a9b3-59de4672053f",
+      "kind": "concise-copy",
+      "original": "Brush updates are coalesced, not queued per touch. Preview stops and attempts to restore stored playback when you leave this editor or background the app. It does not save or overwrite a GIF slot.",
+      "summary": "Preview does not save a slot. Leaving/backgrounding stops preview and attempts to restore stored playback.",
+      "detailsId": "aurora-context-7a720e73-f393-454e-a9b3-59de4672053f"
+    },
+    {
+      "screenId": "c7717add-fffa-4a9c-8926-1919a95aeff6",
+      "elementId": "b79fb7f4-69a3-480a-8dc4-f99f184e8a5b",
+      "kind": "concise-copy",
+      "original": "Loop on backpack sends the ordered slot list once and continues without the phone. The per-entry seconds above are for foreground timed sequences only. Autonomous dwell uses each GIF/program's already stored duration; editing this list never silently overwrites backpack artwork.",
+      "summary": "Backpack loop uses stored GIF durations, not these foreground timing values. Editing the list does not overwrite artwork.",
+      "detailsId": "aurora-context-b79fb7f4-69a3-480a-8dc4-f99f184e8a5b"
+    },
+    {
+      "screenId": "946f6716-0826-42ba-995b-2cb7cbad63a7",
+      "elementId": "25ca9fce-ccf0-443e-abb8-9ff2747fee91",
+      "kind": "concise-copy",
+      "original": "Distinct from isolated preview. Durable initial original and exclusive PHONE ownership required. Runs only until this fixed source/cue lease ends (at most30 seconds); longer playlists require a new explicit source request. No hidden renewal, hardware playback, background execution or guaranteed sync.",
+      "summary": "Main-phone output needs separate consent and exclusive ownership. Fixed lease: up to 30 seconds; no hidden renewal or physical sync.",
+      "detailsId": "aurora-context-25ca9fce-ccf0-443e-abb8-9ff2747fee91"
+    },
+    {
+      "screenId": "9dc6f37c-e18b-4d4e-b20f-9052de805cc4",
+      "elementId": "e101b8b9-52f8-4094-85cf-6392dd98f974",
+      "kind": "concise-copy",
+      "original": "No global Phone/Backpack selection, original journal, hardware or library is changed. Foreground only; fixed 30-second source lease, never silently renewed. No physical sync, background execution or safety monitoring.",
+      "summary": "Isolated foreground preview only. No library/device selection changes; the 30-second source lease never renews silently.",
+      "detailsId": "aurora-context-e101b8b9-52f8-4094-85cf-6392dd98f974"
+    },
+    {
+      "screenId": "9dc6f37c-e18b-4d4e-b20f-9052de805cc4",
+      "elementId": "30ee8a7b-ae4b-4de6-a639-840a6c803f7f",
+      "kind": "concise-copy",
+      "original": "Explicit Play may override saved automatic-animation/Reduce Motion policy; local animation and data-saving controls still apply. Automatic next-GIF fetching requires the saved AND local automatic policy. GIF frames/repeats are not rewritten; source entry durations do not prove frame synchronization.",
+      "summary": "Explicit Play can animate despite saved auto-play policy. Local data/animation controls still apply; source frames stay unchanged.",
+      "detailsId": "aurora-context-30ee8a7b-ae4b-4de6-a639-840a6c803f7f"
+    },
+    {
+      "screenId": "63815107-e8dd-4a9b-bb5d-29fc1c030d63",
+      "elementId": "0b3e8553-618e-4f69-8825-253aaeba8802",
+      "kind": "concise-copy",
+      "original": "Calculation uses your explicit point/time zone and device clock, not weather or continuous GPS. Polar/unavailable cases have no guessed event. Missed/background events never replay. PHONE presentation expires; brightness is separately optional, capped and reversible.",
+      "summary": "Uses your chosen point/time zone and device clock, not weather or continuous GPS. Missed events never replay.",
+      "detailsId": "aurora-context-0b3e8553-618e-4f69-8825-253aaeba8802"
+    },
+    {
+      "screenId": "63815107-e8dd-4a9b-bb5d-29fc1c030d63",
+      "elementId": "2dbd8a7e-6ef1-43a3-949c-ce9244ae82cb",
+      "kind": "concise-copy",
+      "original": "Stop SOLO and reload to edit/save. Recaps contain only approximate total distance and selected local unlock names, not coordinates, dates of encounters, maps, route or automatic sharing.",
+      "summary": "Stop and reload to edit. Recaps contain approximate distance and local unlock names, not coordinates or encounter history.",
+      "detailsId": "aurora-context-2dbd8a7e-6ef1-43a3-949c-ce9244ae82cb"
+    },
+    {
+      "screenId": "2b40b99a-eb17-4ca6-86a8-0685ab3cf42a",
+      "elementId": "a9146e09-77a6-439a-946b-4ca7570fbf31",
+      "kind": "concise-copy",
+      "original": "No weather/API/model or continuous GPS dependency. Device clock and explicitly supplied point/time zone only. Schedules are foreground-only, default off and never replay missed events.",
+      "summary": "Foreground schedule, off by default. Uses your chosen point/time zone; no weather service, continuous GPS or missed-event replay.",
+      "detailsId": "aurora-context-a9146e09-77a6-439a-946b-4ca7570fbf31"
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-53",
+      "kind": "concise-copy",
+      "original": "An explicitly started GPS session can continue with Always location and Background GPS enabled. Other screens refresh on allowed callbacks; iOS suspension or force-quit can stop updates.",
+      "summary": "Explicit GPS sessions need Always permission and Background GPS. iOS suspension or force-quit can stop updates.",
+      "detailsId": "aurora-context-fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-53"
+    },
+    {
+      "screenId": "8b2fc823-69d7-4a87-b522-aefca5c49027",
+      "elementId": "fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-54",
+      "kind": "concise-copy",
+      "original": "Weather is opportunistic, marked STALE after five minutes and NO DATA after fifteen. Stop attempts playback restoration; a lost connection can prevent it. Operate controls only while stationary.",
+      "summary": "Weather becomes stale after 5 minutes, unavailable after 15. Stop may not restore playback if disconnected. Use controls while stationary.",
+      "detailsId": "aurora-context-fieldwork-current-8b2fc823-69d7-4a87-b522-aefca5c49027-54"
+    },
+    {
+      "screenId": "b89cb40e-065f-4df3-8812-b7112acfe5b5",
+      "elementId": "70f2d492-82eb-454e-820b-e97052495023",
+      "kind": "concise-copy",
+      "original": "Includes local GIFs, attribution, playlists and preferences, including the optional catalog URL. Import merges media/playlists without overwriting existing files or applying connection permissions. Passwords, catalog sessions, deletion receipts and location history are not exported. A backup does not read artwork out of the backpack.",
+      "summary": "Backup includes local media and settings, not passwords, sessions or location history. Import merges; it never reads artwork from the backpack.",
+      "detailsId": "aurora-context-70f2d492-82eb-454e-820b-e97052495023"
+    },
+    {
+      "screenId": "f3394de7-dd8e-4c31-97b5-487fab5f8b3e",
+      "elementId": "a34cca0f-df35-4e98-8b7f-41514c758699",
+      "kind": "confirmation-toggle",
+      "actionIds": [
+        "301b32c0-e61a-40da-bf5c-12ff1b70429c"
+      ],
+      "defaultOn": false
+    },
+    {
+      "screenId": "d0ccd8f8-4894-49cf-853f-a194bae084ed",
+      "elementId": "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-41",
+      "kind": "confirmation-toggle",
+      "actionIds": [
+        "fieldwork-current-d0ccd8f8-4894-49cf-853f-a194bae084ed-43"
+      ],
+      "defaultOn": false
+    },
+    {
+      "screenId": "b225ab55-09ca-4573-ae7d-e64b97575310",
+      "elementId": "ad631c8e-2476-4bae-b274-b26e0df234db",
+      "kind": "confirmation-toggle",
+      "actionIds": [
+        "234fb28e-6d37-4377-aa9a-04b4d73f35da"
+      ],
+      "defaultOn": false
+    },
+    {
+      "screenId": "74a0b570-6117-456b-bec1-982b75f29c55",
+      "elementId": "35531632-cd52-4626-a9ee-a34869160ade",
+      "kind": "confirmation-toggle",
+      "actionIds": [
+        "1dfd7834-df5d-47c2-aa6b-6826ef7b0996"
+      ],
+      "defaultOn": false
+    },
+    {
+      "screenId": "b868f4e7-5142-4ef4-8851-16b3b1879bbd",
+      "elementId": "bf7fb1aa-dc58-471d-9f1c-e5e1f0208d8f",
+      "kind": "confirmation-toggle",
+      "actionIds": [
+        "d65278e7-ee05-4dc8-9e9a-cc7ea7b9f719"
+      ],
+      "defaultOn": false
+    },
+    {
+      "screenId": "1393bc4c-2dae-4fb3-b5c2-a502eea0e85d",
+      "elementId": "fieldwork-1393bc4c-2dae-4fb3-b5c2-a502eea0e85d-art-0",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "1393bc4c-2dae-4fb3-b5c2-a502eea0e85d",
+      "elementId": "fieldwork-1393bc4c-2dae-4fb3-b5c2-a502eea0e85d-art-1",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "1393bc4c-2dae-4fb3-b5c2-a502eea0e85d",
+      "elementId": "fieldwork-1393bc4c-2dae-4fb3-b5c2-a502eea0e85d-art-2",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "1393bc4c-2dae-4fb3-b5c2-a502eea0e85d",
+      "elementId": "fieldwork-1393bc4c-2dae-4fb3-b5c2-a502eea0e85d-art-3",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "623d88b0-2b3c-4411-8d5c-8ea660932bc3",
+      "elementId": "bd32cae9-f945-46cc-b3de-017f0d2e5a3d",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "d6222d22-6adf-45be-ac5b-7ae4f61f8a92",
+      "elementId": "d28df29f-4d57-4cef-bfb5-000ca9c79e92",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "23d014b2-090d-42da-886b-d73510a0b41d",
+      "elementId": "e153ef79-471d-49bd-9538-cba6e8a8a284",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "0bfb0b99-78af-439f-861d-5834107736af",
+      "elementId": "e593c23d-a4b7-487f-8588-d45b78c0ad3b",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "68971277-6ab2-43b2-ac10-c9b53299417a",
+      "elementId": "f3a48a57-2048-4fa5-b649-1beba0c67bd7",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "c56fced3-f08f-40b3-8f59-75ec1004ccbe",
+      "elementId": "bd8ab296-f84e-4f33-ac84-ec2ab774af35",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "11a11eb1-a642-4cdc-b7ed-a0f8aa20b321",
+      "elementId": "0544431a-7e17-4d03-adb7-1d002e55080c",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "9ab68ea6-6386-4987-9dc9-32335aff1671",
+      "elementId": "4921fe22-b620-4064-b69e-14c53d023ca4",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "41370e50-cad2-4cbd-9797-f631ddbef323",
+      "elementId": "35d104f6-0710-406f-8c36-41dff3c13e35",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "38aa6fa2-4df0-419b-b904-2006b2de0092",
+      "elementId": "d1d4d45e-abca-47d6-acc0-c1dde4b67b8b",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "38aa6fa2-4df0-419b-b904-2006b2de0092",
+      "elementId": "348231d7-63b3-409d-8358-9aed853908a6",
+      "kind": "artwork-only-action"
+    },
+    {
+      "screenId": "9dc6f37c-e18b-4d4e-b20f-9052de805cc4",
+      "elementId": "787e5aa8-23c2-486f-b0b7-5ac560e65f44",
+      "kind": "hidden-artwork-caption"
+    },
+    {
+      "screenId": "e3f8647a-2b3f-4ca7-94be-391135d988d4",
+      "elementId": "26b532a5-6c91-494b-9c01-a46fcdfd7e22",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "8300694d-8370-447e-a7d6-45f3b2d83d3f",
+      "elementId": "d4d9c371-ec28-4b3f-9785-8bcc2f16dd60",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "251f412c-f3d5-4e60-abaf-beb5e0211b18",
+      "elementId": "fieldwork-current-251f412c-f3d5-4e60-abaf-beb5e0211b18-11",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "19389cc0-6569-4e03-b9fb-3de0232e2898",
+      "elementId": "66bc593c-30d6-4c66-bdc3-7d15a3240e13",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "11a11eb1-a642-4cdc-b7ed-a0f8aa20b321",
+      "elementId": "9f013607-26b8-4ed5-a462-ae212c6eaa1a",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "5b96070c-5460-43af-a7eb-5a9d7ddb9918",
+      "elementId": "e77cf5c1-8d42-44e4-b15e-19af1b1a4a8f",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "8fd6e9c1-d75d-4b2b-8f04-da467b1fdfb7",
+      "elementId": "9bc0dc75-026c-4caf-a22f-2669bb58d7b8",
+      "kind": "hidden-artwork-name-input"
+    },
+    {
+      "screenId": "d75d2398-d8c6-4842-a33e-ef5babadc21d",
+      "elementId": "659aaa16-4ae1-45ce-b11e-c717c56f421a",
+      "kind": "hidden-artwork-name-input"
+    }
+  ],
+  "artworkNameInputsRemoved": 8
+}

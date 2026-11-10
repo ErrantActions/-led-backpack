@@ -32,7 +32,8 @@ struct ChatFixedPinPicker: View {
                 } else {
                     Image(systemName: "mappin.and.ellipse").font(.system(size: 52)).foregroundStyle(Aurora.mint)
                     Text("Share a place, not your location").font(.title2.bold())
-                    Text("Opening this page contacts Apple Maps. You manually place a fixed pin; no GPS, location tracking, directions or automatic sharing. The selected pin is sent only after the chat's Send action.")
+                    InteractionExplanation("Apple Maps opens here. Place a fixed pin manually; nothing shares until Send. No GPS tracking.",
+                        details: "Opening this page contacts Apple Maps. You manually place a fixed pin; no GPS, location tracking, directions or automatic sharing. The selected pin is sent only after the chat's Send action.")
                     Button("Allow Apple Maps on this page") { consent = true }.buttonStyle(.borderedProminent)
                 }
                 if let failure { Text(failure).foregroundStyle(.orange) }
