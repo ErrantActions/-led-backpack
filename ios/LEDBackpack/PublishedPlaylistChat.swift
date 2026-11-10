@@ -130,10 +130,9 @@ struct NativeChatPlaylistViewer: View {
                     ForEach(Array(manifest.entries.enumerated()), id: \.offset) { _, entry in
                         if entry.available, let item = entry.item {
                             VStack {
-                                Text(item.title)
                                 GIFThumbnail(key: "chat-playlist:\(client.instanceID):\(generation):\(item.id):\(previewItem == item.id)", cache: false) {
                                     try await client.chatPlaylistMedia(reference, itemID: item.id, animated: previewItem == item.id)
-                                }.frame(height: 140)
+                                }.frame(height: 140).accessibilityLabel(item.title)
                                 Button(previewItem == item.id ? "Pause preview" : "Preview this entry for up to 10 seconds") {
                                     if previewItem == item.id { previewItem = nil; previewUntil = nil }
                                     else { previewItem = item.id; previewUntil = Date().addingTimeInterval(min(10, Double(entry.durationMilliseconds) / 1000)) }

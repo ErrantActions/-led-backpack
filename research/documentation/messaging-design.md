@@ -79,9 +79,14 @@ The sample saved bubbles illustrate server persistence, not recipient receipts.
   shows artwork selection and explanatory action previews, not replacement API
   implementations. Do not remove existing supported native actions on integration.
 
-This pass adds no API, native Swift changes or deployment. An implementation
-needs actual keyboard, Dynamic Type, VoiceOver, native Duo regions and transport
-tests on supported Apple hardware. Browser split/fold geometry is not that proof.
+The standalone prototype added no API, native Swift changes or deployment.
+The subsequent native integration now uses these interactions in the existing
+SwiftUI inbox/conversation controllers, plus scoped process-memory drafts and
+local typing expiry. The exact native candidate has separate Mac CI and UI
+screenshot gates; the browser proof below does not certify it. Actual keyboard,
+Dynamic Type, VoiceOver and native Duo regions still need supported Apple
+hardware acceptance. Wide flat windows show both panes; active native divisions
+retain the complete navigation task rather than copying the prototype fold band.
 
 ## Browser verification
 
