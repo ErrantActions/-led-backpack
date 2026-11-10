@@ -29,8 +29,12 @@ unavailable. The owner accepted incomplete simulator UI validation for this
 internal beta, not production release certification. Source `3fa17cb` compiled
 and ran 1,088 unit tests with zero failures and two explicit skips. Two of 16
 UI tests failed: unsigned-simulator Keychain access and simulator app termination.
-The protected signed archive/upload is still required; production Keychain
-storage and signing keys are unchanged.
+The protected signed archive/upload succeeded as **0.1.0 (12)** in
+[run 42876610552](https://github.com/ErrantActions/-led-backpack/actions/runs/42876610552).
+Production Keychain storage and signing keys are unchanged; temporary signing
+assets were cleaned up. Apple processing/tester availability are not verified.
+Future TestFlight uploads are build/sign/upload only; full simulator regressions
+are separate, not a routine beta prerequisite.
 
 ### TestFlight 0.1.0 (11)
 

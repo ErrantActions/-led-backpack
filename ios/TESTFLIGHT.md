@@ -4,6 +4,24 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified Aurora build 12 upload - 2026-11-10
+
+Version **0.1.0 (12)** was signed, archived, exported and uploaded in
+[run 42876610552](https://github.com/ErrantActions/-led-backpack/actions/runs/42876610552).
+Release source `4d6fabc` includes the full native Aurora integration, motion,
+artwork-only GIF surfaces, scoped confirmation toggles and Messenger-inspired
+inbox/thread. Protected approval and temporary signing cleanup succeeded.
+No backend deployment or signing-key change was needed.
+
+The owner accepted incomplete simulator UI validation for this internal beta.
+Native source `3fa17cb` compiled and ran 1,088 unit tests with 0 failures and
+2 explicit skips. Its 16 UI tests had 2 failures: unsigned simulator Keychain entitlement (-34018)
+and app termination. Full simulator, physical-device and authenticated live
+messaging acceptance are not certified. Production Keychain remains fail-closed.
+
+Fastlane skipped waiting for Apple processing. **Apple processing and internal
+tester availability remain separate, unverified checkpoints.**
+
 ## Verified build10 upload - 2026-11-08
 
 Version **0.1.0 build10** was signed, archived, exported and successfully uploaded
@@ -83,19 +101,12 @@ No encryption documentation was fabricated or uploaded.
 
 The workflow is manual, main-branch-only, environment-protected, and requires
 an explicit upload confirmation. It does not submit an App Store release or
-request external beta distribution. First get a passing regular
-**LED Backpack iOS** or **Consolidated native recovery validation** workflow
-whose complete app/test/package/project/privacy/entitlement and validation inputs
-match the release commit exactly. A recovery-branch pass is eligible only after
-that exact source is promoted to main; uncommitted firmware research is excluded.
-
- A lightweight Linux gate reuses
-a successful push/manual CI run only when the app, tests, protocol
-package, project, Info.plist and native CI workflow are unchanged. Documentation
-and signing-only changes do not rebuild the simulator app. TestFlight still
-creates the required signed device archive, but never repeats simulator tests.
-Keep the native workflow's path filters and the release gate's protected paths
-in sync when adding build inputs.
+request external beta distribution. Internal beta uploads build, sign, archive,
+export and upload the committed source. They do not run simulator tests or
+require a full passing regression suite. Release-input/toolchain checks,
+protected approval, the signed device build and signing cleanup remain required.
+Focused/full native validation is a separate workflow, not a routine TestFlight
+prerequisite. Do not repeatedly run broad suites merely to upload an internal beta.
 
 Both workflows use the documented `xcode-27` hosted image and exactly
 `/Applications/Xcode_27.1.app`. They verify the iOS 27.1 SDK and fail early
@@ -103,19 +114,8 @@ instead of silently falling back to an older SDK. Native validation uses the
 iOS 27.1 iPhone Duo simulator. Review the exported layout screenshots before
 releasing; simulator/rotation checks alone do not prove physical fold behavior.
 
-## Owner-accepted internal beta exception
-
-Full passing native validation remains the default. For an explicitly accepted
-internal beta, `beta_compile_run` can identify a completed native-recovery run
-whose app and both test bundles compiled successfully. The gate still compares
-every protected native input with the release source. It records incomplete
-simulator validation as a warning, never as a passing suite.
-
-This does not bypass the protected `testflight` approval, use different signing
-keys, skip the signed device archive, distribute externally or submit an App
-Store release. Do not start another broad simulator run solely to upload such
-an owner-accepted beta. Unsigned simulator Keychain entitlement failures do not
-authorize replacing production Keychain storage or silently ignoring its errors.
+Unsigned simulator Keychain entitlement failures do not authorize replacing
+production Keychain storage or silently ignoring its errors.
 
 ## 1. Register the app with Apple
 
@@ -280,7 +280,7 @@ not into committed source.
 
 The workflow:
 
-- Verifies a passing native CI result before allocating a macOS release runner.
+- Builds the signed device archive directly, without a simulator/regression prerequisite.
 - Creates a temporary keychain, installs the supplied signing identity/profile.
 - Archives and exports a signed IPA for the configured team and bundle ID.
 - Uploads to App Store Connect using Fastlane/API-key authentication.

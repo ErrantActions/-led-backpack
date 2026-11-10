@@ -58,9 +58,12 @@ The native Aurora integration now applies shared adaptive colors, surfaces,
 feature cards and lifecycle-aware motion throughout the app, with concise
 details, scoped confirmation toggles and artwork-only GIF surfaces. Messaging
 uses an avatar-led inbox, chronological supported contexts, bubbles, anchored
-composer and account-scoped in-memory drafts. This source is a release candidate;
-native CI, screenshot review and the protected TestFlight workflow are separate
-gates. The browser atlas's geometry results are not native acceptance evidence.
+composer and account-scoped in-memory drafts. The integration was uploaded as
+**0.1.0 (12)** through the protected internal TestFlight workflow, with incomplete
+simulator UI validation explicitly accepted by the owner. Apple processing and
+tester availability are not verified. TestFlight uploads are build/sign/upload
+only; broad regression validation remains separate. The browser atlas's geometry
+results are not native acceptance evidence.
 
 ## Status and important limits
 

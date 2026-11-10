@@ -12,71 +12,14 @@ on:
         type: boolean
         required: true
         default: false
-      beta_compile_run:
-        description: Optional owner-accepted internal beta exception; native-recovery run with matching source and successful app/test compilation. Empty requires full passing CI.
-        type: string
-        required: false
-        default: ""
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: led-backpack-testflight
   cancel-in-progress: false
 jobs:
-  verified-ci:
-    if: github.ref == 'refs/heads/main' && inputs.confirm_upload
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify native source for internal upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BETA_COMPILE_RUN: ${{ inputs.beta_compile_run }}
-        run: |
-          set -euo pipefail
-          PASSED_SHA=""
-          if [[ -n "$BETA_COMPILE_RUN" ]]; then
-            [[ "$BETA_COMPILE_RUN" =~ ^[1-9][0-9]*$ ]] || { echo "::error::Invalid beta compilation run."; exit 1; }
-            RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BETA_COMPILE_RUN")
-            jq -e '.status == "completed" and .path == ".github/workflows/native-recovery.yml" and (.event == "push" or .event == "workflow_dispatch")' <<< "$RUN" >/dev/null
-            PASSED_SHA=$(jq -r '.head_sha' <<< "$RUN")
-            COMPILED=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BETA_COMPILE_RUN/jobs?per_page=100" --jq '[.jobs[].steps[] | select(.name == "Compile app and both test bundles unsigned" and .conclusion == "success")] | length')
-            [[ "$COMPILED" -gt 0 ]] || { echo "::error::The selected beta run did not compile the app and both test bundles."; exit 1; }
-          else
-          for WORKFLOW in native-recovery.yml ios.yml; do
-            while read -r CANDIDATE; do
-              [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]] || continue
-              git fetch --no-tags --depth=1 origin "$CANDIDATE"
-              if git diff --quiet "$CANDIDATE" "$GITHUB_SHA" -- \
-                ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements \
-                .github/workflows/ios.yml .github/workflows/native-recovery.yml; then
-                PASSED_SHA="$CANDIDATE"
-                break
-              fi
-            done < <(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$WORKFLOW/runs?status=success&per_page=20" --jq '.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch") | .head_sha')
-            [[ -z "$PASSED_SHA" ]] || break
-          done
-          fi
-          if [[ ! "$PASSED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::No successful native validation matches this exact release source and validation inputs."
-            exit 1
-          fi
-          git fetch --no-tags --depth=1 origin "$PASSED_SHA"
-          if ! git diff --quiet "$PASSED_SHA" "$GITHUB_SHA" -- \
-            ios/LEDBackpack ios/LEDBackpackTests ios/LEDBackpackUITests ios/Packages ios/project.yml ios/Info.plist ios/LEDBackpack.entitlements .github/workflows/ios.yml .github/workflows/native-recovery.yml; then
-            echo "::error::App source or native validation inputs changed. Wait for LED Backpack iOS to pass before uploading."
-            exit 1
-          fi
-          if [[ -n "$BETA_COMPILE_RUN" ]]; then
-            echo "::warning::Owner-accepted internal beta exception: compilation passed; complete simulator validation is NOT certified."
-            echo "Internal beta exception: compiled source $PASSED_SHA from run $BETA_COMPILE_RUN. Full simulator validation was explicitly waived, not passed. Protected signing approval, signed archive and internal-only upload remain required." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Reusing successful native validation from $PASSED_SHA. No simulator tests repeated." >> "$GITHUB_STEP_SUMMARY"
-          fi
   internal-upload:
-    needs: verified-ci
+    if: github.ref == 'refs/heads/main' && inputs.confirm_upload
     environment: testflight
     runs-on: xcode-27
     timeout-minutes: 60

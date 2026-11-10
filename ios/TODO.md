@@ -61,7 +61,11 @@ Older checkpoints below are historical evidence, not the current release board.
   distinct system/privacy/destructive boundaries, not repeated intent dialogs.
 - [ ] Reconcile the remaining historical roadmap against current software proof.
 - [x] Full release-eligible native source gate atbd1cf7d, recorded above.
-- [ ] Next authorized beta promotion; build11 remains the last verified upload.
+- [x] Aurora inputs promoted as `4d6fabc`; protected run 42876610552 signed,
+  archived, exported and uploaded 0.1.0 (12), then removed temporary signing assets.
+  The owner explicitly waived incomplete simulator UI validation, not production
+  acceptance. Future TestFlight uploads are build/sign/upload only, with full
+  regression workflows kept separate.
 - [x] Backend v2 strict build and full653tests/0fail/0skip locally. An initial
   Windows avatar-fixture directory-rename error passed focused and full reruns.
 - [ ] Preservation-checked backend v2 deployment and public recovery/revocation
