@@ -2,6 +2,11 @@
 
 ## Essentials-first workflows
 
+Uploaded as **0.1.0 (14)** in
+[protected run 42900232408](https://github.com/ErrantActions/-led-backpack/actions/runs/42900232408).
+Apple accepted the binary; signing cleanup succeeded. App Store Connect shows
+**Processing**, not yet verified internal-tester availability.
+
 The invitation-first Events pattern now extends through the native app:
 choose the task, complete its essentials, then open optional tools as needed.
 Primary actions, meaningful progress/errors and explicit modal exits stay easy
@@ -25,7 +30,24 @@ One focused integrated check is available with
 `gh workflow run ios.yml --ref <branch> -f validation=processes`: app compilation
 and three UI walkthroughs only, without the portable/full native suites.
 The protected TestFlight workflow remains build/sign/upload only.
-This source pass is not yet a claim of compilation or upload success.
+
+Native inputs `ca200ec` compiled with Xcode/iOS SDK 27.1. The app-wide
+selection/cancellation/hardware-gate and editor/settings walkthroughs passed in
+[run 42891341051](https://github.com/ErrantActions/-led-backpack/actions/runs/42891341051).
+Its Live scenario initially used a stale selector. After a test-only correction,
+the shared simulator's test runner crashed before executing the isolated retry.
+The owner requested another Live-only check, which passed in
+[run 42896938342](https://github.com/ErrantActions/-led-backpack/actions/runs/42896938342),
+including draft retention, modal exits and the connection gate. That run used a
+fresh simulator and successfully removed only that simulator afterward.
+Use `-f validation=live` for this single scenario rather than repeating passing
+process checks. Native captures were reviewed; physical fold/orientation,
+BLE/GPS and authenticated provider acceptance remain separate.
+
+Release source `2a6dea5` has the same native app inputs as `ca200ec`.
+Three distinct focused UI scenarios passed across the validation runs; the
+portable and full native suites were not repeated. The one build-14 release
+ran no simulator suites and deployed no backend changes.
 
 ## Invitation-first events
 

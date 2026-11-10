@@ -15,10 +15,14 @@ Older checkpoints below are historical evidence, not the current release board.
 - [x] Extend essentials-first native workflows across library/import, editors,
   phone/hardware playback, live/settings, account/cloud/social, games, event
   extras and administration. Keep mandatory consent and actual capability gates.
-- [ ] Compile the integrated source and run three selected process walkthroughs;
-  review native screenshots. Do not repeat the full native/portable suites.
-- [ ] Upload one consolidated protected TestFlight build after the app-wide pass.
-  Signing cleanup, Apple processing and tester availability are separate checks.
+- [x] Compile native inputs `ca200ec`; app-wide and editor/settings walkthroughs
+  passed in run 42891341051. Correct the Live test's stale selector; after a
+  runner-bootstrap failure, the owner-requested Live-only retry passed in
+  run 42896938342. Its isolated simulator cleanup succeeded. Native captures
+  reviewed; no app-source changes or full native/portable suite reruns.
+- [x] Release source `2a6dea5` (same native inputs) uploaded once as 0.1.0 (14)
+  in protected run 42900232408. Apple accepted the binary and signing cleanup
+  succeeded. Apple shows Processing; tester availability remains unverified.
 - [x] Invitation-first events: prominent Social entry, readable browse cards,
   Explore/Yours/Invites, essentials-first creation and captured invitation review.
   The event hub keeps RSVP prominent and extras collapsed. Existing authorization,

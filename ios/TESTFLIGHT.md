@@ -4,6 +4,33 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified app-wide workflow build 14 upload - 2026-11-10
+
+Version **0.1.0 (14)** was signed, archived, exported and accepted by App Store
+Connect in [run 42900232408](https://github.com/ErrantActions/-led-backpack/actions/runs/42900232408).
+Release source `2a6dea5` extends essentials-first workflows through library,
+creation, playback, live/settings, account/cloud/social, games, event extras and
+administration while retaining the invitation-first event core.
+
+Native app inputs match `ca200ec`, which compiled and passed the app-wide and
+editor/settings walkthroughs in
+[run 42891341051](https://github.com/ErrantActions/-led-backpack/actions/runs/42891341051).
+The remaining Live test had a stale selector; its corrected retry then hit a
+simulator-runner bootstrap crash before tests started, not an app crash.
+The owner explicitly requested another Live-only retry.
+[Run 42896938342](https://github.com/ErrantActions/-led-backpack/actions/runs/42896938342)
+passed that one scenario with zero failures and cleaned up its fresh simulator.
+No native app inputs changed between these checks or the release.
+
+The protected release used normal environment approval and build/sign/upload
+only. Temporary signing assets were removed successfully. No simulator suites
+ran during upload, no backend was deployed and no signing keys were changed.
+Native screenshots were reviewed; full-suite, physical fold/orientation,
+BLE/GPS and private-provider end-to-end acceptance are not certified.
+
+App Store Connect showed build 14 as **Processing** after the accepted upload.
+Internal tester availability is not yet verified.
+
 ## Verified event rework build 13 upload - 2026-11-10
 
 Version **0.1.0 (13)** was signed, archived, exported and uploaded in
