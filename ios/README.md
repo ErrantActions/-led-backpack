@@ -14,7 +14,30 @@ the legacy library's separate metadata `syncRevision`.
 
 These are coordinated source changes, not a backend deployment or another
 TestFlight upload. Current live flags remain authoritative; unrelated
-device-recovery-v2 and unavailable provider/encryption capabilities stay gated.
+production device-recovery-v2 and provider/encryption capabilities were not
+activated. The backend branch is based on existing undeployed recovery-v2 work:
+do not deploy it wholesale; isolate the performance diff for an approved rollout.
+
+Native source `c3e57da` passed
+[focused validation 42906593608](https://github.com/ErrantActions/-led-backpack/actions/runs/42906593608):
+app compilation and 61 selected unit tests, zero failures. All three new
+performance suites ran, together with existing account and cloud-protocol
+checks; no UI or portable/full suites ran. The isolated simulator cleanup
+succeeded. Matching backend source `43a7536` passed strict compilation and
+74 distinct related backend checks across focused runs.
+
+Synthetic measurements, not production latency/battery claims:
+
+| Case | Before | After |
+|---|---:|---:|
+| Initial inbox data requests | 4 | 1; friends load when composing |
+| Unchanged direct history | 16,815 bytes | 82 bytes |
+| Recorded animated preview | 126,913 bytes | 5,570 bytes |
+| Legacy warm synchronization | 3 requests; 304,014 response bytes | 1 request; 25,558 request + 8,264 response bytes |
+| Encrypted warm validation | 7,382 metadata bytes | 818 state-validation bytes |
+
+Legacy manifests/server scans remain O(n); changed encrypted libraries still
+use exact-snapshot scanning. Media reuse still requires an authorized round trip.
 
 ## Essentials-first workflows
 
