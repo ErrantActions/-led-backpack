@@ -93,4 +93,47 @@ final class NativeMessagingPresentationTests: XCTestCase {
         XCTAssertEqual(entries.map(\.updatedAt), [300, 200, 100])
         XCTAssertEqual(Set(entries.map(\.id)).count, 3)
     }
+
+#if DEBUG
+    private func fixtureClient() async throws -> CommunityFeatureClient {
+        let controller = LibraryPreviewFixture.community(social: true, messaging: true)
+        controller.configure("https://catalog.example")
+        try await controller.signIn(email: "ui@example.invalid", password: "fixture-password")
+        try await controller.loadConfig()
+        return try CommunityFeatureClient(controller)
+    }
+
+    func testMessagingUIFixtureProvidesValidExplicitFriendConsentAndInboxContexts() async throws {
+        let client = try await fixtureClient()
+        let contacts = try await client.recentChats(page: 1)
+        let friends = try await client.friends(page: 1)
+        let rooms = try await client.rooms(page: 1)
+        let invitations = try await client.chatInvitations(page: 1)
+        XCTAssertEqual(contacts.conversations.count, 2)
+        XCTAssertEqual(Set(contacts.conversations.map(\.profile.id)), Set(friends.friends.map(\.id)))
+        for friend in friends.friends {
+            XCTAssertEqual(friend.locationFeaturesAllowed, false)
+            XCTAssertEqual(friend.mutualLocationFeaturesAllowed, false)
+        }
+        XCTAssertEqual(rooms.chats.count, 1)
+        XCTAssertEqual(rooms.chats.first?.unread, 1)
+        XCTAssertTrue(invitations.invitations.isEmpty)
+    }
+
+    func testMessagingUIFixturePersistsAndDeduplicatesTheExactSendIntent() async throws {
+        let client = try await fixtureClient()
+        let contacts = try await client.recentChats(page: 1)
+        let recipient = try XCTUnwrap(contacts.conversations.first?.profile.id)
+        let initial = try await client.directHistory(peer: recipient, event: nil, before: nil)
+        XCTAssertEqual(initial.messages.count, 1)
+        let intent = try ChatSendIntent(context: .direct(peer: recipient, event: nil),
+            text: "Fixture message", attachmentID: nil, pin: nil)
+        let first = try await client.sendChat(intent)
+        let retried = try await client.sendChat(intent)
+        XCTAssertEqual(first.id, retried.id)
+        let history = try await client.directHistory(peer: recipient, event: nil, before: nil)
+        XCTAssertEqual(history.messages.filter { $0.id == first.id }.count, 1)
+        XCTAssertEqual(history.messages.first { $0.id == first.id }?.text, "Fixture message")
+    }
+#endif
 }

@@ -268,11 +268,14 @@ final class NavigationTests: XCTestCase {
         let maya = "chat-contact-33333333-1234-4567-89ab-abcdefabcdef-direct"
         let casey = "chat-contact-44444444-1234-4567-89ab-abcdefabcdef-direct"
         func open(_ id: String) {
-            if !app.buttons[id].isHittable {
+            let composer = app.descendants(matching: .any).matching(identifier: "chat-message-input").firstMatch
+            if composer.exists && !app.buttons[id].isHittable {
                 let back = app.buttons["BackButton"]
                 XCTAssertTrue(back.waitForExistence(timeout: 5)); back.tap()
             }
-            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10)); app.buttons[id].tap()
+            XCTAssertTrue(app.buttons[id].waitForExistence(timeout: 10))
+            reveal(app.buttons[id], in: app)
+            XCTAssertTrue(app.buttons[id].isHittable); app.buttons[id].tap()
         }
         open(maya)
         let input = app.descendants(matching: .any).matching(identifier: "chat-message-input").firstMatch

@@ -99,8 +99,11 @@ private actor LibraryPreviewTransport: CommunityTransport {
             if request.httpMethod == "GET" {
                 switch path {
                 case "/api/v1/social/friends":
-                    return try response(["friends": [["id": peer, "displayName": "Maya Chen"],
-                        ["id": other, "displayName": "Casey"]], "page": 1, "limit": 50])
+                    return try response(["friends": [
+                        ["id": peer, "displayName": "Maya Chen", "locationFeaturesAllowed": false,
+                            "mutualLocationFeaturesAllowed": false],
+                        ["id": other, "displayName": "Casey", "locationFeaturesAllowed": false,
+                            "mutualLocationFeaturesAllowed": false]], "page": 1, "limit": 50])
                 case "/api/v1/social/conversations":
                     return try response(["conversations": [
                         ["profile": ["id": peer, "displayName": "Maya Chen"], "lastMessageCreatedAt": now],
@@ -230,11 +233,11 @@ enum LibraryPreviewFixture {
     nonisolated static let owner = "223609c9-cc77-4818-8951-0c55acdaab4e"
     nonisolated static let linkedItem = "abcdefab-1234-4567-89ab-abcdefabcdef"
     nonisolated static let remoteItem = "bbbbbbbb-1234-4567-89ab-abcdefabcdef"
-    static func community() -> CommunityController {
+    static func community(social: Bool = CommandLine.arguments.contains("--social-ui-fixture"),
+                          paging: Bool = CommandLine.arguments.contains("--pagination-ui-fixture"),
+                          messaging: Bool = CommandLine.arguments.contains("--messaging-ui-fixture")) -> CommunityController {
         CommunityController(vault: LibraryPreviewVault(), factory: { _ in
-            LibraryPreviewTransport(social: CommandLine.arguments.contains("--social-ui-fixture"),
-                paging: CommandLine.arguments.contains("--pagination-ui-fixture"),
-                messaging: CommandLine.arguments.contains("--messaging-ui-fixture"))
+            LibraryPreviewTransport(social: social, paging: paging, messaging: messaging)
         })
     }
     static func make() throws -> LocalLibrary {
