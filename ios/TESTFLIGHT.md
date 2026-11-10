@@ -103,6 +103,20 @@ instead of silently falling back to an older SDK. Native validation uses the
 iOS 27.1 iPhone Duo simulator. Review the exported layout screenshots before
 releasing; simulator/rotation checks alone do not prove physical fold behavior.
 
+## Owner-accepted internal beta exception
+
+Full passing native validation remains the default. For an explicitly accepted
+internal beta, `beta_compile_run` can identify a completed native-recovery run
+whose app and both test bundles compiled successfully. The gate still compares
+every protected native input with the release source. It records incomplete
+simulator validation as a warning, never as a passing suite.
+
+This does not bypass the protected `testflight` approval, use different signing
+keys, skip the signed device archive, distribute externally or submit an App
+Store release. Do not start another broad simulator run solely to upload such
+an owner-accepted beta. Unsigned simulator Keychain entitlement failures do not
+authorize replacing production Keychain storage or silently ignoring its errors.
+
 ## 1. Register the app with Apple
 
 In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list):

@@ -26,19 +26,26 @@ Older checkpoints below are historical evidence, not the current release board.
   202editable studies, five curated tabs, current-source refreshes and compact/
   Duo variants.2,020numeric geometry cases pass; this is prototype evidence,
   not completed native integration or runtime state-by-state acceptance.
-- [ ] Integrate reviewed Fieldwork designs into native SwiftUI while preserving
-  controllers, bindings, feature gates and consent. Validate the changed native
-  surfaces on Mac and hardware before claiming the redesign shipped.
+- [x] Integrate reviewed Aurora designs into native SwiftUI while preserving
+  controllers, bindings, feature gates and consent. Mac compilation and unit
+  validation passed; complete simulator UI and physical acceptance are not
+  certified by this internal-beta integration.
 - [x] Recovery transport foundation323caaf compiled;97 focused native tests
   passed in42588981367. This does not validate later view/store changes.
 - [x] Integrated source4dd4d1c compiled;124 focused native tests and2 UI
   regressions passed in42592497858. Includes v2-gated My devices, recovery
   DTOs/history/drafts and owner-reply acceptance, no second finder introduction,
   exact-ID receipt-write retry and stale-account response rejection.
-- [x] Current sourcebd1cf7d passed full native gate42598416855: Xcode27.1/
+- [x] Pre-Aurora sourcebd1cf7d passed full native gate42598416855: Xcode27.1/
   iOS27.1 compile,1,070unit tests/0failures/2explicit skips,15UI tests/
   0failures and separate read-only public integration. This supersedes older
   pending-validation notes; it is not a new beta upload or hardware acceptance.
+- [x] Aurora source3fa17cb compiled in42865882360;1,088unit tests/0failures/
+  2explicit skips, portable/GPS/nearby and consolidated fixture gates passed.
+  UI16 ran with2failures: unsigned simulator Keychain entitlement (-34018)
+  and simulator app termination. Full suite success is NOT claimed. The owner
+  explicitly accepted these limitations for an internal TestFlight beta and
+  requested no more broad reruns. Keep production Keychain and signing intact.
 - [x] Live uses native adaptive arrangements with primary mode/actions retained
   when the secondary pane is hidden. Message drafts, including initial sample
   text, survive orientation and theme-sheet reflow in the full native gate.

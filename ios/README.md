@@ -25,8 +25,12 @@ locally as well as on the server. Existing outbox UUID/byte retries and
 authorization/revocation checks remain in force. No aggregate inbox, delivery
 receipt or new backend API is assumed. The backend compatibility review found no
 required edit/deployment; live recovery v2 and absent feature capabilities remain
-unavailable. The release candidate still requires passing exact-source native
-validation and the protected TestFlight upload.
+unavailable. The owner accepted incomplete simulator UI validation for this
+internal beta, not production release certification. Source `3fa17cb` compiled
+and ran 1,088 unit tests with zero failures and two explicit skips. Two of 16
+UI tests failed: unsigned-simulator Keychain access and simulator app termination.
+The protected signed archive/upload is still required; production Keychain
+storage and signing keys are unchanged.
 
 ### TestFlight 0.1.0 (11)
 
