@@ -26,6 +26,9 @@ struct PeerIncidentAdminView: View {
                 if community.isAdmin && !store.denied {
                     if community.config?.peerIncidentReportsEnabled == true {
                         if let value, let clock {
+                            if value.reports.isEmpty && !store.busy {
+                                Text("No retained cases on this page.").foregroundStyle(.secondary)
+                            }
                             Text("Server read clock: \(value.serverTimeISO), not encounter time.").font(.caption)
                             TimelineView(.periodic(from: .now, by: 1)) { _ in
                                 ForEach(value.reports) { report in
@@ -42,7 +45,7 @@ struct PeerIncidentAdminView: View {
                                                 Text(verbatim: review.note).textSelection(.enabled)
                                                 Text(review.atISO).font(.caption)
                                             }
-                                            Button("Select this exact case revision for review") {
+                                            Button("Review case") {
                                                 selected = report; selectedScope = store.contextID; note = ""
                                                 resolved = !report.resolved; intent = nil; confirming = false
                                             }.disabled(store.busy || selected != nil || needsReload)
@@ -62,10 +65,11 @@ struct PeerIncidentAdminView: View {
                                 Toggle("Mark resolved (still UNVERIFIED)", isOn: $resolved).disabled(intent != nil || store.busy)
                                 TextField("Deliberately typed staff note (1–1000 UTF-16 units)", text: $note, axis: .vertical)
                                     .lineLimit(4...12).disabled(intent != nil || store.busy)
-                                Button("Review captured resolve/reopen + note") { confirming = true }
+                                Button("Review & save note") { confirming = true }
+                                    .buttonStyle(AuroraPrimaryButton())
                                     .disabled(store.busy || needsReload || intent != nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                                 if needsReload { Text("Revision/key/access failure retained your captured intent. Explicitly cancel/reload; no retry or silent overwrite.").foregroundStyle(.orange) }
-                                Button("Explicitly discard review draft / reload") { discardReview(); load() }.disabled(store.busy)
+                                Button("Cancel review & reload", role: .cancel) { discardReview(); load() }.disabled(store.busy)
                             }.padding(16).glassPanel()
                         } else {
                             Button("Explicitly refresh retained cases") { load() }.disabled(store.busy)
@@ -78,7 +82,7 @@ struct PeerIncidentAdminView: View {
                     }
                 } else { Text("Current global-admin access required. Role changes discard descriptions, selection and staff-note drafts.") }
                 FeatureDetails("Retention & privacy") {
-                    Text("Descriptions expire after30 days; cleanup is bounded. No automatic account action, profile grant or artwork copy.")
+                    Text("Descriptions expire after 30 days; cleanup is bounded. No automatic account action, profile grant or artwork copy.")
                 }
             }.padding(20)
         }.modernScene().navigationTitle("Peer reports (admin)")

@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 struct CommunityAdminView: View {
     @EnvironmentObject private var community: CommunityController
     @StateObject private var store = CommunityAdminStore()
-    @State private var tool = AdminTool.statistics
+    @State private var tool = AdminTool.moderation
     @State private var page = 1
     @State private var query = ""
     @State private var appliedQuery = ""
@@ -35,13 +35,16 @@ struct CommunityAdminView: View {
                     Section {
                         Picker("Admin tools", selection: $tool) {
                             ForEach(AdminTool.allCases) { Text($0.rawValue).tag($0) }
-                        }.disabled(store.busy)
+                        }.pickerStyle(.menu).disabled(store.busy)
                         DisclosureGroup("More administration tools") {
-                        NavigationLink("Bulk community quarantine / deletion") { CommunityBulkModerationView() }
+                        NavigationLink { CommunityBulkModerationView() } label: {
+                            FeatureRowLabel(title: "Bulk moderation", symbol: "checklist",
+                                subtitle: "Review exact community items before quarantine or deletion")
+                        }
                         NavigationLink("Content-blind upload alerts / holds") { CommunityUploadAlertsView() }
                         NavigationLink("Firmware drafts / publish / withdraw") { FirmwareLibraryView(admin: true) }
                         NavigationLink("Generic research target curation") { DeviceResearchView(admin: true) }
-                        NavigationLink("Owned artwork previews / compare / branches") { AdminArtworkView() }
+                        NavigationLink("Artwork studio") { AdminArtworkView() }
                         Text("Community administration only. Private GIFs and vault keys are never available here.")
                             .font(.caption).foregroundStyle(.secondary)
                         if community.config?.chatReportsEnabled == true {
@@ -291,9 +294,11 @@ struct CommunityAdminView: View {
                             }
                     }
                 }.disabled(store.busy)
-                Section("Sign in with Apple diagnostics") {
+                Section {
+                    FeatureDetails("Sign in with Apple diagnostics") {
                     LabeledContent("Server support", value: value.appleSignInEnabled ? "Enabled" : "Disabled")
                     Text(value.appleDiagnostic).textSelection(.enabled)
+                    }
                 }
             }
         }
@@ -393,7 +398,8 @@ private struct CommunityAdminItemEditor: View {
                         Toggle("I reviewed content safety and audience", isOn: $reviewed)
                         Text("Nudity must not be approved merely by classifying it as mature. Human review overrides AI.")
                             .font(.caption).foregroundStyle(.secondary)
-                        Button("Save moderation") { confirmation = true }.disabled(status == .approved && !reviewed)
+                        Button("Review & save") { confirmation = true }
+                            .buttonStyle(AuroraPrimaryButton()).disabled(status == .approved && !reviewed)
                     }.disabled(store.busy)
                     DisclosureGroup("AI review details") {
                         Text(item.aiState)
@@ -416,6 +422,11 @@ private struct CommunityAdminItemEditor: View {
             }
             .modernScene().navigationTitle("Moderate GIF")
             .toolbar { Button("Done") { dismiss() }.disabled(store.busy) }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(store.busy)
+            }
+            .interactiveDismissDisabled(store.busy)
             .confirmationDialog("Save this moderation decision?", isPresented: $confirmation) {
                 Button("Save moderation") {
                     let change = AdminModeration(status: status, reason: reason, title: title, category: category,

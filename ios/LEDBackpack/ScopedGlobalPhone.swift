@@ -117,14 +117,26 @@ struct ScopedGlobalPhoneConsent: View {
     @State private var consent = false
     var body: some View {
         VStack(alignment: .leading) {
-            Toggle("I explicitly replace the main PHONE display with this current scoped source", isOn: $consent)
-            InteractionExplanation("Main-phone output needs separate consent and exclusive ownership. Fixed lease: up to 30 seconds; no hidden renewal or physical sync.", details: "Distinct from isolated preview. Durable initial original and exclusive PHONE ownership required. Runs only until this fixed source/cue lease ends (at most30 seconds); longer playlists require a new explicit source request. No hidden renewal, hardware playback, background execution or guaranteed sync.").font(.caption)
-            Button("Play on main PHONE / preserve my original") { beforeStart(); global.start(source, client: client, consent: consent); consent = false }
-                .disabled(!consent || source.expired || global.arming || global.session.running || global.session.busy)
-            Text(global.status).font(.caption)
+            DisclosureGroup("Use main phone display") {
+                Toggle("Replace my main phone display", isOn: $consent)
+                Text("Replaces the current phone artwork with this source. Your initial original is retained for explicit restore. Foreground only, up to 30 seconds; no automatic renewal or hardware sync.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Play on main phone") { beforeStart(); global.start(source, client: client, consent: consent); consent = false }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .disabled(!consent || source.expired || global.arming || global.session.running || global.session.busy)
+                FeatureDetails("Source limits") {
+                    Text("Distinct from isolated preview. Durable initial original and exclusive PHONE ownership required. Runs only until this fixed source/cue lease ends (at most 30 seconds); longer playlists require a new explicit source request. No hidden renewal, hardware playback, background execution or guaranteed sync.")
+                }
+            }
+            if global.arming || global.session.running || global.session.busy || global.session.hasRecovery {
+                Text(global.status).font(.caption)
+                if global.arming { ProgressView("Preparing main phone display") }
+                ScopedPhoneCanvasControls(session: global.session, stop: { global.stop() }, restore: { await global.restore() })
+                if global.arming {
+                    Button("Cancel start") { global.stop() }
+                }
+            }
             if let error = global.failure { Text(error).font(.caption).foregroundStyle(.orange) }
-            Button("Stop global scoped playback") { global.stop() }
-            Button("Stop / restore my initial original") { Task { await global.restore() } }
         }.onChange(of: source.id) { _, _ in consent = false }
     }
 }

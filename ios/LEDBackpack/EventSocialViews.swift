@@ -271,15 +271,22 @@ struct EventSocialView: View {
     var body: some View {
         Form {
             Section {
-                Text("Source controls only. Saved plans are not physical playback, frame synchronization, location, attendance, friendship or roster permission.").font(.caption)
-                Button("Reload current access / discard unsaved drafts") { newScene = .init(); clearImport(); model.load() }
+                Text(nextStep).font(.subheadline)
+                Text("Plans do not start playback or verify attendance.").font(.caption).foregroundStyle(.secondary)
+                FeatureDetails("What a saved plan does not grant") {
+                    Text("No physical playback, frame synchronization, location, attendance, friendship or roster permission is implied.")
+                }
+                Button("Reload · discard unsaved drafts") { newScene = .init(); clearImport(); model.load() }
                     .disabled(model.busy)
                 if model.busy { ProgressView() }
                 if let failure = model.failure { Text(failure).foregroundStyle(.orange) }
                 if model.needsReload { Text("Review a fresh snapshot before a new action. Conflicting drafts are retained, never silently overwritten.").font(.caption) }
             }
             if let event = model.event {
-                Section { Text(event.title); Text("Event \(event.revision) / participation \(event.participationRevision.map(String.init) ?? "withheld")").font(.caption) }
+                Section {
+                    Text(event.title).font(.headline)
+                    FeatureDetails("Current revisions") { Text("Event \(event.revision) · participation \(event.participationRevision.map(String.init) ?? "withheld")").font(.caption) }
+                }
                 Group {
                     switch model.surface {
                     case .teams: teams(event)
@@ -338,11 +345,20 @@ struct EventSocialView: View {
     }
     private var title: String {
         switch model.surface {
-        case .teams: return "Own team palette"
+        case .teams: return "Team colors"
         case .collection: return "Hunt & cooperative goal"
-        case .display: return "Show / rest-stop plan"
-        case .guestbook: return "Consented guestbook"
+        case .display: return "Show & rest stops"
+        case .guestbook: return "Guestbook"
         case .recap: return "My private recap"
+        }
+    }
+    private var nextStep: String {
+        switch model.surface {
+        case .teams: return "Choose your team colors, then save your own choice."
+        case .collection: return "Start a checkpoint hunt. Your confirmations stay private."
+        case .display: return "Review the saved plan, then choose a foreground preview."
+        case .guestbook: return "Leave a note for review. Public sharing is a separate choice."
+        case .recap: return "Your private event summary. Nothing is published here."
         }
     }
     @ViewBuilder private func teams(_ event: CatalogEvent) -> some View {
@@ -359,6 +375,7 @@ struct EventSocialView: View {
                 }
                 Toggle("I opt in to my own named team choice only", isOn: $model.consent)
                 Button("Save my team choice") { model.chooseTeam() }
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(!model.consent || model.teamID == nil || event.access.canChooseTeam != true || model.teamDraft != snapshot.teams)
             }
             if event.access.canManage && snapshot.canManage {
@@ -371,8 +388,8 @@ struct EventSocialView: View {
                         }
                     }
                     Button("Add named team") { model.teamDraft.append(.init()) }.disabled(model.teamDraft.count >= 16)
-                    Button("Save captured palette revision") { model.saveTeams() }
                     Text("Saving changes invalidates previous opt-ins; no one is assigned automatically.").font(.caption)
+                    Button("Save team palettes") { model.saveTeams() }
                 }
             }
         }
@@ -384,11 +401,11 @@ struct EventSocialView: View {
                 Text("\(snapshot.ownCollectedTargetCount) / \(snapshot.plan.checkpointIds.count) targets")
                 if snapshot.ownCompleted { Label("Your targets are complete", systemImage: "checkmark.circle") }
                 if snapshot.cooperativeReached { Text("Cooperative goal reached").font(.caption) }
-                NavigationLink("Play GPS checkpoint hunt — private confirmation") { EventGPSHuntView(eventID: event.id) }
+                NavigationLink("Start checkpoint hunt") { EventGPSHuntView(eventID: event.id) }
                     .disabled(!snapshot.plan.enabled || event.route?.published != true)
                 DisclosureGroup("Participation & manual claims") {
-                Toggle("I explicitly opt in to this private any-order collection", isOn: $model.consent)
-                Toggle("Separately include my completion in the cooperative boolean", isOn: $model.cooperativeConsent)
+                Toggle("Join the private hunt", isOn: $model.consent)
+                Toggle("Include completion in the cooperative goal", isOn: $model.cooperativeConsent)
                 Button("Save these separate consent choices") { model.joinCollection() }
                     .disabled(!model.consent || !snapshot.plan.enabled || model.collectionDraft != snapshot.plan)
                 Picker("Selected target", selection: $model.manualCheckpointID) {
@@ -404,6 +421,7 @@ struct EventSocialView: View {
                 }
                 let selectable = Set(snapshot.checkpoints.filter { !$0.collected }.map(\.id) +
                     (snapshot.ownCompleted ? event.route?.checkpoints.filter { $0.kind == .finish }.map(\.id) ?? [] : []))
+                Text("Manual self-report only, not GPS-certified attendance or public progress.").font(.caption)
                 Button("Confirm selected target privately") {
                     if let id = model.manualCheckpointID { model.collect(id) }
                 }.disabled(!snapshot.ownEnabled || !model.consent || model.collectionDraft != snapshot.plan ||
@@ -411,7 +429,6 @@ struct EventSocialView: View {
                     .onChange(of: selectable) { _, ids in
                         if let id = model.manualCheckpointID, !ids.contains(id) { model.manualCheckpointID = nil }
                     }
-                Text("Manual self-report only, not GPS-certified attendance or public progress.").font(.caption)
                 }
             }
             if snapshot.canManage && event.access.canManage {
@@ -438,7 +455,8 @@ struct EventSocialView: View {
     @ViewBuilder private func display(_ event: CatalogEvent) -> some View {
         if let snapshot = model.display {
             Section("Paused foreground source preview") {
-                Text("Current plan consent: \(snapshot.ownEnabled ? "active" : "off/stale"). Server clock: \(snapshot.serverTimeISO)").font(.caption)
+                StatusPill(title: snapshot.ownEnabled ? "Plan consent active" : "Plan consent off / stale", symbol: "play.rectangle")
+                FeatureDetails("Plan clock") { Text(snapshot.serverTimeISO).font(.caption) }
                 Picker("Manual rest-stop / regroup checkpoint", selection: $model.manualCheckpointID) {
                     Text("No manual checkpoint").tag(Optional<UUID>.none)
                     ForEach(event.route?.checkpoints ?? []) { Text($0.title).tag(Optional($0.id)) }
@@ -447,9 +465,10 @@ struct EventSocialView: View {
                 Toggle("I explicitly consent to this saved plan / foreground preview", isOn: $model.consent)
                 Button("Save my own current plan consent") { model.joinDisplay() }
                     .disabled(!model.consent || !snapshot.plan.enabled || model.displayDraft != snapshot.plan)
-                Button("Start foreground source preview (not playback)") { model.startPreview() }
+                Button("Start source preview · not playback") { model.startPreview() }
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(!model.consent || !snapshot.ownEnabled || model.displayDraft != snapshot.plan)
-                Button("Stop preview now") { model.stopPreview(); onPlanPreview?(nil) }
+                if model.preview != nil { Button("Stop preview", role: .destructive) { model.stopPreview(); onPlanPreview?(nil) } }
                 if let preview = model.preview {
                     Picker("Explicit isolated PHONE scene", selection: $phoneSceneID) {
                         Text("Choose a currently returned named cue").tag(Optional<UUID>.none)
@@ -473,19 +492,20 @@ struct EventSocialView: View {
                 } else { Text("Paused. Saving and shared clocks do not prove physical sync, delivery or safety monitoring.") }
                 Text("Global Phone/LED runtime is not connected. Isolated PHONE pixels above are separately explicit; authorization stops on expiry/page/account/background changes.").font(.caption)
             }
-            Section("Saved scenes / currently authorized public artwork") {
+            DisclosureGroup("Saved scenes & public artwork (\(snapshot.plan.scenes.count))") {
                 ForEach(snapshot.plan.scenes) { scene in
                     Text("\(scene.name) / \(scene.kind.rawValue) / \(scene.durationSeconds)s")
                     if let list = snapshot.scenePlaylists.first(where: { $0.sceneId == scene.id }) {
                         ForEach(Array(list.entries.enumerated()), id: \.offset) { _, entry in
-                            Text(entry.item.map { "\($0.title) / \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; no item metadata.")
+                            Text(entry.item.map { _ in "Artwork · \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; no item metadata.")
+                                .accessibilityLabel(entry.item.map { "\($0.title), \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
                         }
                     }
                 }
                 if snapshot.plan.scenes.isEmpty { Text("No scenes saved.") }
             }
             if event.access.canManage && snapshot.canManage {
-                Section("Organizer scene draft") {
+                DisclosureGroup("Edit organizer show plan") {
                     Toggle("Enable plan", isOn: $model.displayDraft.enabled)
                     ForEach($model.displayDraft.scenes) { $scene in
                         NativeDisplaySceneEditor(scene: $scene, event: event)
@@ -493,17 +513,24 @@ struct EventSocialView: View {
                     }
                     Text("New named scene").font(.headline)
                     NativeDisplaySceneEditor(scene: $newScene, event: event)
-                    Button("Load named own playlists for public-only reference copy") { loadImports(page: 1) }
-                    if let importFailure { Text(importFailure).foregroundStyle(.orange) }
-                    if let page = importPage {
-                        Picker("Optional private playlist source", selection: $importPlaylistID) {
-                            Text("No playlist copy").tag(Optional<UUID>.none)
-                            ForEach(page.playlists) { Text("\($0.title) / \($0.entryCount) GIFs").tag(Optional($0.id)) }
+                    DisclosureGroup("Copy public references from my playlist") {
+                        Button("Load my playlists") { loadImports(page: 1) }
+                        if let importFailure { Text(importFailure).foregroundStyle(.orange) }
+                        if let page = importPage {
+                            Picker("Optional private playlist source", selection: $importPlaylistID) {
+                                Text("No playlist copy").tag(Optional<UUID>.none)
+                                ForEach(page.playlists) { Text("\($0.title) / \($0.entryCount) GIFs").tag(Optional($0.id)) }
+                            }
+                            HStack {
+                                Button("Previous private playlist page") { loadImports(page: importPageNumber - 1) }.disabled(importPageNumber == 1)
+                                Button("Next private playlist page") { loadImports(page: importPageNumber + 1) }.disabled(!page.hasMore || importPageNumber >= 5)
+                            }
                         }
-                        HStack {
-                            Button("Previous private playlist page") { loadImports(page: importPageNumber - 1) }.disabled(importPageNumber == 1)
-                            Button("Next private playlist page") { loadImports(page: importPageNumber + 1) }.disabled(!page.hasMore || importPageNumber >= 5)
-                        }
+                        Text("Only public artwork references are copied. Private playlist text and schedules stay private.").font(.caption)
+                    }
+                    if importTask != nil {
+                        ProgressView("Reading selected playlist references")
+                        Button("Cancel playlist lookup", role: .cancel) { clearImport() }
                     }
                     Button("Append new scene / copy selected public references only") { appendScene(event) }
                         .disabled(model.displayDraft.scenes.count >= 24 || importTask != nil)
@@ -518,13 +545,15 @@ struct EventSocialView: View {
             Section("Guestbook settings") {
                 Text(preferences.enabled ? "Organizer enabled" : "Default-off guestbook is disabled")
                 if preferences.canManage && event.access.canManage {
-                    Toggle("Organizer enables this event guestbook", isOn: $model.guestbookEnabled)
-                    Button("Save current guestbook settings revision") { model.saveGuestbookSettings() }
+                    DisclosureGroup("Organizer settings") {
+                        Toggle("Enable this guestbook", isOn: $model.guestbookEnabled)
+                        Button("Save guestbook settings") { model.saveGuestbookSettings() }
+                    }
                 }
                 InteractionExplanation("Server-encrypted, not E2EE. Notes expire after 90 days; viewed public copies cannot be recalled. No private content is copied.", details: "Server-managed encryption is not end-to-end encryption. Notes expire after 90 days; already viewed public copies cannot be recalled. No chat, venue, GPS, GIF or private-library content is copied.").font(.caption)
             }
             if let value = model.guestbook {
-                Section("Visible posts") {
+                DisclosureGroup("Read posts (\(value.posts.count))") {
                     if value.posts.isEmpty { Text("No visible posts on this page.") }
                     ForEach(value.posts) { post in
                         VStack(alignment: .leading) {
@@ -548,17 +577,23 @@ struct EventSocialView: View {
                             Picker("Reaction", selection: $model.guestDraft.reaction) {
                                 ForEach(NativeGuestbookReaction.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                             }
-                            Button("Load current reviewed gallery choices") { model.loadGallery() }
-                            Picker("Optional reviewed gallery reference", selection: $model.guestDraft.imageID) {
-                                Text("No photo").tag(Optional<UUID>.none)
-                                ForEach(model.gallery) { Text($0.caption.isEmpty ? $0.alt : $0.caption).tag(Optional($0.id)) }
+                            DisclosureGroup("Optional gallery photo") {
+                                Button("Load reviewed gallery") { model.loadGallery() }
+                                Picker("Optional reviewed gallery reference", selection: $model.guestDraft.imageID) {
+                                    Text("No photo").tag(Optional<UUID>.none)
+                                    ForEach(model.gallery) { Text($0.caption.isEmpty ? $0.alt : $0.caption).tag(Optional($0.id)) }
+                                }
+                                if model.guestDraft.imageID != nil { Text("A gallery reference is selected.").font(.caption) }
                             }
                             Toggle("Separately request public sharing", isOn: $model.guestDraft.publicSharing).disabled(event.visibility != "public")
                             Toggle("Separately share my display name", isOn: $model.guestDraft.shareAuthor)
                         }.disabled(model.submissionPending)
                         Toggle("I consent to this note/reaction/reference and selected audience", isOn: $model.guestDraft.consent)
+                        if model.guestDraft.publicSharing {
+                            Text("Public sharing can expose your note and selected photo. If enabled separately, your display name is shared too. Viewed copies cannot be recalled.").font(.caption).foregroundStyle(.orange)
+                        }
                         if !model.submissionPending {
-                            Button("Submit for review (never auto-approve)") { model.postGuestbook() }.disabled(!model.guestDraft.consent)
+                            Button("Submit for review") { model.postGuestbook() }.buttonStyle(AuroraPrimaryButton()).disabled(!model.guestDraft.consent)
                         }
                         Button("Cancel submission draft") { model.cancelSubmission() }
                     }
@@ -685,6 +720,7 @@ struct OwnedGuestbookPostsView: View {
         List {
             Text("Only your typed submissions/receipts. No event details, author roster or gallery access is restored. Server-managed encryption is not E2EE; posts expire after 90 days.").font(.caption)
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+            if session.busy { ProgressView("Loading your submissions") }
             Button("Reload my submissions", action: load).disabled(session.busy)
             if let ownedPage = value {
                 if ownedPage.posts.isEmpty { Text("No owned submissions on this page.") }

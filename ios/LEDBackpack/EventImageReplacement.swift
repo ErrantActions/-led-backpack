@@ -155,12 +155,16 @@ struct EventImageReplacementView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Replace an existing event image").font(.title2.bold())
-                Text("Creates a new immutable image URL, retires the old URL, keeps its position/cover and resets public approval. This does not change event participation or publish to community.").font(.caption)
+                Text("Choose the image, then its replacement. The old URL retires and public approval resets.").font(.subheadline).foregroundStyle(.secondary)
+                FeatureDetails("What stays unchanged") {
+                    Text("Position and cover stay the same. No event participation changes or community publication.")
+                }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice { Text(notice).font(.caption) }
                 if session.busy { ProgressView() }
                 Button("Refresh current access / images") { refresh() }.disabled(session.busy)
                 if authorized, let gallery, gallery.canReorder, let client = session.client {
+                    if asset == nil {
                     ForEach(gallery.assets) { item in
                         VStack(alignment: .leading, spacing: 8) {
                             GIFThumbnail(key: "event-replacement:\(client.instanceID):\(item.id):\(item.revision)", cache: false) {
@@ -175,16 +179,22 @@ struct EventImageReplacementView: View {
                             }.disabled(asset != nil || session.busy)
                         }.padding(16).glassPanel()
                     }
+                    }
                 } else if !session.busy { Text("Current event organizer access is required. Global admin status does not grant access.") }
                 if let asset, let captured, authorized {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Captured image revision \(asset.revision) / \(captured.assets.count)-image order").font(.headline)
+                        Text("Choose the replacement").font(.headline)
+                        FeatureDetails("Captured target & order") {
+                            Text("Image revision \(asset.revision) · \(captured.assets.count)-image order")
+                            Text(asset.alt)
+                        }
                         if let selectedName { Label(selectedName, systemImage: "doc") }
                         TextField("Caption", text: $caption, axis: .vertical)
                         TextField("Required accessible description", text: $alt, axis: .vertical)
                         Toggle("I have permission to use the replacement image", isOn: $permission)
                         if let stagedPreview, let image = UIImage(data: stagedPreview) { Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 240) }
                         Button("Choose replacement PNG / JPEG / WebP") { importScope = session.client?.instanceID; importAsset = asset.id; importing = true }
+                        Text("Saving retires the old URL and resets public approval. Earlier downloaded copies cannot be recalled.").font(.caption).foregroundStyle(.orange)
                         Button("Review replacement") {
                             do {
                                 guard let bytes else { throw BackpackError.invalid("Choose a replacement still first.") }
@@ -192,7 +202,7 @@ struct EventImageReplacementView: View {
                                     bytes: bytes, caption: caption, alt: alt, permission: permission, eventContext: currentEvent)
                                 confirming = true
                             } catch { notice = error.localizedDescription }
-                        }.disabled(bytes == nil || !permission || !authorized)
+                        }.buttonStyle(AuroraPrimaryButton()).disabled(bytes == nil || !permission || !authorized)
                         if acknowledged != nil { Button("Verify acknowledged replacement (do not resubmit)") { verifyReceipt() } }
                         InteractionExplanation("Conflicts keep this draft and its captured target. Cancel/reload to choose again; no automatic retry or rebase.", details: "Refresh never changes the captured revision/order or selected bytes. A conflict retains this draft; explicitly cancel/reload before choosing a new target. No automatic rebase/retry.").font(.caption)
                     }.padding(16).glassPanel().disabled(session.busy)

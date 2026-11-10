@@ -22,7 +22,7 @@ struct CommunitySelectionControls: View {
                 if let message = store.message { Text(message).font(.caption) }
                 if let failure = store.failure { Text(failure).font(.caption).foregroundStyle(.orange) }
                 if store.queueReady { Button("Open Send queue / review LED slots", action: openQueue).disabled(store.busy) }
-                Text("Favorite keeps a credited local copy. Send opens timing and automatic empty-slot preparation—no mandatory local save. Explicit Send & Play is required before any backpack write.").font(.caption2)
+                Text("Favorite saves a credited local copy. Sending requires a separate Send & Play.").font(.caption2).foregroundStyle(.secondary)
             }.padding(16).background(.regularMaterial)
         }
     }

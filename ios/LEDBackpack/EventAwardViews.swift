@@ -21,10 +21,12 @@ struct EventAwardListView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Private event badges").font(.title2.bold())
+                Text("Your private badges").font(.title2.bold())
                 Text("Self-reported and uncertified, not proof of attendance or arrival. Private by default. Names/descriptions can reveal participation or visits to known places.").font(.caption)
-                Text("At most 500 private records and 12 requested profile badges. The server enforces limits; no offline claim upload, artwork bytes or private-media credentials are stored in a badge.").font(.caption)
-                Button("Explicitly refresh owned records / capability") { pending = nil; reload() }.disabled(session.busy)
+                FeatureDetails("Limits & stored data") {
+                    Text("Up to 500 private records and 12 requested profile badges. No offline claim uploads, artwork bytes or private-media credentials are stored in a badge.")
+                }
+                Button("Refresh badges") { pending = nil; reload() }.disabled(session.busy)
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice { Text(notice).font(.caption) }
                 if needsReload { Text("Captured action was not confirmed. Refresh and review; no silent overwrite/republication or automatic retry.").foregroundStyle(.orange) }
@@ -35,17 +37,19 @@ struct EventAwardListView: View {
                             Label(award.title, systemImage: "seal").font(.headline)
                             Text(verbatim: award.description)
                             Text("\(award.kind.rawValue) · collected event version \(award.eventVersion) · self-reported / uncertified").font(.caption)
-                            LabeledContent("Profile sharing requested", value: award.sharingRequested ? "Yes" : "No")
                             LabeledContent("Currently profile-visible", value: award.profileVisible ? "Yes" : "No")
-                            LabeledContent("Current sharing authorization", value: award.canShowProfile ? "Available" : "Unavailable")
-                            Text("Displayed current participation revision: \(award.currentParticipationRevision.map(String.init) ?? "unavailable")").font(.caption)
+                            FeatureDetails("Sharing permission & revision") {
+                                LabeledContent("Sharing requested", value: award.sharingRequested ? "Yes" : "No")
+                                LabeledContent("Current permission", value: award.canShowProfile ? "Available" : "Unavailable")
+                                Text("Participation revision: \(award.currentParticipationRevision.map(String.init) ?? "unavailable")").font(.caption)
+                            }
                             if award.canShowProfile, !award.sharingRequested {
-                                Button("Review showing this badge on my profile") { capture(award, kind: .show) }
+                                Button("Review profile sharing") { capture(award, kind: .show) }
                             }
                             if award.sharingRequested || award.profileVisible {
                                 Button("Review hiding this badge") { capture(award, kind: .hide) }
                             }
-                            Button("Review removing my private record", role: .destructive) { capture(award, kind: .remove) }
+                            Button("Review removing badge", role: .destructive) { capture(award, kind: .remove) }
                             if !award.canShowProfile {
                                 Text("Old versions stay private. Rejoining/reviewing an event never republishes an earlier choice automatically. Hide/remove do not require event access.").font(.caption)
                             }
@@ -130,7 +134,7 @@ struct EventAwardCollectionView: View {
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice).font(.caption) }
             if session.busy { ProgressView() }
-            Button("Refresh current collection access / review") { pending = nil; reload() }.disabled(session.busy)
+            Button("Refresh collection access") { pending = nil; reload() }.disabled(session.busy)
             if let event, event.settings?.accountAwardsEnabled == true {
                 if event.requiresReconfirmation == true {
                     NavigationLink("Review changed event first") { CommunityEventDetailView(id: eventID) }
@@ -143,12 +147,12 @@ struct EventAwardCollectionView: View {
                             }
                         }
                     }.disabled(session.busy)
-                    Toggle("I explicitly consent to private collection of this choice", isOn: $choice.consent).disabled(session.busy)
+                    Toggle("Collect this choice privately", isOn: $choice.consent).disabled(session.busy)
                     InteractionExplanation("Event order and time rules apply. Repeating is idempotent, not an automatic retry. Up to 500 private records.", details: "Server enforces ordered required checkpoints, optional skips, published start/finish and the actual event window. Finish may collect finish/named rewards. Repeating is idempotent, not an automatic retry. Limit: 500 private records.").font(.caption)
                     FeatureDetails("Collection privacy") {
                         Text("Captured event/participation revision and checkpoint only. No GPS, arrival/departure timeline, media bytes or credentials. Profile display requires another explicit choice. Context/conflict resets consent; no queued replay.")
                     }
-                    Button("Review private collection") { prepare(event) }.disabled(!choice.consent || session.busy || needsReload)
+                    Button("Review private collection") { prepare(event) }.buttonStyle(AuroraPrimaryButton()).disabled(!choice.consent || session.busy || needsReload)
                 } else { Text("A current reviewed going RSVP is required. No badge is collected automatically by RSVP or progress.") }
             } else if !session.busy { Text("Both social/me and this event must explicitly enable account badges. Missing capabilities remain unavailable.") }
             NavigationLink("My private badge records / profile choices") { EventAwardListView() }

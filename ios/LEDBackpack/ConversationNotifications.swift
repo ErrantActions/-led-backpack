@@ -68,18 +68,24 @@ struct ConversationNotificationView: View {
             if community.config?.chatNotificationPreferencesEnabled == true && !session.denied {
                 if let preference {
                     LabeledContent("Confirmed alerts", value: preference.muted ? "Muted" : "Unmuted")
-                    LabeledContent("Displayed revision", value: String(preference.revision))
+                    FeatureDetails("Saved revision") { Text("Displayed revision \(preference.revision)") }
                     Toggle("Mute new message alerts for this conversation", isOn: $choice).disabled(session.busy || intent != nil)
-                    Button("Review displayed mute choice") { confirming = true }.disabled(session.busy || intent != nil)
+                    Button("Review & save") { confirming = true }
+                        .buttonStyle(AuroraPrimaryButton()).disabled(session.busy || intent != nil)
                 }
                 if intent != nil { Text("Captured intent retained. Explicitly reload current access/revision before saving again; no automatic retry or overwrite.").foregroundStyle(.orange) }
-                Button("Explicitly reload current conversation settings") { reloading = true }.disabled(session.busy)
+                Button("Reload conversation settings") { reloading = true }.disabled(session.busy)
                 InteractionExplanation("Only alerts for this conversation change. Messages, unread counts, membership and existing activity links remain.",
                     details: "Only your alerts for this exact direct thread, private organizer question or room change. Messages, history, unread counts, membership, typing, invitations and already delivered inbox/activity links remain intact. Global/category/channel settings still apply.").font(.caption)
             } else { Text("Conversation notification controls are unavailable or current access was lost.") }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if session.busy { ProgressView() }
         }.modernScene().navigationTitle("Conversation alerts")
+        .safeAreaInset(edge: .bottom) {
+            Button("Done") { dismiss() }
+                .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+        }
+        .interactiveDismissDisabled(session.busy)
         .task { session.bind(community); load(retainChoice: false) }
         .onChange(of: community.accountRevision) { _, _ in preference = nil; intent = nil; session.clear(); dismiss() }
         .onDisappear { session.clear() }

@@ -34,12 +34,15 @@ struct EventRosterView: View {
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice { Text(notice).font(.caption) }
                 if session.busy { ProgressView() }
-                Button("Explicitly refresh current roster / access") { pending = nil; load() }.disabled(session.busy)
+                Text("People & invitations").font(.title2.bold())
+                Text("Invite a friend or manage the current roster. Invitations do not confirm attendance.").font(.subheadline).foregroundStyle(.secondary)
+                Button("Refresh roster") { pending = nil; load() }.disabled(session.busy)
                 if needsReload { Text("Review failed/stale action. No automatic replay; refresh current access and select again.").foregroundStyle(.orange) }
                 if let event, let roster, let client = session.client, event.access.canManage {
-                    Text("Participants & current invitations").font(.title2.bold())
-                    Text("Revision \(roster.eventRevision) · \(roster.organizerRole.rawValue) · server \(roster.serverTime)").font(.caption)
-                    Text("This is a current roster, not a historical archive of expired/revoked grants. Invitation expiry/revocation does not remove independent going or organizer membership.").font(.caption)
+                    FeatureDetails("Roster scope & revision") {
+                        Text("Revision \(roster.eventRevision) · \(roster.organizerRole.rawValue) · server \(roster.serverTime)").font(.caption)
+                        Text("Current grants only, not a historical archive. Expiry/revocation does not remove independent going or organizer membership.")
+                    }
                     ForEach(roster.participants, id: \.user.id) { row in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -63,11 +66,14 @@ struct EventRosterView: View {
                     if community.config?.socialEnabled == true {
                         Text("Invite a current friend").font(.headline)
                         if client.invitationDeadlinesEnabled(event) {
-                            Toggle("Explicitly set / change grant deadline", isOn: $customDeadline)
-                            if customDeadline {
-                                DatePicker("Expiry (UTC)", selection: $deadline, displayedComponents: [.date, .hourAndMinute]).environment(\.timeZone, .gmt)
+                            DisclosureGroup("Optional invitation deadline") {
+                                Toggle("Set or change expiry", isOn: $customDeadline)
+                                if customDeadline {
+                                    DatePicker("Expiry (UTC)", selection: $deadline, displayedComponents: [.date, .hourAndMinute]).environment(\.timeZone, .gmt)
+                                }
+                                Text("Choose a future expiry within 30 days. Changing it deliberately changes this grant.").font(.caption)
                             }
-                            Text("Omit expiry: new grants default to seven days; active grants retain their actual expiry/legacy null. Explicit future UTC <=30 days deliberately changes the grant.").font(.caption)
+                            Text("Default: new invites expire in seven days; existing grants keep their expiry.").font(.caption)
                         }
                         ForEach(friends) { person in
                             Button { capture(event, person: person, kind: .invite) } label: {

@@ -35,12 +35,15 @@ struct NativeIntegrityRecoveryView: View {
         Form {
             InteractionExplanation("Recent primary sign-in is required. Recovery does not grant private content access or establish app identity.", details: "Fresh primary account authentication within ten minutes is required by the server. Recovery does not establish app identity or grant private content access. It works without a device proof so a lost key cannot permanently block recovery.").font(.caption)
             if community.integrityControlsAvailable {
-                Button("Refresh my owned App Attest keys") { load() }.disabled(busy || selected != nil)
+                Button("Refresh my app keys") { load() }.disabled(busy || selected != nil)
+                if keys.isEmpty && !busy && failure == nil {
+                    Text("No app keys loaded. Refresh to check your current keys.").foregroundStyle(.secondary)
+                }
                 ForEach(keys) { key in
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Key …\(key.keyId.suffix(10))").font(.headline)
                         Text(key.createdAt).font(.caption)
-                        Button("Review revoking this key", role: .destructive) { selected = key; approval.reset() }
+                        Button("Review revocation", role: .destructive) { selected = key; approval.reset() }
                     }.disabled(busy)
                 }
                 if let selected {

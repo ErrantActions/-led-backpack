@@ -24,6 +24,12 @@ struct SoloScenesView: View {
     var body: some View {
         List {
             privacy
+            if solo.archive.scenes.isEmpty {
+                Section("Start here") {
+                    Text("Create a scene, then choose a place or distance milestone. GPS and phone animation stay off until you start them.").font(.caption)
+                    Button("Create your first scene") { addingScene = true }.buttonStyle(AuroraPrimaryButton())
+                }
+            }
             consent
             areas
             journey
@@ -32,7 +38,7 @@ struct SoloScenesView: View {
             DisclosureGroup("My badges") { collection }
             DisclosureGroup("Private recaps") { recaps }
         }
-        .navigationTitle("SOLO local scenes").modernScene().buttonStyle(.borderless)
+        .navigationTitle("My adventures").modernScene().buttonStyle(.borderless)
         .task { await solo.load() }
         .sheet(isPresented: $addingScene) { NavigationStack { SoloSceneComposer() } }
         .sheet(isPresented: $addingArea) { NavigationStack { SoloAreaEditor() } }
@@ -80,6 +86,7 @@ struct SoloScenesView: View {
                 StatusPill(title: solo.sensing ? "GPS on" : "GPS off", symbol: "location")
             }
             Text("Private places and milestones. Nothing is published.").font(.subheadline).foregroundStyle(.secondary)
+            Text(solo.status).font(.caption).foregroundStyle(.secondary)
             if let error = localError ?? solo.failure { Text(error).foregroundStyle(.orange) }
             if solo.busy { ProgressView() }
             if !solo.loaded {
@@ -88,7 +95,6 @@ struct SoloScenesView: View {
             if !solo.loaded { Text("Reload before editing or starting automation.").foregroundStyle(.orange) }
             FeatureDetails("Status & privacy") {
                 Button("Reload local state") { Task { await solo.load() } }.disabled(solo.busy)
-                Text(solo.status)
                 Text("Fixed places stay on this device. No route, location history, check-in or badge is published.")
                 Text("GPS offers are approximate, not attendance or safety proof. No speed, chase or leaderboard objectives.")
                 Text("Phone only. Unknown backpack originals cannot be restored automatically.")
@@ -102,8 +108,10 @@ struct SoloScenesView: View {
             Button("Allow location") { solo.requestPermission() }
                 .disabled(!solo.sensingConsent)
                 .accessibilityLabel("Request When-In-Use location permission deliberately")
-            Button("Start GPS") { solo.startSensing() }.buttonStyle(AuroraPrimaryButton())
-                .disabled(!solo.sensingConsent || !solo.loaded || solo.sensing)
+            if !solo.sensing {
+                Button("Start GPS") { solo.startSensing() }.buttonStyle(AuroraPrimaryButton())
+                    .disabled(!solo.sensingConsent || !solo.loaded)
+            }
             DisclosureGroup("Phone animation") {
             Toggle("Animate my phone automatically", isOn: Binding(get: { solo.automationConsent }, set: solo.setAutomationConsent))
             Text("Your original is saved before any automatic change. Open the phone player first.")
@@ -180,6 +188,7 @@ struct SoloScenesView: View {
         Section("My journey") {
             Text("\(Int(solo.trip.meters)) m").font(.largeTitle.bold()).foregroundStyle(Aurora.mint)
             Text(solo.trip.running ? "Measuring approximate distance" : "Paused").font(.caption).foregroundStyle(.secondary)
+            Text("Approximate distance only. No route or speed is recorded.").font(.caption).foregroundStyle(.secondary)
             HStack {
                 if solo.trip.running {
                     Button("Pause") { solo.pauseTrip() }
@@ -318,8 +327,10 @@ private struct SoloSceneComposer: View {
                         }.accessibilityLabel("Select \(item.name)")
                     }
                 }
-                TextField("Interval (seconds)", text: $interval).keyboardType(.decimalPad)
-                Toggle("Repeat while playing", isOn: $repeats)
+                DisclosureGroup("Playlist timing") {
+                    TextField("Interval (seconds)", text: $interval).keyboardType(.decimalPad)
+                    Toggle("Repeat while playing", isOn: $repeats)
+                }
             }
             Text("Copies and credits stay on this device. Original timing stays unchanged.").font(.caption)
             if let error = error ?? originals.failure { Text(error).foregroundStyle(.orange) }
@@ -327,7 +338,11 @@ private struct SoloSceneComposer: View {
             if saving { ProgressView() }
         }
         .navigationTitle("Own local scene")
-        .toolbar { Button("Cancel") { operation?.cancel(); dismiss() } }
+        .safeAreaInset(edge: .bottom) {
+            NativeFlowCancelFooter(busy: saving) { operation?.cancel(); dismiss() }
+        }
+        .interactiveDismissDisabled(saving)
+        .toolbar { Button("Cancel") { operation?.cancel(); dismiss() }.disabled(saving) }
         .task { await originals.load() }
         .onDisappear { operation?.cancel() }
     }
@@ -449,12 +464,17 @@ private struct SoloAreaEditor: View {
             }
             if kind == .adventure { TextField("Private badge name", text: $badge) }
             if let error { Text(error).foregroundStyle(.orange) }
+            if saving { ProgressView("Saving place") }
             Button("Save place", action: save)
                 .disabled(saving || capturing || !solo.loaded || solo.busy || solo.sensing || solo.armed)
                 .buttonStyle(AuroraPrimaryButton())
         }
         .navigationTitle(original == nil ? "New fixed area" : "Edit fixed area")
-        .toolbar { Button("Cancel") { operation?.cancel(); dismiss() } }
+        .safeAreaInset(edge: .bottom) {
+            NativeFlowCancelFooter(busy: saving) { cancelDraftOperation(); dismiss() }
+        }
+        .interactiveDismissDisabled(saving)
+        .toolbar { Button("Cancel") { cancelDraftOperation(); dismiss() }.disabled(saving) }
         .onDisappear { cancelDraftOperation() }
         .onChange(of: phase) { _, value in if value != .active { captureConsent = false; cancelDraftOperation() } }
         .onChange(of: captureConsent) { _, value in if !value && capturing { cancelDraftOperation() } }
@@ -528,9 +548,11 @@ private struct SoloDaylightEditor: View {
             TextField("Explicit time zone, e.g. America/Chicago", text: $zone).textInputAutocapitalization(.never).autocorrectionDisabled()
             palette("Chosen sunrise palette", selection: $sunrise)
             palette("Chosen sunset palette", selection: $sunset)
-            Stepper("Foreground presentation cap: \(Int(seconds)) seconds", value: $seconds, in: 10...300, step: 10)
-            Toggle("Separately opt in to capped PHONE brightness", isOn: $brightnessEnabled)
-            if brightnessEnabled { Slider(value: $brightness, in: 0.1...0.6); Text("PHONE \(Int(brightness * 100))% — not authored dimming, system max or backpack control") }
+            DisclosureGroup("Duration & optional phone brightness") {
+                Stepper("Foreground cap: \(Int(seconds)) seconds", value: $seconds, in: 10...300, step: 10)
+                Toggle("Allow capped phone brightness", isOn: $brightnessEnabled)
+                if brightnessEnabled { Slider(value: $brightness, in: 0.1...0.6); Text("Phone \(Int(brightness * 100))% — not system max or backpack control") }
+            }
             Button("Calculate today's approximate solar events locally") {
                 do {
                     let plan = try captured()
@@ -545,7 +567,8 @@ private struct SoloDaylightEditor: View {
             Text(calculation).font(.caption)
             InteractionExplanation("Foreground schedule, off by default. Uses your chosen point/time zone; no weather service, continuous GPS or missed-event replay.", details: "No weather/API/model or continuous GPS dependency. Device clock and explicitly supplied point/time zone only. Schedules are foreground-only, default off and never replay missed events.")
             if let error { Text(error).foregroundStyle(.orange) }
-            Button("Save explicit local daylight plan") {
+            if saving { ProgressView("Saving daylight plan") }
+            Button("Save daylight plan") {
                 do {
                     let plan = try captured(); saving = true
                     operation = Task {
@@ -554,10 +577,14 @@ private struct SoloDaylightEditor: View {
                         catch { if !Task.isCancelled { self.error = error.localizedDescription } }
                     }
                 } catch { self.error = error.localizedDescription }
-            }.disabled(saving)
+            }.buttonStyle(AuroraPrimaryButton()).disabled(saving)
         }
         .navigationTitle("Sunrise / sunset")
-        .toolbar { Button("Cancel") { operation?.cancel(); dismiss() } }
+        .safeAreaInset(edge: .bottom) {
+            NativeFlowCancelFooter(busy: saving) { operation?.cancel(); dismiss() }
+        }
+        .interactiveDismissDisabled(saving)
+        .toolbar { Button("Cancel") { operation?.cancel(); dismiss() }.disabled(saving) }
         .onDisappear { operation?.cancel() }
     }
     private func palette(_ title: String, selection: Binding<UUID?>) -> some View {

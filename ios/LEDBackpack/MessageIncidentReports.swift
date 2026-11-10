@@ -128,7 +128,8 @@ struct MessageIncidentComposeView: View {
                     Picker("Reason", selection: $category) { ForEach(MessageIncidentCategory.allCases) { Text($0.rawValue.capitalized).tag($0) } }
                     TextField("Your deliberate explanation (1–1000 characters)", text: $details, axis: .vertical).lineLimit(4...12)
                     Toggle("I consent to retaining my entered explanation for incident review", isOn: $consent)
-                    Button("Submit report") { submit() }.disabled(!consent || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.busy || intent != nil)
+                    Button("Submit report") { submit() }.buttonStyle(AuroraPrimaryButton())
+                        .disabled(!consent || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.busy || intent != nil)
                 }
                 if submitted != nil { Label("Your incident explanation was retained; original message unchanged.", systemImage: "checkmark.shield") }
                 if intent != nil && submitted == nil {
@@ -138,7 +139,12 @@ struct MessageIncidentComposeView: View {
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if session.busy { ProgressView() }
             }.disabled(intent != nil && submitted == nil && session.busy).modernScene().navigationTitle("Message incident")
-                .toolbar { Button("Close") { dismiss() } }
+                .toolbar { Button("Close") { dismiss() }.disabled(session.busy) }
+                .safeAreaInset(edge: .bottom) {
+                    Button(submitted == nil ? "Cancel" : "Done") { dismiss() }
+                        .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+                }
+                .interactiveDismissDisabled(session.busy)
                 .task { session.bind(community) }
                 .onChange(of: community.accountRevision) { _, _ in details = ""; intent = nil; submitted = nil; session.clear(); dismiss() }
                 .onDisappear { session.clear() }
@@ -179,6 +185,9 @@ struct MessageIncidentListView: View {
             if community.config?.chatReportsEnabled == true && (!staff || community.isAdmin) {
                 Picker("State", selection: $state) { Text("All").tag("all"); Text("Open").tag("open"); Text("Resolved").tag("resolved") }
                 if let value {
+                    if value.reports.isEmpty && !(staff ? admin.busy : session.busy) {
+                        Text("No reports match this filter.").foregroundStyle(.secondary)
+                    }
                     ForEach(value.reports) { report in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(report.category.rawValue.capitalized).font(.headline)

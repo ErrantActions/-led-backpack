@@ -47,20 +47,29 @@ struct BackpackDirectSendView: View {
                 }
                 ForEach(Array(store.warnings.enumerated()), id: \.offset) { _, note in Text(note).font(.caption).foregroundStyle(.orange) }
                 if store.plan != nil && !store.playbackConfirmed {
-                    Button("Send & Play") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
-                        .buttonStyle(.borderedProminent).disabled(store.busy)
-                        .accessibilityLabel("Send & Play on backpack")
                     Text("Send the reviewed copies to the empty slots shown above.").font(.caption)
                 }
                 if store.playbackConfirmed { Label("Backpack playback loop reported", systemImage: "checkmark.circle").foregroundStyle(.green) }
                 if store.sending { Button("Stop transfer", role: .destructive) { store.stop() } }
                 FeatureDetails("Playback & transfer limits") {
-                    Text("Empty ordinary slots2–54 only. Copies are fitted to your panel and played in an ordered loop; no occupied slot is overwritten.")
+                    Text("Empty ordinary slots 2–54 only. Copies are fitted to your panel and played in an ordered loop; no occupied slot is overwritten.")
                     Text("Loop count is converted to approximate program time. Physical frame/repeat counting is not verified.")
                     Text("A failed transfer may leave its slot partly written. Inspect storage before retrying. Power/brightness are not forced.")
                 }
             }.navigationTitle("Send & Play").buttonStyle(.borderless)
-                .toolbar { Button("Done") { if store.sending { store.stop() }; dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 8) {
+                        if store.plan != nil && !store.playbackConfirmed {
+                            Button("Send & Play") { store.send(options: options, confirmed: true, community: community, panel: panel, vault: vault) }
+                                .buttonStyle(AuroraPrimaryButton()).disabled(store.busy)
+                                .accessibilityLabel("Send & Play on backpack")
+                        }
+                        Button(store.busy ? "Stop & close" : "Done") {
+                            if store.busy { store.stop() }
+                            dismiss()
+                        }.frame(minHeight: 44).accessibilityIdentifier("backpack-send-done")
+                    }.padding(.horizontal, 20).padding(.vertical, 8).background(Aurora.surface)
+                }
                 .interactiveDismissDisabled(store.sending)
                 .task { store.prepare(request, options: options, community: community, panel: panel, library: library, vault: vault) }
                 .onChange(of: options) { _, _ in store.invalidate() }

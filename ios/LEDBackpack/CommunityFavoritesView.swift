@@ -63,7 +63,7 @@ struct CommunityFavoritesView: View {
                             }
                             Button("Clear") { selection.clear() }
                         }.buttonStyle(.bordered)
-                        Text("Local originals and credits stay intact. Send opens timing and automatic empty-slot preparation; removing a favorite does not delete artwork.").font(.caption)
+                        Text("Sending opens a review. Unfavoriting keeps the original and its credits.").font(.caption).foregroundStyle(.secondary)
                     }.padding(16).background(.regularMaterial)
                 }
             }

@@ -117,7 +117,8 @@ struct FriendInviteQRView: View {
             if community.config?.socialEnabled == true && community.signedIn {
                 if entryMode != .scan {
                 DisclosureGroup("My QR Code", isExpanded: $showOwnCode) {
-                    Button("Create a new 15-minute invitation") { create() }.disabled(session.busy)
+                    Button("Create 15-minute invitation") { create() }
+                        .buttonStyle(AuroraPrimaryButton()).disabled(session.busy)
                     if let own, let ownClock {
                         TimelineView(.periodic(from: .now, by: 1)) { _ in
                             if ownClock.now() < own.invite.expires {
@@ -137,12 +138,13 @@ struct FriendInviteQRView: View {
                 }
                 if entryMode != .myCode {
                 Section("Scan or enter an invitation") {
-                    Button("Scan friend QR with camera (explicit)") { scanning = true; clearPreview() }.disabled(session.busy)
+                    Button("Scan friend QR") { scanning = true; clearPreview() }
+                        .buttonStyle(AuroraPrimaryButton()).disabled(session.busy)
                     DisclosureGroup("Paste an invitation") {
                     TextField("Configured catalog link or invite token", text: Binding(get: { input }, set: {
                         input = $0; clearPreview(); session.bind(community)
                     })).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
-                    Button("Preview minimal inviter (do not request yet)") { consume(input) }.disabled(session.busy || input.isEmpty)
+                    Button("Preview invitation") { consume(input) }.disabled(session.busy || input.isEmpty)
                     }
                     if let preview, let previewClock {
                         TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -159,7 +161,14 @@ struct FriendInviteQRView: View {
                 }
             } else { Text("Sign in to this configured catalog and enable the actual social capability to manage/preview friend invitations.") }
         }.modernScene().navigationTitle(entryMode == .myCode ? "My QR Code" : entryMode == .scan ? "Scan QR Code" : "Friend invitation").buttonStyle(.borderless)
-        .toolbar { if entryMode != .all { Button("Done") { dismiss() } } }
+        .toolbar { if entryMode != .all { Button("Done") { dismiss() }.disabled(session.busy) } }
+        .safeAreaInset(edge: .bottom) {
+            if entryMode != .all {
+                Button("Done") { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+            }
+        }
+        .interactiveDismissDisabled(session.busy)
         .task(id: community.accountRevision) {
             session.bind(community); showOwnCode = entryMode == .myCode
             if entryMode == .scan, !openedScanner, community.signedIn, community.config?.socialEnabled == true {
@@ -184,6 +193,10 @@ struct FriendInviteQRView: View {
                     }
                 }.navigationTitle("Scan friend invitation")
                     .toolbar { Button("Cancel") { scanning = false } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Cancel scan", role: .cancel) { scanning = false }
+                            .frame(maxWidth: .infinity).padding().background(.bar)
+                    }
             }
         }
     }

@@ -43,13 +43,12 @@ private struct EventGPSHuntContent: View {
     var body: some View {
         List {
             intro
-            consentSection
-            gameplay
             if let failure = failure ?? model.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice).font(.caption) }
-            if busy || model.busy { ProgressView() }
+            if busy || model.busy { ProgressView(confirming == nil ? "Checking hunt" : "Confirming target") }
+            consentSection
+            gameplay
             Section {
-                if gps.sensing { Button("Stop GPS", role: .destructive) { stopGPS() } }
                 if model.collection?.ownEnabled == true {
                     Button("Leave hunt", role: .destructive) { stopGPS(); model.withdraw() }.disabled(model.busy)
                 }
@@ -61,7 +60,7 @@ private struct EventGPSHuntContent: View {
                     NavigationLink("Manual hunt & cooperative settings") { EventSocialView(eventID: eventID, surface: .collection) }
                     NavigationLink("Nearby games") { GPSGamesView() }
                     Text("GPS is a broad local hint, not certified arrival or precise peer tagging. Coordinates and samples are not uploaded or saved.")
-                    Text("Fresh fixes need full accuracy within25m and10s dwell. Bluetooth/NI require separate peer consent and do not track backpacks.")
+                    Text("Fresh fixes need full accuracy within 25 m and 10 seconds of dwell. Bluetooth/NI require separate peer consent and do not track backpacks.")
                     Text("Private self-reports do not publish progress. Cooperative contribution is a separate choice; no other-player counts are shown.")
                 }
             }
@@ -145,6 +144,7 @@ private struct EventGPSHuntContent: View {
                     }.disabled(busy || model.busy || model.needsReload || phase != .active)
                 }
                 if targets.isEmpty { Text("No remaining targets. Reload the hunt.").font(.caption) }
+                Text("GPS is a local hint, not arrival proof. No coordinates are uploaded.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Use foreground GPS for this target", isOn: $gpsConsent)
                     .disabled(busy || model.busy || selected == nil)
                 Button("Allow location") { gps.requestWhenInUse(consent: gpsConsent) }
@@ -154,8 +154,9 @@ private struct EventGPSHuntContent: View {
                     .buttonStyle(AuroraPrimaryButton())
                     .disabled(!gpsConsent || selected == nil || busy || model.busy || model.needsReload)
                 }
+                if gps.sensing { Button("Stop GPS", role: .destructive) { stopGPS() } }
                 StatusPill(title: gps.eligibility.rawValue, symbol: gps.sensing ? "location.fill" : "location.slash")
-                FeatureDetails("GPS status") { Text(gps.status) }
+                Text(gps.status).font(.caption).foregroundStyle(.secondary)
                 if let remaining = gps.dwellRemaining, gps.sensing, gps.eligibility == .dwelling {
                     Text("Stay still · about \(Int(ceil(remaining))) seconds of fresh fixes remaining")
                         .font(.caption)
@@ -163,11 +164,14 @@ private struct EventGPSHuntContent: View {
                 Toggle("I am stopped and can safely confirm", isOn: $stationary)
                 if hasCurrentHint {
                 Button("Confirm target privately") { confirmGPS(event, collection: collection) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(!stationary || busy || model.busy || model.needsReload || !hasCurrentHint)
                 }
-                Button("Confirm manually · no GPS proof") { manualReview = true }
+                DisclosureGroup("No GPS? Confirm manually") {
+                Text("This is an uncertified private self-report, not arrival proof. Cooperative consent stays unchanged.").font(.caption)
+                Button("Review manual confirmation") { manualReview = true }
                     .disabled(!stationary || selected == nil || busy || model.busy || model.needsReload)
+                }
                 Text("Private self-report only. Nothing starts or publishes automatically.").font(.caption).foregroundStyle(.secondary)
                 }
             }

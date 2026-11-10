@@ -19,6 +19,7 @@ struct TextArtworkStudio: View {
     @State private var preview: UIImage?
     @State private var animation: Data?
     @State private var failure: String?
+    @State private var generationFailure: String?
     @State private var status: String?
     @State private var saving = false
     @State private var dimensions = ""
@@ -42,9 +43,21 @@ struct TextArtworkStudio: View {
         Section("Text to GIF") {
             TextField("Message", text: $text, axis: .vertical).lineLimit(1...4)
             Text("\(text.count)/80 characters").font(.caption).foregroundStyle(.secondary)
-            typography
+            ColorPicker("Text color", selection: $ink, supportsOpacity: false)
+            Picker("Animation", selection: $effect) {
+                ForEach(TextArtworkEffect.allCases) { Text($0.rawValue).tag($0) }
+            }
             artworkPreview
             saveControls
+            DisclosureGroup("Font & layout") { typography }
+            if effect.animated {
+                DisclosureGroup("Animation timing") {
+                    Slider(value: $delay, in: 0.03...0.3, step: 0.01) { Text("Frame duration") }
+                    Text("\(Int((delay * 1000).rounded())) ms per frame").font(.caption).foregroundStyle(.secondary)
+                    Text("Effects are rendered into GIF frames, not firmware commands. Rainbow cycles colors; Bounce may clip at canvas edges. Preview before saving.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
         .task(id: previewKey) {
             let key = previewKey
@@ -70,6 +83,10 @@ struct TextArtworkStudio: View {
                 if let animation {
                     AnimatedPreview(data: animation).navigationTitle("Text animation")
                         .toolbar { Button("Done") { self.animation = nil } }
+                        .safeAreaInset(edge: .bottom) {
+                            Button("Back to text") { self.animation = nil }
+                                .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                        }
                 }
             }
         }
@@ -94,16 +111,6 @@ struct TextArtworkStudio: View {
                     ForEach(ArtworkAlignment.allCases) { Text($0.rawValue).tag($0) }
                 }.pickerStyle(.segmented)
             }
-            ColorPicker("Text color", selection: $ink, supportsOpacity: false)
-            Picker("Animation", selection: $effect) {
-                ForEach(TextArtworkEffect.allCases) { Text($0.rawValue).tag($0) }
-            }
-            if effect.animated {
-                Slider(value: $delay, in: 0.03...0.3, step: 0.01) { Text("Frame duration") }
-                Text("\(Int((delay * 1000).rounded())) ms per frame").font(.caption).foregroundStyle(.secondary)
-                Text("Effects are rendered into GIF frames, not firmware commands. Rainbow cycles colors; Bounce may clip at canvas edges. Preview before saving.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
             Text(font == .pixel
                 ? "Pixel type uses crisp whole-pixel A-Z, a-z, digits and punctuation. Auto fit keeps words intact when possible; fixed sizes never silently shrink."
                 : "System fonts support other scripts. Their measured layout wraps and fits the actual canvas.")
@@ -127,13 +134,14 @@ struct TextArtworkStudio: View {
 
     private var saveControls: some View {
         Group {
-            TextField("Category (optional)", text: $category)
+            DisclosureGroup("Library category") { TextField("Category (optional)", text: $category) }
             if effect.animated {
                 Button("Play animation preview") { generate(save: false) }.disabled(saving || preview == nil || failure != nil)
             }
-            Button("Save text as GIF") { generate(save: true) }
-                .buttonStyle(.borderedProminent).disabled(saving || preview == nil || failure != nil)
+            Button("Save GIF") { generate(save: true) }
+                .buttonStyle(AuroraPrimaryButton()).disabled(saving || preview == nil || failure != nil)
             if saving { ProgressView("Creating GIF...") }
+            if let generationFailure { Text(generationFailure).font(.caption).foregroundStyle(.orange) }
         }
     }
 
@@ -143,16 +151,18 @@ struct TextArtworkStudio: View {
         let savedName = name, savedCategory = category, frameDelay = delay
         app.run {
             guard !saving else { throw BackpackError.invalid("Wait for the current text generation to finish.") }
-            saving = true
+            saving = true; generationFailure = nil
             defer { saving = false }
             await Task.yield()
-            let frames = try TextArtworkEffects.frames(key.text, size: key.size, font: key.font, alignment: key.alignment,
-                color: UIColor(key.ink), effect: key.effect, pixelScale: key.pixelScale)
-            let bytes = try MediaCodec.encode(frames, delays: Array(repeating: key.effect.animated ? frameDelay : 1, count: frames.count))
-            if save {
-                try library.add(name: savedName, data: bytes, category: savedCategory)
-                status = "Saved to Library."
-            } else { animation = bytes }
+            do {
+                let frames = try TextArtworkEffects.frames(key.text, size: key.size, font: key.font, alignment: key.alignment,
+                    color: UIColor(key.ink), effect: key.effect, pixelScale: key.pixelScale)
+                let bytes = try MediaCodec.encode(frames, delays: Array(repeating: key.effect.animated ? frameDelay : 1, count: frames.count))
+                if save {
+                    try library.add(name: savedName, data: bytes, category: savedCategory)
+                    status = "Saved to Library."
+                } else { animation = bytes }
+            } catch { generationFailure = error.localizedDescription; throw error }
         }
     }
 }

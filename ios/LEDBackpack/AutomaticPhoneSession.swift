@@ -128,8 +128,11 @@ struct ScopedPhoneCanvasControls: View {
             VStack {
                 Text(session.status).font(.caption)
                 if let error = session.failure { Text(error).font(.caption).foregroundStyle(.orange) }
-                Button("Stop automatic PHONE / retain recovery", role: .destructive, action: stop)
-                Button("Restore initial PHONE original") { Task { await restore() } }
+                if session.busy { ProgressView("Preparing phone artwork") }
+                Text("Stop keeps recovery available. Restore replaces this session's phone artwork with your initial original; newer selections are protected.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Stop phone session", role: .destructive, action: stop)
+                Button("Restore original") { Task { await restore() } }
             }
         }
     }

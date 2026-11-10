@@ -30,8 +30,23 @@ private struct EventGalleryContent: View {
                 if let notice = store.notice { Text(notice).foregroundStyle(.orange) }
                 if store.conflict { Text("Gallery changed. Your draft is retained; cancel and review before saving.").foregroundStyle(.orange) }
                 if session.busy { ProgressView() }
-                Button("Refresh current access / images (keep choices)") { store.load(id: eventID, organizer: organizer) }.disabled(session.busy)
+                Button("Refresh images · keep draft") { store.load(id: eventID, organizer: organizer) }.disabled(session.busy)
                 if let event = store.event, let gallery = store.gallery, let client = session.client, !session.denied {
+                    if store.hasDraft, organizer {
+                        Text("Your image draft").font(.headline)
+                        draftPanel
+                        Button("Cancel draft and reload", role: .destructive) { discardReview = true }.disabled(session.busy)
+                    } else if organizer, gallery.canReorder {
+                        Button("Add a still image") { store.begin() }
+                            .buttonStyle(AuroraPrimaryButton())
+                            .disabled(session.busy || gallery.assets.count >= 20)
+                        DisclosureGroup("Reorder, cover & replacement") {
+                            Button("Edit image order / cover") { store.begin() }.disabled(session.busy)
+                            NavigationLink("Replace an image · retire old URL") {
+                                EventImageReplacementView(event: event)
+                            }.disabled(session.busy)
+                        }
+                    }
                     ForEach(gallery.assets) { asset in
                         VStack(alignment: .leading, spacing: 10) {
                             GIFThumbnail(key: "event-gallery:\(client.instanceID):\(store.contextVersion):\(community.avatarPolicyRevision):\(asset.id):\(asset.revision)", cache: false) {
@@ -56,18 +71,6 @@ private struct EventGalleryContent: View {
                                     .disabled(store.hasDraft || session.busy)
                             }
                         }.padding(16).glassPanel()
-                    }
-                    if organizer, gallery.canReorder {
-                        Button("Stage new explicit PNG / JPEG / WebP") { store.begin() }
-                            .disabled(store.hasDraft || session.busy || gallery.assets.count >= 20)
-                        Button("Edit full order / cover") { store.begin() }.disabled(store.hasDraft || session.busy)
-                        NavigationLink("Immutable image replacement (retire old URL)") {
-                            EventImageReplacementView(event: event)
-                        }.disabled(store.hasDraft || session.busy)
-                    }
-                    if store.hasDraft, organizer {
-                        draftPanel
-                        Button("Cancel draft and explicitly reload", role: .destructive) { discardReview = true }.disabled(session.busy)
                     }
                 } else if !session.busy {
                     Text("Current ordinary event access is required. No cached covers, private gallery or admin bypass.")
@@ -124,9 +127,14 @@ private struct EventGalleryContent: View {
                                 .foregroundStyle(.orange)
                             FeatureDetails("Selected image") { Text("\(id.uuidString) · revision \(revision)") }
                         }
-                        Button("Explicitly confirm captured gallery action") { store.apply(intent) }.disabled(session.busy)
-                        Button("Back — no write", role: .cancel) { store.intent = nil }
-                    }.modernScene().navigationTitle("Local gallery review")
+                        if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                        if session.busy { ProgressView("Saving gallery change") }
+                        Button("Confirm gallery change") { store.apply(intent) }.buttonStyle(AuroraPrimaryButton()).disabled(session.busy)
+                    }.modernScene().navigationTitle("Review gallery change")
+                        .safeAreaInset(edge: .bottom) {
+                            NativeFlowCancelFooter(title: "Back to draft", busy: session.busy) { store.intent = nil }
+                        }
+                        .interactiveDismissDisabled(session.busy)
                 }
             }
             .confirmationDialog("Discard selected image / descriptions / order?", isPresented: $discardReview) {
@@ -148,10 +156,11 @@ private struct EventGalleryContent: View {
                     Image(uiImage: preview).resizable().scaledToFit().frame(maxHeight: 240)
                         .accessibilityLabel(store.alt.isEmpty ? "Staged, unpublished image" : store.alt)
                 }
-                Button("Choose one still file, stage immutable bytes") {
+                Button("Choose PNG, JPEG or WebP") {
                     importContext = store.contextVersion; importDraft = store.draftVersion; importing = true
                 }
                 Button("Review staged image upload") { store.review(.upload) }.disabled(store.raster == nil || !store.permission)
+                DisclosureGroup("Image order & cover") {
                 ForEach(Array(store.order.enumerated()), id: \.element) { index, id in
                     HStack {
                         Text("\(index + 1). \(id.uuidString)").font(.caption)
@@ -160,6 +169,7 @@ private struct EventGalleryContent: View {
                     }
                 }
                 Button("Review exact full order / first-image cover") { store.review(.order(store.order)) }
+                }
             }
         }.padding(16).glassPanel().disabled(store.conflict || store.acknowledged)
     }

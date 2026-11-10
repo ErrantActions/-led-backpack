@@ -29,7 +29,7 @@ struct PeerIncidentComposeView: View {
                     TextField("Deliberately typed explanation (1–1000 UTF-16 units)", text: $details, axis: .vertical).lineLimit(4...12)
                     Toggle("I consent to retaining only my entered explanation for private review", isOn: $consent)
                     Text("\(details.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count) / 1000 UTF-16 units").font(.caption)
-                    Button("Review deliberate unverified report") { confirmation = true }
+                    Button("Review report") { confirmation = true }.buttonStyle(AuroraPrimaryButton())
                         .disabled(!consent || captured != nil || session.busy || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } else if submitted == nil {
                     InteractionExplanation("Reporting is unavailable. Stop, block/remove and permitted owner receipts/withdrawal remain independent.", details: "Description/create capability unavailable (key may be absent). No empty-description success is implied. Local stop, block/remove and permitted owner receipts/withdrawal are independent.")
@@ -50,11 +50,16 @@ struct PeerIncidentComposeView: View {
                 if session.busy { ProgressView() }
                 NavigationLink("My peer reports / withdrawal receipts") { PeerIncidentOwnerView() }
                 FeatureDetails("Retention & limits") {
-                    Text("Descriptions expire after30 days. Cleanup is bounded, not forensic erasure.100 cases per account; service rate limits apply.")
+                    Text("Descriptions expire after 30 days. Cleanup is bounded, not forensic erasure. 100 cases per account; service rate limits apply.")
                 }
             }
             .modernScene().navigationTitle("Private peer incident")
-            .toolbar { Button("Cancel / close") { invalidate(); dismiss() } }
+            .toolbar { Button("Close") { invalidate(); dismiss() }.disabled(session.busy) }
+            .safeAreaInset(edge: .bottom) {
+                Button(submitted == nil ? "Cancel" : "Done") { invalidate(); dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+            }
+            .interactiveDismissDisabled(session.busy)
             .task(id: selection.id) {
                 invalidate()
                 session.bind(community)
@@ -157,7 +162,7 @@ struct PeerIncidentOwnerView: View {
                     Spacer()
                     Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy || page >= 10000)
                 }
-                Button("Explicitly reload current owned cases / revisions") { pending = nil; load() }.disabled(session.busy)
+                Button("Reload my reports") { pending = nil; load() }.disabled(session.busy)
                 InteractionExplanation("Only current-account cases can be withdrawn, including supported expired/key-loss cases. No other account’s data is adopted.", details: "Withdrawal needs no current game/friendship/event/profile access and works for known owned cases after expiry/key loss when advertised. Only current-account receipts are used; no other account's data is adopted.").font(.caption)
                 InteractionExplanation("Descriptions are retained up to 30 days. Account erasure removes related cases, not forensic backup copies.", details: "Limits: 100/account, 5000 global; 20 writes/120 reads per minute, 30-day description reads, at most 500 cleanup/pass. Erasure removes cases by/about an account; cleanup is not forensic backup erasure.").font(.caption)
             }.padding(20)

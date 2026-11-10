@@ -100,6 +100,10 @@ struct CommunityMessagesView: View {
                 }
                 .modernScene().navigationTitle("New message")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { composing = false } } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel", role: .cancel) { composing = false }
+                        .frame(maxWidth: .infinity).padding().background(.bar)
+                }
             }
         }
         .confirmationDialog("Respond to group invitation?", isPresented: Binding(get: { pendingInvite != nil },
@@ -433,6 +437,10 @@ struct CommunityConversationView: View {
                     }
                 }.modernScene().navigationTitle("Privacy & history")
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { privacyDetails = false } } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Done") { privacyDetails = false }
+                            .frame(maxWidth: .infinity).padding().background(.bar)
+                    }
             }
         }
         .confirmationDialog("Delete your sent message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {

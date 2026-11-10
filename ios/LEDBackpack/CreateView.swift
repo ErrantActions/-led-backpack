@@ -15,9 +15,8 @@ struct CreateView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     AuroraHeading(eyebrow: "Your next idea", title: "Make something", accent: "expressive.")
                         .auroraEntrance()
-                    Text("Choose a tool. Save locally. No community account needed.")
+                    Text("Choose a tool. Save on your phone.")
                         .font(.subheadline).foregroundStyle(Aurora.supporting)
-                    AuroraHeroArtwork(kind: .bloom)
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                         NavigationLink {
                             Form { TextArtworkStudio() }.modernScene().navigationTitle("Text artwork")
@@ -28,12 +27,19 @@ struct CreateView: View {
                             tool("Pixel drawing", detail: "Draw & animate", symbol: "paintbrush.pointed", color: Aurora.rose)
                         }
                         Button { app.selectedTab = .library } label: {
-                            tool("Images and video", detail: "Import with + in Library", symbol: "film", color: Aurora.lavender)
+                            tool("Import media", detail: "Choose an image or video in Library", symbol: "film", color: Aurora.lavender)
                         }
                     }.buttonStyle(AuroraTileButton())
                     DisclosureGroup("More tools") {
+                        NavigationLink { LocalPixelStudioView() } label: {
+                            FeatureRowLabel(title: "Offline pixel studio", symbol: "square.grid.3x3",
+                                subtitle: "Transparent pixels and editable projects")
+                        }
                         NavigationLink { LEDAlphabetView() } label: {
                             FeatureRowLabel(title: "LED font inspector", symbol: "character.textbox")
+                        }
+                        FeatureDetails("Saving & sending") {
+                            Text("Creation tools save local copies without a community account. Sending to a backpack or sharing is a separate choice.")
                         }
                         #if DEBUG
                         if CommandLine.arguments.contains("--library-ui-fixture") {

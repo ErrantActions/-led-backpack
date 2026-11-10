@@ -209,7 +209,10 @@ struct OrganizerPlaceSearchView: View {
             TextField("Search a fixed place or address", text: $query).submitLabel(.search).onSubmit { search.search(query) }
                 .autocorrectionDisabled()
             Button("Search Apple Maps") { search.search(query) }.disabled(search.busy)
-            if search.busy { ProgressView() }
+            if search.busy {
+                ProgressView("Searching places")
+                Button("Cancel search", role: .cancel) { search.cancel() }
+            }
             if let failure = search.failure { Text(failure).font(.caption).foregroundStyle(.orange) }
             ForEach(search.places) { place in
                 Button { choose(place); search.cancel() } label: {
@@ -241,6 +244,7 @@ struct FixedVenueMapEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if let venue { Text(venue.label).font(.headline) }
+            else { Text("Choose a fixed venue").font(.headline) }
             if enabled {
                 Toggle("Search places with Apple Maps", isOn: $consent)
                 Text("Apple receives map views and place searches. This view doesn't use device GPS or send account details or event links.")

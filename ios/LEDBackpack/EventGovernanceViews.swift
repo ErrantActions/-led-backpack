@@ -27,10 +27,14 @@ struct EventOwnerToolsView: View {
     }
     var body: some View {
         Form {
+            Section {
+                Text("Manage event organizers").font(.title2.bold())
+                Text("Add help from the current roster, or review an ownership transfer.").font(.subheadline).foregroundStyle(.secondary)
+            }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice) }
             if session.busy { ProgressView() }
-            Button("Explicitly reload owner role / revision") { pending = nil; load() }.disabled(session.busy)
+            Button("Refresh owner access") { pending = nil; load() }.disabled(session.busy)
             if needsReload { Text("Conflict: choices are retained. Reload explicitly before selecting or submitting again.") }
             if let retainedChoice {
                 VStack(alignment: .leading, spacing: 4) {
@@ -41,7 +45,7 @@ struct EventOwnerToolsView: View {
             if let event, let client = session.client, event.access.role == .owner {
                 Text("Current event owner · revision \(event.revision)")
                 if let roster {
-                    Section("Add named co-organizer from current permitted roster") {
+                    Section("Add a co-organizer") {
                         ForEach(roster.participants.filter { $0.eventRole == nil }, id: \.user.id) { row in
                             Button("Review adding \(row.user.displayName)") {
                                 capture(event, .init(id: row.user.id, displayName: row.user.displayName, eventRole: .coorganizer), .addOrganizer)
@@ -53,7 +57,8 @@ struct EventOwnerToolsView: View {
                         }.disabled(session.busy || needsReload || event.cancelled)
                     }
                 }
-                Section("Existing named co-organizers") {
+                Section("Transfer or remove management") {
+                    Text("Transfer changes event management, not physical backpack ownership. Review the recipient and your remaining role before confirming.").font(.caption).foregroundStyle(.orange)
                     if client.eventOwnershipAuditAvailable && event.settings?.formerOwnerRoleChoiceEnabled == true {
                         Picker("After ownership transfer, my organizer role", selection: $formerRole) {
                             Text("Explicitly retain co-organizer role").tag(NativeFormerOwnerRole.coorganizer)
@@ -69,7 +74,7 @@ struct EventOwnerToolsView: View {
                     Text("Global administration never substitutes for current event ownership. Removing management does not invent or remove independent membership.").font(.caption)
                 }.disabled(session.busy || needsReload)
                 if client.eventOwnershipAuditAvailable && event.settings?.ownershipAuditEnabled == true {
-                    Section("Current-owner-only ownership history") {
+                    DisclosureGroup("Ownership history · owner only") {
                         Button("Load audit page \(auditPage)") { loadAudit(event) }.disabled(session.busy || needsReload)
                         if let audit {
                             ForEach(audit.entries) { entry in
@@ -184,11 +189,18 @@ struct EventReportComposerView: View {
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let notice { Text(notice) }
             Text("Captured event revision \(event.revision). Conflicts retain this draft; close and explicitly reload the event before resubmitting.").font(.caption)
+            if session.busy { ProgressView("Sending report") }
             Button("Review typed report") {
                 do { intent = try NativeEventReportIntent(event: event, category: category, details: details, consent: consent) }
                 catch { notice = error.localizedDescription }
-            }.disabled(session.busy || session.denied || needsReload || session.client?.eventReportsAvailable != true)
+            }.buttonStyle(AuroraPrimaryButton())
+                .disabled(!consent || category == nil || details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                    session.busy || session.denied || needsReload || session.client?.eventReportsAvailable != true)
         }.modernScene().navigationTitle("Report event")
+            .safeAreaInset(edge: .bottom) {
+                NativeFlowCancelFooter(busy: session.busy) { intent = nil; dismiss() }
+            }
+            .interactiveDismissDisabled(session.busy)
             .task { session.bind(community) }
             .onChange(of: category) { _, _ in intent = nil }
             .onChange(of: details) { _, _ in intent = nil }
@@ -230,6 +242,7 @@ struct OwnEventReportsView: View {
     var body: some View {
         Form {
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+            if session.busy { ProgressView("Loading your reports") }
             Text("Own reports contain no staff notes or cached private event detail. Withdrawal does not release a hold; expiry or account erasure never releases it either.").font(.caption)
             ForEach(reports) { report in
                 Text(report.eventId.uuidString).font(.caption)
@@ -241,7 +254,7 @@ struct OwnEventReportsView: View {
                 Button("Previous") { page -= 1; load() }.disabled(page == 1)
                 Button("Next") { page += 1; load() }.disabled(!hasMore || page >= 10000)
             }.disabled(session.busy)
-            Button("Explicitly refresh own reports") { pending = nil; load() }.disabled(session.busy)
+            Button("Refresh reports") { pending = nil; load() }.disabled(session.busy)
             if needsReload { Text("Withdrawal conflict: refresh explicitly before using a new captured report revision.") }
         }.modernScene().navigationTitle("My event reports")
             .task(id: "\(community.accountRevision):\(community.config?.eventReportsEnabled == true)") {
@@ -298,9 +311,10 @@ struct EventModerationView: View {
     var body: some View {
         Form {
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+            if session.busy { ProgressView("Checking moderation") }
             if community.isAdmin && !session.denied {
                 Text("Case authority is NOT event membership. Private context exposes only opaque metadata and moderation. Never fetch private rosters, media, profiles or conversations.").font(.caption)
-                Button("Explicitly reload current cases / moderation") { intent = nil; release = nil; load() }.disabled(session.busy)
+                Button("Refresh cases") { intent = nil; release = nil; load() }.disabled(session.busy)
                 if needsReload { Text("Conflict: typed note and action retained, but captured revisions must be explicitly reloaded.").foregroundStyle(.orange) }
                 ForEach(cases) { report in
                     Section(report.own.category.rawValue) {
@@ -325,7 +339,8 @@ struct EventModerationView: View {
                         Button("Review captured action / literal note") {
                             do { intent = try NativeEventCaseIntent(report: selected, action: action, note: note) }
                             catch { session.run { _ in throw error } }
-                        }.disabled(session.busy || needsReload)
+                        }.buttonStyle(AuroraPrimaryButton()).disabled(session.busy || needsReload)
+                        Button("Cancel review", role: .cancel) { self.selected = nil; intent = nil; note = "" }.disabled(session.busy)
                     }
                 }
                 InteractionExplanation("Release does not restore progress, badges or consent. Resolving/withdrawing/expiring a report does not release enforcement.", details: "Release never restores progress, prior public badge claims or participation consent. Resolve, report withdrawal, thirty-day expiry and erasure do not automatically release enforcement.").font(.caption)

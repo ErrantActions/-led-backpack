@@ -21,20 +21,15 @@ struct EventProgressView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Latest self-reported checkpoint").font(.title2.bold())
+                Text("Choose your checkpoint").font(.title2.bold())
                 Text("Not a GPS fix, travel timeline, certified arrival or attendance. No sensors activate here. Private badge collection/deletion is separate.").font(.caption)
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice { Text(notice).font(.caption) }
                 if session.busy { ProgressView() }
-                Button("Refresh current membership / board") { pending = nil; load() }.disabled(session.busy)
+                Button("Refresh progress") { pending = nil; load() }.disabled(session.busy)
                 if let event, let client = session.client, client.progressDeadlinesEnabled(event) {
                     if event.requiresReconfirmation == true {
                         NavigationLink("Review changed event before claiming") { CommunityEventDetailView(id: eventID) }
-                    }
-                    if event.access.member && event.access.canViewProgress, let board, let clock {
-                        TimelineView(.periodic(from: .now, by: 1)) { _ in
-                            entries(board, clock: clock, event: event, client: client)
-                        }
                     }
                     if canClaim(event), let route = event.route {
                         VStack(alignment: .leading, spacing: 12) {
@@ -44,9 +39,10 @@ struct EventProgressView: View {
                                     Text("\(checkpoint.title) · \(checkpoint.kind.rawValue)\(checkpoint.optional == true ? " · optional" : " · required")").tag(Optional(checkpoint.id))
                                 }
                             }
-                            Toggle("Explicitly share this latest claim with current members", isOn: $choice.share)
+                            Toggle("Share this latest claim with members", isOn: $choice.share)
                             InteractionExplanation("Sharing is off by default. Local-only also withdraws any earlier shared claim. No offline replay is queued.", details: "Default off. Local-only validates the checkpoint but does not publish a claim; it also withdraws any previously shared claim on the server. Its checkpoint remains only in this screen's memory, not a queued replay.").font(.caption)
                             Button(choice.share ? "Review shared self-report" : "Review local-only choice / unshare") { prepare(event) }
+                                .buttonStyle(AuroraPrimaryButton())
                                 .disabled(choice.checkpointID == nil || session.busy)
                             InteractionExplanation("Current participation, checkpoint order and event timing apply. Rejection resets sharing consent; no retry is queued.", details: "Server enforces required checkpoint order, optional skips, published start/finish, current reviewed participation and the exact event time window. A rejection resets sharing consent; no retry is queued.").font(.caption)
                         }.padding(16).glassPanel().disabled(session.busy)
@@ -54,9 +50,16 @@ struct EventProgressView: View {
                         Text("Claims require going RSVP, current reviewed membership, a published route and the actual event window.").font(.caption)
                     }
                     if let localCheckpoint { Text("Local-only checkpoint ID: \(localCheckpoint.uuidString.lowercased()). Not shared or certified.").font(.caption) }
+                    if event.access.member && event.access.canViewProgress, let board, let clock {
+                        FeatureDetails("Members' latest self-reports") {
+                            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                                entries(board, clock: clock, event: event, client: client)
+                            }
+                        }
+                    }
                 } else if !session.busy { Text("Current member progress/retention capability is unavailable. Existing shared state can still be explicitly withdrawn below.") }
                 Button("Withdraw my shared progress", role: .destructive) { withdrawing = true }.disabled(session.busy)
-                Text("Withdrawal sends only DELETE for your own event progress, even after event access loss. It does not decline RSVP, delete private badges or require a current board/detail read.").font(.caption)
+                Text("Withdrawal works after access loss. RSVP and private badges stay unchanged.").font(.caption)
             }.padding(20)
         }.modernScene().navigationTitle("Shared progress")
         .task(id: community.accountRevision) { clear(); session.bind(community); load() }

@@ -162,7 +162,8 @@ struct FirmwareLibraryView: View {
             InteractionExplanation("Download/research only. A matching hash does not prove authenticity or compatibility. Flashing is unavailable.", details: "Download/research library only. SHA-256 checks bytes, not authenticity. Generic stock/custom metadata and admin declarations do NOT certify target compatibility, signature or safety. Flashing, automatic recommendations and device commands are unavailable.")
                 .font(.caption)
             if session.scope != nil {
-                Section("Exact filters — not connected-device detection") {
+                DisclosureGroup("Search exact release metadata") {
+                    Text("Manual filters, not connected-device detection.").font(.caption).foregroundStyle(.secondary)
                     TextField("Device/model slug", text: $filter.device)
                     TextField("Hardware revision", text: $filter.hardwareRevision)
                     TextField("Firmware version", text: $filter.version)
@@ -179,9 +180,11 @@ struct FirmwareLibraryView: View {
                                 Text(release.title).font(.headline)
                                 Text("\(release.deviceName) · \(release.hardwareRevision) · \(release.version) · \(release.kind)")
                                 Text(release.published ? "Published metadata — unverified" : "Admin-only draft — unverified").font(.caption)
-                                Text(release.releaseNotes)
-                                Text("\(release.byteSize) bytes · SHA-256 \(release.sha256)").font(.caption).textSelection(.enabled)
-                                Button("Download exact .bin; do not flash") { pending = release; action = "download"; attested = false }
+                                FeatureDetails("Release notes & checksum") {
+                                    Text(release.releaseNotes)
+                                    Text("\(release.byteSize) bytes · SHA-256 \(release.sha256)").font(.caption).textSelection(.enabled)
+                                }
+                                Button("Review download") { pending = release; action = "download"; attested = false }
                                 if admin {
                                     Button(release.published ? "Withdraw publication" : "Review and publish draft") {
                                         pending = release; action = "publication"; attested = false
@@ -198,24 +201,41 @@ struct FirmwareLibraryView: View {
                 }
                 Button("Reload current authorized releases") { load() }
             } else { Text("Firmware storage is not advertised for this current account/server. No live activation is implied.") }
-            if let pending {
-                Section("Confirm captured release revision \(pending.revision)") {
-                    Text("\(pending.title) · \(action)")
-                    if action == "publication" && !pending.published {
-                        Toggle("I explicitly declare this generic target; this is not authenticity or compatibility verification", isOn: $attested)
-                    }
-                    Button("Confirm \(action)", role: action == "delete" ? .destructive : nil) { execute(pending) }
-                        .disabled(action == "publication" && !pending.published && !attested)
-                    Button("Cancel") { self.pending = nil; attested = false }
-                }
-            }
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let message = session.message { Text(message) }
         }.disabled(session.busy).navigationTitle(admin ? "Admin firmware" : "Firmware library")
+            .sheet(item: $pending, onDismiss: { attested = false }) { release in releaseReview(release) }
             .task(id: identity) { page = nil; pending = nil; document = nil; exporting = false; attested = false; session.bind(community, .firmware, admin: admin); load() }
             .onDisappear { session.clear(); page = nil; document = nil; pending = nil }
             .fileExporter(isPresented: $exporting, document: document, contentType: .data, defaultFilename: downloadName) { _ in document = nil }
+    }
+    private func releaseReview(_ release: AccountFirmware) -> some View {
+        NavigationStack {
+            Form {
+                Section("Captured release") {
+                    Text(release.title).font(.headline)
+                    Text("\(release.deviceName) · \(release.hardwareRevision) · \(release.version)")
+                    LabeledContent("Revision", value: String(release.revision))
+                    Text(action == "delete" ? "Permanently deletes this release and its stored bytes." :
+                        "A matching checksum does not prove authenticity or compatibility. Flashing is unavailable.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                Section {
+                    if action == "publication" && !release.published {
+                        Toggle("I explicitly declare this generic target; this is not authenticity or compatibility verification", isOn: $attested)
+                    }
+                    Button("Confirm \(action)", role: action == "delete" ? .destructive : nil) { execute(release) }
+                        .disabled(session.busy || (action == "publication" && !release.published && !attested))
+                }
+            }.modernScene().navigationTitle("Review release")
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel") { pending = nil; attested = false }
+                        .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(Aurora.surface)
+                        .disabled(session.busy)
+                }
+                .interactiveDismissDisabled(session.busy)
+        }
     }
     private func load() {
         page = nil; pending = nil
@@ -266,9 +286,11 @@ struct FirmwareDraftUploadView: View {
             TextField("Firmware version", text: $metadata.version)
             Picker("Kind", selection: $metadata.kind) { Text("Stock").tag("stock"); Text("Custom").tag("custom") }
             TextField("Title", text: $metadata.title)
-            TextField("Release notes", text: $metadata.releaseNotes, axis: .vertical)
-            TextField("Comma-separated lowercase tags", text: $tagText)
-            TextField("Optional HTTPS source", text: $metadata.sourceUrl)
+            DisclosureGroup("Release notes & source") {
+                TextField("Release notes", text: $metadata.releaseNotes, axis: .vertical)
+                TextField("Comma-separated lowercase tags", text: $tagText)
+                TextField("Optional HTTPS source", text: $metadata.sourceUrl)
+            }
             Toggle("I have permission to store/share this binary", isOn: $consent)
             Button("Choose one .bin (never execute)") { fileRevision = community.accountRevision; picking = true }
             if let bytes { Text("Immutable file snapshot: \(bytes.count) bytes") }
@@ -280,7 +302,7 @@ struct FirmwareDraftUploadView: View {
                     self.bytes = nil; consent = false
                     return "Draft created; publication requires a separate target declaration. No flashing is available."
                 }
-            }.disabled(bytes == nil || !consent || session.scope == nil)
+            }.buttonStyle(AuroraPrimaryButton()).disabled(bytes == nil || !consent || session.scope == nil)
             if session.busy { ProgressView() }
             if let failure = failure ?? session.failure { Text(failure).foregroundStyle(.orange) }
             if let message = session.message { Text(message) }

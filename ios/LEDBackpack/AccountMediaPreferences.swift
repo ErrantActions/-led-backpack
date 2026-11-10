@@ -116,7 +116,8 @@ struct ViewerMediaPreferencesView: View {
     @State private var failure: String?
     var body: some View {
         Form {
-            Text("Viewer-only settings. Static previews and explicit Play/download still use data. This does not change GIF timing, local originals or backpack playback.")
+            FeatureRowLabel(title: "Your viewing preferences", symbol: "play.circle",
+                subtitle: "Change app playback, not backpack playback")
             if let mature = community.user?.allowMature {
                 Toggle("Show mature avatars and community content", isOn: Binding(get: { community.user?.allowMature ?? mature }, set: { allowed in
                     perform { try await community.setMaturePreference(allowed, expectedRevision: community.accountRevision) }
@@ -127,15 +128,22 @@ struct ViewerMediaPreferencesView: View {
             if community.config?.viewerMediaPreferencesEnabled == true {
                 Toggle("Animate visible media", isOn: $animations)
                 Toggle("Data saving / manual playback", isOn: $dataSaving)
-                if let saved { Button("Save captured revision \(saved.revision)") { perform {
-                    try await community.saveViewerPreferences(saved, animations: animations, dataSaving: dataSaving)
-                    self.saved = community.user?.mediaPreferences
-                } } }
+                if let saved {
+                    Text("Displayed revision \(saved.revision)").font(.caption).foregroundStyle(.secondary)
+                    Button("Save preferences") { perform {
+                        try await community.saveViewerPreferences(saved, animations: animations, dataSaving: dataSaving)
+                        self.saved = community.user?.mediaPreferences
+                    } }.buttonStyle(AuroraPrimaryButton())
+                }
                 Button("Reload saved preferences") { load() }
             } else { Text("Unavailable on this server. Existing viewer behavior is unchanged.") }
+            FeatureDetails("Playback & data use") {
+                Text("Viewer-only settings. Static previews and explicit Play/download still use data. This does not change GIF timing, local originals or backpack playback.")
+                Text("A conflict requires reload; no automatic retry.")
+            }
             if busy { ProgressView() }
             if let failure { Text(failure).foregroundStyle(.orange) }
-        }.disabled(busy).navigationTitle("Motion and data")
+        }.disabled(busy).modernScene().navigationTitle("Motion & data")
             .task(id: community.accountRevision) { saved = nil; failure = nil; busy = false; if community.config?.viewerMediaPreferencesEnabled == true { load() } }
     }
 

@@ -215,6 +215,7 @@ struct ChatReferencePicker: View {
     @State private var more = false
     @State private var failure: String?
     @State private var selected: ChatReferenceSelection?
+    @State private var loading = false
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -226,6 +227,10 @@ struct ChatReferencePicker: View {
                     }.pickerStyle(.segmented)
                     if kind == "gif" { TextField("Search approved community GIFs", text: $search).textFieldStyle(.roundedBorder) }
                     if let failure { Text(failure).foregroundStyle(.orange) }
+                    if loading { ProgressView("Loading shareable content…") }
+                    if !loading && failure == nil && gifs.isEmpty && eventRows.isEmpty && playlistRows.isEmpty {
+                        Text("No shareable content on this page.").foregroundStyle(.secondary)
+                    }
                     if kind == "event" {
                         ForEach(eventRows) { event in
                             VStack(alignment: .leading, spacing: 8) {
@@ -266,9 +271,15 @@ struct ChatReferencePicker: View {
                     HStack { Button("Previous") { page -= 1 }.disabled(page == 1); Spacer(); Button("Next") { page += 1 }.disabled(!more) }
                 }.padding(20)
             }.modernScene().navigationTitle("Share into chat").toolbar { Button("Cancel") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar)
+            }
             .task(id: "\(kind):\(search):\(page):\(phase):\(community.chatAccessRevision):\(community.avatarPolicyRevision):\(community.config?.messagingEnabled == true):\(community.config?.chatReferencesEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true)") {
                 gifs = []; eventRows = []; playlistRows = []; selected = nil; more = false; failure = nil
                 guard phase == .active, community.config?.messagingEnabled == true, client.chatReferencesEnabled else { return }
+                loading = true
+                defer { loading = false }
                 do {
                     if kind == "playlist" { let result = try await client.chatPublishedPlaylists(context, page: page); try Task.checkCancellation(); playlistRows = result.playlists; more = result.hasMore }
                     else if kind == "event" { let result = try await client.referenceEvents(context, page: page); try Task.checkCancellation(); eventRows = result.items; more = result.more }

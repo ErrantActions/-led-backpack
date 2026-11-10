@@ -31,7 +31,6 @@ struct LiveView: View {
                                 .pickerStyle(.menu).disabled(live.mode != nil)
                                 .accessibilityIdentifier("live-mode-picker")
                                 modeDetails
-                                transportControls
                                 backgroundNote
                             }.padding(24)
                         }
@@ -67,6 +66,14 @@ struct LiveView: View {
                     }
                 }
             }.background(AuroraBackground()).tint(Aurora.mint)
+            .safeAreaInset(edge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Use controls while stationary. Disconnecting can prevent playback restoration.")
+                        .font(.caption).foregroundStyle(.orange)
+                    if !app.link.connected { Text("Connect your backpack to go live.").font(.caption).foregroundStyle(.secondary) }
+                    transportControls
+                }.padding(16).frame(maxWidth: 760).frame(maxWidth: .infinity).background(Aurora.surface)
+            }
             .navigationTitle("Live").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $themeEditor) { ThemeEditor(mode: selected, theme: library.theme(for: selected)) }
             .task(id: "\(selected.rawValue)-\(library.theme(for: selected))-\(panel.size?.width ?? 64)") { updatePreview() }
@@ -106,9 +113,11 @@ struct LiveView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
-            modePicker
+            Picker("Mode", selection: $selected) {
+                ForEach(LiveMode.allCases) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.menu).disabled(live.mode != nil).accessibilityIdentifier("live-mode-picker")
+            DisclosureGroup("Explore all modes") { modePicker }
             modeDetails
-            transportControls
         }
     }
 
@@ -159,6 +168,7 @@ struct LiveView: View {
 
     private var transportControls: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if starting { ProgressView("Starting live mode") }
             if live.mode == nil {
                 Button {
                     starting = true
@@ -204,8 +214,6 @@ struct LiveView: View {
 
     private var backgroundNote: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Use controls only while stationary. A lost connection can prevent playback restoration.")
-                .foregroundStyle(.orange)
             FeatureDetails("Sensors & background limits") {
             InteractionExplanation("Explicit GPS sessions need Always permission and Background GPS. iOS suspension or force-quit can stop updates.", details: "An explicitly started GPS session can continue with Always location and Background GPS enabled. Other screens refresh on allowed callbacks; iOS suspension or force-quit can stop updates.")
             InteractionExplanation("Weather becomes stale after 5 minutes, unavailable after 15. Stop may not restore playback if disconnected. Use controls while stationary.", details: "Weather is opportunistic, marked STALE after five minutes and NO DATA after fifteen. Stop attempts playback restoration; a lost connection can prevent it. Operate controls only while stationary.")
@@ -264,7 +272,7 @@ struct SettingsView: View {
                     Toggle("Fahrenheit weather", isOn: $preferences.fahrenheit)
                     Toggle("Experimental slowdown indicator", isOn: $preferences.brakeDisplay)
                 }
-                Section("Connection and background") {
+                DisclosureGroup("Connection & permissions") {
                     Toggle("Reconnect after link loss", isOn: $preferences.reconnect)
                     Toggle("Notify on unexpected disconnect", isOn: $preferences.disconnectAlerts)
                     Button("Allow notifications") {
@@ -277,14 +285,6 @@ struct SettingsView: View {
                     Button("Open iOS Settings") { openSettings() }
                     Text("Start GPS in the foreground. Restart live playback after permission changes; iOS background limits still apply.")
                         .font(.caption)
-                    Button("Save preferences") {
-                        app.run {
-                            guard (1...250).contains(preferences.speedCap) else { throw BackpackError.invalid("Speed cap must be 1...250.") }
-                            preferences.communityURL = library.state.preferences.communityURL
-                            try library.savePreferences(preferences)
-                            app.apply(preferences)
-                        }
-                    }
                 }
                 Section("Local backups") {
                     Button("Export library backup") {
@@ -326,10 +326,18 @@ struct SettingsView: View {
                 }
             }.modernScene().navigationTitle("Settings").buttonStyle(.borderless)
             .safeAreaInset(edge: .bottom) {
-                Button("Done") { dismiss() }
-                    .buttonStyle(AuroraPrimaryButton())
-                    .padding(8).background(.regularMaterial)
-                    .accessibilityIdentifier("settings-done")
+                VStack(spacing: 8) {
+                    Button("Save settings") {
+                        app.run {
+                            guard (1...250).contains(preferences.speedCap) else { throw BackpackError.invalid("Speed cap must be 1...250.") }
+                            preferences.communityURL = library.state.preferences.communityURL
+                            try library.savePreferences(preferences)
+                            app.apply(preferences)
+                            dismiss()
+                        }
+                    }.buttonStyle(AuroraPrimaryButton()).accessibilityIdentifier("settings-save")
+                    Button("Cancel") { dismiss() }.frame(minHeight: 44).accessibilityIdentifier("settings-done")
+                }.padding(.horizontal, 20).padding(.vertical, 8).background(Aurora.surface)
             }
             .task { preferences = library.state.preferences }
             .fileExporter(isPresented: $exporter, document: document, contentType: .json, defaultFilename: exportName) { result in

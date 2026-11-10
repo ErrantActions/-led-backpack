@@ -162,8 +162,12 @@ struct OwnerPlaylistsView: View {
     @State private var page = 1
     var body: some View {
         List {
-            Text("Owner-only private text/schedule encrypted by the server, not end-to-end encryption. Only currently public community GIF references; no cloud/chat/event-exclusive imports.").font(.caption)
+            Section {
+                Text("Your private playlists").font(.title2.bold())
+                Text("Arrange public GIFs. Preview or share only when you choose.").font(.subheadline).foregroundStyle(.secondary)
+            }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+            if session.busy { ProgressView("Loading playlists") }
             if community.config?.playlistsEnabled == true {
                 NavigationLink("Create private playlist") { OwnerPlaylistEditor(id: nil) }
                 Button("Reload my playlists", action: load).disabled(session.busy)
@@ -183,6 +187,9 @@ struct OwnerPlaylistsView: View {
                     }.disabled(session.busy)
                 }
             } else { Text("Playlists unavailable on this server. Native source does not enable encryption/services.") }
+            FeatureDetails("Privacy & supported artwork") {
+                Text("Private text and schedules use server-managed encryption, not E2EE. Only currently public community GIF references; no cloud, chat or event-exclusive imports.")
+            }
         }.navigationTitle("My private playlists").modernScene()
         .task(id: "\(community.accountRevision):\(community.config?.playlistsEnabled == true)") { value = nil; page = 1; session.bind(community); load() }
         .onChange(of: session.denied) { _, denied in if denied { value = nil } }
@@ -214,20 +221,32 @@ struct OwnerPlaylistEditor: View {
     var body: some View {
         Form {
             Section {
+                Text("Build your playlist").font(.title2.bold())
+                Text("Choose public GIFs, arrange them, then save privately. Nothing plays or publishes on save.").font(.subheadline).foregroundStyle(.secondary)
                 if model.busy { ProgressView() }
                 if let failure = model.failure { Text(failure).foregroundStyle(.orange) }
                 if model.needsReload { Text("Conflict/access changed. Draft retained where permitted; confirmation invalidated. Reload deliberately, no silent overwrite/retry.").foregroundStyle(.orange) }
-                Button("Reload / cancel unsaved changes") { qrReceipt = nil; model.reload() }.disabled(model.busy)
-                Text("Private text and schedule stay private. Saving is not foreground/background execution, physical playback or synchronization.").font(.caption)
+                Button("Reload · discard unsaved changes") { qrReceipt = nil; model.reload() }.disabled(model.busy)
             }
             Group {
                 privateContent
                 artworkPicker
-                schedule
-                preview
-                publishing
+                Section {
+                    Button(model.original == nil ? "Create private playlist" : "Save private playlist") { model.save() }
+                        .buttonStyle(AuroraPrimaryButton())
+                    Text("Private text and schedule use server encryption, not E2EE. Saving never starts playback.").font(.caption)
+                }
+                DisclosureGroup("Preview on this phone") { preview }
+                DisclosureGroup("Optional foreground schedule") { schedule }
+                DisclosureGroup("Publish or revoke public snapshots") { publishing }
+                if model.original != nil {
+                    DisclosureGroup("Delete playlist") {
+                        Text("Deleting also revokes all public snapshots. Downloaded copies cannot be recalled.").font(.caption).foregroundStyle(.orange)
+                        Button("Delete playlist & revoke shares", role: .destructive) { qrReceipt = nil; model.delete() }
+                    }
+                }
             }.disabled(model.busy || model.needsReload || model.client?.playlistsAvailable != true)
-            Section("Public snapshot receipts created in this open editor") {
+            DisclosureGroup("Links created in this editor (\(model.receipts.count))") {
                 InteractionExplanation("Published snapshots have separate IDs. Revoke removes all snapshots, including older ones; no share list is invented.", details: "These are separate published IDs, not private playlist IDs. No all-shares management endpoint is documented; reopening does not invent a server share list. Revoke below removes all snapshots, including older ones.").font(.caption)
                 if model.receipts.isEmpty { Text("No share receipts in this session.") }
                 ForEach(model.receipts) { receipt in
@@ -293,16 +312,12 @@ struct OwnerPlaylistEditor: View {
                 }
             }
             if model.content.entries.isEmpty { Text("Choose at least one available public GIF below.") }
-            Button("Save captured private revision") { model.save() }
-            if model.original != nil {
-                Button("Delete private playlist and revoke shares", role: .destructive) { qrReceipt = nil; model.delete() }
-            }
         }
     }
     private var artworkPicker: some View {
-        Section("Current authorized public GIF selector") {
+        Section("Add public GIFs") {
             TextField("Search public artwork", text: $query)
-            Button("Search / reload public choices") { model.search(query) }
+            Button("Find GIFs") { model.search(query) }
             if let picker = model.picker {
                 if picker.items.isEmpty { Text("No currently permitted public GIFs match this search.") }
                 ForEach(picker.items) { item in
@@ -364,6 +379,7 @@ struct OwnerPlaylistEditor: View {
     }
     private var publishing: some View {
         Section("Separate explicitly public immutable snapshot") {
+            Text("Anyone with the link can read this public snapshot until expiry. Already downloaded copies cannot be recalled. Private title, notes and schedule are excluded.").font(.caption).foregroundStyle(.orange)
             TextField("Public title (never autofilled from private title)", text: $model.publishDraft.title)
             TextField("Public description", text: $model.publishDraft.description, axis: .vertical)
             Stepper("Expiry \(model.publishDraft.expiresInHours) hours", value: $model.publishDraft.expiresInHours, in: 1...168)
@@ -392,9 +408,11 @@ struct NativePlaylistShareQRView: View {
                 Text(snapshot.title)
                 Text(snapshot.description).font(.caption)
                 Text("Paused / \(snapshot.order.rawValue)")
-                ForEach(Array(snapshot.entries.enumerated()), id: \.offset) { _, entry in
-                    Text(entry.item.map { _ in "Artwork · \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; metadata withheld.")
-                        .accessibilityLabel(entry.item.map { "\($0.title), \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
+                FeatureDetails("Included artwork (\(snapshot.entries.count))") {
+                    ForEach(Array(snapshot.entries.enumerated()), id: \.offset) { _, entry in
+                        Text(entry.item.map { _ in "Artwork · \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable; metadata withheld.")
+                            .accessibilityLabel(entry.item.map { "\($0.title), \(entry.durationMilliseconds)ms" } ?? "Artwork unavailable")
+                    }
                 }
             }
             if let png, let image = UIImage(data: png) {
@@ -402,8 +420,8 @@ struct NativePlaylistShareQRView: View {
             }
             if let failure { Text(failure).foregroundStyle(.orange) }
             Text("Local QR generation only. No network QR service, automatic playback or private text/schedule.").font(.caption)
-            Button("Close") { dismiss() }
         }.padding()
+        .safeAreaInset(edge: .bottom) { NativeFlowCancelFooter(title: "Close") { dismiss() } }
         .task(id: community.accountRevision) {
             let epoch = community.accountRevision
             do {

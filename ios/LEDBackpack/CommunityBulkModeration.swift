@@ -113,7 +113,7 @@ struct CommunityBulkModerationView: View {
                             set: { approval.setConfirmed($0, for: approvalScope) }))
                         InteractionExplanation("Selection resets on refresh/paging. Current items are checked, but concurrent moderation is not version-locked.", details: "Selection resets on paging/refresh. Current item state is checked before submission. This API has no client version-CAS field: the server atomically rejects missing/deleted/private IDs, but not every concurrent moderation edit. No version guarantee is invented.")
                             .font(.caption).foregroundStyle(.secondary)
-                        Button("Review captured \(action)", role: .destructive) {
+                        Button("Review \(action) · \(selected.count) items", role: .destructive) {
                             session.run { scope in
                                 guard approval.consume(for: approvalScope) else { throw BackpackError.invalid("Selection or approval changed. Review moderation again.") }
                                 let ids = selected.sorted { $0.uuidString < $1.uuidString }
@@ -133,10 +133,10 @@ struct CommunityBulkModerationView: View {
                 }
                 Button("Reload queue / discard selection") { load() }
             } else { Text("Current admin bulk capability is unavailable. No action is enabled on production merely by this source.") }
-            if session.busy { ProgressView() }
+            if session.busy { ProgressView("Working with selected community items…") }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let message = session.message { Text(message) }
-        }.disabled(session.busy).navigationTitle("Bulk community moderation")
+        }.disabled(session.busy).modernScene().navigationTitle("Bulk moderation")
             .task(id: "\(community.accountRevision):\(community.user?.role ?? ""):\(community.config?.adminBulkModerationEnabled == true):\(community.avatarPolicyRevision)") {
                 reset(); session.bind(community, .bulk, admin: true); load()
             }

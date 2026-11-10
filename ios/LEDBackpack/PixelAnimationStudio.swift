@@ -18,6 +18,8 @@ struct PixelAnimationStudio: View {
     @State private var preview: UIImage?
     @State private var animation: Data?
     @State private var newSize: PanelSize?
+    @State private var failure: String?
+    @State private var status: String?
 
     var body: some View {
         Form {
@@ -25,9 +27,11 @@ struct PixelAnimationStudio: View {
                 Text("\(document.current.pixels.size.width) x \(document.current.pixels.size.height) / frame \(document.selected + 1) of \(document.frames.count)")
                     .font(.caption)
                 canvas
-                Toggle("Move / pinch-zoom canvas", isOn: $panning)
-                Slider(value: $zoom, in: 1...8, step: 0.25) { Text("Canvas zoom") }
-                Text("Zoom \(zoom, specifier: "%.2f")x").font(.caption)
+                DisclosureGroup("Zoom & navigation") {
+                    Toggle("Move / pinch-zoom canvas", isOn: $panning)
+                    Slider(value: $zoom, in: 1...8, step: 0.25) { Text("Canvas zoom") }
+                    Text("Zoom \(zoom, specifier: "%.2f")x").font(.caption)
+                }
                 Picker("Tool", selection: $tool) {
                     Text("Brush").tag("Brush"); Text("Eraser").tag("Eraser"); Text("Eyedropper").tag("Eyedropper")
                 }
@@ -38,32 +42,56 @@ struct PixelAnimationStudio: View {
                     Button("Redo") { change { try document.redo() } }.disabled(!document.canRedo)
                 }
             }
+            Section("Save") {
+                if let failure { Text(failure).foregroundStyle(.orange) }
+                if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
+                Button("Preview animation") {
+                    app.run {
+                        do { animation = try encoded(); failure = nil }
+                        catch { failure = error.localizedDescription; throw error }
+                    }
+                }
+                Button("Save GIF") { save(openLibrary: false) }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Text("Saves a new local copy. Sending from Library requires a separate slot / overwrite review.")
+                    .font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("Save & continue") {
+                    Button("Save, then open Library") { save(openLibrary: true) }
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Text("Single frames stay single frames. Existing GIFs are never replaced.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             timeline
-            Section("Live backpack preview") {
-                Text(drawing.state.rawValue)
-                if let failure = drawing.failure { Text(failure).foregroundStyle(.orange) }
+            if drawing.running || drawing.failure != nil {
+                Section("Backpack preview") {
+                    Text(drawing.state.rawValue)
+                    if let failure = drawing.failure { Text(failure).foregroundStyle(.orange) }
+                    if drawing.running {
+                        Button("Stop preview and restore playback") { Task { await drawing.stop() } }
+                    }
+                }
+            }
+            DisclosureGroup("Backpack preview") {
                 if drawing.running {
-                    Button("Stop preview and restore playback") { Task { await drawing.stop() } }
+                    Text("Preview is active. Stop above to restore stored playback.").font(.caption)
                 } else {
                     Button("Preview drawing on backpack") {
-                        app.run { try drawing.start(document.current.pixels) }
+                        app.run {
+                            do { try drawing.start(document.current.pixels); failure = nil }
+                            catch { failure = error.localizedDescription; throw error }
+                        }
                     }.disabled(!panel.link.connected || panel.busy || panel.hasDisplayOwner || panel.size != document.current.pixels.size)
+                    Text("Requires a connected, idle backpack matching this canvas size.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 InteractionExplanation("Preview does not save a slot. Leaving/backgrounding stops preview and attempts to restore stored playback.", details: "Brush updates are coalesced, not queued per touch. Preview stops and attempts to restore stored playback when you leave this editor or background the app. It does not save or overwrite a GIF slot.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("Save a new local copy") {
-                Button("Preview animation") {
-                    app.run { animation = try encoded() }
-                }
-                Button("Save GIF to library") { save(openLibrary: false) }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button("Save, then send from Library") { save(openLibrary: true) }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Text("Single frames stay single frames. New saves never replace an existing GIF. Sending uses the Library slot/overwrite confirmation.")
+            DisclosureGroup("New canvas") {
+                Text("Replaces the unsaved timeline. Undo is available only while this editor stays open.")
                     .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("New canvas") {
                 ForEach(MediaCodec.renderSizes, id: \.width) { size in
                     Button("New \(size.width) x \(size.height) canvas") { newSize = size }
                 }
@@ -80,6 +108,10 @@ struct PixelAnimationStudio: View {
                 if let animation {
                     AnimatedPreview(data: animation).navigationTitle("Animation preview")
                         .toolbar { Button("Done") { self.animation = nil } }
+                        .safeAreaInset(edge: .bottom) {
+                            Button("Back to drawing") { self.animation = nil }
+                                .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                        }
                 }
             }
         }
@@ -109,7 +141,7 @@ struct PixelAnimationStudio: View {
         }.frame(height: 340).background(.black).clipShape(RoundedRectangle(cornerRadius: 16))
     }
     private var timeline: some View {
-        Section("Animation timeline") {
+        DisclosureGroup("Frames & timing") {
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(Array(document.frames.enumerated()), id: \.element.id) { index, frame in
@@ -135,13 +167,15 @@ struct PixelAnimationStudio: View {
             }
             Button("Remove selected frame", role: .destructive) { change { try document.deleteFrame() } }
                 .disabled(document.frames.count == 1)
+            Text("Remove affects only this draft frame. Undo can restore it while the editor stays open.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
     private func change(_ work: () throws -> Void) {
-        do { try work(); updatePreview() } catch { panel.report(error) }
+        do { try work(); updatePreview() } catch { failure = error.localizedDescription; panel.report(error) }
     }
     private func updatePreview() {
-        do { preview = try document.current.pixels.image() } catch { panel.report(error) }
+        do { preview = try document.current.pixels.image() } catch { failure = error.localizedDescription; panel.report(error) }
     }
     private func paint(_ point: CGPoint, width: CGFloat, height: CGFloat) {
         let size = document.current.pixels.size
@@ -168,8 +202,11 @@ struct PixelAnimationStudio: View {
     }
     private func save(openLibrary: Bool) {
         app.run {
-            try library.add(name: name.trimmingCharacters(in: .whitespacesAndNewlines), data: encoded())
-            if openLibrary { app.selectedTab = .library }
+            do {
+                try library.add(name: name.trimmingCharacters(in: .whitespacesAndNewlines), data: encoded())
+                failure = nil; status = "Saved to Library."
+                if openLibrary { app.selectedTab = .library }
+            } catch { failure = error.localizedDescription; throw error }
         }
     }
 }

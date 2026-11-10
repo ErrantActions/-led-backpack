@@ -225,7 +225,10 @@ struct AccountDevicesView: View {
             }
             if community.config?.deviceRecoveryEnabled == true,
                (community.config?.connectedDeviceRegistrationVersion ?? 0) >= 2 {
-                NavigationLink("Found-device messages") { DeviceRecoveryInboxView() }
+                NavigationLink { DeviceRecoveryInboxView() } label: {
+                    FeatureRowLabel(title: "Found-device messages", symbol: "bubble.left.and.bubble.right",
+                        subtitle: "Private conversations about returning a backpack")
+                }
             }
             if session.scope != nil {
                 Section("My devices (\(devices.count)/20)") {
@@ -269,7 +272,7 @@ struct AccountDevicesView: View {
                         }
                     }
                 }
-                Section("Transfer recipient — accepted friends only") {
+                Section("Transfer to an accepted friend") {
                     Picker("Friend", selection: $recipient) {
                         Text("Choose deliberately").tag(Optional<UUID>.none)
                         ForEach(friends) { Text($0.displayName).tag(Optional($0.id)) }
@@ -306,7 +309,7 @@ struct AccountDevicesView: View {
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let message = session.message { Text(message) }
-        }.disabled(session.busy).navigationTitle("My devices")
+        }.disabled(session.busy).modernScene().navigationTitle("My devices")
             .task(id: identity) { clear(); session.bind(community, .devices); load() }
             .onDisappear { if editing == nil { session.clear(); clear() } }
             .sheet(item: $editing, onDismiss: {
@@ -384,14 +387,19 @@ struct AccountDeviceEditView: View {
             }.disabled(session.scope == nil)
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-        }.disabled(session.busy).navigationTitle("Rename backpack")
+        }.disabled(session.busy).modernScene().navigationTitle("Rename backpack")
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+            }
+            .interactiveDismissDisabled(session.busy)
             .task(id: community.accountRevision) {
                 session.bind(community, .devices)
                 guard community.accountRevision == revision else { session.clear(); return }
                 nickname = device.nickname
             }
             .onDisappear { session.clear() }
-            .toolbar { Button("Cancel") { dismiss() } }
+            .toolbar { Button("Cancel") { dismiss() }.disabled(session.busy) }
     }
 }
 

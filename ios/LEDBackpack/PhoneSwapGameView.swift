@@ -30,9 +30,10 @@ struct PhoneSwapGameView: View {
                 if let failure = game.failure { Text(failure).foregroundStyle(.orange) }
                 if let reportSelectionFailure { Text(reportSelectionFailure).foregroundStyle(.orange) }
                 if let peer = game.reportablePeer, community.config?.peerIncidentReportsEnabled == true {
-                    Button("Deliberately explain an incident with the selected game peer") { selectReport(peer) }
+                    Button("Report this game peer") { selectReport(peer) }
                 }
-                if game.busy { ProgressView() }
+                if game.busy { ProgressView("Preparing GIF swap") }
+                Text(game.status).font(.caption).foregroundStyle(.secondary)
                 if !game.enabled && !game.busy {
                     NavigationLink { PhoneDisplayLibraryView() } label: { FeatureRowLabel(title: "Choose a GIF", symbol: "photo") }
                     if phone.hasArtwork {
@@ -48,9 +49,8 @@ struct PhoneSwapGameView: View {
                 }
                 Button("Restore my original GIF") { consent = false; Task { await game.restoreOriginal() } }
                 FeatureDetails("Connection & recovery") {
-                    Text(game.status)
                     GameRadioIndicator(radio: game.radio)
-                    Text("Both players opt in. Only the currently playing animated GIF is sent; maximum128KiB. Exchanges use a60s cooldown and do not repeat the same peer on rearm.")
+                    Text("Both players opt in. Only the playing GIF is sent (up to 128 KiB). Swaps have a 60-second cooldown and do not repeat the same peer on rearm.")
                     Text("Your first original stays saved across swaps. A newer manual choice is not overwritten. Disconnects can leave the peer's outcome uncertain.")
                     Text("Phone only. Bluetooth is a nearby hint, not reliable meters or anti-relay proof. No GPS/encounter history is uploaded.")
                     Button("Withdraw this login's game") { consent = false; Task { await game.reconcileAndStop() } }
@@ -95,6 +95,7 @@ struct PhoneSwapGameView: View {
                     Button("Enable Bluetooth") { game.prepareRadio() }.disabled(game.enabled || game.busy)
                         .accessibilityLabel("Prepare GAME Bluetooth (explicit)")
                 }
+                if !game.enabled && !game.busy {
                 Button("Start swaps · 5 minutes") {
                     let credit = originals.items.first(where: { $0.id == phone.mediaID })?.attribution ??
                         library.state.media.first(where: { $0.id == phone.mediaID })?.attribution
@@ -105,6 +106,8 @@ struct PhoneSwapGameView: View {
                     .accessibilityLabel("Enable 5-minute phone-only game")
                 if !phone.isPlaying { Text("Play an animated GIF before starting.").font(.caption).foregroundStyle(.secondary) }
                 if !phone.viewerAutomaticPlaybackAllowed { Text("Enable automatic phone playback in viewer settings first.").font(.caption) }
+                if targets.target != .phone { Text("Choose the phone target before starting.").font(.caption).foregroundStyle(.orange) }
+                }
             }.padding(16).glassPanel(radius: 20)
         } else if community.config?.gifSwapPresenceEnabled == true {
             Text("Sign in to swap GIFs. No friendship required.").font(.subheadline)

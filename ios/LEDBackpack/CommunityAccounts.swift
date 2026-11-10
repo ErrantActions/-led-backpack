@@ -33,7 +33,12 @@ struct CommunitySettingsView: View {
             }
             if let failure { Text(failure).foregroundStyle(.orange) }
             if let error = community.setupError { Text(error).font(.caption).foregroundStyle(.orange) }
-            if community.origin != nil { NavigationLink("Account and deletion") { CommunityAccountView() } }
+            if community.origin != nil {
+                NavigationLink { CommunityAccountView() } label: {
+                    FeatureRowLabel(title: "Account", symbol: "person.crop.circle",
+                        subtitle: "Sign in, private cloud and privacy")
+                }
+            }
             Text("Browse and save locally without signing in. Accounts add your private cloud library and community actions. Passwords and sessions are never included in backups.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -95,14 +100,16 @@ struct CommunityAccountView: View {
                 LabeledContent("Email", value: user.email)
                 Text(user.verified ? "Email confirmed." : "Email is not confirmed.")
                     .font(.caption).foregroundStyle(.secondary)
-                NavigationLink("Delete account / review data retention") {
-                    CommunityDeleteAccountView()
-                }
             } else {
                 Text("Refresh your account before managing deletion.").font(.caption)
             }
-            NavigationLink("Library sync") { CloudVaultSettingsView() }
-            Button("Open Social") { app.selectedTab = .social; dismiss() }.buttonStyle(AuroraPrimaryButton())
+            NavigationLink { CloudVaultSettingsView() } label: {
+                FeatureRowLabel(title: "Private cloud", symbol: "lock.icloud", subtitle: "Sync, unlock and recovery")
+            }
+            NavigationLink { AccountDevicesView() } label: {
+                FeatureRowLabel(title: "My devices", symbol: "backpack", subtitle: "Connected backpacks and sharing")
+            }
+            Button("Friends & profile") { app.selectedTab = .social; dismiss() }.buttonStyle(AuroraPrimaryButton())
             DisclosureGroup("Account tools") {
             Button("Refresh account") { perform { try await community.refreshUser(); return nil } }
             if community.config?.appleSignInEnabled == true, community.user?.authMethods?.password == true,
@@ -110,8 +117,7 @@ struct CommunityAccountView: View {
                 Button("Link Sign in with Apple") { linkingApple = true }
             }
             NavigationLink("My community uploads") { CommunityUploadsView() }
-            NavigationLink("Motion and data-saving preferences") { ViewerMediaPreferencesView() }
-            NavigationLink("My devices / unverified tags") { AccountDevicesView() }
+            NavigationLink("Motion & data") { ViewerMediaPreferencesView() }
             NavigationLink("Firmware library (no flashing)") { FirmwareLibraryView() }
             NavigationLink("Opt-in generic model research") { DeviceResearchView() }
             if community.config?.appIntegrityProtocol == "app-attest-v1" {
@@ -127,6 +133,9 @@ struct CommunityAccountView: View {
                 catch { failure = error.localizedDescription }
             }
             }
+            if community.user != nil {
+                NavigationLink("Delete account & retention") { CommunityDeleteAccountView() }
+            }
             Button("Sign out", role: .destructive) { perform { try await community.signOut(); return "Signed out." } }
         }.disabled(busy)
     }
@@ -140,7 +149,11 @@ struct CommunityAccountView: View {
                     password = ""; message = "Signed in with Apple."
                 })
             }
-            DisclosureGroup(creating ? "Create an email account" : "Continue with email") {
+            if community.config?.appleSignInEnabled == true, community.config?.allowsNativeSignup == true {
+                DisclosureGroup(creating ? "Create an email account" : "Continue with email") {
+                    emailControls
+                }
+            } else {
                 emailControls
             }
         }.disabled(busy)
@@ -166,7 +179,7 @@ struct CommunityAccountView: View {
                     : "This server currently allows signup without email confirmation. That does not verify ownership of an email address.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Button(creating ? "Create account" : "Sign in", action: submitEmail).buttonStyle(.borderedProminent)
+            Button(creating ? "Create account" : "Sign in", action: submitEmail).buttonStyle(AuroraPrimaryButton())
                 .disabled(email.isEmpty || password.isEmpty || (creating && (community.config?.allowsNativeSignup != true ||
                     displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                     !(12...128).contains(password.utf16.count))))

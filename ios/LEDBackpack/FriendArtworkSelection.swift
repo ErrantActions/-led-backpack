@@ -111,13 +111,16 @@ struct FriendArtworkPreview: View {
                         .accessibilityLabel("Isolated local friend artwork preview")
                         .onChange(of: position.finished) { _, finished in if finished { selection.pause() } }
                 }
-                Button(selection.playing ? "Pause LOCAL preview" : "Play LOCAL preview") {
+                Button(selection.playing ? "Pause preview" : "Play preview") {
                     if selection.playing { selection.pause() } else { selection.play(allowed: motionAllowed) }
                 }.disabled(preview.duration == 0 || !motionAllowed || selection.reading)
             }
             if selection.reading { ProgressView("Reading / validating local media") }
             if let error = selection.failure { Text(error).font(.caption).foregroundStyle(.orange) }
-            InteractionExplanation("Paused local preview only. No device operation, screen lease, service request or verified friend interaction.", details: "Isolated, paused by default; no display target, phone selection, screen lease, service request or Bluetooth operation. Timing/repeats are the source's; preview is not a verified friend interaction.").font(.caption)
+            Text("Local preview only. Nothing is sent.").font(.caption).foregroundStyle(.secondary)
+            FeatureDetails("Preview details") {
+                Text("Isolated, paused by default; no display target, phone selection, screen lease, service request or Bluetooth operation. Timing/repeats are the source's; preview is not a verified friend interaction.")
+            }
         }
         .onChange(of: phase) { _, value in if value != .active { selection.cancelPending() } }
         .onChange(of: reducedMotion) { _, _ in selection.pause() }
@@ -146,8 +149,8 @@ struct FriendArtworkPicker: View {
                 Text(requiresOutgoingGIF ? "Select one GIF ≤128 KiB to share. Original bytes remain unchanged; only the separate outgoing copy is sanitized." :
                     "Select a local greeting still/GIF. These bytes are not sent to your friend.").font(.caption)
                 if let failure = selection.failure { Text(failure).foregroundStyle(.orange) }
-                if selection.reading { ProgressView() }
-                Button("Choose an explicit local file (no library upload)") { importing = true }
+                if selection.reading { ProgressView("Checking artwork") }
+                Button("Choose file") { importing = true }.buttonStyle(AuroraPrimaryButton())
                 Section("Phone originals") {
                     ForEach(originals.items) { item in
                         Button {
@@ -168,9 +171,15 @@ struct FriendArtworkPicker: View {
                         }.buttonStyle(.plain).accessibilityLabel("Choose \(item.name)")
                     }
                 }
-                Text("For another saved artwork use the explicit file chooser. Nothing scans cloud, publishes, writes a backpack slot or changes your currently displayed artwork.").font(.caption)
-            }.navigationTitle("Choose friend artwork")
+                FeatureDetails("Selection details") {
+                    Text("For another saved artwork use the explicit file chooser. Nothing scans cloud, publishes, writes a backpack slot or changes your currently displayed artwork.")
+                }
+            }.modernScene().navigationTitle("Choose friend artwork")
                 .toolbar { Button("Cancel") { task?.cancel(); selection.cancelPending(); dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel") { task?.cancel(); selection.cancelPending(); dismiss() }
+                        .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                }
                 .task { await originals.load() }
                 .fileImporter(isPresented: $importing, allowedContentTypes: requiresOutgoingGIF ? [.gif] : [.gif, .png, .jpeg, .webP]) { result in
                     choose(name: "Chosen local file", attribution: nil) {

@@ -24,19 +24,18 @@ struct RouteArtworkPicker: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    StatusPill(title: "ARTWORK", symbol: "photo.on.rectangle")
                     Picker("Artwork source", selection: $source) {
-                        Text("Community / public").tag("community")
-                        if client.exclusiveRouteEnabled(event) { Text("This event / exclusive").tag("exclusive") }
+                        Text("Community").tag("community")
+                        if client.exclusiveRouteEnabled(event) { Text("This event").tag("exclusive") }
                     }.pickerStyle(.segmented)
                     Text(source == "community" ? "Only eligible approved, non-mature general community GIFs." :
                         "Protected ready artwork from this event only. Assignment never publishes a community copy.")
                         .font(.caption).foregroundStyle(.secondary)
                     if source == "community" {
                         TextField("Search community GIFs", text: $query).submitLabel(.search).onSubmit { load() }
-                        Button("Search") { load() }.disabled(busy)
+                        Button("Search") { load() }.disabled(busy).buttonStyle(AuroraPrimaryButton())
                     }
-                    if busy { ProgressView() }
+                    if busy { ProgressView("Loading artwork") }
                     if let failure = failure ?? catalog.failure {
                         Text(failure).foregroundStyle(.orange)
                         Button("Retry") { if source == "community" { catalog.retry() } else { load() } }
@@ -63,11 +62,19 @@ struct RouteArtworkPicker: View {
                         Text(items.count == 100 ? "Showing 100 matches. Refine your search." : catalog.nextPage == nil ? "You're all caught up" : "")
                             .font(.caption)
                     }
-                    Button("No artwork / remove current assignment") { choose(nil); dismiss() }.disabled(busy)
+                    DisclosureGroup("Remove artwork") {
+                        Text("Removes the current route assignment, not the original artwork.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Remove assignment", role: .destructive) { choose(nil); dismiss() }.disabled(busy)
+                    }
                 }.padding(20)
             }
             .modernScene().navigationTitle("Choose artwork")
             .toolbar { Button("Cancel") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel") { dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+            }
             .task { load() }
             .onChange(of: source) { _, _ in load() }
             .onChange(of: account.accountRevision) { _, _ in catalog.cancel(); exclusive = []; dismiss() }

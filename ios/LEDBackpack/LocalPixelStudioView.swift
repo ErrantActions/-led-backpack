@@ -43,8 +43,15 @@ struct LocalPixelStudioView: View {
             intro
             canvasSection
             tools
-            timeline
+            Section("Save") {
+                Button("Save editable project") { store.saveProject(name: name) }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .disabled(store.busy || store.playing || originals.busy)
+                Text("Save before leaving to keep this draft. Export creates a separate phone-library copy.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             previewControls
+            timeline
             importExport
             projects
             newCanvas
@@ -107,44 +114,52 @@ struct LocalPixelStudioView: View {
                         }
                     }
             }
-            Text("Drag inside the exact canvas. Edges outside it do not paint. Brush sets RGBA; erase restores transparency. Sprite/text use source-over and explicitly clip at edges.")
-                .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Undo") { store.change { try $0.undo() } }.disabled(!store.document.canUndo)
                 Button("Redo") { store.change { try $0.redo() } }.disabled(!store.document.canRedo)
             }.disabled(store.busy)
-            Text("Undo/redo: at most 30 transactions / 24 MB of logical RGBA snapshots, including a live stroke. Oldest history is evicted, never artwork.")
-                .font(.caption).foregroundStyle(.secondary)
+            FeatureDetails("Canvas & undo") {
+                Text("Drag inside the exact canvas. Edges outside it do not paint. Brush sets RGBA; erase restores transparency. Sprite/text use source-over and explicitly clip at edges.")
+                Text("Undo/redo: at most 30 transactions / 24 MB of logical RGBA snapshots, including a live stroke. Oldest history is evicted, never artwork.")
+            }
         }
     }
     private var tools: some View {
-        Section("Pixel tools / accessible coordinates") {
+        Section("Tools") {
             Picker("Tool", selection: $tool) {
                 ForEach(["Brush", "Erase", "Fill", "Sample"], id: \.self) { Text($0) }
             }
-            ColorPicker("Authored RGBA ink", selection: $ink, supportsOpacity: true)
+            ColorPicker("Ink color & opacity", selection: $ink, supportsOpacity: true)
             palette
             Stepper("Brush diameter \(radius * 2 + 1) pixels", value: $radius, in: 0...4)
-            HStack {
-                TextField("Column X (zero based)", text: $xText).keyboardType(.numbersAndPunctuation)
-                    .accessibilityLabel("Column X, zero through \(art.width - 1)")
-                TextField("Row Y (zero based)", text: $yText).keyboardType(.numbersAndPunctuation)
-                    .accessibilityLabel("Row Y, zero through \(art.height - 1)")
+            DisclosureGroup("Coordinate editing & text") {
+                HStack {
+                    TextField("Column X (zero based)", text: $xText).keyboardType(.numbersAndPunctuation)
+                        .accessibilityLabel("Column X, zero through \(art.width - 1)")
+                    TextField("Row Y (zero based)", text: $yText).keyboardType(.numbersAndPunctuation)
+                        .accessibilityLabel("Row Y, zero through \(art.height - 1)")
+                }
+                Button("Apply tool at X / Y") {
+                    do { paint(try coordinate()); store.endStroke() } catch { store.failure = error.localizedDescription }
+                }
+                TextField("Pixel text (up to 21 characters)", text: $text)
+                Button("Stamp text at X / Y") { stampText() }
+                Text("Text uses the 5×7 font. Stamping is one undoable edit and clips at canvas edges.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Button("Apply selected tool at X / Y") {
-                do { paint(try coordinate()); store.endStroke() } catch { store.failure = error.localizedDescription }
-            }
-            TextField("Pixel text (existing 5×7 font, up to 21 characters)", text: $text)
-            Button("Stamp text at X / Y (one undoable edit)") { stampText() }
-            Button("Replace sampled X / Y color with ink (current frame)") {
-                do {
-                    let old = try store.document.sample(coordinate()), new = try color()
-                    store.change { try $0.replacePaletteColor(old, with: new) }
-                } catch { store.failure = error.localizedDescription }
-            }
-            Slider(value: $dimAmount, in: 0...1, step: 0.05) { Text("Explicit authored dim amount") }
-            Button("Apply \(Int(dimAmount * 100))% authored RGB (undoable)") {
-                store.change { try $0.dim(dimAmount) }
+            DisclosureGroup("Color replacement & dimming") {
+                Text("Uses X / Y from Coordinate editing. Changes the current frame; Undo can restore it.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Replace sampled color with ink") {
+                    do {
+                        let old = try store.document.sample(coordinate()), new = try color()
+                        store.change { try $0.replacePaletteColor(old, with: new) }
+                    } catch { store.failure = error.localizedDescription }
+                }
+                Slider(value: $dimAmount, in: 0...1, step: 0.05) { Text("Authored brightness") }
+                Button("Apply \(Int(dimAmount * 100))% RGB brightness") {
+                    store.change { try $0.dim(dimAmount) }
+                }
             }
         }.disabled(store.busy || store.playing)
     }
@@ -209,35 +224,39 @@ struct LocalPixelStudioView: View {
         }.disabled(store.busy || store.playing)
     }
     private var previewControls: some View {
-        DisclosureGroup("Preview controls") {
-            Button(store.playing ? "Pause preview" : "Play preview explicitly") {
+        Section("Preview") {
+            Button(store.playing ? "Pause preview" : "Play preview") {
                 if store.playing { store.pause() }
                 else { previewStart = Date(); store.play(reducedMotion: reducedMotion, dataSaving: animationBlocked) }
             }.disabled(store.busy || (animationBlocked && !store.playing) || art.frames.count == 1)
-            Toggle("Local data-saving / still preview", isOn: $dataSaving)
-            Toggle("Pixel grid", isOn: $grid)
-            Slider(value: $brightness, in: 0...1) { Text("Preview RGB brightness") }
-            Slider(value: $blackFloor, in: 0...0.2) { Text("Preview black floor") }
-            Button("Reset preview appearance") { brightness = 1; blackFloor = 0; grid = true }
-            Text("Preview only. Motion/data-saving settings apply; no display or original pixels change.")
-                .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("Preview appearance") {
+                Toggle("Local data-saving / still preview", isOn: $dataSaving)
+                Toggle("Pixel grid", isOn: $grid)
+                Slider(value: $brightness, in: 0...1) { Text("Preview RGB brightness") }
+                Slider(value: $blackFloor, in: 0...0.2) { Text("Preview black floor") }
+                Button("Reset preview appearance") { brightness = 1; blackFloor = 0; grid = true }
+                Text("Preview only. Motion/data-saving settings apply; no display or original pixels change.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
     private var importExport: some View {
-        Section("Local import / NEW copy export") {
-            Button("Import supported document…") { pending = .importDocument }
-            Button("Stamp local still sprite at X / Y…") {
+        DisclosureGroup("Import & export") {
+            Text("Importing or opening an original replaces the draft after confirmation. Save an editable project first.")
+                .font(.caption).foregroundStyle(.secondary)
+            Button("Import artwork…") { pending = .importDocument }
+            Button("Stamp image at X / Y…") {
                 do { importPoint = try coordinate(); importSprite = true; importing = true }
                 catch { store.failure = error.localizedDescription }
             }
             FeatureDetails("Supported imports") {
-                Text("Up to5 MB,128×128 and120 GIF frames. Stills: PNG/JPEG/WebP. Unsupported formats fail without changing the draft.")
+                Text("Up to 5 MB, 128×128 and 120 GIF frames. Stills: PNG/JPEG/WebP. Unsupported formats fail without changing the draft.")
             }
             DisclosureGroup("Edit an existing original") {
-            ForEach(originals.items) { item in
-                Button("Edit local original") { pending = .library(item) }
-                    .accessibilityLabel("Edit local original: \(item.name)")
-            }
+                ForEach(originals.items) { item in
+                    Button("Edit local original") { pending = .library(item) }
+                        .accessibilityLabel("Edit local original: \(item.name)")
+                }
             }
             if store.retainedImport != nil {
                 Text("Most recently read import bytes retained in this session, even if pixel decoding failed.")
@@ -251,11 +270,10 @@ struct LocalPixelStudioView: View {
                 Text("Attribution retained: \(attribution.author) · \(attribution.source) · \(attribution.license) · \(attribution.licenseURL)")
                     .font(.caption).textSelection(.enabled)
             }
-            Button("Save NEW editable project locally") { store.saveProject(name: name) }
             DisclosureGroup("Export a copy") {
                 Button("Export current frame as PNG") { store.export(animated: false, name: name, library: originals) }
                 Button("Export animation as GIF") { store.export(animated: true, name: name, library: originals) }
-                Text("GIF needs binary transparency and at most256 colors per frame. Unsupported pixels produce an error; PNG and projects retain RGBA.")
+                Text("GIF needs binary transparency and at most 256 colors per frame. Unsupported pixels produce an error; PNG and projects retain RGBA.")
                     .font(.caption)
             }
         }.disabled(store.busy || store.playing || originals.busy)
@@ -277,6 +295,8 @@ struct LocalPixelStudioView: View {
     }
     private var newCanvas: some View {
         DisclosureGroup("New canvas") {
+            Text("Replaces the unsaved draft after confirmation. Save an editable project first.")
+                .font(.caption).foregroundStyle(.secondary)
             ForEach([16, 32, 48, 64], id: \.self) { side in
                 Button("New \(side) × \(side)") { pending = .new(side, side) }
             }

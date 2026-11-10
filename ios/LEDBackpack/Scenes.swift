@@ -102,7 +102,9 @@ struct ScenesView: View {
     var body: some View {
         List {
             Section {
-                Text("Save a live screen, theme and brightness, or a backpack playlist, then apply it with one tap. Scenes never upload or replace artwork.")
+                Text("Your display, ready in one tap").font(.title2.bold())
+                Text("Save a live screen or backpack playlist. No artwork is uploaded or replaced.").font(.subheadline).foregroundStyle(.secondary)
+                Button("Create scene") { creating = true }.buttonStyle(AuroraPrimaryButton())
                 if let status = app.sceneStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
             }
             Section("Saved scenes") {
@@ -180,12 +182,14 @@ private struct SceneEditor: View {
                 }
                 if isPlaylist { playlistOptions } else { liveOptions }
                 Section {
-                    Button("Save scene", action: save).buttonStyle(.borderedProminent)
                     Text("Applying a scene stops the current live/timed session first. A failed operation may leave brightness changed; no artwork is overwritten.")
                         .font(.caption).foregroundStyle(.secondary)
+                    if let failure = panel.errorMessage { Text(failure).foregroundStyle(.orange) }
+                    Button("Save scene", action: save).buttonStyle(AuroraPrimaryButton())
                 }
             }
             .modernScene().navigationTitle(scene == nil ? "New scene" : "Edit scene")
+            .safeAreaInset(edge: .bottom) { NativeFlowCancelFooter { dismiss() } }
             .toolbar { Button("Cancel") { dismiss() } }
             .onChange(of: mode) { _, selected in theme = library.theme(for: selected) }
             .task {

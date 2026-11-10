@@ -14,8 +14,8 @@ struct DeviceRecoveryInboxView: View {
 
     var body: some View {
         List {
-            Text("Private conversations about returning a found backpack. No friendship is required.")
-                .font(.caption).foregroundStyle(.secondary)
+            FeatureRowLabel(title: "Return a found backpack", symbol: "backpack",
+                subtitle: "Private recovery conversations. No friendship required.")
             ForEach(conversations) { conversation in
                 NavigationLink {
                     DeviceRecoveryThreadView(id: conversation.id)
@@ -126,14 +126,14 @@ struct DeviceRecoveryThreadView: View {
                         if let failure = actions.failure { Text(failure).foregroundStyle(.orange) }
                         if let pending = store.pending {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(pending.state == .acknowledged ? "Delivery confirmed" : "Pending delivery")
+                                Text(pending.state == .acknowledged ? "Saved on server" : "Send not confirmed")
                                     .font(.headline)
                                 Text(verbatim: pending.text)
                                 if pending.state == .uncertain {
                                     Button("Retry same reply") { Task { await store.send(retry: true) } }
                                 }
-                                Button("Clear local delivery record", role: .destructive) { store.discardPending() }
-                                Text("Clearing does not recall a message already received.")
+                                Button("Clear local send record", role: .destructive) { store.discardPending() }
+                                Text("Server persistence does not mean delivered or read. Clearing does not recall a message already saved.")
                                     .font(.caption).foregroundStyle(.secondary)
                             }.disabled(store.busy)
                         }

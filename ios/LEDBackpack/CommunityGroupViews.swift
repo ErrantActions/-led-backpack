@@ -18,6 +18,10 @@ struct NativeGroupCreateView: View {
             Form {
                 Section("Group") { TextField("Group title", text: $title); Toggle("Share retained earlier history with invitees", isOn: $shareHistory) }
                 Section("Invite accepted friends") {
+                    if friends.isEmpty && !session.busy && session.failure == nil {
+                        Text("No friends on this page. Connect with friends before inviting them.")
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(friends) { friend in
                         Toggle(friend.displayName, isOn: Binding(get: { chosen.contains(friend.id) }, set: {
                             if $0 { chosen.insert(friend.id) } else { chosen.remove(friend.id) }
@@ -30,13 +34,19 @@ struct NativeGroupCreateView: View {
                     Text("Up to 29 invitees. Each must accept. Sharing history defaults off and never shares other chats or private organizer questions.").font(.caption)
                 }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                if session.busy { ProgressView("Working with group choices…") }
                 Button("Review & create") {
                     guard let client = session.client else { return }
                     captured = (title, Array(chosen), shareHistory, client.instanceID); confirm = true
-                }.disabled(session.busy || session.denied || chosen.count > 29)
-            }
+                }.buttonStyle(AuroraPrimaryButton()).disabled(session.busy || session.denied || chosen.count > 29)
+            }.disabled(session.busy)
             .modernScene().navigationTitle("New group")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(session.busy) } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(session.busy)
+            }
+            .interactiveDismissDisabled(session.busy)
             .task { session.bind(community); load() }
             .onChange(of: community.accountRevision) { _, _ in session.clear(); chosen = []; friends = []; captured = nil; dismiss() }
             .onDisappear { session.clear() }
@@ -86,6 +96,7 @@ struct NativeRoomInfoView: View {
         NavigationStack {
             Form {
                 if let failure { Text(failure).foregroundStyle(.orange) }
+                if busy { ProgressView("Updating room…") }
                 Section("Current room") {
                     Text(room.title)
                     Text(room.kind == "event" ? "Event-wide membership is tied to current event eligibility, not private questions." : "Room ownership does not grant catalog administration or private-library access.").font(.caption)
@@ -124,7 +135,12 @@ struct NativeRoomInfoView: View {
                 } else if room.ownerId != client.accountID { Button("Leave room", role: .destructive) { capture("leave") } }
             }
             .disabled(busy).modernScene().navigationTitle("Room information")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() }.disabled(busy) } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Done") { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(busy)
+            }
+            .interactiveDismissDisabled(busy)
             .task { load() }
             .onDisappear { task?.cancel(); members = []; friends = []; pending = nil }
             .onChange(of: community.accountRevision) { _, _ in task?.cancel(); members = []; friends = []; pending = nil; dismiss() }

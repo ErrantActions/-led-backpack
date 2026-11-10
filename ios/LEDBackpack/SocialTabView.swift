@@ -208,33 +208,33 @@ struct SocialTabView: View {
     }
     private var friendsSection: some View {
         Section("People") {
-            SocialLink("Add friends / QR / nearby", feature: .invites) { NearbyDiscoveryView() }
-            SocialLink("Accepted-friend greetings / duet / pass sessions", feature: .friendSessions) { FriendLocationFeaturesView() }
+            SocialLink("Find or invite friends", feature: .invites) { NearbyDiscoveryView() }
+            SocialLink("Play with a friend", feature: .friendSessions) { FriendLocationFeaturesView() }
             DisclosureGroup("Profile & devices") {
                 SocialLink("Profile avatar", feature: .avatar) { CommunityAvatarView() }
-                SocialLink("Private event badges / profile choices", feature: .badges) { EventAwardListView() }
-                SocialLink("Device cards / accepted-friend transfers (unverified)", feature: .deviceCards) { AccountDevicesView() }
+                SocialLink("Badges", feature: .badges) { EventAwardListView() }
+                SocialLink("My devices", feature: .deviceCards) { AccountDevicesView() }
             }
         }
     }
     private var communicationSection: some View {
         Section("Inbox") {
-            SocialLink("Nonfriend message requests", feature: .messageRequests) { CommunityMessageRequestsView() }
+            SocialLink("Message requests", feature: .messageRequests) { CommunityMessageRequestsView() }
             SocialLink("Activity inbox", feature: .activity) { CommunityActivityView() }
             DisclosureGroup("Alerts & reminders") {
-                SocialLink("Notifications / event reminders", feature: .notifications) { CommunityNotificationSettingsView() }
+                SocialLink("Notifications & reminders", feature: .notifications) { CommunityNotificationSettingsView() }
                 SocialLink("Apple device alerts", feature: .appleAlerts) { NativeApplePushView() }
             }
         }
     }
     private var eventsSection: some View {
         Section("Share") {
-            SocialLink("Private playlists / public snapshots", feature: .playlists) { OwnerPlaylistsView() }
+            SocialLink("Shared playlists", feature: .playlists) { OwnerPlaylistsView() }
         }
     }
     private var gamesSection: some View {
         Section("Nearby play") {
-            SocialLink("Automatic PHONE GIF swap / Found Users", feature: .gifSwap) { PhoneSwapGameView() }
+            SocialLink("GIF swap", feature: .gifSwap) { PhoneSwapGameView() }
             NavigationLink { LocalPairedGameView() } label: { FeatureRowLabel(title: "Pair offline", symbol: "qrcode", subtitle: "Calm colors & optional ranging") }
             NavigationLink { SwapRecoveryView() } label: { FeatureRowLabel(title: "Received & recovery", symbol: "arrow.uturn.backward") }
         }
@@ -243,12 +243,12 @@ struct SocialTabView: View {
         Section {
             DisclosureGroup("Safety & reports") {
                 NavigationLink("Blocked accounts") { CommunityBlocksView() }.disabled(!community.signedIn)
-                SocialLink("My event reports / withdrawal", feature: .eventReports) { OwnEventReportsView() }
+                SocialLink("Event reports", feature: .eventReports) { OwnEventReportsView() }
                 SocialLink("My message incidents", feature: .messageReports) { MessageIncidentListView() }
-                SocialLink("My peer incidents / keyless withdrawal receipts", feature: .peerReports) { PeerIncidentOwnerView() }
+                SocialLink("Peer reports & receipts", feature: .peerReports) { PeerIncidentOwnerView() }
             }
             if community.isAdmin {
-                NavigationLink("Administration / incident review") { CommunityAdminView() }
+                NavigationLink("Administration") { CommunityAdminView() }
             }
         }
     }
@@ -277,10 +277,10 @@ private struct SocialLink<Destination: View>: View {
             destination()
         } label: {
             if card {
-                FeatureCardLabel(title: feature.title, subtitle: enabled ? (subtitle ?? "") : community.signedIn ? "Unavailable" : "Sign in",
+                FeatureCardLabel(title: title, subtitle: enabled ? (subtitle ?? "") : community.signedIn ? "Unavailable" : "Sign in",
                     symbol: feature.symbol)
             } else {
-                FeatureRowLabel(title: feature.title, symbol: feature.symbol,
+                FeatureRowLabel(title: title, symbol: feature.symbol,
                     subtitle: enabled ? subtitle : community.signedIn ? "Unavailable" : "Sign in")
             }
         }.disabled(!enabled)

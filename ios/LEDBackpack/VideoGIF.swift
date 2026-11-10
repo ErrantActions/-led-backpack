@@ -141,13 +141,17 @@ struct VideoGIFEditor: View {
                 if let duration {
                     conversionOptions(duration)
                     Section {
-                        Button("Convert and preview GIF") { convert(duration) }.disabled(busy)
+                        if output == nil {
+                            Button("Create GIF preview") { convert(duration) }
+                                .buttonStyle(AuroraPrimaryButton()).disabled(busy)
+                        }
                         if busy {
                             ProgressView("Extracting video frames...", value: progress)
                             Button("Cancel conversion", role: .cancel) { task?.cancel() }
                         }
-                        Text("Conversion stays on this iPhone. Audio is omitted; video rotation is respected. The source video is never uploaded. Maximum 120 frames / 5 MB.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        FeatureDetails("Conversion details") {
+                            Text("Conversion stays on this iPhone. Audio is omitted; video rotation is respected. The source video is never uploaded. Maximum 120 frames / 5 MB.")
+                        }
                     }
                 } else if failure == nil { ProgressView("Reading video...") }
                 if let output { savedOutput(output) }
@@ -156,6 +160,10 @@ struct VideoGIFEditor: View {
             }
             .modernScene().navigationTitle("Video to GIF")
             .toolbar { Button("Done") { task?.cancel(); dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel") { task?.cancel(); dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+            }
             .interactiveDismissDisabled(busy)
             .task {
                 do {
@@ -175,15 +183,17 @@ struct VideoGIFEditor: View {
             Text("Source duration: \(duration, specifier: "%.2f") seconds").font(.caption)
             TextField("Start (seconds)", value: $start, format: .number).keyboardType(.decimalPad)
             TextField("Length (seconds, up to 12)", value: $length, format: .number).keyboardType(.decimalPad)
-            Stepper("\(fps) frames per second", value: $fps, in: 2...20)
-            Picker("GIF canvas", selection: $sizeIndex) {
-                ForEach(MediaCodec.renderSizes.indices, id: \.self) { index in
-                    let size = MediaCodec.renderSizes[index]
-                    Text("\(size.width) x \(size.height)").tag(index)
+            DisclosureGroup("Canvas & frame rate") {
+                Stepper("\(fps) frames per second", value: $fps, in: 2...20)
+                Picker("GIF canvas", selection: $sizeIndex) {
+                    ForEach(MediaCodec.renderSizes.indices, id: \.self) { index in
+                        let size = MediaCodec.renderSizes[index]
+                        Text("\(size.width) x \(size.height)").tag(index)
+                    }
                 }
-            }
-            Picker("Framing", selection: $fit) {
-                ForEach(MediaCodec.Fit.allCases) { Text($0.rawValue.capitalized).tag($0) }
+                Picker("Framing", selection: $fit) {
+                    ForEach(MediaCodec.Fit.allCases) { Text($0.rawValue.capitalized).tag($0) }
+                }
             }
         }.disabled(busy)
     }
@@ -191,14 +201,14 @@ struct VideoGIFEditor: View {
         Section("Preview and save") {
             AnimatedPreview(data: data).frame(height: 240)
             Text(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)).font(.caption)
-            TextField("Category (optional)", text: $category)
+            DisclosureGroup("Library category") { TextField("Category (optional)", text: $category) }
             Button("Save GIF to library") {
                 do {
                     try library.add(name: name, data: data, category: category)
                     status = "Saved. Use Library > Actions to send to the backpack or share to the community."
                     failure = nil
                 } catch { failure = error.localizedDescription }
-            }
+            }.buttonStyle(AuroraPrimaryButton())
         }
     }
     private func convert(_ duration: Double) {

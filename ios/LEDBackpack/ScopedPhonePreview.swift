@@ -350,12 +350,11 @@ enum NativeGentlePhoneFrame {
                         let client: CommunityFeatureClient
                         var body: some View {
                             VStack(alignment: .leading, spacing: 12) {
-                                Label("ISOLATED PHONE PREVIEW", systemImage: "iphone")
-                                ScopedGlobalPhoneConsent(source: source, client: client, beforeStart: { runtime.leave() })
-                                InteractionExplanation("Isolated foreground preview only. No library/device selection changes; the 30-second source lease never renews silently.", details: "No global Phone/Backpack selection, original journal, hardware or library is changed. Foreground only; fixed 30-second source lease, never silently renewed. No physical sync, background execution or safety monitoring.").font(.caption)
+                                FeatureRowLabel(title: "Phone preview", symbol: "iphone",
+                                    subtitle: "Isolated preview · no hardware playback")
                                 Text(runtime.status).font(.caption)
                                 if let failure = runtime.failure { Text(failure).foregroundStyle(.orange) }
-                                if runtime.loading { ProgressView("Authorizing original / decoding local PHONE pixels") }
+                                if runtime.loading { ProgressView("Preparing authorized preview") }
                                 if let phone = runtime.phone, !runtime.loading {
                                     if let title = runtime.itemTitle { Text(title).font(.headline) }
                                     NativeScopedPhoneCanvas(phone: phone, playing: runtime.playing, gentle: runtime.gentleFrame,
@@ -363,20 +362,26 @@ enum NativeGentlePhoneFrame {
                                         .frame(height: 240).background(.black).clipShape(RoundedRectangle(cornerRadius: 16))
                                 }
                                 if case .playlist(let request) = source {
-                                    Picker("Explicit named starting occurrence (optional)", selection: $startingEntry) {
+                                    DisclosureGroup("Starting entry") {
+                                    Picker("Start at", selection: $startingEntry) {
                                         Text("Use recorded order / captured shuffle").tag(Optional<Int>.none)
                                         ForEach(Array(request.hydratedEntries.enumerated()), id: \.offset) { index, entry in
                                             Text("\(index + 1). \(entry.item?.title ?? "Unavailable") / \(entry.durationMilliseconds)ms").tag(Optional(index))
                                         }
                                     }
+                                    }
                                 }
-                                HStack {
-                                    Button("Load paused PHONE") { runtime.preparePaused(startingAt: startingEntry) }.disabled(runtime.loading || source.expired)
-                                    Button("Play PHONE") { runtime.play(startingAt: startingEntry) }.disabled(runtime.loading || source.expired)
-                                    Button("Stop / clear") { runtime.stop() }
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Button("Play preview") { runtime.play(startingAt: startingEntry) }
+                                        .buttonStyle(AuroraPrimaryButton()).disabled(runtime.loading || source.expired)
+                                    HStack {
+                                        Button("Load paused") { runtime.preparePaused(startingAt: startingEntry) }.disabled(runtime.loading || source.expired)
+                                        Button("Stop & clear") { runtime.stop() }
+                                    }
                                 }
-                                InteractionExplanation("Explicit Play can animate despite saved auto-play policy. Local data/animation controls still apply; source frames stay unchanged.", details: "Explicit Play may override saved automatic-animation/Reduce Motion policy; local animation and data-saving controls still apply. Automatic next-GIF fetching requires the saved AND local automatic policy. GIF frames/repeats are not rewritten; source entry durations do not prove frame synchronization.").font(.caption)
-                                DisclosureGroup("Local PHONE controls (not saved preferences)") {
+                                Text("Play may animate despite saved auto-play / Reduce Motion policy. Local motion settings still apply. Foreground only; source lease lasts up to 30 seconds.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                DisclosureGroup("Preview settings") {
                                     Toggle("Allow local animations", isOn: option(\.animations))
                                     Toggle("Local data saving / still", isOn: option(\.dataSaving))
                                     Toggle("Crisp nearest-neighbor pixels", isOn: option(\.crisp))
@@ -388,6 +393,11 @@ enum NativeGentlePhoneFrame {
                                     }
                                     Text("Awake/brightness leases are released on Stop, failure, expiry or exit. Saved viewer preferences are never modified.").font(.caption)
                                 }
+                                FeatureDetails("Preview limits") {
+                                    Text("No global Phone/Backpack selection, original journal, hardware or library is changed. Foreground only; fixed 30-second source lease, never silently renewed. No physical sync, background execution or safety monitoring.")
+                                    Text("Automatic next-GIF fetching requires saved AND local automatic policy. GIF frames/repeats are not rewritten; source entry durations do not prove frame synchronization.")
+                                }
+                                ScopedGlobalPhoneConsent(source: source, client: client, beforeStart: { runtime.leave() })
                             }
                             .task(id: "\(source.id):\(client.instanceID)") {
                                 guard phase == .active else { runtime.leave(); return }

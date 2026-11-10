@@ -25,8 +25,9 @@ struct BackpackMonitor: View {
             Text(BackpackPlaybackStatus.caption(panel.playback)).font(.caption.monospaced())
             Button("Read now-playing status") { Task { do { try await panel.refreshPlaybackStatus() } catch { panel.report(error) } } }
                 .disabled(!link.connected || panel.busy || panel.hasDisplayOwner)
-            Text("No device screen-stream/readback command has been found. GIF phase, unknown stored artwork, and changes made elsewhere may not match this preview.")
-                .font(.caption2).foregroundStyle(.secondary)
+            FeatureDetails("What this preview can show") {
+                Text("Expected output, not a camera or live screen readback. Timing, unknown stored artwork and changes made elsewhere may differ.")
+            }
         }.padding(20).glassPanel()
         .task(id: "\(link.connected)-\(scenePhase)") {
             guard link.connected, scenePhase == .active else { return }

@@ -220,6 +220,8 @@ struct NearbyDiscoveryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+            Text("Find your people").font(.title2.bold())
+            Text("Choose nearby discovery or a QR invitation. Neither starts a game.").font(.subheadline).foregroundStyle(.secondary)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) { entryButtons }
                 VStack(spacing: 10) { entryButtons }
@@ -235,6 +237,7 @@ struct NearbyDiscoveryView: View {
             }
             if !available { Text("Nearby discovery is unavailable. QR invitations still work when signed in.").font(.caption) }
             if let error = discovery.failure { Text(error).foregroundStyle(.orange) }
+            Text(discovery.status).font(.caption).foregroundStyle(.secondary)
             if discovery.busy { ProgressView() }
             if discovery.armed || discovery.busy { Button("Stop discovery", role: .destructive) {
                 discovery.stop(); consent = false; requesting = nil
@@ -260,7 +263,6 @@ struct NearbyDiscoveryView: View {
                     .accessibilityIdentifier("found-friend-\(contact.id.uuidString.lowercased())")
             }
             FeatureDetails("Privacy & discovery status") {
-                Text(discovery.status)
                 NearbyRadioStatus(radio: discovery.radio)
                 Text("Cards come only from current authorized Bluetooth tokens, not a public directory. Signals do not prove distance or physical identity.")
                 Text("Find Me and looking are separate choices. No GPS, game or friendship starts when this page opens.")
@@ -311,14 +313,17 @@ struct NearbyDiscoveryView: View {
             Form {
                 Text(look && discoverable ? "Look for friends and let people find you" : look ? "Look for friends" : "Let people find you")
                     .font(.headline)
-                Text("Uses Bluetooth for one foreground5-minute session. Start replaces any existing discovery session on this account.")
+                Text("Bluetooth runs for five minutes in the foreground. Start replaces this account's other discovery session. Signals do not prove distance or identity.")
                     .font(.caption)
                 Toggle("Allow this discovery session", isOn: $consent)
                 NearbyStartControls(discovery: discovery, radio: discovery.radio, community: community,
                     look: look, findable: discoverable, consent: consent, foreground: phase == .active)
                 if let error = discovery.failure { Text(error).foregroundStyle(.orange) }
                 if discovery.busy { ProgressView() }
-            }.navigationTitle("Discovery permission")
+            }.navigationTitle("Start discovery")
+                .safeAreaInset(edge: .bottom) {
+                    NativeFlowCancelFooter { activation = false; discovery.stop(); consent = false }
+                }
                 .toolbar { Button("Cancel") { activation = false; discovery.stop(); consent = false } }
         }
     }

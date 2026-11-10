@@ -20,7 +20,6 @@ struct CloudVaultAdoptionView: View {
                 Text("Expires \(adoption.expiresAt)").font(.caption)
                 if adoption.state == "completed" { Label("Library unlocked on this device", systemImage: "checkmark.shield") }
                 else {
-                    Button("Cancel adoption", role: .destructive) { vault.run { try await vault.cancelAdoption(); image = nil } }
                     Text("Keep this screen open. A code expires after two minutes; generate a new one if it expires.").font(.caption)
                 }
             }
@@ -30,10 +29,19 @@ struct CloudVaultAdoptionView: View {
                     if vault.adoption != nil { try await vault.cancelAdoption() }
                     try await vault.createAdoption(label: UIDevice.current.model)
                 }
-            }.disabled(!vault.canAdopt || vault.busy || ["pending", "approved"].contains(vault.adoption?.state ?? ""))
+            }.buttonStyle(AuroraPrimaryButton())
+                .disabled(!vault.canAdopt || vault.busy || ["pending", "approved"].contains(vault.adoption?.state ?? ""))
+            if vault.busy { ProgressView(vault.progress.isEmpty ? "Preparing trusted device…" : vault.progress) }
             if let failure = failure ?? vault.failure { Text(failure).foregroundStyle(.orange) }
         }
         .modernScene().navigationTitle("Adopt this device")
+        .safeAreaInset(edge: .bottom) {
+            if let adoption = vault.adoption, adoption.state != "completed" {
+                Button("Cancel adoption", role: .destructive) {
+                    vault.run { try await vault.cancelAdoption(); image = nil }
+                }.frame(maxWidth: .infinity).padding().background(.bar).disabled(vault.busy)
+            }
+        }
         .task(id: vault.adoption?.pairingId) {
             guard let adoption = vault.adoption, vault.canAdopt, adoption.state == "pending" else { return }
             do {
@@ -71,6 +79,7 @@ struct CloudVaultAdoptionApprovalView: View {
         Form {
             Text("Approve only a device physically in your possession. Both devices must be signed in to this same account. Scanning alone never releases the library key.")
             Button("Scan another device's adoption QR") { scanning = true }
+                .buttonStyle(AuroraPrimaryButton())
                 .disabled(!vault.canAdopt || vault.locked || vault.busy)
             if let adoption = vault.scannedAdoption {
                 LabeledContent("Server", value: adoption.origin)
@@ -84,6 +93,7 @@ struct CloudVaultAdoptionApprovalView: View {
                 } else { Text("Adoption: \(adoption.state)") }
             }
             if let failure = failure ?? vault.failure { Text(failure).foregroundStyle(.orange) }
+            if vault.busy { ProgressView(vault.progress.isEmpty ? "Checking trusted device…" : vault.progress) }
         }
         .modernScene().navigationTitle("Approve trusted device")
         .sheet(isPresented: $scanning) {
@@ -98,6 +108,10 @@ struct CloudVaultAdoptionApprovalView: View {
                 .ignoresSafeArea(edges: .bottom)
                 .navigationTitle("Scan public adoption QR")
                 .toolbar { Button("Cancel") { scanning = false } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel scan", role: .cancel) { scanning = false }
+                        .frame(maxWidth: .infinity).padding().background(.bar)
+                }
             }
         }
         .confirmationDialog("Release this library key to the displayed device?", isPresented: $approving, titleVisibility: .visible) {

@@ -49,6 +49,6 @@ struct GPSGamesView: View {
                 }
                 if let failure { Text(failure).foregroundStyle(.orange) }
             }
-        }.navigationTitle("GPS & nearby games").modernScene().buttonStyle(.plain)
+        }.navigationTitle("Games & adventures").modernScene().buttonStyle(.plain)
     }
 }

@@ -145,7 +145,10 @@ struct GIFGallery: View {
             .modernScene().navigationTitle("Find GIFs")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search licensed GIFs")
             .onSubmit(of: .search) { search() }
-            .toolbar { Button("Done") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Done") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(8).background(Aurora.surface)
+            }
             .task { if !catalog.searched && catalog.errorMessage == nil { search() } else { catalog.resume() } }
             .onChange(of: topic) { _, _ in search() }
             .onDisappear { catalog.cancel() }
@@ -177,10 +180,9 @@ struct GIFGallery: View {
                         GIFThumbnail(key: catalog.thumbnailKey(item)) {
                             try await HTTP.fetch(item.previewURL, maxBytes: 2_000_000)
                         }.frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 12))
-                        Text("\(item.width) x \(item.height) / \(item.attribution.license)")
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
                     }.padding(10).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 16))
                 }.buttonStyle(.plain).accessibilityLabel("Preview \(item.title)")
+                    .accessibilityValue("\(item.width) x \(item.height), \(item.attribution.license)")
                     .onAppear { catalog.nearEnd(item.id) }
             }
         }
@@ -257,7 +259,10 @@ private struct GIFDetails: View {
                 }.padding(20)
             }
             .modernScene().navigationTitle("GIF preview")
-            .toolbar { Button("Back") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Back") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(8).background(Aurora.surface)
+            }
             .task(id: retry) {
                 data = nil; frameCount = nil; failure = nil
                 do {

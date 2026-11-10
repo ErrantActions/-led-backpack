@@ -21,9 +21,9 @@ struct AdminArtworkView: View {
         Form {
             if community.isAdmin && community.config?.artworkToolsEnabled == true {
                 Section("Owned 64×64 artwork previews") {
-                    Text("Private preview jobs expire after24 hours. Cleanup and upscale are not AI.")
+                    Text("Private preview jobs expire after 24 hours. Cleanup and upscale are not AI.")
                     FeatureDetails("Processing limits & privacy") {
-                        Text("One active job, up to5 MB and120 frames; optional AI redraw is limited to16 frames.")
+                        Text("One active job, up to 5 MB and 120 frames; optional AI redraw is limited to 16 frames.")
                         Text("Only the selected input is processed. No cloud scan, publication or device change.")
                     }
                     if store.busy { ProgressView() }
@@ -48,7 +48,7 @@ struct AdminArtworkView: View {
             } else {
                 Text("Artwork tools require the current global-admin role and actual artworkToolsEnabled capability. Missing/false remains unavailable.")
             }
-        }.navigationTitle("Admin artwork studio")
+        }.modernScene().navigationTitle("Artwork studio")
         .task(id: scopeID) {
             consent = false; removal = nil; document = nil; exporting = false; exportFailure = nil
             guard phase == .active else { store.clear(); return }
@@ -78,7 +78,8 @@ struct AdminArtworkView: View {
         Section("Choose one explicit source") {
             Text(store.sourceName == "" ? "Choose an artwork source" : "Artwork source selected").font(.caption)
                 .accessibilityLabel(store.sourceName)
-            Button("Choose immutable local GIF input") { consent = false; picking = true }.disabled(store.busy)
+            Button("Choose local GIF") { consent = false; picking = true }
+                .buttonStyle(AuroraPrimaryButton()).disabled(store.busy)
             if let upload = store.upload { ArtworkComparison(input: upload.preview, result: nil).id(store.sourceName + String(upload.data.count)) }
             TextField("Approved community title/tag search", text: $query)
             Button("Search community artwork") { consent = false; page = 1; store.search(query, page: page) }.disabled(store.busy)
@@ -104,13 +105,16 @@ struct AdminArtworkView: View {
                 if community.config?.aiArtworkRedrawEnabled == true { Text("Optional AI redraw").tag(ArtworkMode.redraw) }
             }
             if community.config?.aiArtworkRedrawEnabled != true { Text("AI redraw provider unavailable. No native model installation or fake AI resizing fallback.").font(.caption) }
-            Picker("Background", selection: $settings.background) { ForEach(ArtworkBackground.allCases) { Text($0.rawValue).tag($0) } }
-            Toggle("Remove border-connected matching background", isOn: $settings.removeBackground)
-            Stepper("Tolerance \(settings.tolerance)", value: $settings.tolerance, in: 0...64)
+            DisclosureGroup("Background options") {
+                Picker("Background", selection: $settings.background) { ForEach(ArtworkBackground.allCases) { Text($0.rawValue).tag($0) } }
+                Toggle("Remove border-connected matching background", isOn: $settings.removeBackground)
+                Stepper("Tolerance \(settings.tolerance)", value: $settings.tolerance, in: 0...64)
+            }
             TextField("Optional redraw prompt (≤1000 UTF16 units)", text: $settings.prompt, axis: .vertical)
             InteractionExplanation("Processing can alter artwork. Inspect the result before saving or publishing; cancellation may not remove provider copies.", details: "Processing may remove intentional edge-connected pixels. GIF alpha is binary. AI redraw can alter text/characters/flicker and provider assets may survive cancellation; inspect the retained input/result before any separate download/publication.").font(.caption)
             Toggle("I consent to processing only this explicit source with these settings", isOn: $consent)
             Button("Create new private preview job") { store.submit(settings, consent: consent); consent = false }
+                .buttonStyle(AuroraPrimaryButton())
                 .disabled(!consent || store.busy || store.uncertainSubmission || (store.source == nil && store.upload == nil) || (settings.mode == .redraw && community.config?.aiArtworkRedrawEnabled != true))
         }
     }

@@ -13,6 +13,8 @@ struct ThemeEditor: View {
     @State private var presetName = ""
     @State private var preview: UIImage?
     @State private var validation: String?
+    @State private var failure: String?
+    @State private var status: String?
 
     init(mode: LiveMode, theme: LiveTheme) {
         self.mode = mode
@@ -33,6 +35,10 @@ struct ThemeEditor: View {
             .navigationTitle("Make it yours")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel") { dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+            }
             .task(id: draft) {
                 repeat {
                     updatePreview()
@@ -52,6 +58,8 @@ struct ThemeEditor: View {
                         .listRowBackground(Color.clear)
                 }
                 if let validation { Text(validation).foregroundStyle(.orange) }
+                if let failure { Text(failure).foregroundStyle(.orange) }
+                if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
             }
             Section("Your palette") {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 8) {
@@ -68,12 +76,22 @@ struct ThemeEditor: View {
                 Picker("Background", selection: $draft.background) {
                     ForEach(PixelInk.allCases) { Text($0.rawValue.capitalized).tag($0) }
                 }
-                Picker("Ink effect", selection: $draft.inkEffect) { ForEach(InkEffect.allCases) { Text($0.rawValue).tag($0) } }
-                Picker("Secondary ink", selection: $draft.accent) { ForEach(PixelInk.allCases) { Text($0.rawValue.capitalized).tag($0) } }
-                Slider(value: $draft.colorSpeed, in: 0.2...3, step: 0.1) { Text("Color effect speed") }
                 Text("Eight crisp LED colors. Ink and background must differ.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("Typography and layout") {
+            Section {
+                Button("Apply theme") {
+                    app.run {
+                        do {
+                            try library.saveTheme(draft, for: mode)
+                            app.apply(library.state.preferences)
+                            dismiss()
+                        } catch { failure = error.localizedDescription; throw error }
+                    }
+                }.buttonStyle(AuroraPrimaryButton()).disabled(validation != nil)
+                Text("Saves this live screen's theme. Starting playback is a separate action.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            DisclosureGroup("Font & layout") {
                 Picker("Typeface", selection: $draft.typeface) { ForEach(LiveTypeface.allCases) { Text($0.rawValue).tag($0) } }
                 Slider(value: $draft.scale, in: 0.5...1.5, step: 0.05) { Text("Number / text size") }
                 Text("Type scale: \(draft.scale, specifier: "%.2f")x").font(.caption.monospaced())
@@ -84,7 +102,10 @@ struct ThemeEditor: View {
                 Picker("Secondary field", selection: $draft.secondaryField) { ForEach(LiveField.allCases) { Text($0.rawValue).tag($0) } }
                 Text("Fields use existing phone data. NO GPS, stale weather and other critical statuses cannot be hidden or relabeled.").font(.caption)
             }
-            Section("Motion") {
+            DisclosureGroup("Color & motion") {
+                Picker("Ink effect", selection: $draft.inkEffect) { ForEach(InkEffect.allCases) { Text($0.rawValue).tag($0) } }
+                Picker("Secondary ink", selection: $draft.accent) { ForEach(PixelInk.allCases) { Text($0.rawValue.capitalized).tag($0) } }
+                Slider(value: $draft.colorSpeed, in: 0.2...3, step: 0.1) { Text("Color effect speed") }
                 Picker("Style", selection: Binding(get: { draft.animation }, set: { draft.animation = $0 })) {
                     ForEach(LiveAnimation.allCases) { Text($0.rawValue).tag($0) }
                 }
@@ -96,7 +117,7 @@ struct ThemeEditor: View {
                     Text("Pixel eyes use the selected palette and refresh timing; text fonts, labels, and text animation styles apply to text-based screens.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Gauge") {
+                DisclosureGroup("Gauge") {
                     Picker("Style", selection: $draft.gauge) { ForEach(GaugeStyle.allCases) { Text($0.rawValue).tag($0) } }
                     TextField("Minimum", value: $draft.gaugeMinimum, format: .number).keyboardType(.numbersAndPunctuation)
                     TextField("Maximum", value: $draft.gaugeMaximum, format: .number).keyboardType(.numbersAndPunctuation)
@@ -104,7 +125,7 @@ struct ThemeEditor: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Section("Starting points") {
+            DisclosureGroup("Starting points") {
                 ForEach(LiveTheme.builtins(for: mode), id: \.name) { preset in
                     Button { draft = preset.theme } label: {
                         HStack {
@@ -116,25 +137,31 @@ struct ThemeEditor: View {
                     }
                 }
             }
-            Section("Your presets for \(mode.rawValue)") {
+            DisclosureGroup("Saved presets") {
                 TextField("Preset name", text: $presetName)
                 Button("Save named preset") {
-                    app.run { try library.savePreset(name: presetName, mode: mode, theme: draft); presetName = "" }
+                    app.run {
+                        do {
+                            try library.savePreset(name: presetName, mode: mode, theme: draft)
+                            presetName = ""; failure = nil; status = "Preset saved."
+                        } catch { failure = error.localizedDescription; throw error }
+                    }
                 }.disabled(validation != nil)
+                Text("Delete removes only the saved preset, not artwork or the applied theme.")
+                    .font(.caption).foregroundStyle(.secondary)
                 ForEach((library.state.livePresets ?? []).filter { $0.mode == mode.rawValue }) { preset in
                     HStack {
                         Button(preset.name) { draft = preset.theme }
                         Spacer()
-                        Button(role: .destructive) { app.run { try library.deletePreset(preset.id) } } label: { Image(systemName: "trash") }
+                        Button(role: .destructive) {
+                            app.run {
+                                do { try library.deletePreset(preset.id); failure = nil; status = "Preset deleted." }
+                                catch { failure = error.localizedDescription; throw error }
+                            }
+                        } label: { Image(systemName: "trash") }
+                            .accessibilityLabel("Delete preset \(preset.name)")
                     }
                 }
-                Button("Apply to this live screen") {
-                    app.run {
-                        try library.saveTheme(draft, for: mode)
-                        app.apply(library.state.preferences)
-                        dismiss()
-                    }
-                }.buttonStyle(.borderedProminent).disabled(validation != nil)
             }
         }.modernScene()
     }

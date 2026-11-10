@@ -121,9 +121,11 @@ struct NativeChatPlaylistViewer: View {
     @State private var generation = UUID()
     @State private var previewItem: UUID?
     @State private var previewUntil: Date?
+    @State private var loading = false
     var body: some View {
         NavigationStack {
             List {
+                if loading { ProgressView("Opening published snapshot…") }
                 if let manifest, let reference {
                     Text(manifest.title).font(.headline); Text(manifest.description)
                     Text("Paused · \(manifest.order.rawValue) · expires \(manifest.expiresAtISO)").font(.caption)
@@ -133,7 +135,7 @@ struct NativeChatPlaylistViewer: View {
                                 GIFThumbnail(key: "chat-playlist:\(client.instanceID):\(generation):\(item.id):\(previewItem == item.id)", cache: false) {
                                     try await client.chatPlaylistMedia(reference, itemID: item.id, animated: previewItem == item.id)
                                 }.frame(height: 140).accessibilityLabel(item.title)
-                                Button(previewItem == item.id ? "Pause preview" : "Preview this entry for up to 10 seconds") {
+                                Button(previewItem == item.id ? "Pause preview" : "Preview · up to 10 seconds") {
                                     if previewItem == item.id { previewItem = nil; previewUntil = nil }
                                     else { previewItem = item.id; previewUntil = Date().addingTimeInterval(min(10, Double(entry.durationMilliseconds) / 1000)) }
                                 }
@@ -144,16 +146,22 @@ struct NativeChatPlaylistViewer: View {
                 if let failure { Text(failure).foregroundStyle(.orange) }
                 Button("Reload current authorized snapshot") { generation = UUID() }
                 Text("No automatic sequence, device playback, schedule or private-library restore. Downloaded public copies cannot be recalled.").font(.caption)
-            }.navigationTitle("Chat playlist").toolbar { Button("Close") { dismiss() } }
+            }.modernScene().navigationTitle("Chat playlist").toolbar { Button("Close") { dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Done") { dismiss() }
+                        .frame(maxWidth: .infinity).padding().background(.bar)
+                }
                 .task(id: "\(generation):\(phase):\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.avatarPolicyRevision):\(community.config?.chatReferencesEnabled == true):\(community.config?.messagingEnabled == true):\(community.config?.chatPlaylistReferencesEnabled == true)") {
-                    manifest = nil; reference = nil; previewItem = nil; previewUntil = nil
+                    manifest = nil; reference = nil; previewItem = nil; previewUntil = nil; failure = nil
+                    loading = true
+                    defer { loading = false }
                     guard phase == .active, client.chatPlaylistReferencesEnabled, !community.avatarPolicyChanging else { return }
                     do {
                         let id = try NativeChatPublishedPlaylist.referenceID(rawReference)
                         while !Task.isCancelled {
                             let value = try await client.chatPlaylistManifest(id)
                             try Task.checkCancellation(); try client.check(.messaging)
-                            manifest = value; reference = id
+                            manifest = value; reference = id; loading = false
                             try await Task.sleep(for: .seconds(5))
                         }
                     } catch {

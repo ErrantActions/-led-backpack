@@ -33,6 +33,10 @@ struct CommunitySocialView: View {
                 session.client?.accountID == community.user?.id {
                 if session.busy { ProgressView() }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                NavigationLink { NearbyDiscoveryView() } label: {
+                    FeatureRowLabel(title: "Add friends", symbol: "person.badge.plus",
+                        subtitle: "Scan an invitation or share your code")
+                }
                 DisclosureGroup("My profile") {
                     if let preferences, let client = session.client {
                         CommunityProfileAvatar(person: preferences.profile, client: client).frame(width: 72, height: 72)
@@ -66,11 +70,13 @@ struct CommunitySocialView: View {
                             if preferences?.accountAwardsEnabled == true && badgesVerified {
                                 AuthorizedProfileEventBadges(badges: friend.eventBadges ?? [])
                             }
+                            Menu("Manage friendship") {
                             Button("Remove friend") {
                                 confirm("Remove friend", "This revokes relationship permissions. It does not erase local artwork.") { try await $0.unfriend(friend.id) }
                             }
                             Button("Block contact", role: .destructive) {
                                 confirm("Block contact", "Stops friendship, requests and related permissions. Unblocking does not restore them.") { try await $0.block(friend.id) }
+                            }
                             }
                             FeatureDetails("Friend permissions") {
                             Text(friend.id.uuidString.lowercased()).textSelection(.enabled)
@@ -125,12 +131,10 @@ struct CommunitySocialView: View {
                     }
                     }
                 }.disabled(session.busy)
-                Section("Single-use friend invite") {
-                    NavigationLink("Add friends") { NearbyDiscoveryView() }
-                    Text("Scan to preview. Send a request only when you choose.").font(.caption)
+                Section("Privacy & permissions") {
+                    NavigationLink("Blocked accounts") { CommunityBlocksView() }
+                    NavigationLink("Location consent & sessions") { FriendLocationFeaturesView() }
                 }
-                NavigationLink("Blocked accounts") { CommunityBlocksView() }
-                NavigationLink("Location-powered consent & timed sessions") { FriendLocationFeaturesView() }
                 Button("Refresh friends and profile", action: load).disabled(session.busy)
             } else {
                 Text(session.failure ?? "Friends are unavailable until this server enables the social capability.")
@@ -262,6 +266,7 @@ struct CommunityAvatarView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 if !uploadReady { Text("Uploads/retry are unavailable until this server advertises configured automatic screening. There is no manual-approval fallback.").font(.caption).foregroundStyle(.secondary) }
                 Button("Choose avatar image or GIF") { pickerScope = session.client?.instanceID; pickerVersion = avatar?.version; picking = true }
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(!consent || session.busy || !uploadReady)
                 if let selection {
                     Section("Selected file — not uploaded") {
@@ -291,8 +296,9 @@ struct CommunityAvatarView: View {
                                 try await client.uploadAvatar(selection.bytes, publicConsent: consent,
                                     expectedVersion: selection.expectedVersion, crop: selectedCrop)
                             }, success: { self.selection = nil; clearPreview(); consent = false; load() })
-                        }.disabled(!consent || session.busy || !uploadReady || previewSelection != selection.id || previewCrop != (cropping ? crop : nil))
-                        Button("Discard selection") { self.selection = nil; clearPreview() }
+                        }.buttonStyle(AuroraPrimaryButton())
+                            .disabled(!consent || session.busy || !uploadReady || previewSelection != selection.id || previewCrop != (cropping ? crop : nil))
+                        Button("Discard selection") { self.selection = nil; clearPreview() }.disabled(session.busy)
                     }
                 }
                 if let selectionFailure { Text(selectionFailure).foregroundStyle(.orange) }

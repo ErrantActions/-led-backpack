@@ -82,7 +82,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["License / permission"].exists)
         XCTAssertFalse(app.buttons["Submit to community review"].isEnabled)
         attach(app, name: "Community review - explicit consent without creator or license choices")
-        app.buttons["Done"].tap()
+        app.buttons["community-upload-close"].tap()
         reveal(app.buttons["Preview Night ride"], in: app)
         reveal(app.buttons["Preview Cloud demo"], in: app)
         XCTAssertFalse(app.staticTexts["Cloud demo"].exists)
@@ -126,7 +126,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Make it yours"].waitForExistence(timeout: 5))
         reveal(app.buttons["Cyan ink"], in: app)
         attach(app, name: "Aurora theme studio - accessible ink palette")
-        app.buttons["Done"].tap()
+        app.buttons["Cancel"].tap()
 
         app.buttons.matching(NSPredicate(format: "label == %@", "Library")).firstMatch.tap()
         returnToHeader(app)
@@ -395,6 +395,64 @@ final class NavigationTests: XCTestCase {
         app.buttons["Cancel"].tap()
     }
 
+    func testAppWideProcessesStartWithEssentialsAndKeepSafeExits() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["Discover GIFs"].isHittable)
+        XCTAssertFalse(app.staticTexts["Night ride"].exists)
+        let collections = app.buttons["Playlists, scenes & send queue"]
+        reveal(collections, in: app); collections.tap()
+        let queue = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Send queue (")).firstMatch
+        reveal(queue, in: app); queue.tap()
+        XCTAssertTrue(app.navigationBars["Send queue"].waitForExistence(timeout: 10))
+        app.buttons["Add local GIFs"].tap()
+        let add = app.buttons["Add to queue"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        XCTAssertFalse(add.isEnabled)
+        let artwork = app.buttons["Select Night ride"]
+        XCTAssertTrue(artwork.waitForExistence(timeout: 10)); artwork.tap()
+        XCTAssertTrue(add.isEnabled)
+        attach(app, name: "App-wide - artwork selection and persistent queue actions")
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.isHittable); cancel.tap()
+        XCTAssertTrue(app.navigationBars["Send queue"].waitForExistence(timeout: 10))
+        let review = app.buttons["Review and send 0 GIFs"]
+        reveal(review, in: app, requireHittable: false)
+        XCTAssertTrue(review.exists)
+        XCTAssertFalse(review.isEnabled, "Cancelling selection must not enqueue or authorize hardware writes.")
+        let back = app.buttons["BackButton"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10)); back.tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
+
+        app.buttons["Filter library"].tap(); app.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["settings-save"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["settings-save"].isHittable)
+        XCTAssertFalse(app.buttons["Request Always location permission"].exists)
+        XCTAssertFalse(app.buttons["Export connection log"].exists)
+        attach(app, name: "App-wide - settings essentials and persistent save or cancel")
+        app.buttons["settings-done"].tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
+
+        app.buttons.matching(NSPredicate(format: "label == %@", "Create")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Create"].waitForExistence(timeout: 10))
+        assertNoVisibleEntryForms(app)
+        attach(app, name: "App-wide - creation tool chooser")
+        app.buttons.matching(NSPredicate(format: "label == %@", "Backpack")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["Scan for backpacks"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Stop scan"].exists)
+        assertNoVisibleEntryForms(app)
+        attach(app, name: "App-wide - explicit hardware discovery, advanced controls collapsed")
+        app.buttons.matching(NSPredicate(format: "label == %@", "Live")).firstMatch.tap()
+        let start = app.buttons["live-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        XCTAssertFalse(start.isEnabled, "Previewing a live mode must not bypass the hardware connection gate.")
+        XCTAssertGreaterThanOrEqual(start.frame.height, 44 - 0.000001)
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(start.frame))
+        attach(app, name: "App-wide - live preview and persistent gated primary action")
+    }
+
     func testWorkflowEndScreensKeepAdvancedControlsCollapsedAndSettingsReachable() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture"]
@@ -421,7 +479,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(app.buttons["Use source timing"].exists)
         XCTAssertFalse(app.buttons["Reset manual edits"].exists)
         XCTAssertTrue(timing.isHittable)
-        let save = app.buttons["Save new GIF to library"]
+        let save = app.buttons["Save GIF copy"]
         reveal(save, in: app); XCTAssertTrue(save.isHittable)
         attach(app, name: "GIF Studio - clear save action, advanced tools collapsed")
         let cancel = app.buttons["editor-cancel"]
@@ -473,6 +531,10 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 20))
         app.buttons.matching(NSPredicate(format: "label == %@", "Live")).firstMatch.tap()
         let mode = app.buttons["Scrolling message"]
+        if !mode.exists {
+            let modes = app.buttons["Explore all modes"]
+            reveal(modes, in: app); modes.tap()
+        }
         reveal(mode, in: app); mode.tap()
         let field = app.textFields["live-message"]
         reveal(field, in: app); field.tap(); field.typeText("Reflow keeps this message")
@@ -485,7 +547,7 @@ final class NavigationTests: XCTestCase {
             let customize = app.buttons["Customize"]
             reveal(customize, in: app); customize.tap()
             XCTAssertTrue(app.navigationBars["Make it yours"].waitForExistence(timeout: 10))
-            app.buttons["Done"].tap()
+            app.buttons["Cancel"].tap()
             XCTAssertEqual(field.value as? String, draft)
             let start = app.buttons["live-start"]
             reveal(start, in: app, requireHittable: false)

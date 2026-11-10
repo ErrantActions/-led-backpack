@@ -80,7 +80,9 @@ struct FriendPlaybackView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("\(selected.kind.rawValue) with \(selected.peer.displayName)").font(.title2.bold())
-                Text("PHONE target only • \(selected.direction == "outgoing" ? "session sender / left scene" : "session recipient / right scene") • ends \(selected.expiresAtISO)").font(.caption)
+                StatusPill(title: interactions.engine?.enabled == true ? "Scene armed" : "Not armed", symbol: "iphone")
+                Text("Phone only · \(selected.direction == "outgoing" ? "Sender / left scene" : "Recipient / right scene") · ends \(selected.expiresAtISO)").font(.caption)
+                if targets.target != .phone { Text("Choose the phone target before preparing.").font(.caption).foregroundStyle(.orange) }
                 FeatureDetails("Peer verification") {
                     Text("Both friends must arm this session and verify their keys. Radio hints do not prove proximity.")
                 }
@@ -96,7 +98,7 @@ struct FriendPlaybackView: View {
                         Button("Use my displayed GIF") { useDisplayedArtwork() }.disabled(!canEdit || !phone.hasArtwork)
                     }
                 } else if selected.kind == .palette || selected.kind == .duet {
-                    Button("Prepare isolated LOCAL preset preview — paused") {
+                    Button("Prepare paused preset preview") {
                         selectionTask?.cancel()
                         let context = selectionContext()
                         selectionTask = Task { await media.previewPreset(kind: selected.kind, preset: preset, sender: selected.direction == "outgoing", context: context) }
@@ -106,10 +108,10 @@ struct FriendPlaybackView: View {
                 FeatureDetails("How this scene works") {
                     Text("Greeting stays local. Palette and duet use generated colors. Pass sends only the sender's chosen GIF (up to128KiB). Your original is retained.")
                 }
-                Toggle("I explicitly arm this kind/preset and its media-sharing/display intent", isOn: $consent)
+                Toggle("Allow this scene's sharing and phone display", isOn: $consent)
                     .disabled(interactions.consumed.contains(selected.id) || media.reading)
                 Text("Both friends must opt in here. Pass shares your chosen GIF—even private artwork—and the recipient can keep it. Incoming content may be explicit.").font(.caption).foregroundStyle(.orange)
-                Button("Prepare this friend's Bluetooth (explicit OS permission)") {
+                Button("Prepare Bluetooth for this friend") {
                     media.pause()
                     interactions.prepare(selected, preset: preset, consent: consent, attribution: credit, artwork: media.choice)
                 }.disabled(!consent || !canEdit || (selectsArtwork && media.choice == nil) || !phone.hasArtwork)
@@ -124,7 +126,7 @@ struct FriendPlaybackView: View {
                     Button("Leave / stop local first", role: .destructive) { consent = false; interactions.stop() }
                     Button("Leave and restore my initial original") { consent = false; Task { await engine.restoreOriginal() } }
                 }
-                NavigationLink("Recovery first / Received swaps — explicit Save/remove") { SwapRecoveryView() }
+                NavigationLink("Received GIFs & recovery") { SwapRecoveryView() }
                 FeatureDetails("Timing & recovery") {
                     Text("Both apps verify readiness before replacing artwork. Timing is best-effort, not certified synchronization or proximity.")
                     Text("Stopping, expiry or leaving the foreground stops locally; no automatic restart. Your original remains available for explicit Restore.")
@@ -175,7 +177,8 @@ private struct FriendArmButton: View {
     let consent, blocked: Bool
     let action: @MainActor () -> Void
     var body: some View {
-        Button("Arm selected friend scene / open phone canvas", action: action)
+        Button("Arm scene & open phone", action: action)
+            .buttonStyle(AuroraPrimaryButton())
             .disabled(!consent || blocked || !radio.ready || engine.enabled || engine.busy)
     }
 }

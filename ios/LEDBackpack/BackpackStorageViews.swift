@@ -11,10 +11,15 @@ struct BackpackStorageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("On your backpack").font(.title3.weight(.semibold))
-            Text("\(panel.slots.filter(\.occupied).count) / 60 slots occupied").font(.caption)
+            if panel.inventoryDeviceID != nil && panel.inventoryDeviceID == panel.link.selectedID {
+                Text("\(panel.slots.filter(\.occupied).count) / 60 slots occupied").font(.caption)
+            } else {
+                Text("Refresh to read this backpack's storage.").font(.caption).foregroundStyle(.secondary)
+            }
             if let date = panel.inventoryReadAt { Text("Inventory read \(date.formatted(date: .omitted, time: .standard))").font(.caption2) }
-            Text("Slot identifiers come from the backpack. Thumbnails use matching originals cached on this iPhone, like the vendor app's slot store.")
-                .font(.caption).foregroundStyle(.secondary)
+            FeatureDetails("About slot previews") {
+                Text("Thumbnails use matching originals cached on this iPhone. Unknown artwork is not an empty slot.")
+            }
             Button("Refresh slots and playback") { app.run { try await panel.refreshStoredPlayback() } }
             if let progress = panel.progress { ProgressView(value: progress) }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
@@ -32,11 +37,13 @@ struct BackpackStorageView: View {
                 }
             }
             NavigationLink("Playlists") { PlaylistCollection() }
-            Button("Erase all backpack slots", role: .destructive) {
-                app.run { erasing = try panel.erasePlan() }
-            }.disabled(!panel.slots.contains(where: \.occupied))
-            Text("Erase clears stored programs only—not a factory reset. Local/cloud GIFs, Bluetooth settings and the backpack password are retained.")
-                .font(.caption2).foregroundStyle(.secondary)
+            DisclosureGroup("Erase stored artwork") {
+                Text("Not a factory reset. Local/cloud GIFs, Bluetooth settings and the backpack password are retained.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Erase all backpack slots", role: .destructive) {
+                    app.run { erasing = try panel.erasePlan() }
+                }.disabled(!panel.slots.contains(where: \.occupied))
+            }
         }.padding(20).glassPanel().disabled(panel.busy || panel.hasDisplayOwner)
         .sheet(item: $erasing) { EraseBackpackView(plan: $0) }
         .sheet(item: $selected) { slot in
@@ -91,22 +98,29 @@ private struct StoredSlotDetail: View {
                 StoredSlotThumbnail(slot: slot).frame(height: 240)
                 LabeledContent("Slot", value: String(slot.id))
                 LabeledContent("State", value: slot.occupied ? "Occupied" : "Empty")
-                Text("Identifier: \(slot.identifier.map { String(format: "%02x", $0) }.joined())")
-                    .font(.caption.monospaced()).textSelection(.enabled)
-                Text("An unknown thumbnail means this phone has no matching cached original—not that the slot is unreadable or empty.")
-                    .font(.caption).foregroundStyle(.secondary)
+                FeatureDetails("Slot identifier & preview") {
+                    Text("Identifier: \(slot.identifier.map { String(format: "%02x", $0) }.joined())")
+                        .font(.caption.monospaced()).textSelection(.enabled)
+                    Text("An unknown thumbnail means this phone has no matching original, not that the slot is empty.")
+                }
                 if slot.occupied {
                     Button("Play this slot") {
                         app.run {
                             try plan.validate(deviceID: panel.link.selectedID, serial: panel.identity?.serial, records: panel.slots)
                             try await panel.play(slot: slot.id)
                         }
+                    }.buttonStyle(AuroraPrimaryButton())
+                    DisclosureGroup("Delete stored artwork") {
+                        Button("Delete this backpack slot", role: .destructive) { deleting = true }
                     }
-                    Button("Delete this backpack slot", role: .destructive) { deleting = true }
                 }
             }.disabled(panel.busy || panel.hasDisplayOwner)
                 .modernScene().navigationTitle("Backpack slot \(slot.id)")
-                .toolbar { Button("Done") { dismiss() }.disabled(panel.busy) }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Done") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                        .disabled(panel.busy).padding(8).background(Aurora.surface)
+                }
+                .interactiveDismissDisabled(panel.busy)
                 .confirmationDialog("Permanently erase slot \(slot.id)?", isPresented: $deleting) {
                     Button("Erase slot \(slot.id)", role: .destructive) {
                         app.run {
@@ -138,7 +152,7 @@ struct EraseBackpackView: View {
                 Toggle("Allow erase", isOn: $allowErase)
                     .disabled(panel.busy)
                     .accessibilityIdentifier("allow-backpack-erase")
-                if let progress = panel.progress { ProgressView("Erasing backpack slotsâ€¦", value: progress) }
+                if let progress = panel.progress { ProgressView("Erasing backpack slots...", value: progress) }
                 Button("Erase all stored artwork", role: .destructive) {
                     guard allowErase else {
                         panel.report(BackpackError.invalid("Enable Allow erase before erasing backpack artwork."))
@@ -150,10 +164,10 @@ struct EraseBackpackView: View {
                 .disabled(!allowErase || panel.busy || panel.hasDisplayOwner || !link.connected)
                 .accessibilityIdentifier("erase-backpack-action")
             }.modernScene().navigationTitle("Erase backpack")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.disabled(panel.busy)
-                    }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                        .disabled(panel.busy).padding(8).background(Aurora.surface)
+                        .accessibilityIdentifier("erase-backpack-cancel")
                 }
                 .interactiveDismissDisabled(panel.busy)
                 .onChange(of: link.connectionRevision) { _, _ in allowErase = false }

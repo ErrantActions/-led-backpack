@@ -173,13 +173,18 @@ struct SwapRecoveryView: View {
                         Text("Restore replaces your current phone choice. Check before confirming.").font(.caption).foregroundStyle(.orange)
                     }.padding(16).glassPanel()
                 }
-                Button("Prepare durable copy of my current phone original") { preparing = true }
+                Button("Save original for recovery") { preparing = true }
+                    .buttonStyle(AuroraPrimaryButton())
                     .disabled(store.busy || targets.target != .phone || !phone.hasArtwork || phone.loading)
                 FeatureDetails("Recovery rules") {
                     Text("One active original survives errors and restarts. Replacing it requires an acknowledged restore and cooldown.")
                 }
                 Text("Received swaps — separate local collection").font(.headline)
-                Button("Manually import a received file (not peer transfer)") { importing = true }.disabled(store.busy)
+                Button("Import received file") { importing = true }.disabled(store.busy)
+                Text("Manual import only, not a peer transfer or encounter.").font(.caption).foregroundStyle(.secondary)
+                if store.received.isEmpty && !store.busy && store.failure == nil {
+                    Text("No received copies saved here.").foregroundStyle(.secondary)
+                }
                 Text("Received copies stay local until you explicitly save or share them.").font(.caption)
                 ForEach(store.received) { item in
                     VStack(alignment: .leading, spacing: 8) {
@@ -257,6 +262,10 @@ private struct ReceivedSwapPreview: View {
                 Text("Preview only; current phone/hardware artwork and recovery original are unchanged.").font(.caption)
             }.padding().background(.black).foregroundStyle(.white)
                 .toolbar { Button("Done") { dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Done") { dismiss() }
+                        .frame(maxWidth: .infinity).padding().background(.bar)
+                }
                 .onChange(of: phase) { _, phase in if phase != .active { play = false } }
                 .onChange(of: reduced) { _, reduced in if reduced { play = false } }
         }

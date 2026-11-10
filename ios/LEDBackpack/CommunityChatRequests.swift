@@ -174,17 +174,21 @@ struct CommunityMessageRequestsView: View {
                         details: "Stopping new requests does not close existing permissions. Acceptance is not friendship, location consent or library access; only server-authorized history from the introduction is shared.")
                 }
                 Section("Current requests") {
+                    if rows.isEmpty && !session.busy && session.failure == nil {
+                        Text("No requests on this page.").foregroundStyle(.secondary)
+                    }
                     ForEach(rows) { row in
                         VStack(alignment: .leading) {
                             Text(row.contact?.displayName ?? "Unavailable request").font(.headline)
-                            Text("\(row.state.rawValue) · revision \(row.revision)")
+                            Text("\(row.state.rawValue.capitalized) · revision \(row.revision)")
+                                .font(.subheadline).foregroundStyle(.secondary)
                             if let intro = row.message { Text(intro.text) }
                             if row.available, row.incoming, row.message != nil, community.config?.chatReportsEnabled == true {
                                 Button("Explain an incident (no content copied)") { prepareIncident(row) }
                             }
                             if row.available {
                                 if row.state == .accepted, let contact = row.contact {
-                                    Button("Open authorized conversation") {
+                                    Button("Open conversation") {
                                         do {
                                             guard let account = community.user?.id else { throw BackpackError.invalid("Sign in before opening this request.") }
                                             selected = .init(context: try row.acceptedConversation(account: account), title: contact.displayName)
@@ -194,9 +198,11 @@ struct CommunityMessageRequestsView: View {
                                 }
                                 Button("Review request controls") { decision = row }
                                 if let contact = row.contact {
+                                    FeatureDetails("Stored introduction & safety") {
                                     Button("Inspect my stored introduction") { inspectIntro(contact) }
                                     Button("Block this contact", role: .destructive) {
                                         session.run({ try await $0.block(contact.id) }, success: { clearPrivate(); load() })
+                                    }
                                     }
                                 }
                             }
@@ -229,7 +235,7 @@ struct CommunityMessageRequestsView: View {
                             } success: { load() }
                         }.disabled(storedIntro.state != .uncertain)
                         if storedIntro.state == .uncertain {
-                            Button("Abandon uncertain introduction (may have delivered)", role: .destructive) {
+                            Button("Abandon uncertain introduction (may be saved on server)", role: .destructive) {
                                 do {
                                     var abandoned = storedIntro; abandoned.state = .abandoned; abandoned.acknowledgedMessageID = nil
                                     try NativeChatOutbox.save(abandoned); try NativeChatOutbox.archiveTerminal(abandoned)
@@ -247,9 +253,12 @@ struct CommunityMessageRequestsView: View {
                     TextField("Introduction (1–1,000 characters)", text: $text, axis: .vertical).disabled(intent != nil || storedIntro != nil)
                     Toggle("Send this one encrypted introduction", isOn: $consent).disabled(intent != nil || storedIntro != nil)
                     Button(intent == nil ? "Send introduction" : "Reconcile by exact introduction retry") { sendIntro() }
+                        .buttonStyle(AuroraPrimaryButton())
                         .disabled(storedIntro != nil || intent == nil && (target == nil || !consent))
                     InteractionExplanation("Text-only, server-encrypted requests. Pending requests expire after 14 days. No silent retries.",
                         details: "Server-managed encryption, not E2EE. No GIF, pin, attachment or earlier history is included. No silent retries. Limits: 10 new/day, 50 pending/recipient, 500 descriptors/account, 20,000/server, 120 polls/minute and 20 shared social mutations/minute. Pending expires after 14 days; closed descriptors remain up to 30 days.")
+                    Text("Saved on the server does not mean delivered or read by the recipient.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Button("Reload current requests and opt-in") { load() }
             } else { Text("Non-friend message requests are unavailable on this server.") }

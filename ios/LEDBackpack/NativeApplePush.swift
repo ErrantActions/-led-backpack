@@ -218,10 +218,11 @@ struct NativeApplePushView: View {
     var body: some View {
         Form {
             if community.nativeApplePushAvailable {
-                Text("Server availability is not OS permission, token registration or delivery proof. This screen uses actual App Attest challenges/assertions for every device/activity request.").font(.caption)
+                Text("Server availability is not OS permission, token registration or delivery proof.").font(.caption)
                 LabeledContent("OS permission", value: apple.permission)
                 LabeledContent("Current registration", value: apple.device?.hasToken == true ? "Token registered" : "Not registered")
                 Button("Request OS permission / refresh token") { apple.requestPermissionAndToken() }
+                    .buttonStyle(AuroraPrimaryButton())
                 Button("Refresh verified current registration") { apple.refresh() }
                 Button("Review registration update") { capturedRevision = apple.device?.revision ?? 0; confirming = true }
                 Button("Remove native alerts", role: .destructive) { capturedRemoval = apple.device; removing = true }.disabled(apple.device == nil)
@@ -232,6 +233,9 @@ struct NativeApplePushView: View {
             if let failure = apple.failure ?? events.failure { Text(failure).foregroundStyle(.orange) }
             InteractionExplanation("Provider acceptance is not on-device delivery. OS/Focus settings still apply; this screen provisions no credentials.",
                 details: "Provider acceptance is not proof of on-device delivery. Focus/OS settings still apply. No keys, models, credentials, developer profiles or entitlements are provisioned by this screen.").font(.caption)
+            FeatureDetails("Device verification") {
+                Text("This screen uses actual App Attest challenges/assertions for every device/activity request.")
+            }
         }.disabled(apple.busy).modernScene().navigationTitle("Apple device alerts")
         .task { if community.nativeApplePushAvailable { apple.refresh() } }
         .onChange(of: phase) { _, phase in if phase == .active && community.nativeApplePushAvailable { apple.refresh() } }

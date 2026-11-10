@@ -21,6 +21,10 @@ struct AppleLinkAccountView: View {
             }
             .modernScene().navigationTitle("Link Apple account")
             .toolbar { Button("Cancel") { password = ""; dismiss() }.disabled(busy) }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel", role: .cancel) { password = ""; dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(busy)
+            }
             .interactiveDismissDisabled(busy)
             .onDisappear { password = "" }
         }

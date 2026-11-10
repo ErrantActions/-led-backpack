@@ -126,6 +126,7 @@ struct EventDefinitionReviewView: View {
 @MainActor
 struct EventRouteReviewView: View {
     let captured: NativeEventRouteReview
+    var busy = false
     let back: () -> Void
     let confirm: () -> Void
     var body: some View {
@@ -135,6 +136,19 @@ struct EventRouteReviewView: View {
                 Section(event.title) {
                     Text("\(draft.body.normalized().checkpoints.count) checkpoints · \(draft.body.geometry.count) guide points")
                     Text(draft.published ? "Published route" : "Unpublished draft")
+                }
+                Section("Checkpoints in order") {
+                    ForEach(draft.body.normalized().checkpoints) { checkpoint in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(checkpoint.order + 1). \(checkpoint.title)").font(.headline)
+                            Text("\(checkpoint.kind.rawValue.capitalized) · \(checkpoint.optional == true ? "Optional" : "Required") · \(checkpoint.radiusMeters.formatted()) m radius").font(.caption)
+                        }
+                    }
+                }
+                if !draft.body.normalized().badges.isEmpty {
+                    Section("Finish rewards") {
+                        ForEach(draft.body.normalized().badges) { badge in Text(badge.title) }
+                    }
                 }
                 FeatureDetails("Exact route & artwork") {
                     Text("Event context (NOT saved): \(event.title)")
@@ -155,9 +169,16 @@ struct EventRouteReviewView: View {
                     }
                 }
                 Text("Saves this route only. No schedule, GPS or participation changes. Existing recipients can retain earlier copies.").font(.caption)
-                Button("Save reviewed route", action: confirm).buttonStyle(AuroraPrimaryButton())
-                Button("Back — no write", role: .cancel, action: back)
             }.modernScene().navigationTitle("Review route").buttonStyle(.borderless)
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 8) {
+                        Text(captured.draft.published ? "The route is visible to this event's audience. Earlier copies cannot be recalled." : "This saves an unpublished route draft.").font(.caption)
+                        if busy { ProgressView("Saving route") }
+                        Button("Save reviewed route", action: confirm).buttonStyle(AuroraPrimaryButton()).disabled(busy)
+                        Button("Back to editing", role: .cancel, action: back).frame(minHeight: 44).disabled(busy)
+                    }.padding(.horizontal, 20).padding(.vertical, 12).background(Aurora.surface)
+                }
+                .interactiveDismissDisabled(busy)
         }
     }
     private func artwork(_ community: UUID?, _ exclusive: UUID?) -> String {

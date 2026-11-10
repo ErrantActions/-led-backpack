@@ -82,6 +82,8 @@ struct DeviceResearchView: View {
     @State private var pendingDelete: GenericResearchTarget?
     var body: some View {
         Form {
+            FeatureRowLabel(title: admin ? "Curate research targets" : "Choose what to contribute",
+                symbol: "square.stack.3d.up", subtitle: "Optional, generic combinations only")
             InteractionExplanation("Optional research shares a generic device category, not raw device details or location. Authentication still applies.", details: "Explicit default-off research: select only a curated GENERIC combination. Reports are not unique devices/installs and do not verify hardware. No BLE/MAC/serial/IP/account/location/source/time is in the submission or stored connection history. Authentication still processes the request. No raw device strings are collected.")
                 .font(.caption)
             if session.scope != nil {
@@ -103,7 +105,7 @@ struct DeviceResearchView: View {
                                 try await reload(scope); metadata = GenericResearchMetadata(); sanitized = false
                                 return "Curated combination created; no observation was submitted."
                             }
-                        }.disabled(!sanitized)
+                        }.buttonStyle(AuroraPrimaryButton()).disabled(!sanitized)
                     }
                 }
                 if let page {
@@ -124,7 +126,7 @@ struct DeviceResearchView: View {
                                     consent = false; self.selected = nil
                                     return receipt.counted ? "Aggregate report counted (not a verified device)." : "Accepted but not counted again in the current dedup window."
                                 }
-                            }.disabled(!consent || selected == nil)
+                            }.buttonStyle(AuroraPrimaryButton()).disabled(!consent || selected == nil)
                         } else {
                             ForEach(page.targets) { target in
                                 Text(label(target))
@@ -143,7 +145,7 @@ struct DeviceResearchView: View {
             if session.busy { ProgressView() }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             if let message = session.message { Text(message) }
-        }.disabled(session.busy).navigationTitle(admin ? "Curated research admin" : "Optional model research")
+        }.disabled(session.busy).modernScene().navigationTitle(admin ? "Research targets" : "Optional research")
             .task(id: "\(community.accountRevision):\(community.user?.role ?? ""):\(community.config?.deviceResearchEnabled == true)") {
                 page = nil; selected = nil; consent = false; sanitized = false; pendingDelete = nil
                 session.bind(community, .research, admin: admin); load()

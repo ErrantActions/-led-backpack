@@ -135,11 +135,6 @@ struct DeviceView: View {
                     Text(link.state).font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if let identity = panel.identity {
-                LabeledContent("Model", value: identity.model)
-                LabeledContent("Firmware", value: identity.firmware)
-            }
-            if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
             NavigationLink("My devices") { AccountDevicesView() }
                 .accessibilityIdentifier("connected-backpack-my-devices")
             if link.connected {
@@ -162,8 +157,15 @@ struct DeviceView: View {
                     }
                 }
             }
-            Text("Keep the backpack powered on. Disconnect the original app or another phone before scanning.")
-                .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("Connection help & device details") {
+                if let identity = panel.identity {
+                    LabeledContent("Model", value: identity.model)
+                    LabeledContent("Firmware", value: identity.firmware)
+                }
+                if let size = panel.size { LabeledContent("Panel", value: "\(size.width) x \(size.height)") }
+                Text("Power on the backpack and disconnect other controlling apps before scanning. Signal strength is not distance or ownership proof.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .padding(20).glassPanel()
     }
@@ -184,7 +186,7 @@ struct DeviceView: View {
                     BackpackStorageView()
                 }
                 VStack(alignment: .leading, spacing: 16) {
-                    DisclosureGroup("Panel password and compatibility") {
+                    DisclosureGroup("Password & compatibility") {
                         VStack(alignment: .leading, spacing: 16) {
                             SecureField("Existing panel password", text: $panel.password).textFieldStyle(.roundedBorder)
                             Toggle("Legacy identity request", isOn: $panel.legacyInit)
@@ -334,13 +336,12 @@ struct LibraryView: View {
     private var libraryList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Your GIFs").font(.title2.bold())
+                Text("Your artwork").font(.title2.bold())
                 libraryHeader
-                libraryArtwork
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) { collectionLinks }
-                    VStack(spacing: 12) { collectionLinks }
+                DisclosureGroup("Playlists, scenes & send queue") {
+                    VStack(spacing: 10) { collectionLinks }.padding(.top, 10)
                 }
+                libraryArtwork
             }
             .padding(20).frame(maxWidth: 1200, alignment: .leading).frame(maxWidth: .infinity)
         }
@@ -616,7 +617,10 @@ struct LibraryView: View {
             .sheet(isPresented: $settingsSheet) { SettingsView() }
             .sheet(isPresented: $privateCloudSettings) {
                 NavigationStack {
-                    CloudVaultSettingsView().toolbar { Button("Done") { privateCloudSettings = false } }
+                    CloudVaultSettingsView().safeAreaInset(edge: .bottom) {
+                        Button("Done") { privateCloudSettings = false }
+                            .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(Aurora.surface)
+                    }
                 }
             }
             .confirmationDialog("Create an independent private-cloud copy? Other-account associations and deleted/reset cloud libraries will not be restored.", isPresented: Binding(
@@ -634,7 +638,10 @@ struct LibraryView: View {
                 NavigationStack {
                     if let data = previewData {
                         AnimatedPreview(data: data).navigationTitle("Artwork preview").accessibilityLabel(previewTitle)
-                            .toolbar { Button("Done") { previewData = nil } }
+                            .safeAreaInset(edge: .bottom) {
+                                Button("Done") { previewData = nil }
+                                    .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(Aurora.surface)
+                            }
                     }
                 }
             }
@@ -662,7 +669,12 @@ struct LibraryView: View {
                                 try library.rememberSlot(panel: key, slot: targetSlot, identifier: record.identifier, mediaID: item.id)
                             }
                         }.disabled(!app.link.connected || panel.busy || panel.hasDisplayOwner)
-                    }.navigationTitle("Upload confirmation").toolbar { Button("Cancel") { uploading = false } }
+                    }.modernScene().navigationTitle("Upload confirmation")
+                        .safeAreaInset(edge: .bottom) {
+                            Button("Cancel") { uploading = false }
+                                .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(Aurora.surface)
+                                .accessibilityIdentifier("library-slot-upload-cancel")
+                        }
                 }
             }
             .confirmationDialog("Delete this local media file?", isPresented: $deletion) {

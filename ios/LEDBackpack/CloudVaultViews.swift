@@ -21,7 +21,7 @@ struct CloudVaultSettingsView: View {
                     description: Text("This server has not enabled encrypted cloud protocol 1. No vault upload or enrollment is available."))
                 Button("Reload server capabilities") { Task { await vault.bind(community) } }
             } else {
-                Section("This device") {
+                Section("Sync this iPhone") {
                     if vault.pin.userHeld && vault.state?.enabled == false {
                         Text("The previous user-held cloud library is disabled. Creating a new server-managed library does not restore it.")
                             .font(.caption).foregroundStyle(.orange)
@@ -202,12 +202,17 @@ struct CloudVaultPasswordView: View {
                     if vault.syncing { try await vault.synchronize(library) }
                     dismiss()
                 }
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(AuroraPrimaryButton())
                 .disabled(vault.busy || password.isEmpty || ((mode == .enroll || mode == .replace) && !storedRecovery))
             if vault.busy { ProgressView(vault.progress.isEmpty ? "Verifying…" : vault.progress) }
             if let failure = vault.failure { Text(failure).foregroundStyle(.orange) }
         }
         .modernScene().navigationTitle(mode == .unlock ? "Unlock library" : "Library recovery")
+        .safeAreaInset(edge: .bottom) {
+            Button("Cancel", role: .cancel) { password = ""; confirmation = ""; dismiss() }
+                .frame(maxWidth: .infinity).padding().background(.bar).disabled(vault.busy)
+        }
+        .interactiveDismissDisabled(vault.busy)
         .onDisappear { password = ""; confirmation = "" }
     }
 }
@@ -254,15 +259,20 @@ struct CloudVaultArtworkDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let bytes { AnimatedPreview(data: bytes).frame(height: 280) }
-                NavigationLink("Private cloud settings / unlock") { CloudVaultSettingsView() }
                 Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.vault(item)]) }
-                    .buttonStyle(.borderedProminent).disabled(vault.locked || vault.busy || !vault.syncing)
+                    .buttonStyle(AuroraPrimaryButton()).disabled(vault.locked || vault.busy || !vault.syncing)
+                NavigationLink("Cloud settings & unlock") { CloudVaultSettingsView() }
                 Text("Artwork downloads automatically when sync is enabled and storage is available.").font(.caption)
                 Button("Delete this private cloud copy", role: .destructive) { deleting = true }.disabled(vault.locked || vault.busy)
                 if let failure = failure ?? vault.failure { Text(failure).foregroundStyle(.orange) }
             }.padding(24)
         }
         .modernScene().navigationTitle("Private artwork")
+        .safeAreaInset(edge: .bottom) {
+            Button("Done") { dismiss() }
+                .frame(maxWidth: .infinity).padding().background(.bar).disabled(vault.busy)
+        }
+        .interactiveDismissDisabled(vault.busy)
         .task {
             do {
                 let copy = try await vault.download(item)

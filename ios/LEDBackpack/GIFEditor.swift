@@ -23,6 +23,7 @@ struct MediaEditor: View {
     @State private var previewAnimation: Data?
     @State private var busy = false
     @State private var progress = 0.0
+    @State private var failure: String?
     @State private var processing: Task<Void, Never>?
     @State private var removal = BackgroundRemoval.off
     @State private var keyColor = Color.white
@@ -77,12 +78,12 @@ struct MediaEditor: View {
     private var editorForm: some View {
         Form {
             canvas
+            outputActions
             framing
             cleanup
             ghosting
             timing
             manual
-            outputActions
         }.modernScene().navigationTitle("GIF Studio").buttonStyle(.borderless)
     }
 
@@ -109,28 +110,30 @@ struct MediaEditor: View {
                 do {
                     animation = try MediaCodec.decode(data, resetFrameCanvas: resetFrameCanvas)
                     process { try await updatePreview() }
-                } catch { animation = nil; panel.report(error) }
+                } catch { animation = nil; failure = error.localizedDescription; panel.report(error) }
             }
     }
 
     private var outputActions: some View {
         Section {
-            Button("Update frame preview") { process { try await updatePreview() } }
-            Button("Preview edited animation") {
+            if let failure { Text(failure).foregroundStyle(.orange) }
+            Button("Update preview") { process { try await updatePreview() } }
+                .disabled(animation == nil || busy)
+            Button("Preview animation") {
                 process { previewIsOriginal = false; previewAnimation = try await output() }
-            }
-            Button("Save new GIF to library") {
+            }.disabled(animation == nil || busy)
+            Button("Save GIF copy") {
                 process {
                     let bytes = try await output()
                     try Task.checkCancellation()
                     try library.add(name: name, data: bytes, attribution: attribution, category: categoryName)
                     dismiss()
                 }
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(AuroraPrimaryButton()).disabled(animation == nil || busy)
             if busy { ProgressView("Processing selected frames...", value: progress) }
             InteractionExplanation("Save creates a copy and retains attribution. Removed areas show black on LEDs; inspect animation before sending.", details: "Removed areas display as black on the LED panel. Changes apply only to a new saved copy. Original attribution is retained. Automatic masks can vary across GIF frames; inspect the animation before sending.")
                 .font(.caption).foregroundStyle(.secondary)
-        }.disabled(animation == nil || busy)
+        }
     }
 
     private var animationPreview: some View {
@@ -138,6 +141,10 @@ struct MediaEditor: View {
             if let bytes = previewAnimation {
                 AnimatedPreview(data: bytes).navigationTitle(previewIsOriginal ? "Original preview" : "Edited preview")
                     .toolbar { Button("Done") { previewAnimation = nil } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Back to editor") { previewAnimation = nil }
+                            .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                    }
             }
         }
     }
@@ -149,7 +156,7 @@ struct MediaEditor: View {
             end = decoded.images.count - 1
             if let size = panel.size, let index = sizes.firstIndex(of: size) { sizeIndex = index }
             process { try await updatePreview() }
-        } catch { panel.report(error) }
+        } catch { failure = error.localizedDescription; panel.report(error) }
     }
 
     private func cancelEditing() {
@@ -169,8 +176,8 @@ struct MediaEditor: View {
                         }.onEnded { _ in drawing = false })
                 }.aspectRatio(CGFloat(sizes[sizeIndex].width) / CGFloat(sizes[sizeIndex].height), contentMode: .fit)
             }
-            TextField("Category (optional)", text: $categoryName)
-            if preview == nil { Text("Tap Update frame preview to render the current settings.").font(.caption).foregroundStyle(.secondary) }
+            DisclosureGroup("Library category") { TextField("Category (optional)", text: $categoryName) }
+            if preview == nil && !busy { Text("Update preview to see your current settings.").font(.caption).foregroundStyle(.secondary) }
             Text("Frame \(frameIndex + 1) / \(animation?.images.count ?? 0)").font(.caption.monospaced())
         }
     }
@@ -212,8 +219,9 @@ struct MediaEditor: View {
                     .disabled(busy || !touches.isEmpty)
                 Text("Repairs trails caused by frames retaining previous pixels. Some GIFs intentionally update only part of the canvas; resetting may remove wanted details. Preview before saving.")
                     .font(.caption).foregroundStyle(.secondary)
-                Text("Faint outlines already painted into a frame are different: use Trim dark halos, background cleanup or the eraser. Canvas reset cannot reconstruct obscured artwork.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    FeatureDetails("Other outlines") {
+                        Text("Faint outlines already painted into a frame are different: use Trim dark halos, background cleanup or the eraser. Canvas reset cannot reconstruct obscured artwork.")
+                    }
                 Button("Compare original animation") { previewIsOriginal = true; previewAnimation = data }
                     .disabled(busy)
                 if !touches.isEmpty { Text("Reset manual edits before changing frame disposal.").font(.caption) }
@@ -313,11 +321,11 @@ struct MediaEditor: View {
 
     private func process(_ operation: @escaping @MainActor () async throws -> Void) {
         guard !busy else { return }
-        busy = true; progress = 0
+        busy = true; progress = 0; failure = nil
         processing = Task {
             defer { busy = false; processing = nil }
             do { try await operation() }
-            catch { if !Task.isCancelled { panel.report(error) } }
+            catch { if !Task.isCancelled { failure = error.localizedDescription; panel.report(error) } }
         }
 
     }
@@ -346,6 +354,6 @@ struct MediaEditor: View {
                 }
             }
             previewPixels = pixels; preview = try pixels.image()
-        } catch { panel.report(error) }
+        } catch { failure = error.localizedDescription; panel.report(error) }
     }
 }

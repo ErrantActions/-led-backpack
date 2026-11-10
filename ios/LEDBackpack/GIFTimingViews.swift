@@ -61,13 +61,6 @@ struct GIFTimingEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                GIFTimingControls(timing: $timing)
-                Picker("Repeat", selection: $limit) {
-                    Text("Original").tag(GIFRepeatChoice.source)
-                    Text("Forever").tag(GIFRepeatChoice.continuous)
-                    Text("Loop count").tag(GIFRepeatChoice.count)
-                }
-                if limit == .count { Stepper("\(loops) total loops", value: $loops, in: 1...100) }
                 if let preview {
                     TimelineView(.animation(paused: !playing)) { _ in
                         let t = clock.elapsed(), finished = preview.duration > 0 && preview.cycles.map { t >= preview.duration * Double($0) } == true
@@ -86,6 +79,15 @@ struct GIFTimingEditorView: View {
                     }
                         .disabled(reducedMotion || preview.duration == 0 || busy)
                 }
+                Section("Speed") { GIFTimingControls(timing: $timing) }
+                DisclosureGroup("Repeat options") {
+                    Picker("Repeat", selection: $limit) {
+                        Text("Original").tag(GIFRepeatChoice.source)
+                        Text("Forever").tag(GIFRepeatChoice.continuous)
+                        Text("Loop count").tag(GIFRepeatChoice.count)
+                    }
+                    if limit == .count { Stepper("\(loops) total loops", value: $loops, in: 1...100) }
+                }
                 if bytes == nil {
                     Button("Review changes") { update() }.disabled(busy).buttonStyle(AuroraPrimaryButton())
                 }
@@ -98,14 +100,18 @@ struct GIFTimingEditorView: View {
                         } catch { failure = error.localizedDescription }
                     }.disabled(busy || bytes == nil).buttonStyle(AuroraPrimaryButton())
                 }
-                if busy { ProgressView() }
+                if busy { ProgressView("Preparing timing preview") }
                 if let failure { Text(failure).foregroundStyle(.orange) }
                 FeatureDetails("Timing details") {
                     Text("Your original is unchanged. This saves a new local copy without uploading or changing backpack playback.")
                     Text("Backpack repeat counting may differ. For individual frame delays, use GIF Studio's Timing tools.")
                 }
-            }.navigationTitle("GIF timing")
+            }.modernScene().navigationTitle("GIF timing")
                 .toolbar { Button("Done") { work?.cancel(); dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel") { work?.cancel(); dismiss() }
+                        .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                }
                 .onAppear { name = item.name + " timed copy"; update() }
                 .onChange(of: timing) { _, _ in invalidate() }
                 .onChange(of: limit) { _, _ in invalidate() }

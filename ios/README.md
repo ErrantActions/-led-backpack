@@ -1,5 +1,32 @@
 # LED Backpack for iOS
 
+## Essentials-first workflows
+
+The invitation-first Events pattern now extends through the native app:
+choose the task, complete its essentials, then open optional tools as needed.
+Primary actions, meaningful progress/errors and explicit modal exits stay easy
+to find, including persistent exits where Duo navigation chrome is insufficient.
+
+- Library: discovery, import, favorites, playlists/scenes and the send queue.
+- Create: text, pixels, GIF timing, video conversion, themes and local projects.
+- Playback: phone previews, main display, hardware review, slots and batch sends.
+- Live/settings: preview before starting, persistent start/stop, explicit save.
+- Social/account: friends, Messenger-style chat, requests, groups, notifications,
+  sign-in, cloud, devices, reports and administrative review.
+- Activities: nearby/GPS/paired games, friend sessions, routes, event extras and
+  private playlists with separate public-snapshot review.
+
+Artwork grids remain name-free. Required attribution, authorization, revision,
+publication, location and destructive consent are retained; optional explanations
+do not replace warnings or errors. No new backend API, recovery-v2 activation,
+push-delivery promise or hardware-compatibility claim is introduced.
+
+One focused integrated check is available with
+`gh workflow run ios.yml --ref <branch> -f validation=processes`: app compilation
+and three UI walkthroughs only, without the portable/full native suites.
+The protected TestFlight workflow remains build/sign/upload only.
+This source pass is not yet a claim of compilation or upload success.
+
 ## Invitation-first events
 
 Uploaded as **0.1.0 (13)** in

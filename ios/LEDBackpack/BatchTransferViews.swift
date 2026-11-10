@@ -45,8 +45,9 @@ struct BatchTransferView: View {
                                 get: { assignments[entry.id] ?? -1 }, set: { assignments[entry.id] = $0 })) {
                                     Text("Choose slot").tag(-1)
                                     ForEach(0..<60, id: \.self) { slot in
-                                        let occupied = panel.slots.contains { $0.id == slot && $0.occupied }
-                                        Text("\(slot): \(occupied ? "overwrite" : "empty")\(slot < 2 ? " (reserved)" : "")").tag(slot)
+                                        let current = panel.inventoryDeviceID != nil && panel.inventoryDeviceID == panel.link.selectedID
+                                        let state = current ? panel.slots.first(where: { $0.id == slot }).map { $0.occupied ? "overwrite" : "empty" } ?? "unknown" : "unknown"
+                                        Text("\(slot): \(state)\(slot < 2 || slot >= 55 ? " (reserved)" : "")").tag(slot)
                                     }
                                 }
                         }
@@ -79,7 +80,7 @@ struct BatchTransferView: View {
                     }
                 }.buttonStyle(.borderedProminent)
                     .disabled(queue.isEmpty || !panel.link.connected || panel.inventoryDeviceID == nil || panel.busy || panel.hasDisplayOwner)
-                InteractionExplanation("Originals stay unchanged. A failed transfer can leave a partial slot; review before retrying. No automatic retry or rollback.", details: "GIFs are fitted to the panel without changing your local originals. All files are prepared before the first overwrite. A stopped/failed upload may leave its slot partially written; refresh and review before retrying. No automatic retry or rollback.")
+                InteractionExplanation("Originals stay unchanged. An interrupted transfer can leave a partial slot; refresh before retrying.", details: "GIFs are fitted to the panel without changing your local originals. All files are prepared before the first overwrite. A stopped/failed upload may leave its slot partially written; refresh and review before retrying. No automatic retry or rollback.")
                     .font(.caption).foregroundStyle(.secondary)
             }.disabled(batch.running)
         }
@@ -128,7 +129,10 @@ private struct BatchSendConfirmation: View {
                     }.disabled(batch.running || (!plan.overwrittenSlots.isEmpty && !approval.isConfirmed(for: approvalScope)))
             }
             .modernScene().navigationTitle("Confirm batch transfer")
-            .toolbar { Button("Cancel") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(8).background(Aurora.surface)
+            }
             .onChange(of: approvalScope) { _, _ in approval.reset() }
             .onDisappear { approval.reset() }
         }
@@ -161,16 +165,16 @@ private struct BatchMediaPicker: View {
                 }.padding(16)
             }
             .modernScene().navigationTitle("Choose GIFs (\(selected.count)/\(remaining))")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
                     Button("Add to queue") {
                         app.run {
                             try library.enqueue(library.state.media.filter { selected.contains($0.id) }.map(\.id))
                             dismiss()
                         }
-                    }.disabled(selected.isEmpty || selected.count > remaining)
-                }
+                    }.buttonStyle(AuroraPrimaryButton()).disabled(selected.isEmpty || selected.count > remaining)
+                    Button("Cancel") { dismiss() }.frame(minHeight: 44)
+                }.padding(.horizontal, 20).padding(.vertical, 8).background(Aurora.surface)
             }
         }
     }

@@ -22,6 +22,8 @@ struct LocalPairedGameView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Pair & play").font(.title2.bold())
                 Text("Offline calm colors. Your private GIFs are never sent.").font(.subheadline).foregroundStyle(.secondary)
+                Text(game.status).font(.caption).foregroundStyle(.secondary)
+                if game.arming { ProgressView("Preparing color game") }
                 if let failure = game.failure ?? failure { Text(failure).foregroundStyle(.orange) }
                 if game.code == nil {
                     Button("Create pairing code") { compared = false; consent = false; game.prepareCode() }.disabled(game.arming)
@@ -36,11 +38,15 @@ struct LocalPairedGameView: View {
                             .disabled(game.arming || game.session.running)
                     }
                 }
-                Button("Scan partner's code") { scanning = true }
-                DisclosureGroup("Paste a code instead") {
+                if game.comparison == nil {
+                Text("Create a code on each phone. Scan each other's code, then compare.").font(.caption)
+                Button("Scan partner's code") { scanning = true }.disabled(game.code == nil || game.arming || game.session.running)
+                DisclosureGroup("Paste a partner code") {
                     TextField("Partner's code", text: $entered, axis: .vertical)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     Button("Use code") { compared = false; consent = false; game.acceptCode(entered); entered = "" }
+                        .disabled(game.code == nil || entered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || game.arming || game.session.running)
+                }
                 }
                 if let comparison = game.comparison {
                     Text(comparison).font(.title3.monospaced()).textSelection(.enabled)
@@ -49,8 +55,11 @@ struct LocalPairedGameView: View {
                 if game.comparison != nil {
                 Picker("Same preset on both phones", selection: $preset) { ForEach(FriendScenePreset.allCases) { Text($0.rawValue).tag($0) } }
                 Toggle("We are stationary and playing without contact", isOn: $stationary)
-                Toggle("Use optional phone ranging on both devices", isOn: $useRange)
-                if useRange { Text("Needs supported phones and OS consent. No automatic manual fallback.").font(.caption) }
+                DisclosureGroup("Optional phone ranging") {
+                    Toggle("Use ranging on both phones", isOn: $useRange)
+                    Text("Needs supported phones and OS consent. Measures phones, not backpacks; no automatic manual fallback.").font(.caption)
+                }
+                if useRange { Label("Phone ranging selected", systemImage: "sensor").font(.caption) }
                 Toggle("Allow this color game to animate my phone", isOn: $consent)
                 Text("Your original is retained. This shares generated colors only, not your GIFs, account, location or friendship.").font(.caption)
                 LocalPairStartControls(game: game, radio: game.radio, compared: compared, consent: consent,
@@ -60,7 +69,6 @@ struct LocalPairedGameView: View {
                 ScopedPhoneCanvasControls(session: game.session, stop: { game.stop() }, restore: { await game.restore() })
                 NavigationLink("Recovery tools") { SwapRecoveryView() }
                 FeatureDetails("Pairing status & support") {
-                    Text(game.status)
                     Text("Codes expire in two minutes. Compare both phones; copied codes do not prove proximity or identity.")
                     Text("Ranging measures phones, not backpacks or guaranteed meters. Stay stationary; no chase or traffic play.")
                     Text("Background, permission loss or expiry stops play. Original recovery remains; no silent restart or guaranteed simultaneous display.")
@@ -74,7 +82,7 @@ struct LocalPairedGameView: View {
                 case .success(let text): game.acceptCode(text)
                 case .failure(let error): failure = error.localizedDescription
                 }
-            }
+            }.safeAreaInset(edge: .bottom) { NativeFlowCancelFooter { scanning = false } }
         }
         .task(id: game.code) {
             qr = nil
@@ -118,6 +126,9 @@ private struct LocalPairStartControls: View {
             }.disabled(!radio.ready || game.comparison == nil || !compared || !consent || !stationary || game.arming || game.session.running)
                 .buttonStyle(AuroraPrimaryButton())
                 .accessibilityLabel("Start compared stationary PHONE game")
+                if !compared || !stationary || !consent {
+                    Text("Compare the code, confirm stationary play and allow phone animation to start.").font(.caption).foregroundStyle(.secondary)
+                }
             }
             if game.arming || game.session.running {
                 Button("Stop game", role: .destructive) { game.stop() }

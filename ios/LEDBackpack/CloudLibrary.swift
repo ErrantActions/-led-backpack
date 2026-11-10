@@ -242,7 +242,7 @@ struct CloudArtworkDetail: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text(cloud.item.displayAttribution).font(.caption).foregroundStyle(.secondary)
                     Button("Send & Play directly from cloud") { directSend = BackpackSendRequest(sources: [.legacyCloud(cloud)]) }
-                        .buttonStyle(.borderedProminent).disabled(bytes == nil || busy)
+                        .buttonStyle(AuroraPrimaryButton()).disabled(bytes == nil || busy)
                     if cloud.visibility == "private" && !shared {
                         Button("Share with the community") { sharing = true }.disabled(busy)
                     }
@@ -259,7 +259,12 @@ struct CloudArtworkDetail: View {
                 }.padding(24)
             }
             .modernScene().navigationTitle("Cloud artwork")
-            .toolbar { Button("Done") { dismiss() } }
+            .toolbar { Button("Done") { dismiss() }.disabled(busy) }
+            .safeAreaInset(edge: .bottom) {
+                Button("Done") { dismiss() }
+                    .frame(maxWidth: .infinity).padding().background(.bar).disabled(busy)
+            }
+            .interactiveDismissDisabled(busy)
             .task(id: retry) {
                 bytes = nil; loadedOrigin = nil; loadedOwner = nil; failure = nil
                 do {

@@ -26,11 +26,16 @@ struct PhoneDisplayLibraryView: View {
                 if choose == nil {
                     Button(phone.hasArtwork ? "Open player" : "Open empty player") {
                         targets.target = .phone; phone.open()
-                    }.buttonStyle(AuroraPrimaryButton())
+                    }.buttonStyle(.bordered)
                 }
                 Button("Import artwork") { importing = true }.disabled(originals.busy)
+                    .buttonStyle(AuroraPrimaryButton())
                 if let failure = phone.failure ?? originals.failure { Text(failure).foregroundStyle(.orange) }
-                if originals.busy || phone.loading { ProgressView() }
+                if originals.busy || phone.loading { ProgressView("Preparing artwork") }
+                if originals.items.isEmpty && library.state.media.isEmpty && !originals.busy {
+                    Text("Import a still image or GIF, or create one in Pixel studio.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
                 Text("On this phone").font(.headline)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)]) {
                     ForEach(originals.items) { item in
@@ -60,13 +65,17 @@ struct PhoneDisplayLibraryView: View {
                         }.buttonStyle(.plain).accessibilityLabel("Display \(item.name) on phone")
                     }
                 }
-                FeatureDetails("Tools & games") {
-                    NavigationLink("Pixel studio") { LocalPixelStudioView() }
+                DisclosureGroup("Create & explore") {
+                    NavigationLink { LocalPixelStudioView() } label: {
+                        FeatureRowLabel(title: "Pixel studio", symbol: "square.grid.3x3")
+                    }
                     NavigationLink("My adventures") { SoloScenesView() }
                     NavigationLink("GPS & nearby games") { GPSGamesView() }
                     NavigationLink("GIF swap") { PhoneSwapGameView() }
                     NavigationLink("Pair offline") { LocalPairedGameView() }
                     NavigationLink("Received & recovery") { SwapRecoveryView() }
+                }
+                FeatureDetails("Phone-only artwork") {
                     Text("Original timing and bytes stay unchanged. Selecting phone artwork does not upload it or write backpack slots.")
                 }
             }.padding(20)
@@ -142,7 +151,7 @@ struct PhoneDisplayView: View {
                         Menu {
                             Button("Automatic GIF swap / Found Users") { gameControls = true }
                             Button("My adventures") { soloControls = true }
-                            Button("Local library") { phone.setVisible(false); choosing = true }
+                            Button("Choose artwork") { phone.setVisible(false); choosing = true }
                             Button("Import artwork") { phone.setVisible(false); importing = true }
                         } label: { Image(systemName: "square.grid.2x2").frame(width: 44, height: 44).foregroundStyle(Aurora.mint) }
                     }.padding(8).glassPanel(radius: 24)
@@ -174,13 +183,13 @@ struct PhoneDisplayView: View {
                             Button { if phone.isPlaying { phone.pause() } else { phone.play() } } label: {
                                 Label(phone.isPlaying ? "Pause" : "Play", systemImage: phone.isPlaying ? "pause.fill" : "play.fill")
                             }.buttonStyle(AuroraPrimaryButton()).disabled(!phone.animated || !phone.animationsEnabled || phone.dataSaving || phone.loading)
-                            Toggle("Keep screen awake", isOn: Binding(get: { phone.keepAwake }, set: phone.setKeepAwake))
-                            DisclosureGroup("Phone presentation") {
-                                Toggle("Crisp nearest-neighbor pixels", isOn: $phone.crispPixels)
-                                Toggle("Pixel grid when large enough", isOn: $phone.pixelGrid)
-                                Toggle("Allow phone animations", isOn: Binding(get: { phone.animationsEnabled }, set: phone.setAnimationsEnabled))
-                                Toggle("Data-saving / still presentation", isOn: Binding(get: { phone.dataSaving }, set: phone.setDataSaving))
-                                Toggle("Opt in to phone brightness override", isOn: Binding(get: { phone.brightnessEnabled }, set: phone.setBrightnessEnabled))
+                            DisclosureGroup("Display settings") {
+                                Toggle("Keep screen awake", isOn: Binding(get: { phone.keepAwake }, set: phone.setKeepAwake))
+                                Toggle("Crisp pixels", isOn: $phone.crispPixels)
+                                Toggle("Pixel grid", isOn: $phone.pixelGrid)
+                                Toggle("Allow animations", isOn: Binding(get: { phone.animationsEnabled }, set: phone.setAnimationsEnabled))
+                                Toggle("Still presentation", isOn: Binding(get: { phone.dataSaving }, set: phone.setDataSaving))
+                                Toggle("Override phone brightness", isOn: Binding(get: { phone.brightnessEnabled }, set: phone.setBrightnessEnabled))
                                 if phone.brightnessEnabled {
                                     Slider(value: Binding(get: { phone.brightnessLevel }, set: phone.setBrightness), in: 0.1...1)
                                 }
@@ -204,11 +213,19 @@ struct PhoneDisplayView: View {
         .sheet(isPresented: $gameControls) {
             NavigationStack {
                 PhoneSwapGameView().toolbar { Button("Done") { gameControls = false } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Back to player") { gameControls = false }
+                            .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                    }
             }
         }
         .sheet(isPresented: $soloControls) {
             NavigationStack {
                 SoloScenesView().toolbar { Button("Done") { soloControls = false } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Back to player") { soloControls = false }
+                            .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                    }
             }
         }
         .sheet(item: $peerReport) { selection in PeerIncidentComposeView(selection: selection) }
@@ -220,7 +237,14 @@ struct PhoneDisplayView: View {
         .onChange(of: reducedMotion) { _, value in phone.setReducedMotion(value) }
         .onChange(of: importing) { _, value in if !value && phone.presented { phone.setVisible(true) } }
         .sheet(isPresented: $choosing, onDismiss: { if phone.presented { phone.setVisible(true) } }) {
-            NavigationStack { PhoneDisplayLibraryView(choose: { choosing = false }).toolbar { Button("Done") { choosing = false } } }
+            NavigationStack {
+                PhoneDisplayLibraryView(choose: { choosing = false })
+                    .toolbar { Button("Done") { choosing = false } }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Cancel") { choosing = false }
+                            .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+                    }
+            }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.gif, .png, .jpeg, .webP]) { result in
             selection?.cancel(); phone.cancelPendingSelection()

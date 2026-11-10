@@ -34,10 +34,11 @@ struct LEDAlphabetView: View {
                     Image(uiImage: preview).interpolation(.none).resizable().scaledToFit()
                         .frame(maxWidth: .infinity, maxHeight: 280).background(.black)
                 }
-                Text("5x7 is the base glyph cell. Scaling repeats whole LEDs; it never stretches or interpolates. Some glyphs intentionally have empty columns or rows inside their cell.")
-                    .font(.caption).foregroundStyle(.secondary)
+                FeatureDetails("How letter sizes work") {
+                    Text("5x7 is the base glyph cell. Scaling repeats whole LEDs; it never stretches or interpolates. Some glyphs intentionally have empty columns or rows inside their cell.")
+                }
             }
-            Section("Size and line capacity") {
+            DisclosureGroup("Size & line capacity") {
                 ForEach(1...maximum, id: \.self) { value in
                     let padding = max(1, min(size.width, size.height) / 32)
                     let capacity = TextArtwork.lineCapacity(width: size.width - padding * 2, scale: value)
@@ -45,7 +46,7 @@ struct LEDAlphabetView: View {
                 }
             }
             Section("Check the physical backpack") {
-                Button("Save all-character test GIF") { saveProof() }.disabled(saving)
+                Button("Save alphabet test") { saveProof() }.disabled(saving).buttonStyle(AuroraPrimaryButton())
                 if saving { ProgressView("Building font proof...") }
                 InteractionExplanation("Creates a local 94-frame alphabet GIF, 0.5 seconds per frame. Preview first; sending to a slot is a separate choice.", details: "Creates a local 94-frame GIF: A-Z, a-z, digits and all printable punctuation in ASCII order at the selected size. Each frame lasts 0.5 seconds. Send it from Library to an expendable slot, or preview it locally first.")
                     .font(.caption).foregroundStyle(.secondary)

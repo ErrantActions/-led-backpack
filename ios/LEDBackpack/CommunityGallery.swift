@@ -79,7 +79,9 @@ struct CommunityGallery: View {
             .modernScene().navigationTitle("Community")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search GIFs")
             .onSubmit(of: .search) { appliedQuery = query; reload = UUID() }
-            .toolbar { Button("Done") { dismiss() } }
+            .onChange(of: query) { _, value in
+                if value.isEmpty && !appliedQuery.isEmpty { appliedQuery = ""; reload = UUID() }
+            }
             .task(id: filter) {
                 let stamp = filter
                 selection.invalidate()
@@ -90,6 +92,7 @@ struct CommunityGallery: View {
             .onDisappear { catalog.cancel(); selection.cancel() }
             .onChange(of: phase) { _, state in if state != .active { catalog.cancel(); selection.cancel() } else { catalog.resume() } }
             .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 0) {
                 CommunitySelectionControls(store: selection, favorite: {
                     selection.apply(.favorite, items: items, community: community, library: library)
                 }, send: {
@@ -98,6 +101,9 @@ struct CommunityGallery: View {
                         directSend = BackpackSendRequest(sources: chosen.map { .catalog($0) })
                     } catch { selection.report(error) }
                 }, openQueue: { showingQueue = true })
+                    Button("Done") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(8).accessibilityIdentifier("community-gallery-done")
+                }.background(Aurora.surface)
             }
             .navigationDestination(isPresented: $showingQueue) { BatchTransferView() }
             .sheet(item: $directSend) { request in BackpackDirectSendView(request: request) }
@@ -123,7 +129,7 @@ struct CommunityGallery: View {
             NavigationLink { CommunityFavoritesView() } label: { Label("My Favorites", systemImage: "heart.fill") }
             FeatureDetails("Filters & send queue") {
                 Button("Send queue") { showingQueue = true }
-                Text("Select up to20 GIFs. Favorites save owned copies; sending does not publish artwork.")
+                Text("Select up to 20 GIFs. Favorites save local copies; sending does not publish artwork.")
                 if community.config?.nativeSizeFiltersEnabled == true { NativeMatrixFilterControls(filter: $sizes) }
                 else { Text("Exact size filters are unavailable on this server.") }
             }
@@ -232,7 +238,11 @@ private struct CommunityDetail: View {
                     moderation
                 }.padding(20)
             }.modernScene().navigationTitle("Community GIF")
-                .toolbar { Button("Back") { dismiss() } }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Back") { dismiss() }.frame(maxWidth: .infinity, minHeight: 44)
+                        .disabled(busy).padding(8).background(Aurora.surface)
+                }
+                .interactiveDismissDisabled(busy)
                 .task(id: retry) { await loadPreview() }
                 .onChange(of: community.accountRevision) { _, _ in invalidate() }
                 .onChange(of: community.avatarPolicyRevision) { _, _ in invalidate() }
@@ -292,7 +302,11 @@ private struct CommunityDetail: View {
                 }.disabled(busy || reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
                 if let failure { Text(failure).foregroundStyle(.orange) }
             }.modernScene().navigationTitle("Report GIF")
-                .toolbar { Button("Cancel") { reporting = false }.disabled(busy) }
+                .safeAreaInset(edge: .bottom) {
+                    Button("Cancel") { reporting = false }.frame(maxWidth: .infinity, minHeight: 44)
+                        .disabled(busy).padding(8).background(Aurora.surface)
+                }
+                .interactiveDismissDisabled(busy)
         }
     }
 

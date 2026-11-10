@@ -84,7 +84,7 @@ private struct EventRoutePlannerContent: View {
     private var plannerScroll: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    AuroraHeading(eyebrow: "Organizer studio", title: "Shape the", accent: "experience.")
+                    AuroraHeading(eyebrow: "Organizer studio", title: "Plan the", accent: "route.")
                     if let draft = store.draft, !session.denied, community.config?.eventsEnabled == true {
                         overview(draft)
                         if let failure = session.failure { Text(failure).foregroundStyle(.orange).textSelection(.enabled) }
@@ -120,6 +120,7 @@ private struct EventRoutePlannerContent: View {
                             }.font(.caption).padding(16).glassPanel()
                         }
                         mapPanel(draft)
+                        checkpointPanel(draft)
                         DisclosureGroup("Advanced numeric fixed points (optional)") {
                             Text("Numeric fixed points (no maps/search needed)").font(.headline)
                             TextField("Explicit decimal latitude", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
@@ -140,20 +141,22 @@ private struct EventRoutePlannerContent: View {
                                 }
                             }
                         }.padding(16).glassPanel().disabled(!structureEditable)
-                        checkpointPanel(draft)
                         DisclosureGroup("Advanced manual route geometry") { geometryPanel(draft) }
-                        rewardsPanel(draft)
+                        DisclosureGroup("Optional finish rewards (\(draft.rewards.count))") { rewardsPanel(draft) }
                         VStack(alignment: .leading, spacing: 14) {
                             Toggle("Publish checkpoint plan", isOn: Binding(get: { store.draft?.published ?? false },
                                 set: { value in edit(structural: true) { $0.published = value } })).disabled(!structureEditable)
                             InteractionExplanation("Publish needs start first and finish last. Organizer lines are not navigation or a safe-route guarantee.", details: "Publishing requires exactly one start first and one finish last. Guide lines are organizer-authored, not navigation or a safe-routing promise. Claims/rewards remain self-reported, not certified attendance.")
                                 .font(.caption).foregroundStyle(.secondary)
+                            if draft.published { Text("Published checkpoints and guide lines follow this event's audience. Earlier copies cannot be recalled.").font(.caption).foregroundStyle(.orange) }
                             Button("Review and save route") {
                                 do { saveReview = try NativeEventRouteReview(draft) } catch { localFailure = error.localizedDescription }
                             }.buttonStyle(AuroraPrimaryButton())
                                 .disabled(!editable || session.busy || road.busy || road.needsRegeneration || !offRouteCheckpoints.isEmpty || store.loadingArtwork || (store.structureLocked && !draft.fixedGeometryMatchesOriginal))
-                            Button("Refresh permissions / compare revision") { store.refreshPermission() }.disabled(session.busy)
-                            Button("Refresh artwork availability") { store.resolveArtwork() }.disabled(session.busy)
+                            FeatureDetails("Refresh access & artwork") {
+                                Button("Compare current revision") { store.refreshPermission() }.disabled(session.busy)
+                                Button("Refresh artwork availability") { store.resolveArtwork() }.disabled(session.busy)
+                            }
                         }.padding(18).glassPanel()
                     } else { Text(session.failure ?? "This server/event has not enabled owner route planning.") }
                 }.padding(20).frame(maxWidth: 1100).frame(maxWidth: .infinity)
@@ -162,6 +165,9 @@ private struct EventRoutePlannerContent: View {
     private var configuredPlanner: some View {
             plannerScroll
             .modernScene().navigationTitle("Plan event")
+            .safeAreaInset(edge: .bottom) {
+                NativeFlowCancelFooter(title: "Close planner", busy: store.saving) { dismiss() }
+            }
             .toolbar { Button("Close") { dismiss() }.disabled(store.saving) }
             .interactiveDismissDisabled(store.saving)
             .task {
@@ -212,6 +218,7 @@ private struct EventRoutePlannerContent: View {
                         }
                         Spacer()
                     }.padding(20).navigationTitle("Find a place")
+                        .safeAreaInset(edge: .bottom) { NativeFlowCancelFooter { endpointChoice = nil } }
                         .toolbar { Button("Cancel") { endpointChoice = nil } }
                 }
             }
@@ -244,11 +251,12 @@ private struct EventRoutePlannerContent: View {
                             Text("Your local draft is unchanged.").font(.caption).foregroundStyle(Aurora.mint)
                         }.padding(20)
                     }.modernScene().navigationTitle("Review server plan")
+                        .safeAreaInset(edge: .bottom) { NativeFlowCancelFooter(title: "Back to draft") { reviewingServer = nil } }
                         .toolbar { Button("Done") { reviewingServer = nil } }
                 }
             }
             .sheet(item: $saveReview) { captured in
-                EventRouteReviewView(captured: captured, back: { saveReview = nil }) {
+                EventRouteReviewView(captured: captured, busy: store.saving, back: { saveReview = nil }) {
                     guard editable, captured.matches(store.draft) else { saveReview = nil; return }
                     store.save(captured: captured) { saveReview = nil; dismiss(); saved() }
                 }
@@ -276,9 +284,11 @@ private struct EventRoutePlannerContent: View {
                 .font(.caption).foregroundStyle(.secondary)
             if imagery && phase == .active {
                 roadControls(draft)
-                Picker("Map action", selection: $mode) { ForEach(PlannerTapMode.allCases) { Text($0.rawValue).tag($0) } }
-                    .disabled(!structureEditable || road.busy)
-                OrganizerPlaceSearchView { place in apply(place.point) }.disabled(!structureEditable)
+                DisclosureGroup("Map tools · \(mode.rawValue)") {
+                    Picker("Map action", selection: $mode) { ForEach(PlannerTapMode.allCases) { Text($0.rawValue).tag($0) } }
+                        .disabled(!structureEditable || road.busy)
+                    OrganizerPlaceSearchView { place in apply(place.point) }.disabled(!structureEditable)
+                }
                 OrganizerMap(pins: pins, geometry: road.result?.full ?? draft.geometry.map(\.point), editable: structureEditable && !road.busy,
                     fit: fit, reducedMotion: reducedMotion, tap: apply, moved: move, selected: { selected = $0 },
                     failed: { localFailure = $0 })
@@ -304,7 +314,8 @@ private struct EventRoutePlannerContent: View {
                 Text("Walking / checkpoint game").tag(EventRoadMode.walking)
             }.disabled(!structureEditable || road.busy)
             Button(road.result == nil ? "Generate road route" : "Recalculate edited route") { generateRoadRoute() }
-                .buttonStyle(.borderedProminent).disabled(!structureEditable || road.busy || endpoints.count != 2)
+                .buttonStyle(AuroraPrimaryButton()).disabled(!structureEditable || road.busy || endpoints.count != 2)
+            if endpoints.count != 2 { Text("Choose a start and destination to generate your route.").font(.caption).foregroundStyle(.secondary) }
             if road.busy { ProgressView("Finding roads through your selected places"); Button("Cancel directions") { road.cancel() } }
             if let failure = road.failure { Text(failure).foregroundStyle(.orange) }
             if road.needsRegeneration { Text("Route edit is not yet applied. Recalculate before saving; the previous saved draft geometry remains intact.").font(.caption).foregroundStyle(.orange) }
@@ -312,11 +323,13 @@ private struct EventRoutePlannerContent: View {
                 Text(String(format: "Route preview %.1f km · about %.0f minutes", route.meters / 1000, route.seconds / 60)).font(.caption)
                 InteractionExplanation("Preview only, not navigation or attendance proof. Geometry is simplified; over-complex routes fail instead of truncating.", details: "Route preview only—not safe-routing certification, live navigation or a participant track. Saved geometry is simplified within10m and must fit the service's200-point limit; longer complex routes fail explicitly instead of truncating.").font(.caption)
                 Button("Drop checkpoint pins along this route") { mode = .checkpoint }.disabled(road.busy || road.needsRegeneration)
-                Button("Reshape route: tap line to add a draggable handle") { mode = .shape }.disabled(road.busy || road.needsRegeneration)
-                ForEach(Array(road.waypoints.enumerated()), id: \.element.id) { index, waypoint in
-                    HStack {
-                        Text("Route handle \(index + 1): drag its ↔ pin to change roads").font(.caption)
-                        Button("Remove") { road.removeShapingPoint(waypoint.id); generateRoadRoute() }.disabled(road.busy || !structureEditable)
+                DisclosureGroup("Reshape route & manage handles") {
+                    Button("Add a draggable route handle") { mode = .shape }.disabled(road.busy || road.needsRegeneration)
+                    ForEach(Array(road.waypoints.enumerated()), id: \.element.id) { index, waypoint in
+                        HStack {
+                            Text("Route handle \(index + 1): drag its ↔ pin to change roads").font(.caption)
+                            Button("Remove") { road.removeShapingPoint(waypoint.id); generateRoadRoute() }.disabled(road.busy || !structureEditable)
+                        }
                     }
                 }
             }
@@ -352,7 +365,7 @@ private struct EventRoutePlannerContent: View {
     private func checkpointPanel(_ draft: EventRouteDraft) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Checkpoints (\(draft.checkpoints.count)/50)").font(.title3.bold())
-            if draft.checkpoints.isEmpty { Text("Enable Maps, choose Add start/checkpoint/finish, then tap or search for a place.") }
+            if draft.checkpoints.isEmpty { Text("Choose start and destination above, or enter fixed coordinates in Advanced numeric fixed points.") }
             ForEach(draft.checkpoints) { checkpoint in
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(checkpoint.order + 1) / \(checkpoint.kind.rawValue.capitalized)").font(.caption).foregroundStyle(Aurora.mint)

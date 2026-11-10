@@ -24,6 +24,8 @@ built with SwiftUI and Core Bluetooth.
 - Local backups, Keychain passwords and diagnostics.
 
 This repository contains the native iOS app, design assets and build workflows.
+Native workflows use essentials-first screens, optional advanced tools and
+explicit review/cancel controls; see the [workflow coverage](ios/README.md#essentials-first-workflows).
 
 ## Build
 

@@ -29,10 +29,10 @@ struct CommunityNotificationSettingsView: View {
                     }
                     InteractionExplanation("Reminders are off by default. Eligible reviewed events only; no RSVP, GPS, arrival or progress sharing.", details: "Event reminders default off. Opting in schedules only eligible reviewed events during their final hour; it never RSVPs, shares progress, records arrival or collects GPS. Material updates require fresh review.").font(.caption)
                 }
-                Button("Review save") {
+                Button("Review & save") {
                     guard let original, let client = session.client, let choices = self.choices else { return }
                     captured = (original, choices, client.instanceID); confirm = true
-                }
+                }.buttonStyle(AuroraPrimaryButton())
                 Button("Discard choices & reload") { discard = true }
                 Text("Delivery preferences do not stop messages, live connections, memberships or security requirements. Existing delivered history remains subject to current access.").font(.caption)
             } else { Text("Notification preferences unavailable until this server supports them.") }
@@ -76,6 +76,11 @@ struct CommunityActivityView: View {
     var body: some View {
         List {
             if community.config?.notificationsEnabled == true && !session.denied {
+                if session.busy { ProgressView("Loading activity…") }
+                if notices.isEmpty && !session.busy && session.failure == nil {
+                    ContentUnavailableView("No activity", systemImage: "bell",
+                        description: Text("Your currently authorized activity appears here."))
+                }
                 ForEach(notices) { notice in
                     VStack(alignment: .leading) {
                         Text(notice.type.title).font(.headline)
@@ -92,7 +97,7 @@ struct CommunityActivityView: View {
                     Spacer(); Button("Next") { page += 1; load() }.disabled(page >= 200 || page * 24 >= total)
                 }
                 Button("Refresh current access", action: load)
-                Button("Mark all currently authorized activity read") { session.run({ try await $0.noticeAction(nil) }, success: load) }
+                Button("Mark all authorized activity read") { session.run({ try await $0.noticeAction(nil) }, success: load) }
             } else { Text("Private activity unavailable.") }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
         }.disabled(session.busy).modernScene().navigationTitle("Activity")

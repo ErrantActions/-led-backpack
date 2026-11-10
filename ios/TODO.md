@@ -12,6 +12,13 @@ excluded from migration. Replacement research is maintained in
 screenshots and original layout studies tracked separately from app artwork.
 Older checkpoints below are historical evidence, not the current release board.
 
+- [x] Extend essentials-first native workflows across library/import, editors,
+  phone/hardware playback, live/settings, account/cloud/social, games, event
+  extras and administration. Keep mandatory consent and actual capability gates.
+- [ ] Compile the integrated source and run three selected process walkthroughs;
+  review native screenshots. Do not repeat the full native/portable suites.
+- [ ] Upload one consolidated protected TestFlight build after the app-wide pass.
+  Signing cleanup, Apple processing and tester availability are separate checks.
 - [x] Invitation-first events: prominent Social entry, readable browse cards,
   Explore/Yours/Invites, essentials-first creation and captured invitation review.
   The event hub keeps RSVP prominent and extras collapsed. Existing authorization,

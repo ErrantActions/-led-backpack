@@ -129,10 +129,13 @@ struct CommunityUploadView: View {
     var body: some View {
         NavigationStack {
             Form {
+                GIFThumbnail(key: item.previewKey) { try library.data(item) }
+                    .frame(maxWidth: .infinity).frame(height: 180).clipShape(RoundedRectangle(cornerRadius: 18))
                 if let submitted {
                     Section("Submitted for community review") {
                         Label("Artwork submitted", systemImage: "checkmark.circle")
-                        Text("This is not a private backup. The server may send the GIF and metadata for AI review and publish it when approved.")
+                        LabeledContent("Review status", value: submitted.status.capitalized)
+                        Text("Server acceptance is not approval. Public visibility follows the review status; this is not a private backup.")
                         NavigationLink("My community uploads") { CommunityUploadsView() }
                     }
                 } else {
@@ -141,9 +144,10 @@ struct CommunityUploadView: View {
                     }
                     metadata
                     Section {
+                        Text("For public community review, not private backup.").font(.caption).foregroundStyle(.secondary)
                         Toggle("I have sharing rights and consent to community publication and AI review", isOn: $sharingAttested)
                         Button("Submit to community review") { upload() }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(AuroraPrimaryButton())
                             .disabled(!community.signedIn || busy || !sharingAttested)
                     }.disabled(busy)
                 }
@@ -151,7 +155,11 @@ struct CommunityUploadView: View {
                 if let failure { Text(failure).foregroundStyle(.orange) }
             }
             .modernScene().navigationTitle("Upload GIF")
-            .toolbar { Button("Done") { dismiss() }.disabled(busy) }
+            .safeAreaInset(edge: .bottom) {
+                Button(submitted == nil ? "Cancel" : "Done") { dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44).disabled(busy)
+                    .padding(8).background(Aurora.surface).accessibilityIdentifier("community-upload-close")
+            }
             .interactiveDismissDisabled(busy)
         }
     }
@@ -160,13 +168,16 @@ struct CommunityUploadView: View {
             Picker("Category", selection: $category) {
                 ForEach(CommunityCategory.allCases) { Text($0.label).tag($0.rawValue) }
             }
-            TextField("Tags, comma separated", text: $tags)
-            if let original = item.attribution {
-                Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
-                    .font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup("Tags & credits") {
+                TextField("Tags, comma separated", text: $tags)
+                if let original = item.attribution {
+                    Text("Imported credits: \(original.author) / \(original.license)\n\(original.source)")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
-            InteractionExplanation("Public community review, not backup. GIFs: 1-120 frames, up to 5 MB; single frames are valid. Backpack output is unchanged.", details: "GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. This submission is for public community review, not private storage. Use Private cloud for backups. Neither action changes the backpack.")
-                .font(.caption).foregroundStyle(.secondary)
+            FeatureDetails("Upload requirements") {
+                Text("GIFs: 1-120 frames, up to 5 MB. Single-frame artwork is supported without duplicating frames. Neither upload nor private backup changes the backpack.")
+            }
         }.disabled(busy)
     }
     private func upload() {

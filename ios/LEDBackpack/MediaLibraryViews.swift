@@ -76,7 +76,7 @@ struct MediaOrganizer: View {
                 Text("Up to 40 characters. Changes sync automatically when cloud synchronization is enabled.")
                     .font(.caption).foregroundStyle(.secondary)
                 if let failure { Text(failure).foregroundStyle(.orange) }
-                Button("Save organization") {
+                Button("Save changes") {
                     do {
                         try library.organize(item.id, category: category, favorite: favorite)
                         dismiss()
@@ -84,10 +84,14 @@ struct MediaOrganizer: View {
                         failure = error.localizedDescription
                         link.note("Media organization failed: \(error.localizedDescription)")
                     }
-                }.buttonStyle(.borderedProminent)
+                }.buttonStyle(AuroraPrimaryButton())
             }
             .modernScene().navigationTitle("Organize artwork")
             .toolbar { Button("Cancel") { dismiss() } }
+            .safeAreaInset(edge: .bottom) {
+                Button("Cancel") { dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44).padding(8).background(.regularMaterial)
+            }
         }
     }
 }

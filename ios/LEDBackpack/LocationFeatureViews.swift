@@ -40,6 +40,7 @@ struct FriendLocationFeaturesView: View {
                 Button("Stop all location features", role: .destructive) { stopAll() }
                 if let notice { Text(notice).font(.caption) }
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
+                if session.busy { ProgressView("Checking friend sessions") }
                 Button("Refresh sessions") {
                     if confirmed { intent = nil; confirmed = false }
                     load()
@@ -50,8 +51,16 @@ struct FriendLocationFeaturesView: View {
                 }
             }
             if let profile {
-                Section("Independent per-friend permissions") {
-                    Text("Current service stop revision: \(revision.map(String.init) ?? "unavailable")").font(.caption)
+                if profile.friendSessionsAvailable == true && community.config?.friendSessionsAvailable == true {
+                    Section("Choose a session") {
+                        Picker("Phone interaction", selection: $kind) { ForEach(FriendInteractionKind.allCases) { Text($0.rawValue).tag($0) } }
+                        Stepper("Duration \(seconds) seconds", value: $seconds, in: 60...900, step: 30)
+                        Toggle("Allow one selected friend session", isOn: $consent)
+                        Text("Next, choose a mutually enabled friend below. Acceptance does not start sensors or playback; each phone arms separately.").font(.caption)
+                    }
+                }
+                Section("Choose a friend · independent permissions") {
+                    FeatureDetails("Permission revision") { Text(revision.map(String.init) ?? "Unavailable") }
                     ForEach(friends) { person in
                         VStack(alignment: .leading) {
                             Text(person.displayName)
@@ -81,11 +90,7 @@ struct FriendLocationFeaturesView: View {
                     HStack { Button("Previous") { page -= 1; load() }.disabled(page == 1); Spacer(); Button("Next") { page += 1; load() }.disabled(friends.count < 50) }
                 }
                 if profile.friendSessionsAvailable == true && community.config?.friendSessionsAvailable == true {
-                    Section("Volatile timed session consent") {
-                        Picker("Planned phone interaction kind", selection: $kind) { ForEach(FriendInteractionKind.allCases) { Text($0.rawValue).tag($0) } }
-                        Stepper("Duration \(seconds) seconds", value: $seconds, in: 60...900, step: 30)
-                        Toggle("I consent to one deliberately selected friend control session", isOn: $consent)
-                        Text("Acceptance does not start playback. Both friends arm their phone scene separately.").font(.caption)
+                    Section("Current sessions") {
                         if let clock {
                             TimelineView(.periodic(from: .now, by: 1)) { _ in
                                 ForEach(sessions) { value in
@@ -98,7 +103,7 @@ struct FriendLocationFeaturesView: View {
                                                 Button("Review decline") { respond(value, accept: false) }
                                             }
                                             if value.status == "active" && value.ownedByCurrentSession && community.config?.friendSessionPeerIdentityEnabled == true {
-                                                Button("Choose / preview / arm PHONE interaction") { playbackSession = value }
+                                                Button("Set up phone scene") { playbackSession = value }
                                             }
                                             Button("Review stop", role: .destructive) {
                                                 review("Stop captured session", "Stops only this service session; phone sensing is also stopped locally.") { client in
@@ -114,7 +119,7 @@ struct FriendLocationFeaturesView: View {
                     }
                 }
             }
-        }.modernScene().navigationTitle("Location-powered consent")
+        }.modernScene().navigationTitle("Friend play")
         .navigationDestination(isPresented: Binding(get: { playbackSession != nil }, set: { if !$0 { playbackSession = nil } })) {
             if let playbackSession { FriendPlaybackView(selected: playbackSession) }
         }
@@ -218,15 +223,16 @@ struct EventLocalEligibilityView: View {
                 Text("Remain still: about \(Int(ceil(remaining))) more seconds of fresh fixes are needed.").font(.caption)
             }
             if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-            Button("Refresh authorized fixed plan") { local.stop("Plan refresh requires new consent"); consent = false; load() }
+            if session.busy { ProgressView("Checking checkpoint access") }
+            Button("Refresh fixed plan") { local.stop("Plan refresh requires new consent"); consent = false; load() }.disabled(session.busy)
             if let event, let route = event.route {
                 Picker("Fixed checkpoint", selection: $checkpointID) {
                     Text("Choose").tag(UUID?.none)
                     ForEach(route.checkpoints) { Text($0.title).tag(Optional($0.id)) }
                 }
                 Toggle("I opt in to foreground local sensing for this checkpoint", isOn: $consent)
-                Button("Request When In Use permission only") { local.requestWhenInUse(consent: consent) }
-                Button("Start local sensing explicitly (60s maximum)") {
+                Button("Allow location") { local.requestWhenInUse(consent: consent) }.disabled(!consent || session.busy)
+                Button("Start local hint · 60 seconds") {
                     session.run { client in
                         local.stop("Validating fresh event context")
                         let current = try await client.event(eventID)
@@ -240,7 +246,7 @@ struct EventLocalEligibilityView: View {
                             consent: consent, foreground: phase == .active, capability: client.progressDeadlinesEnabled(current),
                             eventClock: clock)
                     }
-                }.disabled(!consent || checkpointID == nil || session.busy)
+                }.buttonStyle(AuroraPrimaryButton()).disabled(!consent || checkpointID == nil || session.busy || local.sensing)
             }
             Button("Stop local sensing", role: .destructive) { local.stop(); consent = false }
             if let hint = local.hint, hint.scope.eventID == eventID, hint.scope.accountRevision == community.accountRevision {
