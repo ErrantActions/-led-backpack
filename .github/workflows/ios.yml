@@ -5,7 +5,7 @@ on:
       validation:
         description: Build only, focused process/event checks or full native suite (no upload)
         type: choice
-        options: [full, processes, live, events, build]
+        options: [full, performance, processes, live, events, build]
         default: full
   push:
     branches: [main]
@@ -40,7 +40,7 @@ jobs:
           echo "Selected iOS SDK: $SDK"
           python3 -c 'import sys; assert tuple(map(int,sys.argv[1].split(".")[:2])) == (27,1), "This build requires the iOS 27.1 SDK"; print("iOS 27.1 SDK selected; physical Duo fold testing remains separate.")' "$SDK"
       - name: Test portable packet codec
-        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'build'
+        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'performance' && inputs.validation != 'build'
         run: swift test --package-path Packages/BackpackProtocol
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
@@ -51,15 +51,15 @@ jobs:
         run: |
           CONFIG=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); devices=[(runtime,x) for runtime,items in d["devices"].items() if runtime.endswith(".iOS-27-1") for x in items if x["name"]=="iPhone Duo"]; assert devices, "The required iOS 27.1 iPhone Duo simulator is unavailable"; runtime,device=devices[0]; print("|".join((device["udid"],device["deviceTypeIdentifier"],runtime)))')
           IFS='|' read -r DEVICE DEVICE_TYPE RUNTIME <<< "$CONFIG"
-          if [ "$VALIDATION_MODE" = live ]; then
-            DEVICE=$(xcrun simctl create "LEDBackpack Live $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" "$DEVICE_TYPE" "$RUNTIME")
+          if [ "$VALIDATION_MODE" = live ] || [ "$VALIDATION_MODE" = performance ]; then
+            DEVICE=$(xcrun simctl create "LEDBackpack $VALIDATION_MODE $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" "$DEVICE_TYPE" "$RUNTIME")
             echo "ISOLATED_SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
             xcrun simctl boot "$DEVICE"
             xcrun simctl bootstatus "$DEVICE" -b
           fi
           echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
       - name: Build and test app
-        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'build'
+        if: inputs.validation != 'events' && inputs.validation != 'processes' && inputs.validation != 'live' && inputs.validation != 'performance' && inputs.validation != 'build'
         run: |
           xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
@@ -94,6 +94,18 @@ jobs:
             -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
             -only-testing:LEDBackpackUITests/NavigationTests/testLiveMessageSurvivesReflowAndPrimaryControlsRemainReachable \
             -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
+      - name: Verify performance contracts only
+        if: inputs.validation == 'performance'
+        run: |
+          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
+            -only-testing:LEDBackpackTests/CatalogMediaPerformanceTests \
+            -only-testing:LEDBackpackTests/LibrarySyncPerformanceTests \
+            -only-testing:LEDBackpackTests/CommunityChatPerformanceTests \
+            -only-testing:LEDBackpackTests/CommunityTests \
+            -only-testing:LEDBackpackTests/CloudVaultProtocolTests \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
       - name: Build app only
         if: inputs.validation == 'build'
         run: |
@@ -123,7 +135,7 @@ jobs:
           name: LEDBackpack-layouts
           path: ios/build/Screenshots
           if-no-files-found: warn
-      - name: Remove isolated Live simulator
+      - name: Remove isolated test simulator
         if: always() && env.ISOLATED_SIMULATOR_ID != ''
         run: |
           STATE=$(xcrun simctl list devices -j | python3 -c 'import json,os,sys; matches=[x for items in json.load(sys.stdin)["devices"].values() for x in items if x["udid"]==os.environ["ISOLATED_SIMULATOR_ID"]]; assert len(matches)==1, "The isolated simulator could not be identified for cleanup"; print(matches[0]["state"])')

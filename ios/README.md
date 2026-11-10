@@ -1,5 +1,21 @@
 # LED Backpack for iOS
 
+## Backend-assisted performance (not in build 14)
+
+Optional server capabilities enable one aggregate inbox request, unchanged
+history validation, change-only library metadata and smaller recorded animated
+previews. Older servers retain existing routes. Media bytes use bounded
+memory-only caching with a fresh authorized conditional request before reuse;
+there is no offline/stale permission fallback or shared private-content cache.
+Account/media-policy changes clear cached bytes, and media failures remain
+visible. Required access, moderation, retention and snapshot checks are kept.
+New `contentRevision` values describe artwork bytes, not permission state or
+the legacy library's separate metadata `syncRevision`.
+
+These are coordinated source changes, not a backend deployment or another
+TestFlight upload. Current live flags remain authoritative; unrelated
+device-recovery-v2 and unavailable provider/encryption capabilities stay gated.
+
 ## Essentials-first workflows
 
 Uploaded as **0.1.0 (14)** in

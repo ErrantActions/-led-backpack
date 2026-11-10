@@ -70,6 +70,7 @@ final class CommunityFeatureClient {
     let instanceID = UUID()
     let origin: CommunityOrigin
     let accountID, revision: UUID
+    var validatedChatHistory: NativeChatHistoryCache?
     private let role: String
     private let chatAccessRevision: UUID
     private let community: CommunityController
@@ -82,6 +83,8 @@ final class CommunityFeatureClient {
         return try await community.openChatEvents(context, revision: revision, account: accountID, network: network)
     }
     var groupsEnabled: Bool { community.config?.groupChatsEnabled == true }
+    var chatInboxEnabled: Bool { community.config?.chatInboxEnabled == true }
+    var chatHistoryValidationEnabled: Bool { community.config?.chatHistoryValidationEnabled == true }
     var eventChatsEnabled: Bool { community.config?.eventChatsEnabled == true }
     var chatMediaEnabled: Bool { community.config?.chatMediaEnabled == true }
     var chatPinsEnabled: Bool { community.config?.chatPinsEnabled == true }
@@ -93,7 +96,7 @@ final class CommunityFeatureClient {
     }
     func communityChatPermissionChanged() { community.invalidateChatAccess() }
     var chatScope: String {
-        "\(revision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(messageRequestsEnabled):\(chatReferencesEnabled):\(chatPlaylistReferencesEnabled):\(chatMediaEnabled):\(chatPinsEnabled):\(groupsEnabled):\(eventChatsEnabled):\(retainedChatRecoveryEnabled):\(community.avatarPolicyRevision)"
+        "\(revision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(messageRequestsEnabled):\(chatReferencesEnabled):\(chatPlaylistReferencesEnabled):\(chatMediaEnabled):\(chatPinsEnabled):\(groupsEnabled):\(eventChatsEnabled):\(retainedChatRecoveryEnabled):\(community.avatarPolicyRevision):\(chatInboxEnabled):\(chatHistoryValidationEnabled)"
     }
     var chatNotificationPreferencesEnabled: Bool { community.config?.chatNotificationPreferencesEnabled == true }
     var chatReportsEnabled: Bool { community.config?.chatReportsEnabled == true }

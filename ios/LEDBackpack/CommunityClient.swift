@@ -41,6 +41,12 @@ struct CommunityConfig: Decodable {
     var viewerMediaPreferencesEnabled: Bool? = nil
     var nativeSizeFiltersEnabled: Bool? = nil
     var catalogDownloadManifestEnabled: Bool? = nil
+    var catalogMediaValidationEnabled: Bool? = nil
+    var catalogAnimatedPreviewsEnabled: Bool? = nil
+    var chatInboxEnabled: Bool? = nil
+    var chatHistoryValidationEnabled: Bool? = nil
+    var libraryDeltaSyncEnabled: Bool? = nil
+    var cloudDeltaSyncEnabled: Bool? = nil
     var unverifiedDeviceTagsEnabled: Bool? = nil
     var connectedDeviceRegistrationEnabled: Bool? = nil
     var connectedDeviceRegistrationVersion: Int? = nil
@@ -144,6 +150,8 @@ struct CommunityItem: Decodable, Identifiable {
     let frameCount: Int
     let byteSize: Int
     var originalByteSize: Int? = nil
+    var contentRevision: String? = nil
+    var animatedPreviewUrl: URL? = nil
     let uploader: Uploader
     let likeCount: Int
     let variants: [Variant]
@@ -254,7 +262,7 @@ final class CommunityHTTP: CommunityTransport {
         }
         let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw BackpackError.invalid("Invalid catalog HTTP response.") }
-        guard !(300...399).contains(http.statusCode) else {
+        guard http.statusCode == 304 || !(300...399).contains(http.statusCode) else {
             throw BackpackError.invalid("The catalog redirected the request. Configure its final HTTPS URL instead.")
         }
         guard response.expectedContentLength <= Int64(maxBytes) else {
@@ -327,13 +335,18 @@ final class CommunityController: ObservableObject {
     @Published private(set) var config: CommunityConfig?
     @Published private(set) var deletion: CommunityDeletion?
     @Published private(set) var setupError: String?
-    @Published private(set) var accountRevision = UUID()
+    @Published private(set) var accountRevision = UUID() {
+        didSet { mediaResponses.clear() }
+    }
     @Published private(set) var chatAccessRevision = UUID()
     func invalidateChatAccess() { chatAccessRevision = UUID() }
-    @Published private(set) var avatarPolicyRevision = UUID()
+    @Published private(set) var avatarPolicyRevision = UUID() {
+        didSet { mediaResponses.clear() }
+    }
     @Published private(set) var avatarPolicyChanging = false
     @Published private(set) var nativeIntegrityRevision = UUID()
     private var session: CommunitySession?
+    private var mediaResponses = CatalogMediaCache()
     private let nativeIntegrity: NativeAppIntegrity
     var nativePushCleanup: (() async throws -> Void)?
     var stopLocalLocationFeatures: (() -> Void)?
@@ -862,18 +875,43 @@ final class CommunityController: ObservableObject {
               url.path.hasPrefix("/media/"), let transport else {
             throw BackpackError.invalid("Media must come from this catalog's HTTPS server.")
         }
+        guard !avatarPolicyChanging else { throw BackpackError.invalid("Wait for media privacy changes to finish.") }
+        let revision = accountRevision, policy = avatarPolicyRevision
+        let conditional = config?.catalogMediaValidationEnabled == true
+        let cached = conditional ? mediaResponses.entry(for: url, maximumBytes: maxBytes) : nil
         var request = URLRequest(url: url, timeoutInterval: 30)
         request.httpShouldHandleCookies = false
+        if conditional {
+            request.setValue("1", forHTTPHeaderField: "X-Catalog-Media-Validation")
+            if let cached { request.setValue(cached.etag, forHTTPHeaderField: "If-None-Match") }
+        }
         if let session {
             try validateSession(session)
             request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
         }
         let response = try await transport.send(request, maxBytes: maxBytes)
-        guard self.origin == origin else { throw BackpackError.invalid("The catalog server changed during the download.") }
+        try Task.checkCancellation()
+        guard self.origin == origin, accountRevision == revision, avatarPolicyRevision == policy, !avatarPolicyChanging else {
+            throw BackpackError.invalid("Account, server or media privacy changed during the download.")
+        }
         guard expectedAccountRevision == nil || expectedAccountRevision == accountRevision else {
             throw BackpackError.invalid("Account changed during artwork download.")
         }
-        guard response.status == 200 else { throw BackpackError.invalid("Catalog media is unavailable (HTTP \(response.status)).") }
+        if response.status == 304 {
+            guard conditional, let cached, response.data.isEmpty, response.headers["etag"] == cached.etag else {
+                mediaResponses.remove(url)
+                throw BackpackError.invalid("The server returned an invalid unchanged-media response.")
+            }
+            return cached.data
+        }
+        guard response.status == 200 else {
+            mediaResponses.remove(url)
+            throw BackpackError.invalid("Catalog media is unavailable (HTTP \(response.status)).")
+        }
+        if conditional {
+            if response.headers["cache-control"]?.lowercased().contains("no-store") == true { mediaResponses.remove(url) }
+            else { mediaResponses.store(response.data, etag: response.headers["etag"], for: url) }
+        }
         return response.data
     }
     func like(_ id: UUID) async throws -> Int {
@@ -895,11 +933,13 @@ final class CommunityController: ObservableObject {
     func block(_ id: UUID, expectedRevision: UUID? = nil) async throws {
         stopLocalLocationFeatures?()
         chatAccessRevision = UUID()
+        avatarPolicyRevision = UUID()
         guard signedIn else { throw BackpackError.invalid("Sign in to block an uploader.") }
         struct Body: Encodable { let userId: String }
         _ = try await request("blocks", method: "POST", body: JSONEncoder().encode(Body(userId: id.uuidString.lowercased())),
             expectedAccountRevision: expectedRevision)
         chatAccessRevision = UUID()
+        avatarPolicyRevision = UUID()
     }
 
     func uploadGIF(_ data: Data, metadata: CommunityUploadMetadata, sharingAttested: Bool) async throws -> CommunitySubmission {

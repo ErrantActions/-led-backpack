@@ -8,6 +8,8 @@ struct CommunityCloudItem: Decodable, Identifiable {
     let moderationReason: String
     let aiState: String
     let aiError: String?
+    let contentRevision: String?
+    let syncRevision: String?
     var id: UUID { item.id }
     init(from decoder: Decoder) throws {
         item = try CommunityItem(from: decoder)
@@ -17,8 +19,22 @@ struct CommunityCloudItem: Decodable, Identifiable {
         moderationReason = try values.decode(String.self, forKey: .moderationReason)
         aiState = try values.decode(String.self, forKey: .aiState)
         aiError = try values.decodeIfPresent(String.self, forKey: .aiError)
+        contentRevision = try values.decodeIfPresent(String.self, forKey: .contentRevision)
+        syncRevision = try values.decodeIfPresent(String.self, forKey: .syncRevision)
     }
-    private enum CodingKeys: String, CodingKey { case visibility, status, moderationReason, aiState, aiError }
+    private enum CodingKeys: String, CodingKey { case visibility, status, moderationReason, aiState, aiError, contentRevision, syncRevision }
+}
+
+private struct LibraryDeltaPage: Decodable {
+    let accountId: UUID
+    let snapshot: String
+    let items: [CommunityCloudItem]
+    let removed: [UUID]
+    let order: [UUID]
+    let nextPage: Int?
+    let page: Int
+    let limit: Int
+    let total: Int
 }
 
 struct CommunityCloudPage: Decodable {
@@ -49,18 +65,19 @@ final class CloudLibraryStore: ObservableObject {
     private var contentRevisions: [UUID: UUID] = [:]
     private var failedPage: Int?
     private var pageLimit: Int?
+    private var deltaComplete = false
 
     func clear() {
         cancel()
         items = []; failure = nil; loading = false; revision = nil; ownerID = nil; server = nil; nextPage = nil
-        contentRevisions = [:]; failedPage = nil; pageLimit = nil
+        contentRevisions = [:]; failedPage = nil; pageLimit = nil; deltaComplete = false
     }
     func cancel() {
         active = false; operation = UUID(); moreTicket = UUID(); moreTask?.cancel(); moreTask = nil; loading = false
     }
     func resume() { active = true }
     func thumbnailKey(_ item: CommunityCloudItem) -> String {
-        "owned:\(item.id):\(contentRevisions[item.id]?.uuidString ?? "original")"
+        "owned:\(item.id):\(item.contentRevision ?? contentRevisions[item.id]?.uuidString ?? "original")"
     }
     func nearEnd(_ id: UUID, community: CommunityController, library: LocalLibrary? = nil, visible: [UUID]? = nil) {
         guard active, !loading, failure == nil, moreTask == nil, nextPage != nil,
@@ -104,11 +121,20 @@ final class CloudLibraryStore: ObservableObject {
         do {
             if library != nil && community.config == nil { try await community.loadConfig() }
             if community.user == nil { try await community.refreshUser() }
+            if community.config?.libraryDeltaSyncEnabled == true {
+                do {
+                    try await refreshDelta(community, current: current, ticket: ticket)
+                    if let library { try await downloadMissing(community, library: library, revision: current, ticket: ticket) }
+                    return
+                } catch let error as CommunityFailure where error.code == "library_sync_limit" {
+                    deltaComplete = false
+                }
+            }
             let result = try await community.cloudPage(page: 1)
             try Task.checkCancellation()
             guard community.accountRevision == current, revision == current, operation == ticket, active, community.signedIn else { return }
             guard result.page == nil || result.page == 1 else { throw BackpackError.invalid("The owned library returned the wrong first page.") }
-            items = []; contentRevisions = [:]
+            items = []; contentRevisions = [:]; deltaComplete = false
             _ = merge(result.items)
             pageLimit = result.limit
             nextPage = result.nextPage
@@ -133,6 +159,72 @@ final class CloudLibraryStore: ObservableObject {
             failure = error.localizedDescription
             failedPage = requestedPage
         }
+    }
+
+    private func refreshDelta(_ community: CommunityController, current: UUID, ticket: UUID) async throws {
+        guard let owner = community.user?.id, let origin = community.origin else {
+            throw BackpackError.invalid("Sign in before synchronizing owned artwork.")
+        }
+        struct Entry: Encodable { let id: String; let revision: String }
+        struct Input: Encodable { let baseline: [Entry]; let page: Int; let snapshot: String? }
+        let sameScope = deltaComplete && ownerID == owner && server == origin
+        let baseline = sameScope ? items.compactMap { item in
+            item.syncRevision.map { Entry(id: item.id.uuidString.lowercased(), revision: $0) }
+        } : []
+        guard baseline.count <= 10000 else { throw BackpackError.invalid("Owned library exceeds the change-only manifest budget.") }
+        for attempt in 0..<3 {
+            do {
+                var staged = sameScope ? Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) }) : [:]
+                var snapshot: String?
+                var order: [UUID] = []
+                var total: Int?
+                var seen = Set<UUID>()
+                for page in 1...100 {
+                    let body = try JSONEncoder().encode(Input(baseline: baseline, page: page, snapshot: snapshot))
+                    let response = try await community.request("me/items/changes", method: "POST", body: body,
+                        expectedAccountRevision: current, expectedAccountID: owner)
+                    try Task.checkCancellation()
+                    guard community.accountRevision == current, revision == current, operation == ticket,
+                          active, community.signedIn, community.origin == origin, community.user?.id == owner else {
+                        throw CancellationError()
+                    }
+                    let delta = try JSONDecoder().decode(LibraryDeltaPage.self, from: response.data)
+                    guard delta.accountId == owner, delta.page == page, delta.limit == 100, delta.items.count <= 100,
+                          (0...10000).contains(delta.total), snapshot == nil || snapshot == delta.snapshot,
+                          total == nil || total == delta.total,
+                          delta.nextPage == nil || delta.nextPage == page + 1 else {
+                        throw BackpackError.invalid("Owned library returned an inconsistent change snapshot.")
+                    }
+                    if page == 1 {
+                        snapshot = delta.snapshot; total = delta.total; order = delta.order
+                        guard order.count == delta.total, Set(order).count == order.count,
+                              delta.removed.count <= baseline.count else { throw BackpackError.invalid("Invalid owned library manifest.") }
+                        for id in delta.removed { staged.removeValue(forKey: id) }
+                    } else if !delta.removed.isEmpty || !delta.order.isEmpty {
+                        throw BackpackError.invalid("Owned library repeated its change manifest.")
+                    }
+                    for item in delta.items {
+                        guard item.status != "deleted", let syncRevision = item.syncRevision,
+                              syncRevision.count == 64, syncRevision.allSatisfy({ $0.isHexDigit }),
+                              seen.insert(item.id).inserted else { throw BackpackError.invalid("Invalid owned library change.") }
+                        staged[item.id] = item
+                    }
+                    if delta.nextPage == nil {
+                        guard Set(staged.keys) == Set(order) else { throw BackpackError.invalid("Incomplete owned library changes.") }
+                        items = try order.map { id in
+                            guard let item = staged[id] else { throw BackpackError.invalid("Missing owned artwork.") }
+                            return item
+                        }
+                        ownerID = owner; server = origin; nextPage = nil; pageLimit = nil
+                        contentRevisions = [:]; failedPage = nil; deltaComplete = true
+                        return
+                    }
+                    guard !delta.items.isEmpty else { throw BackpackError.invalid("Owned library changes made no progress.") }
+                }
+                throw BackpackError.invalid("Owned library changes exceed their pagination budget.")
+            } catch let error as CommunityFailure where error.code == "library_snapshot_changed" && attempt < 2 { continue }
+        }
+        throw BackpackError.invalid("Owned library changes could not be completed.")
     }
 
     func loadMore(_ community: CommunityController, library: LocalLibrary? = nil) async {

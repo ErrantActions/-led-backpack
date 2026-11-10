@@ -35,6 +35,7 @@ final class CloudVaultStore: ObservableObject {
     private var receivedQR: CloudAdoptionQR?
     private var config: CommunityConfig?
     private var storageFailure: String?
+    private var completeSnapshot: CloudVaultState?
 
     init(folder: URL? = nil) {
         do { ledger = try CloudVaultLedger(folder: folder); cache = try CloudVaultKeychain() }
@@ -111,7 +112,7 @@ final class CloudVaultStore: ObservableObject {
     }
     func bind(_ community: CommunityController) async {
         stopWork(); epoch = UUID(); busy = false
-        client = nil; state = nil; items = []; titles = [:]; categories = [:]; keys = [:]; migration = nil
+        client = nil; state = nil; items = []; titles = [:]; categories = [:]; keys = [:]; migration = nil; completeSnapshot = nil
         adoption = nil; recipient = nil; receivedQR = nil; locked = true; available = false
         pin = CloudDevicePin(); config = nil; failure = storageFailure; progress = ""; lastSynchronized = nil
         let binding = epoch
@@ -132,16 +133,21 @@ final class CloudVaultStore: ObservableObject {
     }
     func refresh() async throws {
         let client = try connection()
-        let next = try await client.state()
+        let next: CloudVaultState
+        var unchanged = false
+        if config?.cloudDeltaSyncEnabled == true, let completeSnapshot {
+            (next, unchanged) = try await client.changes(since: completeSnapshot)
+        } else { next = try await client.state() }
         try checked(client)
         let previousKey = pin.keyID
         let contextChanged = pin.generation != nil && (pin.generation != next.generation || pin.keyID != next.keyId)
         do { try pin.accept(next) }
         catch {
-            pin.paused = true; keys = [:]; locked = true; items = []; titles = [:]; categories = [:]
+            pin.paused = true; keys = [:]; locked = true; items = []; titles = [:]; categories = [:]; completeSnapshot = nil
             try savePin(); throw error
         }
         if contextChanged || !next.enabled || next.deleting {
+            completeSnapshot = nil; unchanged = false
             keys = [:]; locked = true; recipient = nil; receivedQR = nil; adoption = nil
             if let previousKey, let cache { try await cache.remove(scope: cacheScope(client, previousKey)); try checked(client) }
         }
@@ -157,7 +163,7 @@ final class CloudVaultStore: ObservableObject {
                     let original = error
                     try checked(client)
                     keys.removeValue(forKey: keyID); locked = true; pin.paused = true
-                    items = []; titles = [:]; categories = [:]; try savePin()
+                    items = []; titles = [:]; categories = [:]; completeSnapshot = nil; try savePin()
                     try await cache.remove(scope: cacheScope(client, keyID))
                     try checked(client)
                     throw original
@@ -166,10 +172,14 @@ final class CloudVaultStore: ObservableObject {
             } else { locked = true }
         }
         guard !pin.paused else { return }
-        let (snapshot, records) = try await client.scan()
+        let snapshot: CloudVaultState
+        let records: [CloudVaultItem]
+        if unchanged { snapshot = next; records = items }
+        else { (snapshot, records) = try await client.scan() }
         try checked(client)
         try pin.accept(snapshot); state = snapshot; items = records; try savePin()
-        guard !pin.paused else { items = []; titles = [:]; categories = [:]; return }
+        guard !pin.paused else { items = []; titles = [:]; categories = [:]; completeSnapshot = nil; return }
+        completeSnapshot = snapshot
         titles = [:]; categories = [:]
         if !locked {
             for item in records {
@@ -182,7 +192,7 @@ final class CloudVaultStore: ObservableObject {
     }
     func pause() throws {
         stopWork(); epoch = UUID(); busy = false
-        pin.paused = true; items = []; titles = [:]; categories = [:]
+        pin.paused = true; items = []; titles = [:]; categories = [:]; completeSnapshot = nil
         do { try savePin() }
         catch { throw BackpackError.invalid("Private sync stopped, but its pause setting could not be saved. Do not rely on the pause surviving a restart. \(error.localizedDescription)") }
     }
@@ -522,7 +532,7 @@ final class CloudVaultStore: ObservableObject {
         try checked(client); try reply.cloud.validate(client.scope)
         if let keyID = state.keyId, let cache { try await cache.remove(scope: cacheScope(client, keyID)) }
         try checked(client)
-        keys = [:]; locked = true; pin.paused = true; pin.remoteReset = true; items = []; titles = [:]; categories = [:]
+        keys = [:]; locked = true; pin.paused = true; pin.remoteReset = true; items = []; titles = [:]; categories = [:]; completeSnapshot = nil
         try pin.accept(reply.cloud); self.state = reply.cloud; try savePin()
     }
     func deleteItem(_ item: CloudVaultItem) async throws {

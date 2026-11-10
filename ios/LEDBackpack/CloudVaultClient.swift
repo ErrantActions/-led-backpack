@@ -57,6 +57,24 @@ struct CloudVaultClient: Sendable {
         try response.cloud.validate(scope)
         return response.cloud
     }
+    func changes(since snapshot: CloudVaultState) async throws -> (CloudVaultState, Bool) {
+        guard let keyID = snapshot.keyId else { return (try await state(), false) }
+        struct Reply: Decodable { let cloud: CloudVaultState; let unchanged: Bool }
+        let response: Reply = try await call("changes", query: [
+            URLQueryItem(name: "generation", value: String(snapshot.generation)),
+            URLQueryItem(name: "revision", value: String(snapshot.revision)),
+            URLQueryItem(name: "keyId", value: keyID),
+            URLQueryItem(name: "mode", value: snapshot.mode.rawValue)])
+        try response.cloud.validate(scope)
+        if response.unchanged {
+            guard response.cloud.enabled, !response.cloud.deleting,
+                  response.cloud.generation == snapshot.generation, response.cloud.revision == snapshot.revision,
+                  response.cloud.keyId == keyID, response.cloud.mode == snapshot.mode else {
+                throw BackpackError.invalid("Private cloud unchanged response has a different snapshot context.")
+            }
+        }
+        return (response.cloud, response.unchanged)
+    }
     func enable(generation: Int) async throws -> CloudVaultState {
         struct Input: Encodable { let generation: Int }
         struct Reply: Decodable { let cloud: CloudVaultState }

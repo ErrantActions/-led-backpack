@@ -10,6 +10,36 @@ extension CommunityFeatureClient {
     func recentChats(page: Int) async throws -> RecentChatPage {
         try JSONDecoder().decode(RecentChatPage.self, from: await send(.messaging, "social/conversations", query: chatPaging(page)))
     }
+    func chatInbox(after: String?) async throws -> NativeChatInboxPage {
+        guard chatInboxEnabled else { throw BackpackError.invalid("Unified chat inbox is not enabled.") }
+        var query = [URLQueryItem(name: "limit", value: "24")]
+        if let after { query.append(URLQueryItem(name: "after", value: after)) }
+        let page = try JSONDecoder().decode(NativeChatInboxPage.self, from: await send(.messaging, "social/chat-inbox", query: query))
+        guard page.version == 1, page.limit == 24, page.entries.count <= 24,
+              page.hasMore == (page.nextAfter != nil), Set(page.entries.map(\.id)).count == page.entries.count,
+              page.entries.allSatisfy({ entry in
+                  guard entry.updatedAt.isFinite, (0...9_007_199_254_740_991).contains(entry.updatedAt),
+                        entry.updatedAt.rounded() == entry.updatedAt, entry.snippet == nil else { return false }
+                  switch entry.kind {
+                  case "direct":
+                      guard let contact = entry.contact else { return false }
+                      return entry.chat == nil && entry.invitation == nil && entry.unread == nil &&
+                          contact.profile.id != accountID && contact.lastMessageCreatedAt == entry.updatedAt &&
+                          entry.id == "direct:\(contact.profile.id.uuidString.lowercased()):\(contact.eventId?.uuidString.lowercased() ?? "")"
+                  case "room":
+                      guard let room = entry.chat else { return false }
+                      return entry.contact == nil && entry.invitation == nil &&
+                          entry.id == "room:\(room.id.uuidString.lowercased())" && room.updatedAt == entry.updatedAt &&
+                          (room.kind == "group" ? groupsEnabled : room.kind == "event" && eventChatsEnabled)
+                  case "invitation":
+                      guard let invitation = entry.invitation else { return false }
+                      return groupsEnabled && entry.chat == nil && entry.contact == nil &&
+                          entry.id == "invitation:\(invitation.id.uuidString.lowercased())"
+                  default: return false
+                  }
+              }) else { throw BackpackError.invalid("Invalid unified inbox response.") }
+        return page
+    }
     func rooms(page: Int) async throws -> NativeChatRoomsPage {
         guard groupsEnabled || eventChatsEnabled else { throw BackpackError.invalid("Rooms are not enabled by this server.") }
         return try JSONDecoder().decode(NativeChatRoomsPage.self, from: await send(.messaging, "social/chats", query: chatPaging(page)))
@@ -97,7 +127,27 @@ extension CommunityFeatureClient {
             query += [URLQueryItem(name: "beforeCreatedAt", value: String(Int64(before.createdAt))),
                 URLQueryItem(name: "beforeId", value: before.id.uuidString.lowercased())]
         }
-        let page = try JSONDecoder().decode(DirectChatPage.self, from: await send(.messaging, "social/messages", query: query))
+        let context = ChatConversation.direct(peer: peer, event: event)
+        var cached: DirectChatPage?
+        if before == nil, chatHistoryValidationEnabled, let cache = validatedChatHistory,
+           case .direct(let savedContext, let scope, let page) = cache,
+           savedContext == context, scope == chatScope, let revision = page.historyRevision {
+            cached = page
+            query.append(URLQueryItem(name: "knownRevision", value: revision))
+        }
+        let data = try await send(.messaging, "social/messages", query: query)
+        let validation = try JSONDecoder().decode(NativeChatHistoryValidation.self, from: data)
+        if validation.unchanged == true {
+            guard var cached, validation.historyRevision == cached.historyRevision else {
+                throw BackpackError.invalid("Unmatched private history validation.")
+            }
+            cached.unchanged = true
+            return cached
+        }
+        let page = try JSONDecoder().decode(DirectChatPage.self, from: data)
+        if chatHistoryValidationEnabled, page.historyRevision?.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) == nil {
+            throw BackpackError.invalid("Missing private history validation contract.")
+        }
         if retainedChatRecoveryEnabled {
             guard page.retentionDays == 30, page.recovery == "retained-history-only", page.encryption == "server-managed" else {
                 throw BackpackError.invalid("The server did not confirm retained-history recovery and encryption. No recovery fallback is available.")
@@ -110,19 +160,39 @@ extension CommunityFeatureClient {
                 NativeChatRetention.retained(createdAtMilliseconds: row.createdAt, now: Date())
         }) else { throw BackpackError.invalid("Private conversation history does not match its captured context.") }
         for row in page.messages { _ = try row.pin?.normalized() }
+        if before == nil, chatHistoryValidationEnabled { validatedChatHistory = .direct(context: context, scope: chatScope, page: page) }
         return page
     }
     func roomHistory(_ id: UUID, before: Int?) async throws -> RoomChatPage {
         var query = [URLQueryItem(name: "limit", value: "50")]
         if let before { guard before > 0 else { throw BackpackError.invalid("Invalid room cursor.") }; query.append(URLQueryItem(name: "before", value: String(before))) }
-        let page = try JSONDecoder().decode(RoomChatPage.self, from: await send(.messaging,
-            "social/chats/\(id.uuidString.lowercased())/messages", query: query))
+        var cached: RoomChatPage?
+        if before == nil, chatHistoryValidationEnabled, let cache = validatedChatHistory,
+           case .room(let savedID, let scope, let page) = cache,
+           savedID == id, scope == chatScope, let revision = page.historyRevision {
+            cached = page
+            query.append(URLQueryItem(name: "knownRevision", value: revision))
+        }
+        let data = try await send(.messaging, "social/chats/\(id.uuidString.lowercased())/messages", query: query)
+        let validation = try JSONDecoder().decode(NativeChatHistoryValidation.self, from: data)
+        if validation.unchanged == true {
+            guard var cached, validation.historyRevision == cached.historyRevision else {
+                throw BackpackError.invalid("Unmatched room history validation.")
+            }
+            cached.unchanged = true
+            return cached
+        }
+        let page = try JSONDecoder().decode(RoomChatPage.self, from: data)
+        if chatHistoryValidationEnabled, page.historyRevision?.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) == nil {
+            throw BackpackError.invalid("Missing room history validation contract.")
+        }
         guard page.chat.id == id, !page.viewToken.isEmpty, page.messages.count <= 50,
               ["group", "event"].contains(page.chat.kind),
               page.messages.allSatisfy({ ($0.sequence ?? 0) > 0 && $0.createdAt.isFinite &&
                   (0...9_007_199_254_740_991).contains($0.createdAt) }) else { throw BackpackError.invalid("Invalid scoped room history.") }
         guard page.chat.kind == "group" ? groupsEnabled : eventChatsEnabled else { throw BackpackError.invalid("This room kind became unavailable.") }
         for row in page.messages { _ = try row.pin?.normalized() }
+        if before == nil, chatHistoryValidationEnabled { validatedChatHistory = .room(id: id, scope: chatScope, page: page) }
         return page
     }
     func sendChat(_ intent: ChatSendIntent) async throws -> NativeChatMessage {

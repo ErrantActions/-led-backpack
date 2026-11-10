@@ -17,6 +17,10 @@ struct CommunityMessagesView: View {
     @State private var recent: [RecentChatContact] = []
     @State private var rooms: [NativeChatRoom] = []
     @State private var invitations: [NativeChatInvitation] = []
+    @State private var unifiedEntries: [NativeChatInboxEntry]?
+    @State private var inboxCursors: [String?] = [nil]
+    @State private var composePage = 1
+    @State private var composeMore = false
     @State private var page = 1
     @State private var hasMore = false
     @State private var selection: ChatScreenSelection?
@@ -34,6 +38,18 @@ struct CommunityMessagesView: View {
         rooms.filter { filter.matches($0.title, context: $0.kind == "event" ? "Event-wide chat" : "Group chat", query: query) }
     }
     private var inboxEntries: [NativeChatInboxEntry] {
+        if let unifiedEntries {
+            return unifiedEntries.filter { entry in
+                switch entry {
+                case .direct(let contact):
+                    return filter == .chats && filter.matches(contact.profile.displayName,
+                        context: contact.eventId == nil ? "Direct message" : "Private organizer question", query: query)
+                case .room(let room):
+                    return filter != .requests && filter.matches(room.title,
+                        context: room.kind == "event" ? "Event-wide chat" : "Group chat", query: query)
+                }
+            }
+        }
         let contacts = filter == .chats ? filteredRecent.map(NativeChatInboxEntry.direct) : []
         let groups = filter != .requests ? filteredRooms.map(NativeChatInboxEntry.room) : []
         return (contacts + groups).sorted(by: NativeChatInboxEntry.newestFirst)
@@ -68,7 +84,7 @@ struct CommunityMessagesView: View {
                     }
                 } label: { Image(systemName: "square.and.pencil").frame(minWidth: 44, minHeight: 44) }
                     .accessibilityLabel("New conversation")
-                    .disabled(session.denied || session.client == nil || community.config?.messagingEnabled != true)
+                    .disabled(session.busy || session.denied || session.client == nil || community.config?.messagingEnabled != true)
             }
         }
         .task(id: "\(community.accountRevision):\(community.chatAccessRevision):\(community.user?.role ?? ""):\(community.config?.messagingEnabled == true):\(community.config?.chatMessageRequestsEnabled == true):\(community.config?.groupChatsEnabled == true):\(community.config?.eventChatsEnabled == true)") {
@@ -84,11 +100,17 @@ struct CommunityMessagesView: View {
         .onChange(of: session.denied) { _, denied in if denied { clear(); selection = nil } }
         .onChange(of: community.accountRevision) { _, _ in clear(); selection = nil; NativeChatDraftStore.shared.invalidate() }
         .onChange(of: community.chatAccessRevision) { _, _ in clear(); selection = nil; session.clear(); NativeChatDraftStore.shared.invalidate() }
+        .onChange(of: community.config?.chatInboxEnabled) { _, _ in
+            clear(); page = 1; selection = nil; session.bind(community)
+            if phase == .active, community.config?.messagingEnabled == true { load() }
+        }
         .onDisappear { session.clear(); clear() }
         .sheet(isPresented: $creating, onDismiss: load) { NativeGroupCreateView() }
         .sheet(isPresented: $composing) {
             NavigationStack {
                 List {
+                    if session.busy { ProgressView() }
+                    if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                     ForEach(friends) { person in
                         Button {
                             composing = false
@@ -96,8 +118,18 @@ struct CommunityMessagesView: View {
                         } label: { contactRow(person, subtitle: "Direct message") }
                             .buttonStyle(.plain)
                     }
-                    if friends.isEmpty { Text("Connect with a friend to start a conversation.").foregroundStyle(.secondary) }
+                    if !session.busy, session.failure == nil, friends.isEmpty {
+                        Text("Connect with a friend to start a conversation.").foregroundStyle(.secondary)
+                    }
+                    if composePage > 1 || composeMore {
+                        HStack {
+                            Button("Previous") { composePage -= 1; loadComposeFriends() }.disabled(composePage <= 1 || session.busy)
+                            Spacer()
+                            Button("Next") { composePage += 1; loadComposeFriends() }.disabled(!composeMore || session.busy)
+                        }
+                    }
                 }
+                .task { composePage = 1; loadComposeFriends() }
                 .modernScene().navigationTitle("New message")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { composing = false } } }
                 .safeAreaInset(edge: .bottom) {
@@ -185,9 +217,12 @@ struct CommunityMessagesView: View {
                     Spacer()
                     Button("Next") { page += 1; load() }.disabled(!hasMore || session.busy)
                 } }
-                if !session.busy && session.failure == nil && recent.isEmpty && rooms.isEmpty && invitations.isEmpty {
+                if !session.busy && session.failure == nil && !hasMore && recent.isEmpty && rooms.isEmpty && invitations.isEmpty {
                     ContentUnavailableView("No conversations yet", systemImage: "bubble.left.and.bubble.right",
                         description: Text("Connect with a friend to start chatting."))
+                }
+                if !session.busy, session.failure == nil, hasMore, recent.isEmpty, rooms.isEmpty, invitations.isEmpty {
+                    Text("No accessible conversations on this page. Continue to the next page.").foregroundStyle(.secondary)
                 }
                 if !session.busy && session.failure == nil && !query.isEmpty && filter != .requests &&
                     filteredRooms.isEmpty && (filter == .groups || filteredRecent.isEmpty) {
@@ -223,16 +258,44 @@ struct CommunityMessagesView: View {
     private func load() {
         let requested = page
         session.run { client in
+            if client.chatInboxEnabled {
+                guard inboxCursors.indices.contains(requested - 1) else {
+                    throw BackpackError.invalid("Reload the inbox before requesting this page.")
+                }
+                let result = try await client.chatInbox(after: inboxCursors[requested - 1])
+                try session.checked(client)
+                recent = result.entries.compactMap(\.contact); rooms = result.entries.compactMap(\.chat)
+                invitations = result.entries.compactMap(\.invitation)
+                unifiedEntries = result.entries.compactMap { entry in
+                    if let contact = entry.contact { return .direct(contact) }
+                    if let room = entry.chat { return .room(room) }
+                    return nil
+                }
+                inboxCursors = Array(inboxCursors.prefix(requested))
+                if let next = result.nextAfter { inboxCursors.append(next) }
+                hasMore = result.hasMore
+                return
+            }
             let contacts = try await client.recentChats(page: requested)
-            let peers = community.config?.socialEnabled == true ? try await client.friends(page: requested).friends : []
             let chats = client.groupsEnabled || client.eventChatsEnabled ? try await client.rooms(page: requested) : nil
             let invites = client.groupsEnabled ? try await client.chatInvitations(page: requested) : nil
             try session.checked(client)
-            recent = contacts.conversations; friends = peers; rooms = chats?.chats ?? []; invitations = invites?.invitations ?? []
-            hasMore = contacts.conversations.count == 24 || peers.count == 50 || chats?.hasMore == true || invites?.hasMore == true
+            recent = contacts.conversations; rooms = chats?.chats ?? []; invitations = invites?.invitations ?? []; unifiedEntries = nil
+            hasMore = contacts.conversations.count == 24 || chats?.hasMore == true || invites?.hasMore == true
         }
     }
-    private func clear() { friends = []; recent = []; rooms = []; invitations = []; pendingInvite = nil; composing = false; creating = false; query = "" }
+    private func loadComposeFriends() {
+        let requested = composePage
+        session.run { client in
+            let result = try await client.friends(page: requested)
+            try session.checked(client)
+            friends = result.friends; composeMore = result.friends.count == 50
+        }
+    }
+    private func clear() {
+        friends = []; recent = []; rooms = []; invitations = []; unifiedEntries = nil; inboxCursors = [nil]
+        pendingInvite = nil; composing = false; creating = false; query = ""; composePage = 1; composeMore = false
+    }
 }
 
 @MainActor
@@ -383,6 +446,12 @@ struct CommunityConversationView: View {
             }
         }
         .onChange(of: text) { _, _ in scheduleTyping() }
+        .onChange(of: community.config?.chatHistoryValidationEnabled) { _, _ in
+            clear(preservingDraft: true); session.clear()
+            if phase == .active, community.config?.messagingEnabled == true {
+                session.bind(community); restoreDraft(); load(older: false)
+            }
+        }
         .task(id: "reference:\(phase):\(community.accountRevision):\(community.config?.chatReferencesEnabled == true):\(community.avatarPolicyChanging)") {
             guard phase == .active, community.config?.chatReferencesEnabled == true, !community.avatarPolicyChanging else { return }
             while !Task.isCancelled {
@@ -606,14 +675,25 @@ struct CommunityConversationView: View {
                     try session.checked(client)
                     newQuestionsAllowed = permission.newMessagesAllowed; canManageOwnContact = permission.canManageOwnContact
                     if !canManageOwnContact { contactPreference = nil }
+                    if reconcile, result.unchanged == true, !messages.isEmpty {
+                        messages.removeAll { !NativeChatRetention.retained(createdAtMilliseconds: $0.createdAt, now: Date()) }
+                        referencesVerified = true; restoreOutbox()
+                        return
+                    }
                     rows = result.messages
-                    let tokenChanged = result.viewToken != nil && result.viewToken != viewToken
+                    let currentToken = client.chatHistoryValidationEnabled ? result.historyScopeToken ?? result.viewToken : result.viewToken
+                    let tokenChanged = currentToken != nil && currentToken != viewToken
                     if !reconcile || tokenChanged { directCursor = result.nextBefore; more = result.hasMore }
-                    if let token = result.viewToken { if tokenChanged { messages = [] }; viewToken = token }
+                    if let token = currentToken { if tokenChanged { messages = [] }; viewToken = token }
                     if !older && !reconcile { messages = [] }
                 case .room(let id):
                     let result = try await client.roomHistory(id, before: older ? roomCursor : nil)
                     try session.checked(client)
+                    if reconcile, result.unchanged == true, !messages.isEmpty {
+                        messages.removeAll { !NativeChatRetention.retained(createdAtMilliseconds: $0.createdAt, now: Date()) }
+                        referencesVerified = true; restoreOutbox()
+                        return
+                    }
                     let tokenChanged = viewToken != result.viewToken
                     if tokenChanged { messages = [] }
                     if !older && !reconcile { messages = [] }

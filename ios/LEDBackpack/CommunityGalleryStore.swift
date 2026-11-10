@@ -9,7 +9,7 @@ final class CommunityGalleryStore: ObservableObject {
     @Published private(set) var failure: String?
     @Published private(set) var nextPage: Int?
     @Published private(set) var total = 0
-    private var revisions: [UUID: UUID] = [:]
+    private var revisions: [UUID: String] = [:]
     private var fetch: (@MainActor (Int) async throws -> CommunityPage)?
     private var valid: @MainActor () -> Bool = { false }
     private var work: Task<Void, Never>?
@@ -41,7 +41,7 @@ final class CommunityGalleryStore: ObservableObject {
         if items.isEmpty && failure == nil && nextPage == nil { load(1) }
     }
     func thumbnailKey(_ item: CommunityItem, url: URL) -> String {
-        "community:\(item.id):\(revisions[item.id]?.uuidString ?? "original"):\(url.absoluteString)"
+        "community:\(item.id):\(revisions[item.id] ?? "original"):\(url.absoluteString)"
     }
     private func load(_ page: Int) {
         guard active, valid(), !loading, let fetch else { return }
@@ -64,7 +64,7 @@ final class CommunityGalleryStore: ObservableObject {
                 for item in result.items {
                     if let index = indices[item.id] { merged[index] = item }
                     else if merged.count < 100 { indices[item.id] = merged.count; merged.append(item); added += 1 }
-                    revisions[item.id] = UUID()
+                    revisions[item.id] = item.contentRevision ?? UUID().uuidString
                 }
                 items = merged; total = result.total
                 let more = page * result.limit < result.total && merged.count < 100

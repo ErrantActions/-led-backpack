@@ -139,7 +139,7 @@ struct CommunityGallery: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 14)], spacing: 14) {
             ForEach(items) { item in
                 let animated = community.user?.mediaPreferences?.permitsAnimation(reducedMotion: reducedMotion, manual: false) ?? !reducedMotion
-                let url = animated ? item.gifUrl : item.previewUrl
+                let url = animated ? (community.config?.catalogAnimatedPreviewsEnabled == true ? item.animatedPreviewUrl ?? item.gifUrl : item.gifUrl) : item.previewUrl
                 let selected = selection.selection.ids.contains(item.id)
                 Button { selection.toggle(item.id) } label: {
                     GIFThumbnail(key: catalog.thumbnailKey(item, url: url), cache: false, animationAllowed: animated) {

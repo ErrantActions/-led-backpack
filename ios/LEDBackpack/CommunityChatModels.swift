@@ -92,6 +92,9 @@ struct DirectChatPage: Decodable {
     let encryption: String?
     let retentionDays: Int?
     let recovery: String?
+    let historyRevision: String?
+    let historyScopeToken: String?
+    var unchanged: Bool?
 }
 struct RoomChatPage: Decodable {
     let chat: NativeChatRoom
@@ -100,6 +103,31 @@ struct RoomChatPage: Decodable {
     let nextBefore: Int?
     let latestSequence, readSequence: Int
     let viewToken: String
+    let historyRevision: String?
+    var unchanged: Bool?
+}
+enum NativeChatHistoryCache {
+    case direct(context: ChatConversation, scope: String, page: DirectChatPage)
+    case room(id: UUID, scope: String, page: RoomChatPage)
+}
+struct NativeChatHistoryValidation: Decodable {
+    let unchanged: Bool?
+    let historyRevision: String?
+}
+struct NativeChatInboxPage: Decodable {
+    let version, limit: Int
+    let entries: [Entry]
+    let hasMore: Bool
+    let nextAfter: String?
+    struct Entry: Decodable, Identifiable {
+        let id, kind: String
+        let updatedAt: Double
+        let contact: RecentChatContact?
+        let chat: NativeChatRoom?
+        let invitation: NativeChatInvitation?
+        let unread: Int?
+        let snippet: String?
+    }
 }
 struct RecentChatContact: Decodable, Identifiable {
     let profile: SocialPerson
