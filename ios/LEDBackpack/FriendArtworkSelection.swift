@@ -161,14 +161,11 @@ struct FriendArtworkPicker: View {
                 Section("Existing local GIFs — first 100") {
                     ForEach(Array(library.state.media.prefix(100))) { item in
                         Button {
-                            choose(name: item.name, attribution: item.attribution) {
-                                let url = try library.phoneOriginalURL(item)
-                                return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
-                            } label: {
-                                GIFThumbnail(key: item.previewKey) { try library.data(item) }
-                                    .frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
-                            }.buttonStyle(.plain).accessibilityLabel("Choose \(item.name)")
-                        }
+                            chooseLocalArtwork(item)
+                        } label: {
+                            GIFThumbnail(key: item.previewKey) { try library.data(item) }
+                                .frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 12))
+                        }.buttonStyle(.plain).accessibilityLabel("Choose \(item.name)")
                     }
                 }
                 Text("For another saved artwork use the explicit file chooser. Nothing scans cloud, publishes, writes a backpack slot or changes your currently displayed artwork.").font(.caption)
@@ -184,6 +181,13 @@ struct FriendArtworkPicker: View {
                 .onDisappear { task?.cancel(); selection.cancelPending() }
         }
     }
+    private func chooseLocalArtwork(_ item: SavedMedia) {
+        choose(name: item.name, attribution: item.attribution) {
+            let url = try library.phoneOriginalURL(item)
+            return try await Task.detached { try PhoneDisplayFileReader.read(url) }.value
+        }
+    }
+
     private func choose(name: String, attribution: Attribution?, read: @escaping @MainActor () async throws -> Data) {
         task?.cancel()
         task = Task {
