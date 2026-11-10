@@ -1,5 +1,29 @@
 # LED Backpack for iOS
 
+## Events: invitation-first rework (current source, not build 12)
+
+**Social > Events** now has a prominent full-width entry. Explore, Yours and
+Invites retain their existing authorized API lists and paging. Search filters
+only the loaded page; it is not global or GPS-based discovery.
+
+Creation is one essentials screen: name, chosen date/time, confirmed venue and
+audience (private by default). Description, capacity and type are optional
+details. A visual invitation preview captures the exact save input and revision;
+only its final action writes. Successful creation opens the actual event hub,
+where hosts can add cover photos, invite people or plan routes afterward.
+
+The hub puts the poster, authorized cover, readable event-zone schedule, meeting
+place and RSVP first. Description, route, hosts, activities and management tools
+are focused disclosures rather than a long form. Changed plans and moderation
+holds remain visible; RSVP, map-provider consent, GPS, chat and shared progress
+remain separate actions. Gallery moderation, account invalidation, permissions
+and revision-conflict handling are unchanged. No backend changes are required.
+
+Focused validation can be dispatched with
+`gh workflow run ios.yml --ref <branch> -f validation=events`. It builds the app
+and selects event creation/gallery, social-gate tests and one event navigation
+UI scenario, without running the full native suite or uploading a beta.
+
 ## Aurora native UI release candidate
 
 The reviewed design language is integrated through shared adaptive Aurora

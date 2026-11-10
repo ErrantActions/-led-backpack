@@ -66,16 +66,23 @@ struct NativeEventRouteReview: Identifiable {
 @MainActor
 struct EventDefinitionReviewView: View {
     let captured: NativeEventDefinitionReview
+    var busy = false
     let back: () -> Void
     let confirm: () -> Void
     var body: some View {
         NavigationStack {
-            Form {
+            ScrollView {
+              VStack(alignment: .leading, spacing: 22) {
                 let input = captured.input
-                Section(input.title) {
-                    Text("\(input.startsAtISO) – \(input.endsAtISO)")
-                    Text(input.location.label)
-                    Text("\(input.visibility.capitalized) · \(input.capacity) places")
+                EventInvitationPoster(title: input.title, kind: input.kind)
+                VStack(alignment: .leading, spacing: 18) {
+                    EventScheduleView(input: input)
+                    FeatureRowLabel(title: input.location.label, symbol: "mappin.and.ellipse")
+                    LabeledContent("Audience", value: input.visibility == "unlisted" ? "Anyone with the link" : input.visibility.capitalized)
+                    LabeledContent("Capacity", value: String(input.capacity))
+                }.padding(18).background(AuroraSurface())
+                if !input.description.isEmpty {
+                    DisclosureGroup("About this event") { Text(input.description) }
                 }
                 FeatureDetails("Exact saved fields") {
                     Text(input.expectedRevision.map { "Captured event revision \($0)" } ?? "Create new event")
@@ -84,22 +91,34 @@ struct EventDefinitionReviewView: View {
                     Text("\(input.startsAtISO) – \(input.endsAtISO)")
                     Text("IANA timezone: \(input.timezone)")
                     Text("Visibility: \(input.visibility) · capacity \(input.capacity)")
+                    Text("Link-readable consent: \(input.unlistedLinkConsent == true ? "explicitly given" : "not added")")
                     Text("Fixed venue: \(input.location.label)")
                     Text("\(input.location.latitude), \(input.location.longitude) · radius \(input.location.radiusMeters)m")
                 }
                 if input.visibility != "private" {
-                    Text("Public/link-readable details expose the fixed venue. Unlisted is not confidential: anyone with the link may read it.")
-                    Text("unlistedLinkConsent: \(input.unlistedLinkConsent == true ? "explicit true" : "omitted")")
+                    Label(input.visibility == "unlisted" ?
+                        "Anyone with the link can see the details and venue. This is not private." :
+                        "Public details and the venue are visible to everyone.", systemImage: "eye")
+                        .font(.subheadline)
                 }
                 if captured.retainsMembership {
-                    Label("Changing to private RETAINS going, invited and organizer membership.", systemImage: "exclamationmark.triangle")
-                    Text("Existing recipients/copies may retain details. Separate deliberate removals are required; Back performs no write.")
+                    Label("Existing invitations and memberships stay active.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    Text("Changing to private doesn't remove people or earlier copies.").font(.caption)
                 }
-                Text("Saves the event definition only. Routes and participation are separate choices.").font(.caption)
-                Button(input.expectedRevision == nil ? "Create event" : "Save event update", action: confirm)
-                    .buttonStyle(AuroraPrimaryButton())
-                Button("Back — no write", role: .cancel, action: back)
-            }.modernScene().navigationTitle("Review event").buttonStyle(.borderless)
+                Text("No invites sent. No GPS or progress sharing started.").font(.caption).foregroundStyle(.secondary)
+              }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
+                    if busy { ProgressView("Saving event") }
+                    Button(captured.input.expectedRevision == nil ? "Create event" : "Save changes", action: confirm)
+                        .buttonStyle(AuroraPrimaryButton()).disabled(busy)
+                        .accessibilityIdentifier("event-save")
+                    Button("Back to editing", role: .cancel, action: back).frame(minHeight: 44).disabled(busy)
+                }.padding(.horizontal, 20).padding(.vertical, 12).background(Aurora.surface)
+            }
+            .modernScene().navigationTitle("Your invitation").navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled(busy)
         }
     }
 }

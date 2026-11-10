@@ -23,9 +23,10 @@ private actor LibraryPreviewTransport: CommunityTransport {
     private let social: Bool
     private let paging: Bool
     private let messaging: Bool
+    private let events: Bool
     private var sentMessages: [[String: Any]] = []
-    init(social: Bool = false, paging: Bool = false, messaging: Bool = false) {
-        self.social = social; self.paging = paging; self.messaging = messaging
+    init(social: Bool = false, paging: Bool = false, messaging: Bool = false, events: Bool = false) {
+        self.social = social; self.paging = paging; self.messaging = messaging; self.events = events
     }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         let path = request.url?.path ?? ""
@@ -158,6 +159,35 @@ private actor LibraryPreviewTransport: CommunityTransport {
                 return try response(["readSequence": 1])
             }
         }
+        if social, events, request.httpMethod == "GET" {
+            let event: [String: Any] = [
+                "id": LibraryPreviewFixture.eventID, "title": "Glow in the park",
+                "description": "Bring your favorite lights. Meet by the fountain, then take a relaxed ride together.",
+                "startsAtISO": "2026-11-14T01:00:00Z", "endsAtISO": "2026-11-14T03:00:00Z",
+                "timezone": "America/Chicago", "visibility": "public", "serverTime": "2026-11-10T18:00:00Z",
+                "capacity": 50, "revision": 1, "cancelled": false, "status": "scheduled", "participationRevision": 1,
+                "requiresReconfirmation": false, "rsvpStatus": NSNull(),
+                "location": ["label": "Fountain plaza", "latitude": 41.88, "longitude": -87.63, "radiusMeters": 100],
+                "organizers": [["id": LibraryPreviewFixture.owner, "displayName": "UI Rider", "eventRole": "owner"]],
+                "access": ["role": "owner", "invited": false, "member": true, "canManage": true,
+                    "canManageRoute": true, "canRsvp": true, "canViewProgress": false]]
+            if ["/api/v1/events", "/api/v1/events/mine", "/api/v1/events/my-invitations"].contains(path) {
+                guard let url = request.url, let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                      let rawOffset = components.queryItems?.first(where: { $0.name == "offset" })?.value,
+                      let offset = Int(rawOffset), (0...100000).contains(offset) else {
+                    throw BackpackError.invalid("Invalid generated event page request.")
+                }
+                let rows = offset == 0 && !path.hasSuffix("/my-invitations") ? [event] : []
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: [
+                    "events": rows, "offset": offset, "limit": 50, "serverTime": "2026-11-10T18:00:00Z"]))
+            }
+            if path == "/api/v1/events/\(LibraryPreviewFixture.eventID)" {
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: ["event": event]))
+            }
+            if path == "/api/v1/events/\(LibraryPreviewFixture.eventID)/assets" {
+                return .init(status: 200, data: Data(#"{"assets":[],"coverAssetId":null,"canReorder":true}"#.utf8))
+            }
+        }
         if social, request.httpMethod == "GET" {
             switch path {
             case "/api/v1/devices":
@@ -175,7 +205,7 @@ private actor LibraryPreviewTransport: CommunityTransport {
                 return .init(status: 200, data: Data(#"{"inbound":[],"outbound":[],"page":1,"limit":50}"#.utf8))
             case "/api/v1/social/conversations":
                 return .init(status: 200, data: Data(#"{"conversations":[],"page":1,"limit":24}"#.utf8))
-            case "/api/v1/events":
+            case "/api/v1/events", "/api/v1/events/mine", "/api/v1/events/my-invitations":
                 return .init(status: 200, data: Data(#"{"events":[],"offset":0,"limit":50,"serverTime":"2026-11-08T18:00:00.000Z"}"#.utf8))
             default: break
             }
@@ -233,11 +263,13 @@ enum LibraryPreviewFixture {
     nonisolated static let owner = "223609c9-cc77-4818-8951-0c55acdaab4e"
     nonisolated static let linkedItem = "abcdefab-1234-4567-89ab-abcdefabcdef"
     nonisolated static let remoteItem = "bbbbbbbb-1234-4567-89ab-abcdefabcdef"
+    nonisolated static let eventID = "eeeeeeee-1234-4567-89ab-abcdefabcdef"
     static func community(social: Bool = CommandLine.arguments.contains("--social-ui-fixture"),
                           paging: Bool = CommandLine.arguments.contains("--pagination-ui-fixture"),
-                          messaging: Bool = CommandLine.arguments.contains("--messaging-ui-fixture")) -> CommunityController {
+                          messaging: Bool = CommandLine.arguments.contains("--messaging-ui-fixture"),
+                          events: Bool = CommandLine.arguments.contains("--events-ui-fixture")) -> CommunityController {
         CommunityController(vault: LibraryPreviewVault(), factory: { _ in
-            LibraryPreviewTransport(social: social, paging: paging, messaging: messaging)
+            LibraryPreviewTransport(social: social, paging: paging, messaging: messaging, events: events)
         })
     }
     static func make() throws -> LocalLibrary {

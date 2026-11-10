@@ -242,8 +242,8 @@ struct FixedVenueMapEditor: View {
         VStack(alignment: .leading, spacing: 14) {
             if let venue { Text(venue.label).font(.headline) }
             if enabled {
-                Toggle("Use Apple Maps and place search", isOn: $consent)
-                Text("Apple may receive map viewport and typed place searches. This app supplies no event URL, account token or participant location. No device GPS is used.")
+                Toggle("Search places with Apple Maps", isOn: $consent)
+                Text("Apple receives map views and place searches. Device GPS stays off; account details and event links aren't sent.")
                     .font(.caption).foregroundStyle(.secondary)
                 if consent && phase == .active {
                     OrganizerPlaceSearchView { place in
@@ -255,32 +255,34 @@ struct FixedVenueMapEditor: View {
                         } catch { failure = error.localizedDescription }
                     }
 
-                    Toggle("Tap the circle edge to set venue radius", isOn: $radiusMode)
+                    DisclosureGroup("Adjust venue area") {
+                        Toggle("Tap the circle edge to change radius", isOn: $radiusMode)
+                    }
                     OrganizerMap(pins: pins, geometry: [], editable: true, fit: fit, reducedMotion: reducedMotion,
                         tap: tapped, moved: { _, point in setPoint(point) }, selected: { _ in }, failed: { failure = $0 })
                         .frame(height: 300).clipShape(RoundedRectangle(cornerRadius: 22))
-                    Text("Tap to place the venue; drag its pin to refine. Search results are also selectable without touching the map.")
+                    Text("Choose a search result, tap the map or drag the pin.")
                         .font(.caption).foregroundStyle(.secondary)
                     Button("Fit venue") { fit = UUID() }
                 }
             } else { Text("Map planning is unavailable until the server advertises its capability. Existing venue details are preserved.").font(.caption) }
             if venue != nil {
                 TextField("Venue name", text: Binding(get: { venue?.label ?? "" }, set: { venue?.label = $0 }))
-                Stepper("Activation radius \(Int(venue?.radiusMeters ?? 100))m",
+                Stepper("Venue area: \(Int(venue?.radiusMeters ?? 100))m",
                     value: Binding(get: { venue?.radiusMeters ?? 100 }, set: { venue?.radiusMeters = $0 }), in: 1...100000, step: 5)
             }
             if enabled {
-                DisclosureGroup("Numeric venue alternative — no map/search required") {
-                TextField("Typed venue name", text: $numericLabel)
+                DisclosureGroup("Enter coordinates instead") {
+                TextField("Venue name", text: $numericLabel)
                 TextField("Decimal latitude (−90…90)", text: $numericLatitude).keyboardType(.numbersAndPunctuation)
                 TextField("Decimal longitude (−180…180)", text: $numericLongitude).keyboardType(.numbersAndPunctuation)
                 TextField("Explicit radius in meters (1…100000)", text: $numericRadius).keyboardType(.decimalPad)
-                Button("Copy current fixed venue into numeric controls") {
+                Button("Use current venue values") {
                     guard let venue else { return }
                     numericLabel = venue.label; numericLatitude = String(venue.latitude)
                     numericLongitude = String(venue.longitude); numericRadius = String(venue.radiusMeters)
                 }.disabled(venue == nil)
-                Button("Apply explicitly typed fixed venue") {
+                Button("Use this venue") {
                     do {
                         let point = try NativeEventFixedPointInput.parse(latitude: numericLatitude, longitude: numericLongitude)
                         guard let radius = Double(numericRadius) else { throw BackpackError.invalid("Enter an explicit radius.") }

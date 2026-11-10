@@ -134,8 +134,17 @@ struct SocialTabView: View {
                     if let failure { Text(failure).foregroundStyle(.orange) }
                 }
                 Section {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(SocialPrimaryRoute.allCases) { route in
+                    Button { primaryRoute = .events } label: {
+                        EventDiscoveryEntryLabel(available: SocialPrimaryRoute.events.available(community.config, signedIn: community.signedIn),
+                            signedIn: community.signedIn)
+                    }
+                    .buttonStyle(AuroraTileButton())
+                    .disabled(!SocialPrimaryRoute.events.available(community.config, signedIn: community.signedIn))
+                    .accessibilityIdentifier("social-primary-events")
+                    .accessibilityLabel("Events")
+                    .listRowBackground(Color.clear)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))], spacing: 12) {
+                        ForEach(SocialPrimaryRoute.allCases.filter { $0 != .events }) { route in
                             let enabled = route.available(community.config, signedIn: community.signedIn)
                             Button { primaryRoute = route } label: {
                                 FeatureCardLabel(title: route.title,

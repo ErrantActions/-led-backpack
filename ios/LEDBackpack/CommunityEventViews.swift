@@ -12,8 +12,7 @@ struct EventInvitationDeadlineView: View {
     var body: some View {
         if event.access.invited && event.access.invitationDeadline != .unspecified {
             VStack(alignment: .leading, spacing: 4) {
-                Text(event.access.invitationDeadline.label).font(.caption)
-                Text("Expiry ends invitation access only. Independent going RSVP or organizer membership can remain; expiry is not automatic RSVP, event end or participant removal.").font(.caption).foregroundStyle(.secondary)
+                Label(event.access.invitationDeadline.label, systemImage: "envelope").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -30,55 +29,80 @@ struct CommunityEventsView: View {
     @State private var creating = false
     @State private var createdEvent: CatalogEvent?
     @State private var showCreated = false
+    @State private var search = ""
+    private var available: Bool {
+        community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
+            session.client?.accountID == community.user?.id
+    }
+    private var visibleEvents: [TimedCatalogEvent] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        return query.isEmpty ? events : events.filter {
+            $0.event.title.localizedCaseInsensitiveContains(query) || $0.event.location.label.localizedCaseInsensitiveContains(query)
+        }
+    }
     var body: some View {
-        List {
-            if community.signedIn {
-                DisclosureGroup("Private event tools") {
-                    NavigationLink("Private playlists / foreground schedules") { OwnerPlaylistsView() }
-                    NavigationLink("My guestbook receipts / withdraw without event access") { OwnedGuestbookPostsView() }
-                }
-            }
-            if community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
-                session.client?.accountID == community.user?.id {
-                Section {
-                    Button { createdEvent = nil; showCreated = false; creating = true } label: { Label("Create event", systemImage: "plus.circle.fill").font(.headline) }
-                        .disabled(session.busy)
-                }
-                Picker("Events", selection: $list) { ForEach(CatalogEventList.allCases) { Text($0.rawValue).tag($0) } }
-                    .disabled(session.busy)
-                if session.busy { ProgressView() }
-                if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
-                ForEach(events) { value in
-                    NavigationLink { CommunityEventDetailView(id: value.id) } label: {
-                        VStack(alignment: .leading) {
-                            Text(value.event.title).font(.headline)
-                            Text(value.event.location.label).font(.caption)
-                            Text("\(value.event.startsAtISO) / \(value.event.timezone)").font(.caption)
-                            if value.event.rsvpStatus == .going { EventCountdownView(value: value) }
-                            else { Text(value.event.status.rawValue).font(.caption).foregroundStyle(.secondary) }
-                            EventInvitationDeadlineView(event: value.event)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                AuroraHeading(eyebrow: "Good plans. Great people.", title: "Show up.", accent: "Light it up.")
+                    .auroraEntrance()
+                if available {
+                    Button { createdEvent = nil; showCreated = false; creating = true } label: {
+                        Label("Create event", systemImage: "plus")
+                    }.buttonStyle(AuroraPrimaryButton()).disabled(session.busy)
+                        .accessibilityIdentifier("events-create")
+                    Picker("Events", selection: $list) {
+                        ForEach(CatalogEventList.allCases) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).disabled(session.busy)
+                        .accessibilityIdentifier("events-filter")
+                    if session.busy { ProgressView("Loading events") }
+                    if let failure = session.failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), alignment: .top)], spacing: 16) {
+                        ForEach(visibleEvents) { value in
+                            NavigationLink { CommunityEventDetailView(id: value.id) } label: {
+                                EventInvitationCard(value: value)
+                            }.buttonStyle(AuroraTileButton())
+                                .accessibilityIdentifier("event-card-\(value.id.uuidString.lowercased())")
                         }
                     }
+                    if visibleEvents.isEmpty && !session.busy && session.failure == nil {
+                        ContentUnavailableView(search.isEmpty ? "No events yet" : "No matches on this page",
+                            systemImage: search.isEmpty ? "calendar" : "magnifyingglass",
+                            description: Text(search.isEmpty ? list.emptyMessage : "Try another name or load a different page."))
+                    }
+                    if offset > 0 || events.count == 50 {
+                        HStack {
+                            Button("Previous") { offset -= 50; load() }.disabled(offset == 0 || session.busy)
+                            Spacer()
+                            Text("Page \(offset / 50 + 1)").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Next") { offset += 50; load() }.disabled(events.count < 50 || offset >= 100000 || session.busy)
+                        }
+                    }
+                } else {
+                    ContentUnavailableView(community.signedIn ? "Events unavailable" : "Sign in for events",
+                        systemImage: "calendar",
+                        description: Text(session.failure ?? (community.signedIn ? "Not enabled on this server." : "Find your people and make a plan.")))
+                    if !community.signedIn { NavigationLink("Sign in") { CommunityAccountView() } }
                 }
-                if offset > 0 || events.count == 50 { HStack {
-                    Button("Previous") { offset -= 50; load() }.disabled(offset == 0 || session.busy)
-                    Spacer()
-                    Button("Next") { offset += 50; load() }.disabled(events.count < 50 || offset >= 100000 || session.busy)
-                } }
-                if events.isEmpty && !session.busy && session.failure == nil {
-                    ContentUnavailableView("No events yet", systemImage: "calendar", description: Text("Create an event or accept an invitation."))
+                if community.signedIn {
+                    DisclosureGroup("Your event extras") {
+                        NavigationLink("Private playlists & schedules") { OwnerPlaylistsView() }
+                        NavigationLink("Guestbook receipts & withdrawals") { OwnedGuestbookPostsView() }
+                    }.font(.subheadline)
                 }
-                Button("Refresh events", action: load).disabled(session.busy)
-                Text("Private event links do not grant an invitation. Venues are fixed organizer coordinates, not participant GPS.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else { Text(session.failure ?? "Events are not enabled by this server.") }
+            }.padding(20).frame(maxWidth: 1080).frame(maxWidth: .infinity)
         }
         .modernScene().navigationTitle("Events")
+        .searchable(text: $search, prompt: "Search loaded events")
+        .toolbar {
+            Button(action: load) { Label("Refresh events", systemImage: "arrow.clockwise") }
+                .disabled(session.busy || !available)
+        }
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.eventsEnabled == true)") {
-            createdEvent = nil; showCreated = false; events = []; offset = 0; session.bind(community)
+            createdEvent = nil; showCreated = false; events = []; offset = 0; search = ""; session.bind(community)
             if community.config?.eventsEnabled == true { load() }
         }
-        .onChange(of: list) { _, _ in offset = 0; load() }
+        .onChange(of: list) { _, _ in offset = 0; search = ""; load() }
         .task(id: "\(events.map { $0.event.access.invitationDeadline.wireValue ?? "" }):\(phase)") {
             guard phase == .active else { return }
             do {
@@ -104,7 +128,7 @@ struct CommunityEventsView: View {
             CommunityEventEditor(original: nil, created: { createdEvent = $0 }, saved: { creating = false })
         }
         .navigationDestination(isPresented: $showCreated) {
-            if let createdEvent { EventCreationNextSteps(event: createdEvent) }
+            if let createdEvent { CommunityEventDetailView(id: createdEvent.id, newlyCreated: true) }
         }
     }
     private func load() {
@@ -145,6 +169,7 @@ struct CommunityEventDetailView: View {
     @StateObject private var session = CommunityFeatureSession()
     let id: UUID
     var noticeContext: EventNoticeContext? = nil
+    var newlyCreated = false
     @State private var value: TimedCatalogEvent?
     @State private var editingEvent: CatalogEvent?
     @State private var planningEvent: CatalogEvent?
@@ -157,6 +182,11 @@ struct CommunityEventDetailView: View {
     @State private var customInviteDeadline = false
     @State private var inviteDeadline = Date().addingTimeInterval(7 * 86400)
     @State private var ownershipAccessLost = false
+    @State private var planExpanded = false
+    private var available: Bool {
+        community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
+            session.client?.accountID == community.user?.id
+    }
     @State private var knownOwnRSVP = false
     private struct Confirmation {
         let title, message: String
@@ -164,14 +194,14 @@ struct CommunityEventDetailView: View {
         let work: @MainActor (CommunityFeatureClient) async throws -> Void
     }
     private var eventForm: some View {
-        Form {
-            if community.config?.eventsEnabled == true && community.signedIn && !session.denied &&
-                session.client?.accountID == community.user?.id {
+        ScrollView {
+          VStack(alignment: .leading, spacing: 22) {
+            if available {
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
                 if let notice { Text(notice).font(.caption) }
                 if session.busy { ProgressView() }
                 if value == nil && knownOwnRSVP {
-                    Button("Explicitly decline known own RSVP (no event detail read)") {
+                    Button("Withdraw my RSVP") {
                         session.run { client in
                             try await client.declineKnownEventRSVP(id); try session.checked(client)
                             knownOwnRSVP = false; value = nil; editingEvent = nil; planningEvent = nil; chatSelection = nil
@@ -182,103 +212,120 @@ struct CommunityEventDetailView: View {
                 if let loadedEvent = value {
                     let event = loadedEvent.event
                     if event.moderation?.held == true {
-                        Label("Held: normal participation, progress, media and conversation access withdrawn.", systemImage: "lock")
-                        Text("Organizers may correct the definition. Release requires fresh participation review and never restores shared progress.").font(.caption)
+                        Label("Event on hold", systemImage: "lock").font(.headline).foregroundStyle(Aurora.rose)
+                        Text("Participation, media, progress and chat are unavailable.").font(.subheadline)
+                        FeatureDetails("What happens next?") {
+                            Text("Hosts can correct the event. Release requires fresh participation review and does not restore shared progress.")
+                        }
                     }
-                    Section(event.title) {
+                    if newlyCreated && event.access.canManage {
+                        Label("Your event is ready", systemImage: "checkmark.circle.fill").foregroundStyle(Aurora.mint)
+                        Text("Add photos, invite people or plan an activity below.").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    EventInvitationPoster(title: event.title, kind: event.kind).auroraEntrance()
+                        .accessibilityIdentifier("event-invitation")
+                    VStack(alignment: .leading, spacing: 18) {
                         if event.moderation?.held != true { EventAuthorizedCoverView(event: event) }
-                        Text(event.description)
-                        Text(event.startsAtISO).font(.caption)
-                        Text("Until \(event.endsAtISO) / \(event.timezone)").font(.caption)
-                        Text("Status: \(event.status.rawValue)")
+                        EventScheduleView(event: event)
+                        FeatureRowLabel(title: event.location.label, symbol: "mappin.and.ellipse", subtitle: "Meeting place")
+                        if event.cancelled { StatusPill(title: "Cancelled", symbol: "calendar.badge.exclamationmark", color: Aurora.rose) }
                         if event.rsvpStatus == .going { EventCountdownView(value: loadedEvent) }
-                        LabeledContent("Your RSVP", value: event.rsvpStatus?.rawValue ?? "None")
-                        Text("Venue: \(event.location.label)")
-                        FeatureDetails("Venue & access") {
-                        LabeledContent("Visibility", value: event.visibility)
-                        LabeledContent("Capacity", value: String(event.capacity))
-                        Text("\(event.location.latitude), \(event.location.longitude) / radius \(event.location.radiusMeters)m").font(.caption)
-                        Text("Fixed organizer venue; this view does not access device GPS.").font(.caption).foregroundStyle(.secondary)
+                        if event.rsvpStatus == .declined {
+                            StatusPill(title: "Not going", symbol: "minus.circle", color: Aurora.supporting)
                         }
-                        EventInvitationDeadlineView(event: event)
-                    }
-                    if session.client?.progressDeadlinesEnabled(event) == true, event.moderation?.held != true, event.access.canViewProgress {
-                        DisclosureGroup("Shared progress") {
-                            NavigationLink("Latest shared progress / claim / withdraw") { EventProgressView(eventID: event.id) }
-                            NavigationLink("Foreground local checkpoint hint (opt in)") { EventLocalEligibilityView(eventID: event.id) }
-                            Text("A deliberately shared latest checkpoint is retained no later than event end + 24 hours, or removed earlier by withdrawal, cancellation, moderation or a shortened schedule.")
-                            Text("Extending the event does not extend an existing claim. Its returned expiresAtISO is a retention deadline, not an arrival/update timestamp.").font(.caption)
-                            Text("Shared-progress expiry does not delete separately collected private badges. This screen does not collect/share a checkpoint, GPS or arrival proof.").font(.caption).foregroundStyle(.secondary)
+                        if !event.description.isEmpty {
+                            DisclosureGroup("About this event") { Text(event.description).padding(.top, 8) }
                         }
-                    }
-                    DisclosureGroup("Games & event activities") {
-                        NavigationLink("Own team palette / organizer palette draft") { EventSocialView(eventID: event.id, surface: .teams) }
-                            .disabled(community.config?.eventTeamsEnabled != true || event.settings?.eventTeamsEnabled != true || event.moderation?.held == true)
-                        NavigationLink("Any-order hunt / separate cooperative consent") { EventSocialView(eventID: event.id, surface: .collection) }
-                            .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.moderation?.held == true)
-                        NavigationLink("Play GPS checkpoint hunt") { EventGPSHuntView(eventID: event.id) }
-                            .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.route?.published != true || event.moderation?.held == true)
-                        NavigationLink("Consented guestbook / moderation") { EventSocialView(eventID: event.id, surface: .guestbook) }
-                            .disabled(community.config?.eventGuestbookAvailable != true || event.settings?.eventGuestbookAvailable != true || event.moderation?.held == true)
-                        NavigationLink("Show / rest-stop plan (paused source preview)") { EventSocialView(eventID: event.id, surface: .display) }
-                            .disabled(community.config?.eventDisplayPlanningEnabled != true || event.settings?.eventDisplayPlanningEnabled != true || event.moderation?.held == true)
-                        NavigationLink("Deliberately open only my private recap") { EventSocialView(eventID: event.id, surface: .recap) }
-                            .disabled(community.config?.eventRecapsEnabled != true || event.settings?.eventRecapsEnabled != true || event.access.canViewRecap != true || event.moderation?.held == true)
-                        Text("Disabled means this server/event/current account has not enabled the capability. These separate choices do not RSVP, publish progress, enable GPS or start phone/backpack playback.").font(.caption)
-                    }
-                    Section("RSVP") {
-                        if event.settings?.accountAwardsEnabled == true, event.moderation?.held != true {
-                            NavigationLink("Explicitly collect a private event badge") { EventAwardCollectionView(eventID: event.id) }
-                        }
-                        if event.requiresReconfirmation == true {
-                            Label("Review the updated schedule, venue and route before reconfirming.", systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
-                        }
-                        if let route = event.route {
-                            Section("Review fixed plan") {
-                                FixedEventPlanPreview(event: event, route: route)
+                        FeatureDetails("Audience & access") {
+                            LabeledContent("Visibility", value: event.visibility.capitalized)
+                            LabeledContent("Capacity", value: String(event.capacity))
+                            Text("Private links don't grant access. Public and unlisted details include the venue.")
+                            if event.access.invited {
+                                Text("Invitation expiry ends invitation access only. Going RSVP or organizer membership can remain.")
                             }
                         }
-                        Button(event.requiresReconfirmation == true ? "Confirm reviewed participation" : "I'm going") { rsvp(event, status: .going) }
-                            .disabled(session.busy || !event.access.canRsvp || event.cancelled)
-                        Button("Decline / leave") { rsvp(event, status: .declined) }
-                            .disabled(session.busy || (event.rsvpStatus == nil && !event.access.member))
-                        Text("An invitation does not RSVP automatically. Capacity and access are checked by the server.")
-                            .font(.caption)
-                        Text("Reconfirmation never republishes checkpoint progress. Sharing requires a separate explicit action.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        EventInvitationDeadlineView(event: event)
+                    }.padding(18).background(AuroraSurface())
+                    if event.requiresReconfirmation == true {
+                        Label("Plans changed. Review the date, venue and route before confirming again.",
+                            systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                     }
-                    DisclosureGroup("Organizers") {
+                    DisclosureGroup(isExpanded: $planExpanded) {
+                        if let route = event.route { FixedEventPlanPreview(event: event, route: route) }
+                        else { Text("No route has been added.").font(.subheadline) }
+                        FeatureDetails("Fixed venue coordinates") {
+                            Text("\(event.location.latitude), \(event.location.longitude)")
+                            Text("Radius: \(event.location.radiusMeters)m. Viewing does not use device GPS.")
+                        }
+                    } label: { Label("Venue & route", systemImage: "map") }
+                        .padding(18).background(AuroraSurface())
+                    if session.client?.progressDeadlinesEnabled(event) == true, event.moderation?.held != true, event.access.canViewProgress {
+                        DisclosureGroup("Shared progress") {
+                            NavigationLink("View, share or withdraw progress") { EventProgressView(eventID: event.id) }
+                            NavigationLink("Local checkpoint hints") { EventLocalEligibilityView(eventID: event.id) }
+                            FeatureDetails("Sharing & retention") {
+                                Text("Sharing and GPS are separate opt-ins. This page does not enable either.")
+                                Text("Shared checkpoints expire no later than event end + 24 hours, or earlier on withdrawal, cancellation, moderation or a shorter schedule. Extending an event does not extend a claim.")
+                                Text("Expiry is a retention deadline, not proof of arrival. Private badges are separate.")
+                            }
+                        }.padding(18).background(AuroraSurface())
+                    }
+                    DisclosureGroup("Activities & extras") {
+                        NavigationLink("Team colors") { EventSocialView(eventID: event.id, surface: .teams) }
+                            .disabled(community.config?.eventTeamsEnabled != true || event.settings?.eventTeamsEnabled != true || event.moderation?.held == true)
+                        NavigationLink("Checkpoint collection") { EventSocialView(eventID: event.id, surface: .collection) }
+                            .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.moderation?.held == true)
+                        NavigationLink("GPS checkpoint hunt") { EventGPSHuntView(eventID: event.id) }
+                            .disabled(community.config?.eventCollectionsEnabled != true || event.settings?.eventCollectionsEnabled != true || event.route?.published != true || event.moderation?.held == true)
+                        NavigationLink("Guestbook") { EventSocialView(eventID: event.id, surface: .guestbook) }
+                            .disabled(community.config?.eventGuestbookAvailable != true || event.settings?.eventGuestbookAvailable != true || event.moderation?.held == true)
+                        NavigationLink("Display plan") { EventSocialView(eventID: event.id, surface: .display) }
+                            .disabled(community.config?.eventDisplayPlanningEnabled != true || event.settings?.eventDisplayPlanningEnabled != true || event.moderation?.held == true)
+                        NavigationLink("Your private recap") { EventSocialView(eventID: event.id, surface: .recap) }
+                            .disabled(community.config?.eventRecapsEnabled != true || event.settings?.eventRecapsEnabled != true || event.access.canViewRecap != true || event.moderation?.held == true)
+                        if event.settings?.accountAwardsEnabled == true, event.moderation?.held != true {
+                            NavigationLink("Collect an event badge") { EventAwardCollectionView(eventID: event.id) }
+                        }
+                        Text("Each activity asks for its own consent. Unavailable options are disabled.").font(.caption).foregroundStyle(.secondary)
+                    }.padding(18).background(AuroraSurface())
+                    DisclosureGroup("Hosts") {
                         ForEach(event.organizers) { organizer in
                             LabeledContent(organizer.displayName, value: organizer.eventRole.rawValue)
                             if community.config?.messagingEnabled == true, organizer.id != community.user?.id, event.moderation?.held != true {
-                                Button("Private question to \(organizer.displayName)") {
+                                Button("Message \(organizer.displayName)") {
                                     chatSelection = ChatScreenSelection(context: .direct(peer: organizer.id, event: event.id), title: "Private organizer question")
                                 }
                             }
                         }
-                    }
+                    }.padding(18).background(AuroraSurface())
                     if community.config?.messagingEnabled == true, community.config?.eventChatsEnabled == true, event.moderation?.held != true {
-                        Section("Event-wide conversation") {
-                            Button("Explicitly open / join event-wide chat") {
+                            Button {
                                 session.run({ client in
                                     let room = try await client.openEventRoom(event.id)
                                     try session.checked(client)
                                     chatSelection = ChatScreenSelection(context: .room(room.id), title: room.title)
                                 })
-                            }.disabled(session.busy || event.cancelled || event.requiresReconfirmation == true ||
+                            } label: {
+                                FeatureRowLabel(title: "Event chat", symbol: "bubble.left.and.bubble.right",
+                                    subtitle: "Join the group conversation")
+                                    .padding(18).background(AuroraSurface())
+                            }.buttonStyle(AuroraTileButton()).disabled(session.busy || event.cancelled || event.requiresReconfirmation == true ||
                                 (event.access.role == nil && event.rsvpStatus != .going))
-                            Text("Separate from private organizer questions. Joining never RSVPs or shares progress. Current eligibility is checked by the server.").font(.caption)
-                        }
+                    }
+                    if event.moderation?.held != true {
+                        NavigationLink { EventGalleryView(eventID: event.id, organizer: false) } label: {
+                            FeatureRowLabel(title: "Photos", symbol: "photo.on.rectangle",
+                                subtitle: "Event gallery").padding(18).background(AuroraSurface())
+                        }.buttonStyle(AuroraTileButton())
                     }
                     if event.access.canManage && !event.cancelled {
-                        DisclosureGroup("Organizer tools") {
+                        DisclosureGroup("Host tools") {
                             if event.moderation?.held != true {
-                                NavigationLink("Participants & current invitations") { EventRosterView(eventID: event.id) }
-                                NavigationLink("Organizer image gallery") { EventGalleryView(eventID: event.id, organizer: true) }
+                                NavigationLink("People & invitations") { EventRosterView(eventID: event.id) }
+                                NavigationLink("Add photos & cover") { EventGalleryView(eventID: event.id, organizer: true) }
                             }
                             if event.access.role == .owner {
-                                NavigationLink("Named co-organizers / ownership / audit") {
+                                NavigationLink("Co-hosts & ownership") {
                                     EventOwnerToolsView(eventID: event.id) { receipt in
                                         value = nil; editingEvent = nil; planningEvent = nil; pending = nil; chatSelection = nil
                                         ownershipAccessLost = receipt == nil
@@ -289,37 +336,36 @@ struct CommunityEventDetailView: View {
                                     }
                                 }
                             }
-                            Button("Edit / reschedule event") { editingEvent = event }
+                            Button("Edit event") { editingEvent = event }
                             if event.access.canManageRoute, event.route != nil, event.badges != nil {
-                                Button("Plan venue route & checkpoints") { planningEvent = event }
+                                Button("Add or edit a route") { planningEvent = event }
                                     .disabled(community.config?.eventsEnabled != true)
                             }
-                            TextField("Target account UUID", text: $target).textInputAutocapitalization(.never).autocorrectionDisabled()
+                            DisclosureGroup("Invite or manage access") {
+                            TextField("Account ID", text: $target).textInputAutocapitalization(.never).autocorrectionDisabled()
                             Picker("Action", selection: $action) {
                                 ForEach(CommunityFeatureClient.OrganizerAction.allCases.filter {
                                     [.invite, .revokeInvite, .removeParticipant].contains($0) &&
                                         (event.access.role == .owner || [.invite, .revokeInvite].contains($0))
                                 }) { Text($0.label).tag($0) }
                             }
-                            if event.moderation?.held != true {
-                                NavigationLink("Current authorized event gallery") { EventGalleryView(eventID: event.id, organizer: false) }
-                            }
                             if session.client?.eventReportsAvailable == true, event.settings?.eventReportsEnabled == true {
-                                NavigationLink("Deliberately report this event") { EventReportComposerView(event: event) }
+                                NavigationLink("Report event") { EventReportComposerView(event: event) }
                             }
                             if action == .invite, session.client?.invitationDeadlinesEnabled(event) == true {
-                                Toggle("Explicitly set / change invitation deadline", isOn: $customInviteDeadline)
+                                Toggle("Custom invitation expiry", isOn: $customInviteDeadline)
                                 if customInviteDeadline {
                                     DatePicker("Invitation deadline (UTC)", selection: $inviteDeadline, displayedComponents: [.date, .hourAndMinute])
                                         .environment(\.timeZone, .gmt)
-                                    Text("Future UTC, at most 30 days from server time. An explicit deadline changes the grant and invalidates its old notice.").font(.caption)
+                                    Text("Within 30 days. Changing expiry invalidates the old invitation notice.").font(.caption)
                                 } else {
-                                    Text("Omit deadline: new grants use the server's seven-day default; an active resend preserves the exact current expiry, including legacy no-expiry. No renewal is inferred.").font(.caption)
+                                    Text("New invitations last 7 days. Resending keeps the current expiry.").font(.caption)
                                 }
                             }
                             Button("Review organizer action") { organize(event) }
-                            Text("Revoking an invitation can leave a going member's access intact. Explicit participant removal is separate. Co-organizers are event-scoped, not account admins.")
+                            Text("Revoking an invite does not remove a going participant. Removal is a separate action.")
                                 .font(.caption).foregroundStyle(.secondary)
+                            }
                             if event.access.role == .owner {
                                 Button("Cancel event", role: .destructive) {
                                     confirm("Cancel event", "Cancel this event at revision \(event.revision)?") { client in
@@ -328,20 +374,52 @@ struct CommunityEventDetailView: View {
                                     }
                                 }
                             }
-                        }.disabled(session.busy)
+                        }.padding(18).background(AuroraSurface()).disabled(session.busy)
                     }
-                    Button("Refresh event", action: load).disabled(session.busy)
                     if let origin = community.origin {
-                        ShareLink("Share event link", item: origin.url.appendingPathComponent("events").appendingPathComponent(event.id.uuidString.lowercased()))
-                        Text("Sharing a private link never grants event access.").font(.caption)
+                        ShareLink(item: origin.url.appendingPathComponent("events").appendingPathComponent(event.id.uuidString.lowercased())) {
+                            Label("Share invitation", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        if event.visibility == "private" { Text("A private link doesn't grant access.").font(.caption).foregroundStyle(.secondary) }
                     }
                 }
-            } else { Text(session.failure ?? "This event feature is unavailable.") }
+            } else {
+                ContentUnavailableView("Event unavailable", systemImage: "calendar",
+                    description: Text(session.failure ?? "Sign in and refresh current access."))
+            }
+          }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .bottom) {
+            if available, let event = value?.event { rsvpBar(event) }
+        }
+    }
+    private func rsvpBar(_ event: CatalogEvent) -> some View {
+        VStack(spacing: 8) {
+            if event.rsvpStatus == .going && event.requiresReconfirmation != true {
+                Label("You're going", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(Aurora.mint)
+            } else {
+                Button(event.requiresReconfirmation == true ? "Review & confirm" : "I'm going") { rsvp(event, status: .going) }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .disabled(session.busy || !event.access.canRsvp || event.cancelled || event.moderation?.held == true)
+                    .accessibilityIdentifier("event-rsvp")
+            }
+            if event.rsvpStatus != nil || event.access.member {
+                Button("Can't make it", role: .destructive) { rsvp(event, status: .declined) }
+                    .font(.subheadline).frame(minHeight: 44).disabled(session.busy)
+            }
+        }
+        .padding(.horizontal, 20).padding(.vertical, 12).frame(maxWidth: .infinity)
+        .background(Aurora.surface)
     }
     private var eventLifecycle: some View {
         eventForm
         .modernScene().navigationTitle("Event")
+        .toolbar {
+            Button(action: load) { Label("Refresh event", systemImage: "arrow.clockwise") }.disabled(session.busy || !available)
+        }
+        .onChange(of: value?.event.requiresReconfirmation, initial: true) { _, review in
+            if review == true { planExpanded = true }
+        }
         .navigationDestination(item: $chatSelection) { item in CommunityConversationView(context: item.context, title: item.title) }
         .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.config?.eventsEnabled == true)") {
             value = nil; pending = nil; notice = nil; session.bind(community)
@@ -426,8 +504,9 @@ struct CommunityEventDetailView: View {
         pending = Confirmation(title: title, message: message, scope: client.instanceID, work: work)
     }
     private func rsvp(_ event: CatalogEvent, status: CatalogRSVP) {
-        confirm(status == .going ? "Confirm reviewed event" : "Decline event",
-            "Review \(event.title)'s schedule, venue and plan at participation revision \(event.participationRevision.map(String.init) ?? "legacy"). Reconfirmation does not share progress.") { client in
+        confirm(status == .going ? "Join this event?" : "Leave this event?",
+            status == .going ? "Confirm \(event.title)'s date, venue and route. GPS and progress sharing are separate choices." :
+                "Withdraw your RSVP for \(event.title)?") { client in
             let updated = try await client.rsvp(event, status: status)
             try session.checked(client)
             value = nil; pending = nil; editingEvent = nil; planningEvent = nil; chatSelection = nil
@@ -470,7 +549,6 @@ struct CommunityEventEditor: View {
     let original: CatalogEvent?
     let saved: () -> Void
     var created: ((CatalogEvent) -> Void)? = nil
-    @State private var step = EventCreationStep.basics
     @State private var loaded = false
     @State private var title = ""
     @State private var description = ""
@@ -497,108 +575,104 @@ struct CommunityEventEditor: View {
     var body: some View {
         NavigationStack { editorLifecycle }
     }
-    private var wizardForm: some View {
-            Form {
+    private var essentialsForm: some View {
+            ScrollView {
+              VStack(alignment: .leading, spacing: 22) {
                 if community.config?.eventsEnabled == true && !session.denied &&
                     session.client?.accountID == community.user?.id {
-                    Section {
-                        Text("Step \(step.rawValue + 1) of4: \(step.title)").font(.headline)
-                        HStack {
-                            ForEach(EventCreationStep.allCases) { value in
-                                Text(value.title).font(.caption).foregroundStyle(step == value ? .primary : .secondary)
-                                if value != .review { Image(systemName: "chevron.right").font(.caption2) }
-                            }
+                    EventInvitationPoster(title: title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?
+                        "A plan worth showing up for." : title, kind: kind)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("What's the plan?", systemImage: "sparkles").font(.headline)
+                        TextField("Give your event a name", text: $title)
+                            .font(.title3.weight(.semibold)).textInputAutocapitalization(.sentences)
+                            .accessibilityIdentifier("event-title")
+                    }.padding(18).background(AuroraSurface())
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("When", systemImage: "calendar").font(.headline)
+                        if let timezone = TimeZone(identifier: zone) {
+                            DatePicker("Starts", selection: Binding(get: { start }, set: { start = $0; startEdited = true }))
+                                .environment(\.timeZone, timezone)
+                            DatePicker("Ends", selection: Binding(get: { end }, set: { end = $0; endEdited = true }))
+                                .environment(\.timeZone, timezone)
                         }
-                    }
-                    if step == .basics {
-                    TextField("Event title", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                    if community.config?.eventTemplatesEnabled == true {
-                        Picker("Event type", selection: $kind) {
-                            Text("Meetup").tag("meetup"); Text("Group ride").tag("group-ride")
+                        DisclosureGroup("Time zone: \(zone.replacingOccurrences(of: "_", with: " "))") {
+                            Picker("Time zone", selection: $zone) {
+                                ForEach(Array(Set(TimeZone.knownTimeZoneIdentifiers + ["UTC"])).sorted(), id: \.self) {
+                                    Text($0.replacingOccurrences(of: "_", with: " ")).tag($0)
+                                }
+                            }.pickerStyle(.menu)
+                        }.font(.subheadline)
+                        if original == nil {
+                            Toggle("Confirm these times", isOn: Binding(get: { startEdited && endEdited },
+                                set: { startEdited = $0; endEdited = $0 }))
+                                .accessibilityIdentifier("event-confirm-times")
                         }
-                        Text("A type never creates a route or grants GPS permission. Place the actual plan separately.").font(.caption)
-                    }
-                    Picker("Visibility", selection: $visibility) {
-                        Text("Private").tag("private"); Text("Public").tag("public")
-                        if community.config?.unlistedEventsEnabled == true &&
-                            (original == nil || original?.settings?.unlistedEventsEnabled == true) {
-                            Text("Unlisted / link-readable").tag("unlisted")
-                        } else if original?.visibility == "unlisted" { Text("Existing unlisted (new capability unavailable)").tag("unlisted") }
-                    }
-                    if visibility == "unlisted" && original?.visibility != "unlisted" {
-                        Toggle("I consent to link-readable details and fixed venue", isOn: $unlistedConsent)
-                    }
-                    if visibility != "private" { Text("Public and unlisted links expose the venue; unlisted is not confidential.").font(.caption) }
-                    Stepper("Capacity \(capacity)", value: $capacity, in: 1...10000)
-                    }
-                    if step == .time {
-                    Picker("Event timezone", selection: $zone) {
-                        ForEach(Array(Set(TimeZone.knownTimeZoneIdentifiers + ["UTC"])).sorted(), id: \.self) { Text($0).tag($0) }
-                    }
-                    if let timezone = TimeZone(identifier: zone) {
-                        DatePicker("Starts", selection: Binding(get: { start }, set: { start = $0; startEdited = true })).environment(\.timeZone, timezone)
-                        DatePicker("Ends", selection: Binding(get: { end }, set: { end = $0; endEdited = true })).environment(\.timeZone, timezone)
-                    }
-                    if original == nil {
-                        Button("Explicitly choose displayed start time") { startEdited = true }
-                        Button("Explicitly choose displayed end time") { endEdited = true }
-                        Text("New schedules require deliberate start/end selection; displayed suggestions are never silently saved.").font(.caption)
-                    }
-                    }
+                    }.padding(18).background(AuroraSurface())
                     if let acknowledgement { Text(acknowledgement).foregroundStyle(.orange) }
-                    if step == .venue {
-                    Section("Fixed organizer-authored venue") {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("Where", systemImage: "mappin.and.ellipse").font(.headline)
                         FixedVenueMapEditor(venue: $venue, enabled: community.config?.eventsEnabled == true && editingAuthorized && !requiresReload)
-                        Toggle("I reviewed these fixed venue coordinates", isOn: $venueConfirmed)
-                        Text("No device GPS or participant coordinates are requested. Changes may require going participants to review again.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    }
-                    if step == .review {
-                        Section("Review before creation") {
-                            LabeledContent("Title", value: title)
-                            LabeledContent("Type", value: kind == "group-ride" ? "Group ride" : "Meetup")
-                            LabeledContent("Visibility", value: visibility)
-                            LabeledContent("Capacity", value: String(capacity))
-                            LabeledContent("Timezone", value: zone)
-                            Text("Start: \(CatalogEventTime.wire(start))\nEnd: \(CatalogEventTime.wire(end))").font(.caption)
-                            if let venue { Text("Venue: \(venue.label)").font(.caption) }
-                            Text("No RSVP, sensor use or invitations are started automatically.").font(.caption)
+                        Toggle("Confirm this venue", isOn: $venueConfirmed).disabled(venue == nil)
+                            .accessibilityIdentifier("event-confirm-venue")
+                    }.padding(18).background(AuroraSurface())
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("Who can see it?", systemImage: "person.2").font(.headline)
+                        Picker("Visibility", selection: $visibility) {
+                            Text("Private").tag("private"); Text("Public").tag("public")
+                            if community.config?.unlistedEventsEnabled == true &&
+                                (original == nil || original?.settings?.unlistedEventsEnabled == true) {
+                                Text("Link only").tag("unlisted")
+                            } else if original?.visibility == "unlisted" { Text("Link only").tag("unlisted") }
                         }
+                        .pickerStyle(.segmented).accessibilityIdentifier("event-visibility")
+                        Text(visibility == "private" ? "Invited people and members only." :
+                            visibility == "unlisted" ? "Anyone with the link can see the details and venue." :
+                                "Anyone can see the details and venue.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if visibility == "unlisted" && original?.visibility != "unlisted" {
+                            Toggle("I agree to share details and venue by link", isOn: $unlistedConsent)
+                        }
+                    }.padding(18).background(AuroraSurface())
+                    DisclosureGroup("Add details") {
+                        VStack(alignment: .leading, spacing: 14) {
+                            TextField("What should people know? (optional)", text: $description, axis: .vertical)
+                                .lineLimit(3...8)
+                            Stepper("Capacity: \(capacity)", value: $capacity, in: 1...10000)
+                            if community.config?.eventTemplatesEnabled == true {
+                                Picker("Event type", selection: $kind) {
+                                    Text("Meetup").tag("meetup"); Text("Group ride").tag("group-ride")
+                                }
+                            }
+                            Text("Photos, routes and activities come next.").font(.caption).foregroundStyle(.secondary)
+                        }.padding(.top, 12)
                     }
+                    .padding(18).background(AuroraSurface())
                     if let failure = session.failure {
                         Text(failure).foregroundStyle(.orange)
-                        Text("A revision conflict never overwrites this unsaved draft or retries automatically. Cancel to review the refreshed event, then reopen editing.")
-                            .font(.caption)
+                        if requiresReload { Text("Your draft is kept. Close and reopen the current event before saving.").font(.caption) }
                     }
                     if session.busy { ProgressView() }
-                    Section {
-                        HStack {
-                            Button("Back") { review = nil; step = EventCreationStep(rawValue: step.rawValue - 1) ?? .basics }
-                                .disabled(step == .basics || session.busy)
-                            Spacer()
-                            if step != .review {
-                                Button("Next: \(EventCreationStep(rawValue: step.rawValue + 1)?.title ?? "")") {
-                                    review = nil; step = EventCreationStep(rawValue: step.rawValue + 1) ?? .review
-                                }.disabled(!canAdvance || session.busy || !editingAuthorized || requiresReload)
-                            }
-                        }
-                    }
-                    if step == .review {
-                    Button(original == nil ? "Review new event" : "Review event update") {
+                } else { Text(session.failure ?? "Events are unavailable.") }
+              }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
+                    if let reviewIssue { Text(reviewIssue).font(.caption).foregroundStyle(.secondary) }
+                    Button(original == nil ? "Preview invitation" : "Review changes") {
                         do {
                             guard let input = definitionInput, let client = session.client else { throw BackpackError.invalid("Choose explicit times, venue and current access first.") }
                             review = try NativeEventDefinitionReview(input: input, original: original, scope: client.instanceID)
                         } catch { session.run { _ in throw error } }
-                    }.disabled(session.busy || !editingAuthorized || requiresReload || !venueConfirmed || venue == nil ||
-                        (original == nil && (!startEdited || !endEdited)) || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                } else { Text(session.failure ?? "Events are unavailable.") }
+                    }.buttonStyle(AuroraPrimaryButton())
+                        .disabled(session.busy || !editingAuthorized || requiresReload || reviewIssue != nil)
+                        .accessibilityIdentifier("event-preview-invitation")
+                }.padding(.horizontal, 20).padding(.vertical, 12).background(Aurora.surface)
             }
     }
     private var initializedEditor: some View {
-            wizardForm
+            essentialsForm
             .modernScene().navigationTitle(original == nil ? "Create event" : "Edit event")
             .toolbar { Button("Cancel") { dismiss() }.disabled(session.busy) }
             .interactiveDismissDisabled(session.busy)
@@ -645,7 +719,7 @@ struct CommunityEventEditor: View {
             }
             .onDisappear { if review == nil { session.clear() } }
             .sheet(item: $review) { captured in
-                EventDefinitionReviewView(captured: captured, back: { review = nil }) {
+                EventDefinitionReviewView(captured: captured, busy: session.busy, back: { review = nil }) {
                     guard captured.matches(definitionInput), venueConfirmed else { review = nil; return }
                     session.run(expected: captured.scope) { client in
                         do {
@@ -696,9 +770,9 @@ struct CommunityEventEditor: View {
             kind: community.config?.eventTemplatesEnabled == true ? kind : nil,
             unlistedLinkConsent: visibility == "unlisted" && original?.visibility != "unlisted" && unlistedConsent ? true : nil)
     }
-    private var canAdvance: Bool {
-        step.canAdvance(title: title, startChosen: original != nil || startEdited, endChosen: original != nil || endEdited,
-            start: start, end: end, zone: zone, venue: venue, venueConfirmed: venueConfirmed)
+    private var reviewIssue: String? {
+        EventCreationReadiness.issue(input: definitionInput, startChosen: original != nil || startEdited,
+            endChosen: original != nil || endEdited, venueConfirmed: venueConfirmed, existingVisibility: original?.visibility)
     }
     private var inputFingerprint: Data? {
         guard let input = definitionInput else { return nil }

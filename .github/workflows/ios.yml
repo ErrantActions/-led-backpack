@@ -1,6 +1,12 @@
 name: LED Backpack iOS
 on:
   workflow_dispatch:
+    inputs:
+      validation:
+        description: Focused event checks or the full native suite (no upload)
+        type: choice
+        options: [full, events]
+        default: full
   push:
     branches: [main]
     paths: ["ios/LEDBackpack/**", "ios/LEDBackpackTests/**", "ios/LEDBackpackUITests/**", "ios/Packages/**", "ios/project.yml", "ios/Info.plist", "ios/LEDBackpack.entitlements", ".github/workflows/ios.yml"]
@@ -34,6 +40,7 @@ jobs:
           echo "Selected iOS SDK: $SDK"
           python3 -c 'import sys; assert tuple(map(int,sys.argv[1].split(".")[:2])) == (27,1), "This build requires the iOS 27.1 SDK"; print("iOS 27.1 SDK selected; physical Duo fold testing remains separate.")' "$SDK"
       - name: Test portable packet codec
+        if: inputs.validation != 'events'
         run: swift test --package-path Packages/BackpackProtocol
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
@@ -42,11 +49,23 @@ jobs:
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); devices=[x for runtime,items in d["devices"].items() if runtime.endswith(".iOS-27-1") for x in items if x["name"]=="iPhone Duo"]; assert devices, "The required iOS 27.1 iPhone Duo simulator is unavailable"; print(devices[0]["udid"])')
           echo "SIMULATOR_ID=$DEVICE" >> "$GITHUB_ENV"
       - name: Build and test app
+        if: inputs.validation != 'events'
         run: |
           xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO
+      - name: Build and verify event flows only
+        if: inputs.validation == 'events'
+        run: |
+          xcodebuild test -project LEDBackpack.xcodeproj -scheme LEDBackpack \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath build -resultBundlePath build/TestResults.xcresult \
+            -only-testing:LEDBackpackTests/EventCreationStepsTests \
+            -only-testing:LEDBackpackTests/EventBuilderGalleryTests \
+            -only-testing:LEDBackpackTests/SocialTabTests \
+            -only-testing:LEDBackpackUITests/NavigationTests/testEventInvitationsAreEasyToFindAndCreationStartsWithOnlyEssentials \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
       - name: Package simulator app
         run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/LEDBackpack.app LEDBackpack-simulator.zip
       - name: Export native layout screenshots

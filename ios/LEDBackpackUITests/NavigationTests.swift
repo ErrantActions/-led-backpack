@@ -254,6 +254,44 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 10))
     }
 
+    func testEventInvitationsAreEasyToFindAndCreationStartsWithOnlyEssentials() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture", "--events-ui-fixture"]
+        app.launch()
+        signInFixture(app)
+        app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch.tap()
+        let events = app.buttons["social-primary-events"]
+        XCTAssertTrue(events.waitForExistence(timeout: 10)); XCTAssertTrue(events.isHittable)
+        attach(app, name: "Social - prominent Events entry")
+        events.tap()
+        XCTAssertTrue(app.navigationBars["Events"].waitForExistence(timeout: 10))
+        let card = app.buttons["event-card-eeeeeeee-1234-4567-89ab-abcdefabcdef"]
+        reveal(card, in: app)
+        attach(app, name: "Events - visual browse, yours and invitations")
+        card.tap()
+        XCTAssertTrue(app.navigationBars["Event"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Glow in the park"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Fountain plaza"].exists)
+        XCTAssertTrue(app.buttons["event-rsvp"].exists)
+        XCTAssertFalse(app.staticTexts["Bring your favorite lights. Meet by the fountain, then take a relaxed ride together."].isHittable)
+        attach(app, name: "Aurora event invitation - essentials visible, extras collapsed")
+        app.buttons["BackButton"].tap()
+        let create = app.buttons["events-create"]
+        XCTAssertTrue(create.waitForExistence(timeout: 10)); create.tap()
+        XCTAssertTrue(app.navigationBars["Create event"].waitForExistence(timeout: 10))
+        let title = app.textFields["event-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        title.tap(); title.typeText("My next plan\n")
+        XCTAssertFalse(app.buttons["event-preview-invitation"].isEnabled)
+        let times = app.switches["event-confirm-times"]
+        reveal(times, in: app)
+        XCTAssertEqual(times.value as? String, "0")
+        XCTAssertFalse(app.staticTexts["Step 1 of4: Basics"].exists)
+        attach(app, name: "Quick event creation - no wizard, no automatic time consent")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Events"].waitForExistence(timeout: 10))
+    }
+
     func testNativeMessagingRetainsContextDraftsAndUsesServerAcceptanceNotReadReceipts() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture", "--messaging-ui-fixture"]
