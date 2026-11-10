@@ -4,6 +4,29 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified performance build 15 upload - 2026-11-10
+
+Version **0.1.0 (15)** was signed, archived, exported and accepted by App Store
+Connect in [run 42921358818](https://github.com/ErrantActions/-led-backpack/actions/runs/42921358818).
+Source `d996fe4` retains the exact native performance inputs verified at
+`c3e57da`: app compilation and 61 selected unit tests, zero failures.
+Normal protected-environment approval was used; no simulator suites ran
+during release, and temporary signing assets were removed successfully.
+
+The matching backend is live as isolated source `8134f44`, based on deployed
+`52044b5` rather than the unrelated recovery-v2 branch. All six performance
+flags are enabled. Existing account/data/key fingerprints, environment,
+mounts, network identity and disabled capabilities were preserved. Registry v1
+remains active; recovery-v2 flags are absent. Node24 build/80 selected Linux
+checks, isolated runtime smoke and normal external HTTPS authenticated
+inbox/library/media checks passed. The dedicated synthetic member was erased
+and its generated credentials removed.
+
+App Store Connect completed processing and lists build 15 as **Ready to Submit**
+in internal group **Me**. This is not an external beta/App Store submission or
+proof of installation, physical BLE/GPS/fold behavior or live provider acceptance.
+Signing keys, backend keys, APNs/adoption/user-held/redraw settings are unchanged.
+
 ## Verified app-wide workflow build 14 upload - 2026-11-10
 
 Version **0.1.0 (14)** was signed, archived, exported and accepted by App Store

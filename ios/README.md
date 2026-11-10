@@ -1,6 +1,12 @@
 # LED Backpack for iOS
 
-## Backend-assisted performance (not in build 14)
+## Backend-assisted performance - build 15
+
+Version **0.1.0 (15)** was accepted by App Store Connect in
+[protected run 42921358818](https://github.com/ErrantActions/-led-backpack/actions/runs/42921358818).
+Signing cleanup succeeded. Apple processing completed; the build is listed
+as **Ready to Submit**, assigned to internal group **Me**. Device installation
+and physical acceptance are not implied by that listing.
 
 Optional server capabilities enable one aggregate inbox request, unchanged
 history validation, change-only library metadata and smaller recorded animated
@@ -12,19 +18,22 @@ visible. Required access, moderation, retention and snapshot checks are kept.
 New `contentRevision` values describe artwork bytes, not permission state or
 the legacy library's separate metadata `syncRevision`.
 
-These are coordinated source changes, not a backend deployment or another
-TestFlight upload. Current live flags remain authoritative; unrelated
-production device-recovery-v2 and provider/encryption capabilities were not
-activated. The backend branch is based on existing undeployed recovery-v2 work:
-do not deploy it wholesale; isolate the performance diff for an approved rollout.
+The owner-authorized backend rollout uses isolated source `8134f44`, a backport
+onto deployed `52044b5`, excluding recovery-v2 commit `c115a1a`. All six
+performance capabilities are live; every other config field, existing data,
+keys and runtime settings were preserved. Registry v1 remains in force;
+recovery-v2 flags remain absent. Normal public HTTPS authenticated checks
+passed, including synthetic-member cleanup and media 200/304.
 
 Native source `c3e57da` passed
 [focused validation 42906593608](https://github.com/ErrantActions/-led-backpack/actions/runs/42906593608):
 app compilation and 61 selected unit tests, zero failures. All three new
 performance suites ran, together with existing account and cloud-protocol
 checks; no UI or portable/full suites ran. The isolated simulator cleanup
-succeeded. Matching backend source `43a7536` passed strict compilation and
-74 distinct related backend checks across focused runs.
+succeeded. Matching native release source `d996fe4` has identical code inputs.
+The isolated production backend passed Node24 strict build, 80 distinct Linux
+checks and an isolated runtime smoke. The upload ran build/sign/upload only,
+without repeating simulator suites.
 
 Synthetic measurements, not production latency/battery claims:
 

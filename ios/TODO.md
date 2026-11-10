@@ -12,6 +12,16 @@ excluded from migration. Replacement research is maintained in
 screenshots and original layout studies tracked separately from app artwork.
 Older checkpoints below are historical evidence, not the current release board.
 
+- [x] Ship coordinated performance improvements: aggregate inbox, conditional
+  history, legacy change-only sync, encrypted snapshot validation and bounded
+  conditional artwork caching with recorded preview selection. Native source
+  `c3e57da` compiled and passed 61 selected unit checks.
+- [x] Isolate backend performance onto deployed `52044b5` as `8134f44`, excluding
+  recovery-v2; Node24 build/80 Linux checks, preserved-state rollout and public
+  authenticated HTTPS acceptance passed. Upload matching native source
+  `d996fe4` once as 0.1.0 (15), protected run 42921358818; cleanup succeeded.
+  Apple lists Ready to Submit/internal group Me. Physical installation remains
+  separate; no simulator suites were repeated during upload.
 - [x] Extend essentials-first native workflows across library/import, editors,
   phone/hardware playback, live/settings, account/cloud/social, games, event
   extras and administration. Keep mandatory consent and actual capability gates.
