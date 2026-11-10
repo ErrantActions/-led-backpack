@@ -154,7 +154,7 @@ struct CommunityMessagesView: View {
                                             .accessibilityLabel("\(room.unread) unread messages")
                                 }
                                 }
-                            }.padding(.vertical, 6).frame(minHeight: 64)
+                            }.padding(.vertical, 6).frame(minHeight: 64).contentShape(Rectangle())
                         }.buttonStyle(.plain).accessibilityIdentifier("chat-room-\(room.id.uuidString.lowercased())")
                     }
                 }
@@ -210,7 +210,7 @@ struct CommunityMessagesView: View {
             if let timestamp {
                 Text(Date(timeIntervalSince1970: timestamp / 1000), style: .relative).font(.caption2).foregroundStyle(.secondary)
             }
-        }.padding(.vertical, 6).frame(minHeight: 64)
+        }.padding(.vertical, 6).frame(minHeight: 64).contentShape(Rectangle())
     }
     private func respond(_ invite: NativeChatInvitation, accept: Bool) {
         session.run(expected: inviteScope, { try await $0.respondChatInvite(invite, accept: accept) },
