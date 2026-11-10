@@ -12,6 +12,12 @@ excluded from migration. Replacement research is maintained in
 screenshots and original layout studies tracked separately from app artwork.
 Older checkpoints below are historical evidence, not the current release board.
 
+- [x] Invitation-first events: prominent Social entry, readable browse cards,
+  Explore/Yours/Invites, essentials-first creation and captured invitation review.
+  The event hub keeps RSVP prominent and extras collapsed. Existing authorization,
+  revisions and separate map/GPS/sharing consent remain in force; not in build 12.
+- [ ] Focused build/event validation and actual native screenshot review for the
+  invitation-first rework. No full-suite or TestFlight run requested for this change.
 - [x] Build-11 upload completed before the new research/redesign phase.
 - [x] Primary-source messaging, social, riding/GPS, LED apps, iOS systems and Duo
   research documented before migration, with 41 attributed local image references.
@@ -391,6 +397,9 @@ upload is not that evidence. Local meetup/time sourcef670bed is not yet deployed
   radio/signing/provider/backend operation or dirty independent-source change.
 
 ## Owner UX follow-up: community selection / event wizard - source PURPLE
+
+Historical checkpoint: its four-step wizard and next-steps page are superseded
+by the invitation-first current source described above.
 
 - [x] Image-only community GIF grid; taps select/deselect multiple items, not
   detail pages. Explicit tap order,20selection/50MB per batch, current original/

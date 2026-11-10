@@ -183,6 +183,7 @@ struct EventInvitationCard: View {
             }
             .foregroundStyle(Aurora.lavender).padding(12)
             .background(Aurora.lavenderSurface, in: RoundedRectangle(cornerRadius: 16))
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(summary.date + ", " + summary.time)
         case .failure(let error):
             Text(error.localizedDescription).font(.caption).foregroundStyle(.orange)

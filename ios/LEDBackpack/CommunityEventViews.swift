@@ -22,6 +22,7 @@ struct EventInvitationDeadlineView: View {
 struct CommunityEventsView: View {
     @EnvironmentObject private var community: CommunityController
     @Environment(\.scenePhase) private var phase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var session = CommunityFeatureSession()
     @State private var list = CatalogEventList.accessible
     @State private var events: [TimedCatalogEvent] = []
@@ -56,7 +57,8 @@ struct CommunityEventsView: View {
                         .accessibilityIdentifier("events-filter")
                     if session.busy { ProgressView("Loading events") }
                     if let failure = session.failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), alignment: .top)], spacing: 16) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .top),
+                        count: horizontalSizeClass == .regular ? 2 : 1), spacing: 16) {
                         ForEach(visibleEvents) { value in
                             NavigationLink { CommunityEventDetailView(id: value.id) } label: {
                                 EventInvitationCard(value: value)
@@ -238,6 +240,7 @@ struct CommunityEventDetailView: View {
                         }
                         FeatureDetails("Audience & access") {
                             LabeledContent("Visibility", value: event.visibility.capitalized)
+                            LabeledContent("Time zone", value: event.timezone.replacingOccurrences(of: "_", with: " "))
                             LabeledContent("Capacity", value: String(event.capacity))
                             Text("Private links don't grant access. Public and unlisted details include the venue.")
                             if event.access.invited {
@@ -395,13 +398,20 @@ struct CommunityEventDetailView: View {
     }
     private func rsvpBar(_ event: CatalogEvent) -> some View {
         VStack(spacing: 8) {
-            if event.rsvpStatus == .going && event.requiresReconfirmation != true {
+            if event.cancelled {
+                Label("Event cancelled", systemImage: "calendar.badge.exclamationmark").foregroundStyle(Aurora.rose)
+            } else if event.moderation?.held == true {
+                Label("Event on hold", systemImage: "lock").foregroundStyle(Aurora.rose)
+            } else if event.rsvpStatus == .going && event.requiresReconfirmation != true {
                 Label("You're going", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(Aurora.mint)
             } else {
                 Button(event.requiresReconfirmation == true ? "Review & confirm" : "I'm going") { rsvp(event, status: .going) }
                     .buttonStyle(AuroraPrimaryButton())
                     .disabled(session.busy || !event.access.canRsvp || event.cancelled || event.moderation?.held == true)
                     .accessibilityIdentifier("event-rsvp")
+                if !event.access.canRsvp {
+                    Text("RSVP isn't available right now.").font(.caption).foregroundStyle(.secondary)
+                }
             }
             if event.rsvpStatus != nil || event.access.member {
                 Button("Can't make it", role: .destructive) { rsvp(event, status: .declined) }
@@ -580,8 +590,6 @@ struct CommunityEventEditor: View {
               VStack(alignment: .leading, spacing: 22) {
                 if community.config?.eventsEnabled == true && !session.denied &&
                     session.client?.accountID == community.user?.id {
-                    EventInvitationPoster(title: title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?
-                        "A plan worth showing up for." : title, kind: kind)
                     VStack(alignment: .leading, spacing: 12) {
                         Label("What's the plan?", systemImage: "sparkles").font(.headline)
                         TextField("Give your event a name", text: $title)
@@ -668,13 +676,16 @@ struct CommunityEventEditor: View {
                     }.buttonStyle(AuroraPrimaryButton())
                         .disabled(session.busy || !editingAuthorized || requiresReload || reviewIssue != nil)
                         .accessibilityIdentifier("event-preview-invitation")
+                    Button("Cancel", role: .cancel) { dismiss() }
+                        .frame(minHeight: 44).disabled(session.busy)
+                        .accessibilityIdentifier("event-create-cancel")
                 }.padding(.horizontal, 20).padding(.vertical, 12).background(Aurora.surface)
             }
     }
     private var initializedEditor: some View {
             essentialsForm
             .modernScene().navigationTitle(original == nil ? "Create event" : "Edit event")
-            .toolbar { Button("Cancel") { dismiss() }.disabled(session.busy) }
+            .navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled(session.busy)
             .task {
                 guard !loaded else { return }

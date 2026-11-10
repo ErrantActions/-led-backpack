@@ -23,6 +23,8 @@ Focused validation can be dispatched with
 `gh workflow run ios.yml --ref <branch> -f validation=events`. It builds the app
 and selects event creation/gallery, social-gate tests and one event navigation
 UI scenario, without running the full native suite or uploading a beta.
+Use `-f validation=build` instead for app compilation only, without test bundles
+or simulator boot.
 
 ## Aurora native UI release candidate
 
@@ -704,7 +706,8 @@ metadata are atomically committed together for each accepted library copy.
 The image-only My Favorites screen permits multi-select queueing/removal of
 favorite flags without deleting originals or credits.
 
-Events now have a prominent Create event action and four guided steps:
+Historical event flow (superseded by the invitation-first rework above):
+this checkpoint added a prominent Create event action and four guided steps:
 Basics → Time → Venue → Review. Explicit times, valid timezone, venue review,
 current permissions/revisions and exact pre-save confirmation are preserved.
 New events suggest the device timezone, but displayed suggested start/end times

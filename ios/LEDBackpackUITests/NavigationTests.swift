@@ -288,7 +288,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(times.value as? String, "0")
         XCTAssertFalse(app.staticTexts["Step 1 of4: Basics"].exists)
         attach(app, name: "Quick event creation - no wizard, no automatic time consent")
-        app.buttons["Cancel"].tap()
+        let cancel = app.buttons["event-create-cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancel.isHittable); cancel.tap()
         XCTAssertTrue(app.navigationBars["Events"].waitForExistence(timeout: 10))
     }
 

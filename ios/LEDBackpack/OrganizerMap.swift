@@ -243,7 +243,7 @@ struct FixedVenueMapEditor: View {
             if let venue { Text(venue.label).font(.headline) }
             if enabled {
                 Toggle("Search places with Apple Maps", isOn: $consent)
-                Text("Apple receives map views and place searches. Device GPS stays off; account details and event links aren't sent.")
+                Text("Apple receives map views and place searches. This view doesn't use device GPS or send account details or event links.")
                     .font(.caption).foregroundStyle(.secondary)
                 if consent && phase == .active {
                     OrganizerPlaceSearchView { place in
@@ -268,7 +268,7 @@ struct FixedVenueMapEditor: View {
             } else { Text("Map planning is unavailable until the server advertises its capability. Existing venue details are preserved.").font(.caption) }
             if venue != nil {
                 TextField("Venue name", text: Binding(get: { venue?.label ?? "" }, set: { venue?.label = $0 }))
-                Stepper("Venue area: \(Int(venue?.radiusMeters ?? 100))m",
+                Stepper("Venue radius: \(Int(venue?.radiusMeters ?? 100))m",
                     value: Binding(get: { venue?.radiusMeters ?? 100 }, set: { venue?.radiusMeters = $0 }), in: 1...100000, step: 5)
             }
             if enabled {
