@@ -26,6 +26,13 @@ UI scenario, without running the full native suite or uploading a beta.
 Use `-f validation=build` instead for app compilation only, without test bundles
 or simulator boot.
 
+Source `65496af` passed [focused native validation](https://github.com/ErrantActions/-led-backpack/actions/runs/42884574932):
+app compilation, 42 selected unit tests and one event UI walkthrough, all with
+zero failures. Reviewed native captures show the featured entry, invitation hub
+and persistent creation/cancel controls on the iPhone Duo simulator. This is
+fixture-based evidence, not full-suite, production-mutation or physical-device
+certification. No new TestFlight upload was performed.
+
 ## Aurora native UI release candidate
 
 The reviewed design language is integrated through shared adaptive Aurora

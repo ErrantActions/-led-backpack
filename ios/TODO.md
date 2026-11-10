@@ -16,8 +16,10 @@ Older checkpoints below are historical evidence, not the current release board.
   Explore/Yours/Invites, essentials-first creation and captured invitation review.
   The event hub keeps RSVP prominent and extras collapsed. Existing authorization,
   revisions and separate map/GPS/sharing consent remain in force; not in build 12.
-- [ ] Focused build/event validation and actual native screenshot review for the
-  invitation-first rework. No full-suite or TestFlight run requested for this change.
+- [x] Invitation source `65496af` compiled in run 42884574932: 42 selected unit
+  tests and one event UI walkthrough passed, zero failures. Native captures
+  reviewed; missing Duo modal cancellation fixed with a persistent footer action.
+  No full-suite, production mutation or new TestFlight upload performed.
 - [x] Build-11 upload completed before the new research/redesign phase.
 - [x] Primary-source messaging, social, riding/GPS, LED apps, iOS systems and Duo
   research documented before migration, with 41 attributed local image references.
