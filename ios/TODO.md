@@ -20,6 +20,10 @@ Older checkpoints below are historical evidence, not the current release board.
   tests and one event UI walkthrough passed, zero failures. Native captures
   reviewed; missing Duo modal cancellation fixed with a persistent footer action.
   No full-suite, production mutation or new TestFlight upload performed.
+- [x] Event rework promoted as `4f0312e`; protected run 42886758008 signed,
+  archived, exported and uploaded 0.1.0 (13), then cleaned up signing assets.
+  No simulator suites repeated or backend deployed. Apple shows Processing;
+  internal tester availability is not yet verified.
 - [x] Build-11 upload completed before the new research/redesign phase.
 - [x] Primary-source messaging, social, riding/GPS, LED apps, iOS systems and Duo
   research documented before migration, with 41 attributed local image references.

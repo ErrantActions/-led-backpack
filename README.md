@@ -65,9 +65,11 @@ tester availability are not verified. TestFlight uploads are build/sign/upload
 only; broad regression validation remains separate. The browser atlas's geometry
 results are not native acceptance evidence.
 
-The newer [native event rework](ios/README.md#events-invitation-first-rework-current-source-not-build-12)
+The newer [native event rework](ios/README.md#invitation-first-events)
 adds a prominent Events entry, invitation-style browsing/details and
-essentials-first creation. It is not included in build 12.
+essentials-first creation. It was uploaded as **0.1.0 (13)** with successful
+signing cleanup and no repeated simulator suites. Apple shows Processing;
+internal tester availability is not yet verified.
 
 ## Status and important limits
 

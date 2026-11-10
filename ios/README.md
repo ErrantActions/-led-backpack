@@ -1,6 +1,11 @@
 # LED Backpack for iOS
 
-## Events: invitation-first rework (current source, not build 12)
+## Invitation-first events
+
+Uploaded as **0.1.0 (13)** in
+[protected run 42886758008](https://github.com/ErrantActions/-led-backpack/actions/runs/42886758008).
+Signing cleanup succeeded. App Store Connect shows **Processing**; internal
+tester availability is not yet verified.
 
 **Social > Events** now has a prominent full-width entry. Explore, Yours and
 Invites retain their existing authorized API lists and paging. Search filters
@@ -31,7 +36,8 @@ app compilation, 42 selected unit tests and one event UI walkthrough, all with
 zero failures. Reviewed native captures show the featured entry, invitation hub
 and persistent creation/cancel controls on the iPhone Duo simulator. This is
 fixture-based evidence, not full-suite, production-mutation or physical-device
-certification. No new TestFlight upload was performed.
+certification. The subsequent build 13 release used build/sign/upload only,
+without repeating simulator suites.
 
 ## Aurora native UI release candidate
 

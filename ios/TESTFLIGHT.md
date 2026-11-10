@@ -4,6 +4,22 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified event rework build 13 upload - 2026-11-10
+
+Version **0.1.0 (13)** was signed, archived, exported and uploaded in
+[run 42886758008](https://github.com/ErrantActions/-led-backpack/actions/runs/42886758008).
+Release source `4f0312e` includes invitation-first event browsing/details,
+essentials-first creation and persistent adaptive cancellation controls.
+Its native inputs match source `65496af`, which passed focused compilation,
+42 unit checks and one event UI walkthrough before this release.
+
+The protected release ran build/sign/upload only, with normal environment
+approval and successful temporary signing cleanup. No simulator suites were
+repeated; signing keys and the backend were unchanged.
+
+App Store Connect explicitly showed build 13 as **Processing** after upload.
+Internal tester availability is not yet verified.
+
 ## Verified Aurora build 12 upload - 2026-11-10
 
 Version **0.1.0 (12)** was signed, archived, exported and uploaded in
