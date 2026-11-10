@@ -17,7 +17,7 @@ struct CommunityBulkRequest: Encodable {
         guard (1...100).contains(ids.count), Set(ids).count == ids.count,
               ["delete", "quarantine"].contains(action), confirmation == action.uppercased(),
               (1...1000).contains(reason.trimmingCharacters(in: .whitespacesAndNewlines).utf16.count) else {
-            throw BackpackError.invalid("Select 1…100 distinct community GIFs, provide a reason, and type the exact action confirmation.")
+            throw BackpackError.invalid("Select 1…100 distinct community GIFs, provide a reason, and confirm the reviewed action.")
         }
     }
 }

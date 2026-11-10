@@ -1,4 +1,5 @@
 import SwiftUI
+import BackpackProtocol
 
 @MainActor
 struct CommunitySettingsView: View {

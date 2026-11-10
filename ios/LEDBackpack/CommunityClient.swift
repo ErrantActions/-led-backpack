@@ -782,7 +782,7 @@ final class CommunityController: ObservableObject {
     }
     func deleteAccount(password: String, confirmation: String) async throws {
         guard signedIn else { throw BackpackError.invalid("Sign in before deleting your account.") }
-        guard confirmation == "DELETE", !password.isEmpty else { throw BackpackError.invalid("Enter your password and type DELETE to confirm.") }
+        guard confirmation == "DELETE", !password.isEmpty else { throw BackpackError.invalid("Enter your password and confirm account deletion.") }
         struct Body: Encodable { let password: String; let confirmation: String }
         let body = try JSONEncoder().encode(Body(password: password, confirmation: confirmation))
         try await eraseAccount(body)
