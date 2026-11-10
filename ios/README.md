@@ -26,7 +26,7 @@ authorization/revocation checks remain in force. No aggregate inbox, delivery
 receipt or new backend API is assumed. The backend compatibility review found no
 required edit/deployment; live recovery v2 and absent feature capabilities remain
 unavailable. The release candidate still requires passing exact-source native
-validation and the protected TestFlight upload. for iOS
+validation and the protected TestFlight upload.
 
 ### TestFlight 0.1.0 (11)
 

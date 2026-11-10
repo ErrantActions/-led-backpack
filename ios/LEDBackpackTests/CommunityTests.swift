@@ -195,7 +195,7 @@ final class CommunityTests: XCTestCase {
         do {
             try await service.deleteAccount(password: "example test password", confirmation: "delete")
             XCTFail("Explicit confirmation is required")
-        } catch { XCTAssertTrue(error.localizedDescription.contains("DELETE")) }
+        } catch { XCTAssertEqual(error.localizedDescription, "Enter your password and confirm account deletion.") }
         let requests = await stub.history()
         XCTAssertEqual(requests.count, 1)
         XCTAssertTrue(service.signedIn)
