@@ -16,8 +16,9 @@ remain enforced. Returning from a picker does not deliberately rebind an
 unchanged account context. No backend contract or deployment is changed.
 
 Focused validation: `gh workflow run ios.yml --ref <branch> -f validation=avatars`.
-This selects avatar input/consent/crop checks and one generated-photo native
-navigation/picker/upload walkthrough, not the full suite.
+This selects avatar input/consent/crop checks and one native Photos
+navigation/picker/upload walkthrough, not the full suite. Use
+`-f validation=avatars-ui` to retry only that walkthrough.
 
 ## Backend-assisted performance - build 15
 
