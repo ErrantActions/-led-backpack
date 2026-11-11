@@ -129,6 +129,10 @@ struct SocialTabView: View {
                         NavigationLink { CommunityAccountView() } label: {
                             FeatureRowLabel(title: community.user?.displayName ?? "Account", symbol: "person.crop.circle", subtitle: "Account & privacy")
                         }
+                        NavigationLink { CommunityAvatarView() } label: {
+                            FeatureRowLabel(title: "Profile photo", symbol: "person.crop.circle.badge.plus",
+                                subtitle: "Add or change your photo or GIF")
+                        }.accessibilityIdentifier("social-profile-photo")
                     }
                     if refreshing { ProgressView() }
                     if let failure { Text(failure).foregroundStyle(.orange) }
@@ -211,7 +215,6 @@ struct SocialTabView: View {
             SocialLink("Find or invite friends", feature: .invites) { NearbyDiscoveryView() }
             SocialLink("Play with a friend", feature: .friendSessions) { FriendLocationFeaturesView() }
             DisclosureGroup("Profile & devices") {
-                SocialLink("Profile avatar", feature: .avatar) { CommunityAvatarView() }
                 SocialLink("Badges", feature: .badges) { EventAwardListView() }
                 SocialLink("My devices", feature: .deviceCards) { AccountDevicesView() }
             }

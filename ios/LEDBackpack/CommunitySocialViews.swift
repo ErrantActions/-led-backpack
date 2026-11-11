@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import PhotosUI
 import BackpackProtocol
 
 @MainActor
@@ -221,6 +222,9 @@ struct CommunityAvatarView: View {
     private var avatar: SocialAvatar? { owned?.avatar }
     @State private var consent = false
     @State private var picking = false
+    @State private var showingPhotos = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var importingPhoto = false
     @State private var pickerScope: UUID?
     @State private var pickerVersion: UUID?
     @State private var deleting = false
@@ -235,6 +239,10 @@ struct CommunityAvatarView: View {
     @State private var previewSelection: UUID?
     @State private var previewCrop: NativeAvatarCrop?
     @State private var selectionFailure: String?
+    @State private var boundContext: String?
+    private var context: String {
+        "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.avatarPolicyRevision):\(community.config?.avatarsEnabled == true):\(community.config?.avatarApprovalMode ?? ""):\(community.config?.avatarUploadsEnabled == true)"
+    }
     private var uploadReady: Bool {
         session.client?.automaticAvatarUploads == true && owned?.approvalMode == "ai" && owned?.uploadsEnabled == true
     }
@@ -261,19 +269,24 @@ struct CommunityAvatarView: View {
                     }
                 }
                 if avatar == nil && !session.busy { Text("Default profile avatar") }
-                Toggle("I have permission and consent to automatic public-profile screening", isOn: $consent)
-                InteractionExplanation("Avatar upload is public screening, not private backup. Up to 5 MB; content preferences and moderation still apply.", details: "This is not private cloud backup. PNG/JPEG/WebP stills or GIFs, up to 5 MB. Allowed art publishes after automatic screening; uncertain/mature art is filtered by content preferences and prohibited imagery is blocked.")
+                Text("Choose a photo, review it, then confirm. Nothing uploads when you choose.")
                     .font(.caption).foregroundStyle(.secondary)
-                if !uploadReady { Text("Uploads/retry are unavailable until this server advertises configured automatic screening. There is no manual-approval fallback.").font(.caption).foregroundStyle(.secondary) }
-                Button("Choose avatar image or GIF") { pickerScope = session.client?.instanceID; pickerVersion = avatar?.version; picking = true }
+                if !uploadReady && !session.busy {
+                    Text("Photo uploads are unavailable until automatic screening is configured.").font(.caption).foregroundStyle(.secondary)
+                }
+                Button("Choose from Photos") { preparePicker(); showingPhotos = true }
                     .buttonStyle(AuroraPrimaryButton())
-                    .disabled(!consent || session.busy || !uploadReady)
+                    .disabled(session.busy || importingPhoto || !uploadReady)
+                    .accessibilityIdentifier("avatar-choose-photos")
+                Button("Choose from Files") { preparePicker(); picking = true }
+                    .disabled(session.busy || importingPhoto || !uploadReady)
+                    .accessibilityIdentifier("avatar-choose-file")
+                if importingPhoto { ProgressView("Preparing photo...") }
                 if let selection {
-                    Section("Selected file — not uploaded") {
-                        InteractionExplanation("Preview shows the first still. Original bytes and crop metadata are sent; source timing and transparency remain server-controlled.", details: "Preview is the oriented first still only. Original immutable bytes and crop metadata are sent; every-frame timing, repeat and transparency remain server-controlled. No local original is rewritten.")
-                            .font(.caption)
+                    Section("Review your photo") {
+                        if let preview { Image(decorative: preview, scale: 1).resizable().scaledToFit().frame(height: 180) }
                         if owned?.cropsEnabled == true && community.config?.avatarCropsEnabled == true {
-                            Toggle("Purposeful percentage crop", isOn: $cropping)
+                            Toggle("Crop photo", isOn: $cropping).disabled(session.busy || importingPhoto)
                             if cropping {
                                 Stepper("Left \(crop.leftPercent)%", value: $crop.leftPercent, in: 0...99)
                                 Stepper("Top \(crop.topPercent)%", value: $crop.topPercent, in: 0...99)
@@ -281,25 +294,16 @@ struct CommunityAvatarView: View {
                                 Stepper("Height \(crop.heightPercent)%", value: $crop.heightPercent, in: 1...100)
                             }
                         }
-                        Button("Preview this exact file and crop") {
-                            do {
-                                let value = cropping ? crop : nil
-                                preview = try selection.preview(crop: value)
-                                previewSelection = selection.id; previewCrop = value; selectionFailure = nil
-                            } catch { clearPreview(); selectionFailure = error.localizedDescription }
-                        }
-                        if let preview { Image(decorative: preview, scale: 1).resizable().scaledToFit().frame(height: 180) }
-                        Button(avatar == nil ? "Upload previewed avatar" : "Replace avatar with previewed file") {
-                            let selectedCrop = cropping ? crop : nil
-                            guard previewSelection == selection.id, previewCrop == selectedCrop else { return }
-                            session.run(expected: selection.scope, { client in
-                                try await client.uploadAvatar(selection.bytes, publicConsent: consent,
-                                    expectedVersion: selection.expectedVersion, crop: selectedCrop)
-                            }, success: { self.selection = nil; clearPreview(); consent = false; load() })
-                        }.buttonStyle(AuroraPrimaryButton())
-                            .disabled(!consent || session.busy || !uploadReady || previewSelection != selection.id || previewCrop != (cropping ? crop : nil))
-                        Button("Discard selection") { self.selection = nil; clearPreview() }.disabled(session.busy)
-                    }
+                        Text("Public profile photo, subject to automatic screening. This is not a private backup.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Toggle("I have permission and agree to public profile use and screening", isOn: $consent)
+                            .disabled(session.busy || importingPhoto).accessibilityIdentifier("avatar-public-consent")
+                        FeatureDetails("Photo & GIF details") {
+                            Text("The preview shows the first still. PNG/JPEG/WebP/GIF files keep their bytes; HEIC photos use a prepared JPEG copy. Crop metadata applies to the reviewed copy. GIF timing and transparency remain server-controlled. Originals are unchanged.")
+                        }.disabled(session.busy || importingPhoto)
+                        Button("Discard selection") { self.selection = nil; clearPreview(); consent = false }
+                            .disabled(session.busy || importingPhoto)
+                    }.disabled(session.busy || importingPhoto)
                 }
                 if let selectionFailure { Text(selectionFailure).foregroundStyle(.orange) }
                 if let mature = community.user?.allowMature {
@@ -315,21 +319,55 @@ struct CommunityAvatarView: View {
                 if let failure = session.failure { Text(failure).foregroundStyle(.orange) }
             } else { Text(session.failure ?? "Avatars are not enabled by this server.") }
         }
-        .modernScene().navigationTitle("Profile avatar")
-        .task(id: "\(community.accountRevision):\(community.user?.id.uuidString ?? ""):\(community.avatarPolicyRevision):\(community.config?.avatarsEnabled == true):\(community.config?.avatarApprovalMode ?? ""):\(community.config?.avatarUploadsEnabled == true)") {
-            owned = nil; consent = false; retryVersion = nil; selection = nil; clearPreview(); session.bind(community)
+        .modernScene().navigationTitle("Profile photo")
+        .safeAreaInset(edge: .bottom) {
+            if let selection {
+                Button(avatar == nil ? "Upload profile photo" : "Replace profile photo") { upload(selection) }
+                    .buttonStyle(AuroraPrimaryButton())
+                    .disabled(!consent || session.busy || importingPhoto || !uploadReady ||
+                        previewSelection != selection.id || previewCrop != (cropping ? crop : nil))
+                    .padding(12).background(Aurora.surface).accessibilityIdentifier("avatar-upload")
+            }
+        }
+        .task(id: context) {
+            guard boundContext != context || session.client == nil else { return }
+            owned = nil; consent = false; retryVersion = nil; selection = nil; selectedPhoto = nil; clearPreview(); session.bind(community)
+            boundContext = context
             if community.config?.avatarsEnabled == true { load() }
         }
-        .onChange(of: crop) { _, _ in clearPreview() }
-        .onChange(of: cropping) { _, _ in clearPreview() }
-        .onChange(of: session.denied) { _, denied in if denied { owned = nil; consent = false; retryVersion = nil; selection = nil; clearPreview() } }
-        .onDisappear { if !picking { session.clear(); owned = nil; consent = false; retryVersion = nil; selection = nil; clearPreview() } }
+        .onChange(of: crop) { _, _ in updatePreview() }
+        .onChange(of: cropping) { _, _ in updatePreview() }
+        .onChange(of: session.denied) { _, denied in if denied { boundContext = nil; owned = nil; consent = false; retryVersion = nil; selection = nil; clearPreview() } }
+        .onDisappear { if !picking && !showingPhotos { boundContext = nil; session.clear(); owned = nil; consent = false; retryVersion = nil; selection = nil; clearPreview() } }
+        .photosPicker(isPresented: $showingPhotos, selection: $selectedPhoto, matching: .images, preferredItemEncoding: .current)
+        .task(id: selectedPhoto) {
+            guard let item = selectedPhoto else { return }
+            importingPhoto = true
+            defer { importingPhoto = false }
+            do {
+                guard let scope = pickerScope, session.client?.instanceID == scope else {
+                    throw BackpackError.invalid("Selection account changed. Choose the photo again.")
+                }
+                let version = pickerVersion
+                guard let photo = try await item.loadTransferable(type: NativeAvatarPhoto.self) else {
+                    throw BackpackError.invalid("Could not load this photo. Try choosing its image file.")
+                }
+                try Task.checkCancellation()
+                guard session.client?.instanceID == scope else { throw BackpackError.invalid("Selection account changed.") }
+                accept(try NativeAvatarSelection(bytes: photo.bytes, expectedVersion: version, scope: scope))
+            } catch {
+                if Task.isCancelled { return }
+                selection = nil; clearPreview(); selectionFailure = error.localizedDescription
+            }
+        }
         .fileImporter(isPresented: $picking, allowedContentTypes: [.image, .gif]) { result in
+            if case .failure(let error) = result,
+               (error as NSError).domain == NSCocoaErrorDomain, (error as NSError).code == NSUserCancelledError { return }
             do {
                 let url = try result.get()
                 guard let scope = pickerScope, session.client?.instanceID == scope else { throw BackpackError.invalid("Selection account changed.") }
-                selection = try NativeAvatarSelection(url: url, expectedVersion: pickerVersion, scope: scope)
-                crop = NativeAvatarCrop(); cropping = false; clearPreview(); selectionFailure = nil
+                let photo = try NativeAvatarPhoto.read(url: url)
+                accept(try NativeAvatarSelection(bytes: photo.bytes, expectedVersion: pickerVersion, scope: scope))
             } catch { selection = nil; clearPreview(); selectionFailure = error.localizedDescription }
         }
         .confirmationDialog("Remove your profile avatar?", isPresented: $deleting) {
@@ -353,6 +391,33 @@ struct CommunityAvatarView: View {
     }
     private func load() {
         session.run { client in let value = try await client.ownedAvatar(); try session.checked(client); owned = value }
+    }
+    private func preparePicker() {
+        pickerScope = session.client?.instanceID; pickerVersion = avatar?.version
+        selectedPhoto = nil; selectionFailure = nil
+    }
+    private func accept(_ value: NativeAvatarSelection) {
+        selection = value; crop = NativeAvatarCrop(); cropping = false; consent = false
+        updatePreview()
+    }
+    private func updatePreview() {
+        guard let selection else { clearPreview(); return }
+        do {
+            let value = cropping ? crop : nil
+            preview = try selection.preview(crop: value)
+            previewSelection = selection.id; previewCrop = value; selectionFailure = nil
+        } catch { clearPreview(); selectionFailure = error.localizedDescription }
+    }
+    private func upload(_ selection: NativeAvatarSelection) {
+        let value = cropping ? crop : nil
+        guard consent, previewSelection == selection.id, previewCrop == value else {
+            selectionFailure = "Review this photo and confirm public-profile screening before uploading."
+            return
+        }
+        session.run(expected: selection.scope, { client in
+            try await client.uploadAvatar(selection.bytes, publicConsent: consent,
+                expectedVersion: selection.expectedVersion, crop: value)
+        }, success: { self.selection = nil; clearPreview(); consent = false; load() })
     }
     private func clearPreview() { preview = nil; previewSelection = nil; previewCrop = nil }
 }

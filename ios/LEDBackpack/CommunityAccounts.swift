@@ -103,6 +103,10 @@ struct CommunityAccountView: View {
             } else {
                 Text("Refresh your account before managing deletion.").font(.caption)
             }
+            NavigationLink { CommunityAvatarView() } label: {
+                FeatureRowLabel(title: "Profile photo", symbol: "person.crop.circle.badge.plus",
+                    subtitle: "Add or change your photo or GIF")
+            }.accessibilityIdentifier("account-profile-photo")
             NavigationLink { CloudVaultSettingsView() } label: {
                 FeatureRowLabel(title: "Private cloud", symbol: "lock.icloud", subtitle: "Sync, unlock and recovery")
             }

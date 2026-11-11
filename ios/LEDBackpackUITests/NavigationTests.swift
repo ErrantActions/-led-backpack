@@ -506,6 +506,57 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
     }
 
+    func testProfilePhotoIsVisibleInAccountAndSocialAndUploadsOnlyAfterReview() throws {
+        let app = XCUIApplication()
+        addUIInterruptionMonitor(withDescription: "Avatar workflow system permission") { alert in
+            if alert.buttons["Allow"].exists { alert.buttons["Allow"].tap(); return true }
+            if alert.buttons["OK"].exists { alert.buttons["OK"].tap(); return true }
+            return false
+        }
+        app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture", "--avatar-ui-fixture"]
+        app.launch()
+        signInFixture(app)
+        app.buttons["Catalog account"].tap()
+        let entry = app.buttons["account-profile-photo"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        XCTAssertTrue(entry.isHittable, "Profile photo must be visible without expanding account tools.")
+        attach(app, name: "Avatar - direct account entry")
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Profile photo"].waitForExistence(timeout: 10))
+        let photos = app.buttons["avatar-choose-photos"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in photos.exists && photos.isEnabled }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
+        XCTAssertFalse(app.switches["avatar-public-consent"].exists)
+        XCTAssertTrue(app.buttons["avatar-choose-file"].isEnabled)
+        photos.tap()
+        XCTAssertTrue(app.navigationBars["Photos"].waitForExistence(timeout: 30))
+        let photo = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Photo,")).firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 20)); photo.tap()
+        let upload = app.buttons["avatar-upload"]
+        XCTAssertTrue(upload.waitForExistence(timeout: 20))
+        XCTAssertFalse(upload.isEnabled, "Choosing a photo must not consent to publication or start an upload.")
+        let consent = app.switches["avatar-public-consent"].switches.firstMatch
+        reveal(consent, in: app)
+        XCTAssertEqual(consent.value as? String, "0")
+        attach(app, name: "Avatar - automatic preview and default-off publication consent")
+        consent.tap()
+        XCTAssertTrue(upload.isEnabled); upload.tap()
+        XCTAssertTrue(upload.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["queued"].waitForExistence(timeout: 10))
+        attach(app, name: "Avatar - uploaded for screening, not silently approved")
+        app.buttons["BackButton"].tap()
+        XCTAssertTrue(app.navigationBars["Catalog account"].waitForExistence(timeout: 10))
+        app.buttons["BackButton"].tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 10))
+        app.buttons.matching(NSPredicate(format: "label == %@", "Social")).firstMatch.tap()
+        let social = app.buttons["social-profile-photo"]
+        XCTAssertTrue(social.waitForExistence(timeout: 10))
+        XCTAssertTrue(social.isHittable)
+        social.tap()
+        XCTAssertTrue(app.navigationBars["Profile photo"].waitForExistence(timeout: 10))
+        attach(app, name: "Avatar - direct Social profile entry")
+    }
+
     func testConnectedBackpackRegistrationRequiresSignInBeforeReadingHardware() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--library-ui-fixture", "--social-ui-fixture"]

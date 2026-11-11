@@ -1,6 +1,7 @@
 import SwiftUI
 import ImageIO
 import UniformTypeIdentifiers
+import CoreTransferable
 import BackpackProtocol
 
 struct ViewerMediaPreferences: Codable, Equatable {
@@ -73,6 +74,58 @@ struct NativeAvatarSelection {
             throw BackpackError.invalid("Could not preview this crop.")
         }
         return image
+    }
+}
+
+struct NativeAvatarPhoto: Transferable {
+    let bytes: Data
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in
+            try read(url: received.file)
+        }
+    }
+
+    static func read(url: URL) throws -> NativeAvatarPhoto {
+        guard url.isFileURL else { throw BackpackError.invalid("Choose a local image file.") }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: 20_000_001) ?? Data()
+        return NativeAvatarPhoto(bytes: try compatibleData(data))
+    }
+
+    static func compatibleData(_ data: Data) throws -> Data {
+        guard !data.isEmpty, data.count <= 20_000_000,
+              let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let raw = CGImageSourceGetType(source), let type = UTType(raw as String) else {
+            throw BackpackError.invalid("Choose a photo up to 20 MB or an image/GIF file up to 5 MB.")
+        }
+        guard type == .heic || type == .heif else {
+            _ = try NativeAvatarInput.kind(data)
+            return data
+        }
+        guard CGImageSourceGetCount(source) == 1,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
+              let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight as String] as? Int,
+              (1...8192).contains(width), (1...8192).contains(height), width * height <= 64_000_000,
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 2048,
+                kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else {
+            throw BackpackError.invalid("Choose a single HEIC photo up to 64 megapixels.")
+        }
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(output as CFMutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
+            throw BackpackError.invalid("Could not prepare this photo for your profile.")
+        }
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { throw BackpackError.invalid("Could not finish the profile photo copy.") }
+        let bytes = output as Data
+        _ = try NativeAvatarInput.kind(bytes)
+        return bytes
     }
 }
 

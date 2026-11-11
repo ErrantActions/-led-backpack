@@ -1,5 +1,24 @@
 # LED Backpack for iOS
 
+## Profile photo discovery
+
+Signed-in Account and the top of Social have a visible **Profile photo** entry,
+not a link hidden inside profile/device tools. The screen offers **Choose from
+Photos** and **Choose from Files** before publication consent; selecting only
+prepares a preview. Supported PNG/JPEG/WebP/GIF bytes are retained. HEIC stills
+up to 20 MB/64 megapixels are prepared as oriented JPEG copies up to 2048 pixels,
+then validated against the existing 5 MB upload limit. Originals are unchanged.
+
+The final public-profile/screening consent stays default off, next to the
+preview; upload is a separate action. Crop preview updates automatically.
+Account scope, captured avatar version, screening availability and moderation
+remain enforced. Returning from a picker does not deliberately rebind an
+unchanged account context. No backend contract or deployment is changed.
+
+Focused validation: `gh workflow run ios.yml --ref <branch> -f validation=avatars`.
+This selects avatar input/consent/crop checks and one generated-photo native
+navigation/picker/upload walkthrough, not the full suite.
+
 ## Backend-assisted performance - build 15
 
 Version **0.1.0 (15)** was accepted by App Store Connect in

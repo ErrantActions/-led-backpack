@@ -24,9 +24,12 @@ private actor LibraryPreviewTransport: CommunityTransport {
     private let paging: Bool
     private let messaging: Bool
     private let events: Bool
+    private let avatars: Bool
+    private var avatarUploaded = false
     private var sentMessages: [[String: Any]] = []
-    init(social: Bool = false, paging: Bool = false, messaging: Bool = false, events: Bool = false) {
+    init(social: Bool = false, paging: Bool = false, messaging: Bool = false, events: Bool = false, avatars: Bool = false) {
         self.social = social; self.paging = paging; self.messaging = messaging; self.events = events
+        self.avatars = avatars
     }
     func send(_ request: URLRequest, maxBytes: Int) async throws -> CommunityResponse {
         let path = request.url?.path ?? ""
@@ -38,6 +41,7 @@ private actor LibraryPreviewTransport: CommunityTransport {
                 "unverifiedDeviceTagsEnabled": social, "connectedDeviceRegistrationEnabled": social,
                 "connectedDeviceRegistrationVersion": 2, "deviceRecoveryEnabled": false,
                 "groupChatsEnabled": messaging, "eventChatsEnabled": false, "liveChatEnabled": false,
+                "avatarsEnabled": avatars, "avatarUploadsEnabled": avatars, "avatarApprovalMode": "ai", "avatarCropsEnabled": avatars,
                 "directMessageRetentionDays": 30, "directMessageRecovery": "retained-history-only"]))
         }
         if request.httpMethod == "POST", path == "/api/v1/auth/login",
@@ -85,6 +89,30 @@ private actor LibraryPreviewTransport: CommunityTransport {
             {"user":{"id":"\(LibraryPreviewFixture.owner)","email":"ui@example.invalid","displayName":"UI Rider","role":"user","verified":true,
             "authMethods":{"apple":false,"password":true,"appleOnly":false}}}
             """.utf8))
+        }
+        if avatars, path == "/api/v1/social/avatar" {
+            let version = "aaaaaaaa-1234-4567-89ab-abcdefabcdef"
+            let avatar: [String: Any] = [
+                "userId": LibraryPreviewFixture.owner, "version": version, "status": "pending", "createdAt": 1,
+                "avatarUrl": "/api/v1/social/avatars/\(LibraryPreviewFixture.owner)/\(version)/image.gif",
+                "avatarPreviewUrl": "/api/v1/social/avatars/\(LibraryPreviewFixture.owner)/\(version)/preview.png",
+                "avatarAnimated": false, "approvalMode": "ai", "aiState": "queued", "aiError": ""
+            ]
+            if request.httpMethod == "GET" {
+                var value: [String: Any] = [
+                    "avatar": NSNull(), "uploadsEnabled": true, "approvalMode": "ai", "cropsEnabled": true]
+                if avatarUploaded { value["avatar"] = avatar }
+                return .init(status: 200, data: try JSONSerialization.data(withJSONObject: value))
+            }
+            if request.httpMethod == "POST", let body = request.httpBody,
+               String(decoding: body, as: UTF8.self).contains("\"public\":true") {
+                avatarUploaded = true
+                return .init(status: 202, data: try JSONSerialization.data(withJSONObject: ["avatar": avatar]))
+            }
+            throw BackpackError.invalid("Avatar fixture requires an explicit public-profile upload.")
+        }
+        if avatars, request.httpMethod == "GET", path.hasPrefix("/api/v1/social/avatars/") {
+            return .init(status: 200, data: Data(Array("GIF89a".utf8) + [1,0,1,0,128,0,0,0,0,0,255,255,255,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59]))
         }
         if messaging {
             let peer = "33333333-1234-4567-89ab-abcdefabcdef"
@@ -267,9 +295,10 @@ enum LibraryPreviewFixture {
     static func community(social: Bool = CommandLine.arguments.contains("--social-ui-fixture"),
                           paging: Bool = CommandLine.arguments.contains("--pagination-ui-fixture"),
                           messaging: Bool = CommandLine.arguments.contains("--messaging-ui-fixture"),
-                          events: Bool = CommandLine.arguments.contains("--events-ui-fixture")) -> CommunityController {
+                          events: Bool = CommandLine.arguments.contains("--events-ui-fixture"),
+                          avatars: Bool = CommandLine.arguments.contains("--avatar-ui-fixture")) -> CommunityController {
         CommunityController(vault: LibraryPreviewVault(), factory: { _ in
-            LibraryPreviewTransport(social: social, paging: paging, messaging: messaging, events: events)
+            LibraryPreviewTransport(social: social, paging: paging, messaging: messaging, events: events, avatars: avatars)
         })
     }
     static func make() throws -> LocalLibrary {
