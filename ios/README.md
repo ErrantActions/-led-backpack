@@ -2,6 +2,11 @@
 
 ## Profile photo discovery
 
+Uploaded as **0.1.0 (16)** in
+[protected run 42949552461](https://github.com/ErrantActions/-led-backpack/actions/runs/42949552461).
+Apple accepted the binary and signing cleanup succeeded. Apple processing and
+tester availability are not yet verified; the browser session expired.
+
 Signed-in Account and the top of Social have a visible **Profile photo** entry,
 not a link hidden inside profile/device tools. The screen offers **Choose from
 Photos** and **Choose from Files** before publication consent; selecting only
@@ -19,6 +24,17 @@ Focused validation: `gh workflow run ios.yml --ref <branch> -f validation=avatar
 This selects avatar input/consent/crop checks and one native Photos
 navigation/picker/upload walkthrough, not the full suite. Use
 `-f validation=avatars-ui` to retry only that walkthrough.
+
+Native inputs `ef2bb4e` compiled and passed all 13 selected unit checks,
+including real HEIC orientation/conversion, GIF-byte preservation, scope,
+crop and consent guards. The first UI run reached a successful fixture upload
+but used the wrong standalone accessibility status label. Test-only correction
+`d2fec3d` passed the complete Account/Social entry, system Photos selection,
+automatic preview, default-off consent, upload and pending-screening walkthrough
+in [run 42947459830](https://github.com/ErrantActions/-led-backpack/actions/runs/42947459830).
+Native screenshots were reviewed. Release source `d2fec3d` has identical native
+app inputs; no simulator suites ran during upload. This is fixture evidence,
+not a production profile mutation or guarantee of automatic approval.
 
 ## Backend-assisted performance - build 15
 

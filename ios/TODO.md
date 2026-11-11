@@ -12,6 +12,13 @@ excluded from migration. Replacement research is maintained in
 screenshots and original layout studies tracked separately from app artwork.
 Older checkpoints below are historical evidence, not the current release board.
 
+- [x] Make profile photo upload visible directly in Account and Social; add
+  Photos/Files import, automatic preview, HEIC preparation and final default-off
+  public-profile consent. Native compilation/13 focused tests passed; the
+  complete picker/upload/navigation UI walkthrough passed after a test-only
+  accessibility selector correction. Upload once as 0.1.0 (16), protected
+  run 42949552461, signing cleanup succeeded. Apple processing/availability
+  remains unverified; no backend changes or real-profile mutations.
 - [x] Ship coordinated performance improvements: aggregate inbox, conditional
   history, legacy change-only sync, encrypted snapshot validation and bounded
   conditional artwork caching with recorded preview selection. Native source

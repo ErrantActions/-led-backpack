@@ -4,6 +4,28 @@ This prepares **LED Backpack**, bundle ID `com.errantactions.ledbackpack`,
 version `0.1.0`, for internal testing. It does not create an Apple app record,
 generate credentials, or upload anything by itself.
 
+## Verified profile photo usability build 16 upload - 2026-11-10
+
+Version **0.1.0 (16)** was signed, archived, exported and accepted by App Store
+Connect in [run 42949552461](https://github.com/ErrantActions/-led-backpack/actions/runs/42949552461).
+Source `d2fec3d` adds visible **Profile photo** entries in Account and at the top
+of Social, Photos/Files choices without pre-consent, automatic scoped preview,
+HEIC still preparation and a separate explicit public-profile upload action.
+Existing screening, captured avatar version, account boundaries and original
+GIF bytes are retained. No backend or signing-key change was needed.
+
+Native code inputs match `ef2bb4e`, which compiled and passed all 13 selected
+input/consent/crop tests in run 42944765831. That UI run reached upload but
+asserted a nonexistent standalone status text. After correcting only the
+grouped-label selector, the full Photos-to-upload and Account/Social discovery
+walkthrough passed in run 42947459830; native captures reviewed.
+The protected release ran build/sign/upload only, with normal approval and
+successful temporary signing cleanup. No simulator suites were repeated.
+
+The binary upload is verified. Apple processing/internal tester availability
+is not yet verified because the App Store Connect browser session expired.
+No real account avatar was changed during fixture validation.
+
 ## Verified performance build 15 upload - 2026-11-10
 
 Version **0.1.0 (15)** was signed, archived, exported and accepted by App Store
